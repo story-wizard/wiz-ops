@@ -8,7 +8,7 @@
 # then layers in the PR-specific bits: playbook copy, PR-URL substitution,
 # `gh pr checkout`, and the auto-run launch.
 
-VALID_REPOS=(wizard wizard-ai wizard-core wizard-release)
+VALID_REPOS=(wizard wizard-ai wizard-core wizard-release wizard-spec)
 VALID_AGENT_TYPES=(claude-code codex opencode)
 PLAYBOOKS_SOURCE="${HOME}/src/maestro-playbooks-custom/playbooks/Code_Review"
 

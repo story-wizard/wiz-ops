@@ -4,7 +4,7 @@
 #
 # Usage: maestro_wt.sh <repo> <worktree_name> [agent_type]
 
-VALID_REPOS=(wizard wizard-ai wizard-core wizard-release)
+VALID_REPOS=(wizard wizard-ai wizard-core wizard-release wizard-spec)
 VALID_AGENT_TYPES=(claude-code codex opencode)
 ZSHRC_FUNCTIONS="${HOME}/.zshrc.d/80-git-worktrees.zsh"
 

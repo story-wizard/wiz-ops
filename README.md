@@ -31,7 +31,7 @@ Sets up a full, isolated PR review environment for a given repo and PR number.
 
 | Argument | Description |
 | --- | --- |
-| `repo` | One of: `wizard`, `wizard-ai`, `wizard-core`, `wizard-release` |
+| `repo` | One of: `wizard`, `wizard-ai`, `wizard-core`, `wizard-release`, `wizard-spec` |
 | `pr_number` | The PR number (numeric) |
 | `agent_type` | Optional one of: `claude-code`, `codex`, `opencode`. Defaults to `claude-code` |
 
@@ -78,7 +78,7 @@ feature work, experiments, or refactors driven by a Maestro agent.
 
 | Argument | Description |
 | --- | --- |
-| `repo` | One of: `wizard`, `wizard-ai`, `wizard-core`, `wizard-release` |
+| `repo` | One of: `wizard`, `wizard-ai`, `wizard-core`, `wizard-release`, `wizard-spec` |
 | `worktree_name` | Free-form label for the worktree. Allowed characters: letters, digits, `.`, `_`, `-` |
 | `agent_type` | Optional one of: `claude-code`, `codex`, `opencode`. Defaults to `claude-code` |
 
