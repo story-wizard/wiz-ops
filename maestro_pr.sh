@@ -10,7 +10,7 @@
 
 VALID_REPOS=(wizard wizard-ai wizard-core wizard-release wizard-spec)
 VALID_AGENT_TYPES=(claude-code codex opencode)
-PLAYBOOKS_SOURCE="${HOME}/src/maestro-playbooks-custom/playbooks/Code_Review"
+PLAYBOOKS_SOURCE="${HOME}/src/Maestro-Playbooks/Development/Code-Review"
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 MAESTRO_WT="${script_dir}/maestro_wt.sh"
