@@ -13,7 +13,9 @@ This repo collects convenience scripts that support day-to-day development workf
 - [`node`](https://nodejs.org/) (for the Maestro CLI)
 - The [Maestro](https://github.com/ksylvan/Maestro) CLI — either the installed app at `/Applications/Maestro.app` or a local `preview` worktree (see [Maestro CLI resolution](#maestro-cli-resolution) below)
 - Code Review playbooks — preferably checked out locally at `~/src/Maestro-Playbooks/Development/Code-Review`, otherwise fetched from GitHub automatically (see [Code Review playbook source](#code-review-playbook-source) below)
-- Worktree helper functions sourced from `~/.zshrc.d/80-git-worktrees.zsh`
+- The `~/wizard/<repo>` checkouts that worktrees are derived from (worktrees land in `~/wizard/worktrees/<repo>/`)
+
+The git worktree helpers are bundled in [`_worktree_helpers.sh`](./_worktree_helpers.sh) and sourced by the scripts directly, so no shell-dotfile setup (e.g. `~/.zshrc.d/`) is required.
 
 ## Maestro CLI resolution
 
@@ -116,14 +118,16 @@ Either way, `README.md` is dropped and the PR URL is patched into
 
 ### `maestro_wt.sh` — Named Worktree + Maestro Agent
 
-Sets up a named git worktree wired up to a Maestro agent — without any PR-review
-or playbook scaffolding. Useful when you want an isolated workspace for general
-feature work, experiments, or refactors driven by a Maestro agent.
+Sets up (or tears down) a named git worktree wired up to a Maestro agent —
+without any PR-review or playbook scaffolding. Useful when you want an isolated
+workspace for general feature work, experiments, or refactors driven by a
+Maestro agent.
 
 **Usage:**
 
 ```zsh
 ./maestro_wt.sh [--nudge MSG] [--json-out PATH] <repo> <worktree_name> [agent_type]
+./maestro_wt.sh --delete [--force] <repo> <worktree_name> [agent_type]
 ```
 
 **Arguments:**
@@ -142,6 +146,8 @@ The final worktree and agent are both named `<repo>-<worktree_name>-<agent_type>
 | --- | --- |
 | `--nudge MSG` | Pass `MSG` as the nudge message when creating the agent. Without this flag, the agent is created with no nudge |
 | `--json-out PATH` | Write the `create-agent` JSON response to `PATH` (caller-managed). Without this flag, the JSON is written to a temp file that is removed on exit. Primarily useful when invoking `maestro_wt.sh` from another script that needs the resulting `agentId` |
+| `--delete` | Tear down the worktree and its Maestro agent instead of creating them. Mutually exclusive with `--nudge` / `--json-out` |
+| `--force` | Only valid with `--delete`: skip the confirmation prompt and force-remove the worktree even if it has uncommitted changes |
 
 **Examples:**
 
@@ -150,9 +156,11 @@ The final worktree and agent are both named `<repo>-<worktree_name>-<agent_type>
 ./maestro_wt.sh wizard refactor-auth
 ./maestro_wt.sh wizard-ai experiment codex
 ./maestro_wt.sh --nudge "review only" --json-out /tmp/a.json wizard-core pr-209
+./maestro_wt.sh --delete wizard-core my-feature
+./maestro_wt.sh --delete --force wizard-ai experiment codex
 ```
 
-**What it does:**
+**What it does (create):**
 
 1. Creates a git worktree named `<repo>-<worktree_name>-<agent_type>` under `~/wizard/worktrees/<repo>/`
 2. Creates the matching autorun directory under `~/wizard/worktrees/autorun/<repo>/<worktree>/`
@@ -162,6 +170,19 @@ Unlike `maestro_pr.sh`, this script does **not** copy any playbooks, does not ch
 out a PR, and does not trigger an auto-run launch — the worktree starts on the
 default branch and the agent has no nudge message. Drop your own playbooks into
 the autorun directory if/when you want to run them.
+
+**What it does (`--delete`):**
+
+Reconstructs the same deterministic `<repo>-<worktree_name>-<agent_type>` name, then:
+
+1. Prompts for confirmation (skipped with `--force`)
+2. Removes the git worktree and prunes it (with `--force`, also removes a worktree with uncommitted changes)
+3. Prompts whether to also delete the worktree's autorun directory
+4. Looks up the agent by name (via `maestro_id.sh`) and removes it with `maestro-cli remove-agent`
+
+The teardown is best-effort: if the worktree is already gone it still attempts to
+remove the agent, and if no matching agent is found it skips that step — so a
+half-cleaned state can be finished by re-running the command.
 
 ### `maestro_id.sh` — Agent UUID Lookup
 
@@ -202,7 +223,7 @@ Watches a Maestro Auto Run agent and prints a running log until the run is
 **fully** done, then fires a desktop toast notification.
 
 This exists because `maestro_dev_cli session list` / `show agent` report the
-agent as *idle* during an Auto Run: each iteration runs as a detached headless
+agent as _idle_ during an Auto Run: each iteration runs as a detached headless
 `claude --print` process rather than a tracked desktop session. The watcher
 follows that process by agent ID instead. Since Auto Run exits after every task
 and relaunches for the next one, "fully done" is only declared once the process

@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# maestro_wt.sh — Set up a named worktree for use with a Maestro agent.
+# maestro_wt.sh — Set up (or tear down) a named worktree for a Maestro agent.
 #
 # Usage: maestro_wt.sh <repo> <worktree_name> [agent_type]
+#        maestro_wt.sh --delete [--force] <repo> <worktree_name> [agent_type]
 
 VALID_REPOS=(wizard wizard-ai wizard-core wizard-release wizard-spec)
 VALID_AGENT_TYPES=(claude-code codex opencode)
-ZSHRC_FUNCTIONS="${HOME}/.zshrc.d/80-git-worktrees.zsh"
 
 format_options() {
     local formatted=""
@@ -25,8 +25,9 @@ format_options() {
 usage() {
     cat <<EOF
 Usage: $(basename "$0") [--nudge MSG] [--json-out PATH] <repo> <worktree_name> [agent_type]
+       $(basename "$0") --delete [--force] <repo> <worktree_name> [agent_type]
 
-Set up a named worktree for use with a Maestro agent.
+Set up (or tear down) a named worktree for use with a Maestro agent.
 
 Arguments:
     repo            Repository name. Valid options: $(format_options "${VALID_REPOS[@]}")
@@ -40,12 +41,20 @@ Options:
   --json-out PATH   Write the create-agent JSON response to PATH (caller-managed).
                     Without this flag the JSON is written to a temp file that is
                     removed on exit.
+  --delete          Tear down the worktree and its Maestro agent instead of
+                    creating them. Removes the git worktree (prompting whether to
+                    also delete the autorun directory) then removes the agent.
+                    Mutually exclusive with --nudge / --json-out.
+  --force           Only with --delete: skip the confirmation prompt and force
+                    removal of the worktree even if it has uncommitted changes.
 
 Examples:
   $(basename "$0") wizard-core my-feature
   $(basename "$0") wizard refactor-auth
   $(basename "$0") wizard-ai experiment codex
   $(basename "$0") --nudge "review only" --json-out /tmp/a.json wizard-core pr-209
+  $(basename "$0") --delete wizard-core my-feature
+  $(basename "$0") --delete --force wizard-ai experiment codex
 EOF
 }
 
@@ -69,6 +78,8 @@ fi
 
 nudge_message=""
 json_out=""
+delete_mode=false
+force=false
 positional=()
 
 while [[ $# -gt 0 ]]; do
@@ -86,6 +97,14 @@ while [[ $# -gt 0 ]]; do
             [[ $# -ge 2 ]] || die "--json-out requires an argument"
             json_out="$2"
             shift 2
+            ;;
+        --delete)
+            delete_mode=true
+            shift
+            ;;
+        --force)
+            force=true
+            shift
             ;;
         --)
             shift
@@ -105,6 +124,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 set -- "${positional[@]}"
+
+# --delete is exclusive to the normal create flow.
+if [[ "$delete_mode" == "true" ]]; then
+    [[ -z "$nudge_message" ]] || die "--nudge cannot be combined with --delete"
+    [[ -z "$json_out" ]] || die "--json-out cannot be combined with --delete"
+elif [[ "$force" == "true" ]]; then
+    die "--force is only valid with --delete"
+fi
 
 if [[ $# -lt 2 || $# -gt 3 ]]; then
     echo "Error: Expected 2 or 3 positional arguments, got $#." >&2
@@ -151,12 +178,57 @@ fi
 
 # ---------- source helper functions ----------
 
-# shellcheck disable=SC1090
-source "${ZSHRC_FUNCTIONS}" || die "Cannot source ${ZSHRC_FUNCTIONS}"
-
-# ---------- create worktree ----------
+# shellcheck source=_worktree_helpers.sh
+source "${_script_dir}/_worktree_helpers.sh" || die "Cannot source _worktree_helpers.sh"
 
 worktree_name="${repo}-${wt_name}-${agent_type}"
+agent_name="${worktree_name}"
+worktree_dir="${HOME}/wizard/worktrees/${repo}/${worktree_name}"
+autorun_dir="${HOME}/wizard/worktrees/autorun/${repo}/${worktree_name}"
+
+# ---------- delete flow (mutually exclusive with create) ----------
+
+if [[ "$delete_mode" == "true" ]]; then
+    echo "About to tear down:"
+    echo "  Worktree : ${worktree_dir}"
+    echo "  Agent    : ${agent_name}"
+
+    if [[ "$force" != "true" ]]; then
+        printf "Proceed? (y/n) [n] "
+        read -r confirm
+        [[ "$confirm" == "y" ]] || die "Aborted."
+    fi
+
+    printf "\n%s\n" "Changing to ~/wizard/${repo}..."
+    cd "${HOME}/wizard/${repo}" || die "Cannot cd to ${HOME}/wizard/${repo}"
+
+    # cleanup_work_tree_here removes the worktree and prompts about the autorun dir.
+    # --force is passed through to `git worktree remove` for dirty worktrees.
+    if [[ "$force" == "true" ]]; then
+        cleanup_work_tree_here "${worktree_name}" --force \
+            || echo "Warning: worktree cleanup did not complete; continuing to agent removal." >&2
+    else
+        cleanup_work_tree_here "${worktree_name}" \
+            || echo "Warning: worktree cleanup did not complete; continuing to agent removal." >&2
+    fi
+
+    # Remove the Maestro agent (reuse maestro_id.sh for the name -> UUID lookup).
+    printf "\n%s\n" "Removing Maestro agent '${agent_name}'..."
+    if agent_id=$("${_script_dir}/maestro_id.sh" "${agent_name}" 2>/dev/null) && [[ -n "$agent_id" ]]; then
+        if node "${maestro_cli}" remove-agent "${agent_id}"; then
+            echo "Removed agent '${agent_name}' (${agent_id})."
+        else
+            die "Failed to remove agent '${agent_name}' (${agent_id})."
+        fi
+    else
+        echo "No unique agent named '${agent_name}' found — skipping agent removal."
+    fi
+
+    printf "\n%s\n" "Teardown complete."
+    exit 0
+fi
+
+# ---------- create worktree ----------
 
 printf "\n%s" "Changing to ~/wizard/${repo}..."
 cd "${HOME}/wizard/${repo}" || die "Cannot cd to ${HOME}/wizard/${repo}"
@@ -165,18 +237,14 @@ echo "Creating worktree '${worktree_name}'..."
 make_worktree_here "${worktree_name}" || die "make_worktree_here failed"
 
 printf "\n%s" "Creating autorun directories..."
+# shellcheck disable=SC2119  # make_autorun_dirs takes no args by design
 make_autorun_dirs || die "make_autorun_dirs failed"
-
-autorun_dir="${HOME}/wizard/worktrees/autorun/${repo}/${worktree_name}"
-worktree_dir="${HOME}/wizard/worktrees/${repo}/${worktree_name}"
 
 printf "\n%s" "Worktree and auto-run setup done!"
 echo "  Worktree : ${worktree_dir}"
 echo "  Autorun  : ${autorun_dir}"
 
 # --------- create Maestro agent ----------
-
-agent_name="${repo}-${wt_name}-${agent_type}"
 
 if [[ -n "$json_out" ]]; then
     out_path="$json_out"
