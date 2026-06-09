@@ -142,6 +142,10 @@ fi
 repo="$1"
 wt_name="$2"
 agent_type="${3:-claude-code}"
+# Track whether the caller explicitly supplied an agent type (vs. the default),
+# so full-name normalization below can safely adopt the suffix's agent type.
+agent_type_explicit=false
+[[ $# -ge 3 ]] && agent_type_explicit=true
 
 # Validate repo name
 repo_valid=false
@@ -155,6 +159,38 @@ done
 if [[ "$repo_valid" != "true" ]]; then
     valid_options=$(format_options "${VALID_REPOS[@]}")
     die "Invalid repo '${repo}'. Valid options: ${valid_options}"
+fi
+
+# Accept the FULL composed worktree name (what Maestro displays for the agent /
+# worktree dir, e.g. "wizard-core-pr-574-claude-code") in place of the bare
+# middle segment ("pr-574"). Without this, passing the full name would re-wrap
+# it into "<repo>-<full>-<agent_type>", doubling the prefix and suffix.
+#
+# Only normalize when the name unambiguously looks composed: it starts with
+# "<repo>-" AND ends with "-<valid_agent_type>". That dual guard avoids
+# mangling a legitimate bare name that merely happens to start with the repo.
+if [[ "$wt_name" == "${repo}-"* ]]; then
+    matched_agent_type=""
+    for valid_agent_type in "${VALID_AGENT_TYPES[@]}"; do
+        if [[ "$wt_name" == *"-${valid_agent_type}" ]]; then
+            matched_agent_type="$valid_agent_type"
+            break
+        fi
+    done
+
+    if [[ -n "$matched_agent_type" ]]; then
+        normalized="${wt_name#"${repo}-"}"
+        normalized="${normalized%"-${matched_agent_type}"}"
+
+        # Adopt the agent type from the suffix unless one was given explicitly.
+        if [[ "$agent_type_explicit" != "true" ]]; then
+            agent_type="$matched_agent_type"
+        fi
+
+        echo "Note: '${wt_name}' looks like a full worktree name; interpreting as" >&2
+        echo "      repo='${repo}', name='${normalized}', agent_type='${agent_type}'." >&2
+        wt_name="$normalized"
+    fi
 fi
 
 # Validate worktree name
