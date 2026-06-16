@@ -160,11 +160,14 @@ echo "Validating PR #${pr_number} in story-wizard/${repo}..."
 
 pr_json=$(gh pr view "$pr_number" \
     --repo "story-wizard/${repo}" \
-    --json state,isDraft 2>&1) \
+    --json state,isDraft,headRefName 2>&1) \
     || die "PR #${pr_number} not found in story-wizard/${repo}:\n${pr_json}"
 
 pr_state=$(echo "$pr_json" | jq -r '.state')
 pr_is_draft=$(echo "$pr_json" | jq -r '.isDraft')
+pr_head_ref=$(echo "$pr_json" | jq -r '.headRefName')
+[[ -n "$pr_head_ref" && "$pr_head_ref" != "null" ]] \
+    || die "Could not determine head branch for PR #${pr_number}"
 
 [[ "$pr_state" == "OPEN" ]] \
     || die "PR #${pr_number} is not open (state: ${pr_state})"
@@ -231,13 +234,22 @@ echo "Playbooks configured."
 
 # ---------- checkout PR in worktree ----------
 
-printf "\n%s" "Checking out PR #${pr_number} in worktree at ${worktree_dir}..."
+# Check the PR out into a uniquely-named review branch instead of the PR's real
+# head branch. This avoids "fatal: '<head>' is already checked out" when the
+# author already has the head branch checked out in another clone/worktree.
+# gh still sets the new branch's upstream to the PR head ref, so a plain
+# `git pull` in the review worktree fast-forwards the author's new commits.
+review_branch="${pr_head_ref}-review-$(date +%Y%m%d-%H%M%S)"
+
+printf "\n%s" "Checking out PR #${pr_number} as '${review_branch}' in worktree at ${worktree_dir}..."
 pushd "${worktree_dir}" || die "Cannot cd to ${worktree_dir}"
-gh pr checkout "$pr_number" || { popd || exit ; die "gh pr checkout failed"; }
+gh pr checkout "$pr_number" --branch "$review_branch" \
+    || { popd || exit ; die "gh pr checkout failed"; }
 popd || exit
 
 printf "\n%s\n" "PR review setup done!"
 echo "  Worktree : ${worktree_dir}"
+echo "  Branch   : ${review_branch} (tracks ${pr_head_ref}; 'git pull' to update)"
 echo "  Playbooks: ${playbook_dest}"
 echo "  Agent ID : ${agent_id}"
 
