@@ -474,6 +474,67 @@ Its watcher log lands in `~/wizard/tmp/wiz-pr-logs/<worktree>-rereviewN-<ts>.log
 Like the other pipeline scripts, it posts all Slack output itself and prints one
 JSON summary line to stdout.
 
+### `wiz_pr_build.sh` — dispatch a tagged build of a PR's branch
+
+Triggered when someone in a PR thread asks for a **tagged build** (e.g. "generate
+a tagged build using this branch as the wizard app branch"). Dispatches the
+wizard-release **Build and Release** workflow (`build-release.yml`) with the PR's
+branch routed to the correct app ref.
+
+**Usage:**
+
+```zsh
+./wiz_pr_build.sh [--resolve-only] [--x86] \
+    [--wizard-ref R] [--wizard-core-ref R] [--wizard-ai-ref R] \
+    <repo> <pr_number> <release_tag> [thread_ts]
+```
+
+`<release_tag>` is the tag WITHOUT the leading `v` (release.yml prepends it), e.g.
+`clip-scaling-policy-wizard-609` → git tag `vclip-scaling-policy-wizard-609`. The
+skill crafts the human-meaningful slug; the script treats it as opaque.
+
+**Ref routing** (the PR branch goes to the matching app ref; the rest default to
+`develop`):
+
+| PR repo | `wizard_ref` | `wizard_core_ref` | `wizard_ai_ref` |
+| --- | --- | --- | --- |
+| `wizard` | PR branch | inferred¹ | `develop` |
+| `wizard-ai` | `develop` | inferred¹ | PR branch |
+| `wizard-core` | `develop` | PR branch | `develop` |
+
+¹ *inferred* = read `.github/wizard-core-ref` from the PR branch; if it's anything
+other than `develop`, use that value (this is how a wizard/-ai PR pins a matching
+wizard-core branch). `--wizard-ref` / `--wizard-core-ref` / `--wizard-ai-ref`
+override any of these (used to honor a user's edits at the confirmation step).
+
+**Modes:**
+
+- `--resolve-only` — resolve the three refs + tag and print them as JSON. **No
+  side effects** (no tag delete, no dispatch, no Slack). The skill uses this to
+  build the confirmation message it shows the requester before committing.
+- default — delete any existing release/tag with the same name (the tagged
+  `gh release create` has no `--clobber`, so a rebuild would otherwise fail),
+  dispatch `build-release.yml`, post a threaded ack, and launch the detached
+  watcher.
+
+`wizard-release` / `wizard-spec` PRs are rejected (they can't drive an app build).
+Prints one JSON summary line to stdout.
+
+### `wiz_pr_build_watch.sh` — watch a dispatched build and post the result
+
+Launched **detached** by `wiz_pr_build.sh`. Because `gh workflow run` returns no
+run id, it locates the run as the newest `build-release.yml` `workflow_dispatch`
+run created at/after the dispatch timestamp, then polls it to completion and posts
+to the thread:
+
+1. **success** → posts the release link (`…/releases/tag/v<tag>`), @-mentioning the
+   requester (after confirming the release page exists);
+2. **failure** → posts the failing run URL;
+3. **timeout** (default ~40 min) → posts a "still running" note with the run URL.
+
+Tuning lives in `wiz_pr_pipeline.env`: `WIZ_BUILD_POLL`, `WIZ_BUILD_MAX_WAIT`,
+`WIZ_BUILD_FIND_TRIES`.
+
 ### `wiz_pr_set_status.sh` — set PR project Status
 
 Sets a PR's **Status** on the org "Wizard Development" project (org
