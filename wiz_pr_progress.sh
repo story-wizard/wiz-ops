@@ -77,8 +77,20 @@ declare -a P_TITLE P_DONE P_TOTAL P_STATE
 for f in "${phase_files[@]}"; do
     title="$(sed -n '1s/^#\{1,\} *//p' "$f")"
     [[ -z "$title" ]] && title="$(basename "$f" .md)"
-    done_n="$(grep -cE '^[[:space:]]*-[[:space:]]*\[[xX]\]' "$f" 2>/dev/null)"; done_n="${done_n//[^0-9]/}"; done_n="${done_n:-0}"
-    open_n="$(grep -cE '^[[:space:]]*-[[:space:]]*\[[[:space:]]\]' "$f" 2>/dev/null)"; open_n="${open_n//[^0-9]/}"; open_n="${open_n:-0}"
+    # Count checklist items, but IGNORE anything inside fenced code blocks
+    # (```...```). The playbooks embed example markdown (e.g. a sample PR-comment
+    # template with "- [ ] [First action]") inside fences; those are NOT real
+    # tasks and must not inflate the count. Toggle fence state on lines starting
+    # with ``` and only count checkboxes while outside a fence.
+    counts="$(awk '
+        /^[[:space:]]*```/ { infence = !infence; next }
+        infence { next }
+        /^[[:space:]]*-[[:space:]]*\[[xX]\]/      { d++ }
+        /^[[:space:]]*-[[:space:]]*\[[[:space:]]\]/ { o++ }
+        END { printf "%d %d", d+0, o+0 }
+    ' "$f" 2>/dev/null)"
+    done_n="${counts%% *}"; done_n="${done_n//[^0-9]/}"; done_n="${done_n:-0}"
+    open_n="${counts##* }"; open_n="${open_n//[^0-9]/}"; open_n="${open_n:-0}"
     all_n=$(( done_n + open_n ))
 
     if   [[ $all_n -eq 0 ]];           then state="no-tasks"
@@ -122,6 +134,7 @@ if [[ "$json_mode" == "true" ]]; then
             '{title:$t, done:$d, total:$a, state:$s}')"
     done
     phases_json+="]"
+    # shellcheck disable=SC1010  # 'done' here is a jq --argjson field name, not the shell keyword
     jq -nc \
         --arg dir "$autorun_dir" --argjson done "$total_done" --argjson all "$total_all" \
         --argjson pct "$pct" --arg phase "$phase_label" --arg last "$last_activity" \
@@ -137,7 +150,15 @@ fi
 # Text report
 bar_len=20
 filled=$(( pct * bar_len / 100 ))
-bar="$(printf '%0.s#' $(seq 1 $filled) 2>/dev/null)$(printf '%0.s-' $(seq 1 $(( bar_len - filled )) ) 2>/dev/null)"
+(( filled < 0 )) && filled=0
+(( filled > bar_len )) && filled=$bar_len
+empty=$(( bar_len - filled ))
+# Build the bar without seq (seq 1 0 emits "1 0" -> stray chars). Use printf
+# width-padding + tr: a width-N field of spaces, translated to the bar glyph.
+hashes=""; dashes=""
+(( filled > 0 )) && hashes="$(printf "%${filled}s" '' | tr ' ' '#')"
+(( empty  > 0 )) && dashes="$(printf "%${empty}s"  '' | tr ' ' '-')"
+bar="${hashes}${dashes}"
 
 echo "PR Review progress — $(basename "$autorun_dir")"
 echo "Overall: [${bar}] ${pct}%  (${total_done}/${total_all} tasks)"
