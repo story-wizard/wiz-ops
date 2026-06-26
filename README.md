@@ -315,6 +315,7 @@ Slack thread reply: "re-review this"  (no PR link)
              ├─ git pull --ff-only in the review worktree
              ├─ no new commits? -> post "no changes, ask again" and stop
              └─ new commits:
+                  ├─ dismiss our own standing Request-Changes review (if any)
                   ├─ archive prior artifacts -> <autorun>/review_<N>/
                   ├─ uncheck all code-review playbook checkboxes
                   ├─ relaunch the Maestro auto-run
@@ -454,6 +455,13 @@ no PR link of its own).
    the branch. Please make your changes and ask again."_ to the thread and exits
    (`action:"no_changes"`). Nothing else happens — no archive, no relaunch.
 4. **If there are new commits:**
+   - **Dismisses our own standing `CHANGES_REQUESTED` review**, if our most
+     recent review on the PR is one. A GitHub Request-Changes review is sticky —
+     it keeps blocking the PR until the *same* reviewer dismisses it; posting a
+     new COMMENT/approve review does not lift it. So after the author pushes
+     fixes, the old block is dismissed (message: "Superseded by AI re-review…")
+     so the PR state reflects the new round. Scoped to the bot's own token
+     (`gh api user`); never touches another bot's or a human's review.
    - Archives the previous round's artifacts (`WIZ_REVIEW_FILES` + `PR_COMMENT.md`)
      into `<autorun_dir>/review_<N>/`, where `N` is the round being archived
      (first re-review → `review_1`, next → `review_2`, …)

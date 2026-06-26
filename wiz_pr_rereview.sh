@@ -117,6 +117,33 @@ fi
 
 # ---- 3. changes present: archive previous round, uncheck, relaunch ----
 
+# 3a. Dismiss our OWN stale REQUEST_CHANGES review, if any. A GitHub
+# CHANGES_REQUESTED review is sticky: it keeps blocking the PR until the same
+# reviewer dismisses it — posting a new COMMENT/REQUEST_CHANGES review does NOT
+# clear it. So if round 1 requested changes and the author has now pushed fixes,
+# the old block must be lifted or the PR stays "changes requested" even after a
+# clean re-review. We only ever dismiss reviews authored by our own bot token
+# (never another bot's, never a human's). Best-effort: never fail the re-review
+# over a dismissal hiccup.
+dismissed_reviews=0
+me="$(gh api user --jq '.login' 2>/dev/null)"
+if [[ -n "$me" ]]; then
+    # GitHub treats only a reviewer's MOST RECENT review as effective. So we
+    # dismiss our latest review only if it is itself a CHANGES_REQUESTED block
+    # (an already-superseded older block needs no action; an already-DISMISSED
+    # one returns empty). This yields at most one id.
+    stale_id="$(gh api "repos/story-wizard/${repo}/pulls/${pr_number}/reviews" --paginate \
+        --jq "[.[] | select(.user.login == \"${me}\")] | last | if .state == \"CHANGES_REQUESTED\" then .id else empty end" 2>/dev/null)"
+    if [[ -n "$stale_id" ]]; then
+        if gh api --method PUT \
+            "repos/story-wizard/${repo}/pulls/${pr_number}/reviews/${stale_id}/dismissals" \
+            -f message="Superseded by AI re-review after new commits — re-evaluating." \
+            -f event="DISMISS" >/dev/null 2>&1; then
+            dismissed_reviews=1
+        fi
+    fi
+fi
+
 # Determine the round being archived: count existing review_<N> dirs + 1.
 prev_round=1
 while [[ -d "${autorun_dir}/review_${prev_round}" ]]; do
@@ -176,6 +203,7 @@ disown "$watcher_pid" 2>/dev/null || true
 # ---- 7. post the "second review started" ack (threaded) ----
 ack="🔁 *AI review #${this_review_round}* started for *${pr_title}* (<${pr_url}>) — pulled new changes (\`${before_sha:0:7}\` → \`${after_sha:0:7}\`) and re-running the full review."
 ack+=$'\n'"Previous review artifacts archived to \`review_${prev_round}/\`."
+[[ "$dismissed_reviews" -gt 0 ]] && ack+=$'\n'"Dismissed our prior *Request Changes* review (superseded by the new commits)."
 if [[ "$status_set" == "true" ]]; then
     if [[ "$this_review_round" -eq 2 ]]; then
         ack+=" Project status set to *AI Review 2*."
@@ -198,11 +226,13 @@ jq -nc \
     --arg before "$before_sha" --arg after "$after_sha" \
     --argjson round "$this_review_round" --arg archive "$archive_dir" \
     --argjson nfiles "${#archived[@]}" --argjson nunchecked "$unchecked_files" \
+    --argjson dismissed "$dismissed_reviews" \
     --argjson status_set "$status_set" --arg status_msg "$status_msg" \
     --arg pid "$watcher_pid" --arg wlog "$watch_log" --arg ch "$dest_channel" \
     '{ok:true, action:"rereview", repo:$repo, pr_number:$pr, pr_title:$title,
       pr_url:$url, agent_id:$agent, autorun_dir:$autorun, review_round:$round,
       head_before:$before, head_after:$after, archived_to:$archive,
       archived_files:$nfiles, unchecked_files:$nunchecked,
+      dismissed_request_changes:$dismissed,
       status_set:$status_set, status_message:$status_msg,
       watcher_pid:$pid, watcher_log:$wlog, posted_to:$ch}'
