@@ -78,15 +78,20 @@ fi
 author_id="$(wiz_slack_thread_author "$dest_channel" "$thread_ts" 2>/dev/null)"
 mention=""; [[ -n "$author_id" ]] && mention="<@${author_id}> "
 
+# Also @-mention the human reviewers who reviewed this PR (mapped github->slack
+# via WIZ_GH_SLACK_MAP), excluding the thread author so they're not pinged twice.
+reviewers="$(wiz_slack_reviewer_mentions "$repo" "$pr_number" "$author_id" 2>/dev/null)"
+rev_suffix=""; [[ -n "$reviewers" ]] && rev_suffix=$'\n'"Reviewers: ${reviewers}"
+
 if [[ "$conclusion" == "success" ]]; then
     # Confirm the release actually exists before linking to it.
     if gh release view "$git_tag" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
-        post "✅ ${mention}Tagged build for PR #${pr_number} is ready: *${git_tag}*"$'\n'"Release: <${release_url}>"
+        post "✅ ${mention}Tagged build for PR #${pr_number} is ready: *${git_tag}*"$'\n'"Release: <${release_url}>${rev_suffix}"
     else
-        post "✅ ${mention}Build run for PR #${pr_number} (\`${git_tag}\`) finished successfully, but I couldn't confirm the release page yet — it should appear shortly at <${release_url}> (<${run_url}|run log>)."
+        post "✅ ${mention}Build run for PR #${pr_number} (\`${git_tag}\`) finished successfully, but I couldn't confirm the release page yet — it should appear shortly at <${release_url}> (<${run_url}|run log>).${rev_suffix}"
     fi
     log "Done: success."
 else
-    post "❌ ${mention}Tagged build for PR #${pr_number} (\`${git_tag}\`) failed (${conclusion}). Logs: <${run_url}>"
+    post "❌ ${mention}Tagged build for PR #${pr_number} (\`${git_tag}\`) failed (${conclusion}). Logs: <${run_url}>${rev_suffix}"
     log "Done: ${conclusion}."
 fi

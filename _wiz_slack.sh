@@ -72,6 +72,36 @@ wiz_slack_thread_author() {
         | jq -r '.messages[0].user // empty'
 }
 
+wiz_slack_reviewer_mentions() {
+    # wiz_slack_reviewer_mentions <repo> <pr_number> [exclude_slack_id]
+    # Echoes a space-separated list of "<@SLACKID>" mentions for the HUMAN
+    # reviewers who have submitted a review on the PR, resolved via
+    # wiz_gh_to_slack (github-login -> slack-id) from wiz_pr_pipeline.env.
+    # Bots and unmapped logins are skipped; an optional Slack id to exclude
+    # (e.g. the thread author, already mentioned separately) avoids a double ping.
+    local repo="$1" pr="$2" exclude="${3:-}"
+    [[ -n "$repo" && -n "$pr" ]] || return 0
+    command -v wiz_gh_to_slack >/dev/null 2>&1 || return 0
+
+    local logins login sid seen=" " out=""
+    # Distinct reviewer logins that actually submitted a review (not just requested).
+    logins="$(gh api "repos/story-wizard/${repo}/pulls/${pr}/reviews" --paginate \
+        --jq '[.[] | .user.login] | unique | .[]' 2>/dev/null)"
+    [[ -n "$logins" ]] || return 0
+
+    while IFS= read -r login; do
+        [[ -n "$login" ]] || continue
+        sid="$(wiz_gh_to_slack "$login")"
+        [[ -n "$sid" ]] || continue                 # unmapped (or a bot) -> skip
+        [[ -n "$exclude" && "$sid" == "$exclude" ]] && continue
+        [[ "$seen" == *" ${sid} "* ]] && continue   # dedupe slack ids
+        seen+="${sid} "
+        out+="<@${sid}> "
+    done <<< "$logins"
+
+    printf '%s' "${out% }"
+}
+
 wiz_slack_react() {
     # wiz_slack_react <channel> <ts> <emoji_name>   (no colons)
     local ch="$1" ts="$2" name="$3"
