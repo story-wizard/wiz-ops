@@ -75,18 +75,25 @@ wiz_slack_thread_author() {
 wiz_slack_reviewer_mentions() {
     # wiz_slack_reviewer_mentions <repo> <pr_number> [exclude_slack_id]
     # Echoes a space-separated list of "<@SLACKID>" mentions for the HUMAN
-    # reviewers who have submitted a review on the PR, resolved via
-    # wiz_gh_to_slack (github-login -> slack-id) from wiz_pr_pipeline.env.
-    # Bots and unmapped logins are skipped; an optional Slack id to exclude
-    # (e.g. the thread author, already mentioned separately) avoids a double ping.
+    # reviewers of the PR, resolved via wiz_gh_to_slack (github-login ->
+    # slack-id) from wiz_pr_pipeline.env. Includes BOTH reviewers who have
+    # already submitted a review AND those still in the requested-reviewers list
+    # (assigned but not yet acted) — so an assigned reviewer is pinged even
+    # before they post. Bots and unmapped logins are skipped; an optional Slack
+    # id to exclude (e.g. the thread author) avoids a double ping.
     local repo="$1" pr="$2" exclude="${3:-}"
     [[ -n "$repo" && -n "$pr" ]] || return 0
     command -v wiz_gh_to_slack >/dev/null 2>&1 || return 0
 
     local logins login sid seen=" " out=""
-    # Distinct reviewer logins that actually submitted a review (not just requested).
-    logins="$(gh api "repos/story-wizard/${repo}/pulls/${pr}/reviews" --paginate \
-        --jq '[.[] | .user.login] | unique | .[]' 2>/dev/null)"
+    # Union of: (a) logins that submitted a review, and (b) still-requested
+    # reviewers. Sort -u dedupes across the two sources.
+    logins="$( {
+        gh api "repos/story-wizard/${repo}/pulls/${pr}/reviews" --paginate \
+            --jq '.[] | .user.login' 2>/dev/null
+        gh api "repos/story-wizard/${repo}/pulls/${pr}/requested_reviewers" \
+            --jq '.users[].login' 2>/dev/null
+    } | sort -u )"
     [[ -n "$logins" ]] || return 0
 
     while IFS= read -r login; do
