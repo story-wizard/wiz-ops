@@ -24,7 +24,14 @@
 # channel == output channel), so the agent can reply NO_REPLY.
 #
 # Usage:
-#   wiz_pr_rereview.sh <repo> <pr_number> [agent_type] [thread_ts]
+#   wiz_pr_rereview.sh [--board-trigger] <repo> <pr_number> [agent_type] [thread_ts]
+#
+# --board-trigger: invoked by wiz_pr_poll_board.sh (board status change). The
+#   driver self-posts a root announcement and threads under it. The poller (not
+#   this driver) owns the board status on the no_changes path — it restores the
+#   true prior round and comments on the PR — so in board mode the no_changes
+#   branch just reports JSON and skips the Slack "no changes" note (the poller
+#   surfaces that on the PR itself).
 #
 # Prints a one-line JSON summary to stdout (for logs / the agent).
 
@@ -53,7 +60,16 @@ post_fail() {
     exit 1
 }
 
-[[ $# -ge 2 && $# -le 4 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_rereview.sh <repo> <pr_number> [agent_type] [thread_ts]"}'; exit 1; }
+[[ $# -ge 1 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_rereview.sh [--board-trigger] <repo> <pr_number> [agent_type] [thread_ts]"}'; exit 1; }
+
+# Optional leading --board-trigger flag (board poller invocation).
+board_trigger=false
+if [[ "$1" == "--board-trigger" ]]; then
+    board_trigger=true
+    shift
+fi
+
+[[ $# -ge 2 && $# -le 4 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_rereview.sh [--board-trigger] <repo> <pr_number> [agent_type] [thread_ts]"}'; exit 1; }
 
 repo="$1"
 pr_number="$2"
@@ -82,6 +98,17 @@ pr_meta=$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json title,url
     || post_fail "pr_lookup" "PR #${pr_number} not found in story-wizard/${repo}: ${pr_meta}"
 pr_title=$(echo "$pr_meta" | jq -r '.title')
 pr_url=$(echo "$pr_meta" | jq -r '.url')
+
+# ---- board-trigger: self-post the lifecycle root and thread under it ----
+# No Slack trigger message exists in board mode. Post a root announcement so the
+# re-review ack / artifacts thread under it. If the branch turns out to have no
+# new commits, the poller deletes nothing — the root simply announced a check;
+# the poller comments the "no new commits" note on the PR and restores status.
+if [[ "$board_trigger" == "true" ]] && wiz_slack_ready; then
+    root_msg="🔁 Re-review queued for *${pr_title}* (<${pr_url}>) — triggered from the project board. Checking for new commits…"
+    root_ts="$(wiz_slack_post "$dest_channel" "" "$root_msg" 2>/dev/null)"
+    [[ -n "$root_ts" ]] && thread_ts="$root_ts"
+fi
 
 # ---- 1. pull the branch ----
 before_sha="$(git -C "$worktree_dir" rev-parse HEAD 2>/dev/null)" \

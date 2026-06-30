@@ -13,7 +13,13 @@
 # channel), so the agent does not need to post anything and can reply NO_REPLY.
 #
 # Usage:
-#   wiz_pr_review.sh <repo> <pr_number> [agent_type] [thread_ts]
+#   wiz_pr_review.sh [--board-trigger] <repo> <pr_number> [agent_type] [thread_ts]
+#
+# --board-trigger: invoked by wiz_pr_poll_board.sh (GitHub board status change,
+#   not a Slack message). There is no triggering Slack message to thread under,
+#   so the driver SELF-POSTS a root announcement to the active channel and uses
+#   that message's ts as the lifecycle thread for all subsequent posts. In this
+#   mode no trailing thread_ts is expected (any given one is ignored).
 #
 # Also prints a one-line JSON summary to stdout (for logs / the agent).
 
@@ -54,7 +60,16 @@ post_fail() {
     exit 1
 }
 
-[[ $# -ge 2 && $# -le 4 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_review.sh <repo> <pr_number> [agent_type] [thread_ts]"}'; exit 1; }
+[[ $# -ge 1 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_review.sh [--board-trigger] <repo> <pr_number> [agent_type] [thread_ts]"}'; exit 1; }
+
+# Optional leading --board-trigger flag (board poller invocation).
+board_trigger=false
+if [[ "$1" == "--board-trigger" ]]; then
+    board_trigger=true
+    shift
+fi
+
+[[ $# -ge 2 && $# -le 4 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_review.sh [--board-trigger] <repo> <pr_number> [agent_type] [thread_ts]"}'; exit 1; }
 
 repo="$1"
 pr_number="$2"
@@ -69,6 +84,17 @@ pr_meta=$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json title,url
     || post_fail "pr_lookup" "PR #${pr_number} not found in story-wizard/${repo}: ${pr_meta}"
 pr_title=$(echo "$pr_meta" | jq -r '.title')
 pr_url=$(echo "$pr_meta" | jq -r '.url')
+
+# ---- board-trigger: self-post the lifecycle root and thread under it ----
+# There is no Slack trigger message in board mode, so create one. Its ts becomes
+# the thread_ts the rest of the driver (acks, watcher, artifacts) posts under.
+if [[ "$board_trigger" == "true" ]]; then
+    if wiz_slack_ready; then
+        root_msg="🤖 AI code review queued for *${pr_title}* (<${pr_url}>) — triggered from the project board. Setting up the Maestro agent…"
+        root_ts="$(wiz_slack_post "$dest_channel" "" "$root_msg" 2>/dev/null)"
+        [[ -n "$root_ts" ]] && thread_ts="$root_ts"
+    fi
+fi
 
 # ---- 1. run maestro_pr.sh ----
 run_log="$(mktemp -t wiz_pr_review.XXXXXX)"
