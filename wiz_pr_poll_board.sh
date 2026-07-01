@@ -214,13 +214,31 @@ else
             while [[ -d "${autorun_dir}/review_${prev_round}" ]]; do prev_round=$((prev_round + 1)); done
             restore_status="AI Review 1"; [[ "$prev_round" -ge 2 ]] && restore_status="AI Review 2"
 
+            # Recover the ORIGINAL review's Slack root ts so this re-review threads
+            # under it instead of starting a new root (Carol's request). The state
+            # dir has one JSON per thread keyed by the review-1 root ts, each
+            # carrying {repo, pr_number, thread_ts}. Pick the newest record matching
+            # this repo/PR. Empty if none -> driver self-posts a fresh root.
+            orig_thread_ts=""
+            state_dir="${WIZ_PR_STATE_DIR:-${HOME}/wizard/tmp/wiz-pr-state}"
+            if [[ -d "$state_dir" ]]; then
+                orig_thread_ts="$(
+                    for sf in "$state_dir"/*.json; do
+                        [[ -f "$sf" ]] || continue
+                        jq -r --arg repo "$repo" --arg pr "$pr_number" '
+                          select(.repo == $repo and ((.pr_number|tostring) == $pr))
+                          | .thread_ts // empty' "$sf" 2>/dev/null
+                    done | grep -E '.' | sort -n | tail -1
+                )"
+            fi
+
             if [[ "$dry_run" == "true" ]]; then
-                log "  [dry-run] existing review (round ${prev_round}) -> would re-review; restore-on-no-change=${restore_status}"
+                log "  [dry-run] existing review (round ${prev_round}) -> would re-review; restore-on-no-change=${restore_status}; orig_thread=${orig_thread_ts:-<none>}"
                 n_rereview=$((n_rereview + 1))
                 continue
             fi
 
-            out="$("${script_dir}/wiz_pr_rereview.sh" --board-trigger "$repo" "$pr_number" "$agent_type" 2>&1)"
+            out="$("${script_dir}/wiz_pr_rereview.sh" --board-trigger "$repo" "$pr_number" "$agent_type" "$orig_thread_ts" 2>&1)"
             action="$(echo "$out" | tail -1 | jq -r '.action // empty' 2>/dev/null)"
             if [[ "$action" == "no_changes" ]]; then
                 n_nochange=$((n_nochange + 1))

@@ -99,12 +99,14 @@ pr_meta=$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json title,url
 pr_title=$(echo "$pr_meta" | jq -r '.title')
 pr_url=$(echo "$pr_meta" | jq -r '.url')
 
-# ---- board-trigger: self-post the lifecycle root and thread under it ----
-# No Slack trigger message exists in board mode. Post a root announcement so the
-# re-review ack / artifacts thread under it. If the branch turns out to have no
-# new commits, the poller deletes nothing — the root simply announced a check;
-# the poller comments the "no new commits" note on the PR and restores status.
-if [[ "$board_trigger" == "true" ]] && wiz_slack_ready; then
+# ---- board-trigger: thread under the ORIGINAL review root when we have it ----
+# Board re-reviews should continue the SAME Slack thread the initial review
+# started (Carol's request — no new root thread per re-review). The poller
+# recovers the original review's root ts from the thread-state file and passes
+# it as thread_ts, so here we simply thread under it. Only when NO thread_ts is
+# available (state file missing / lost) do we fall back to self-posting a fresh
+# root so the re-review still has somewhere to post.
+if [[ "$board_trigger" == "true" ]] && wiz_slack_ready && [[ -z "${thread_ts:-}" ]]; then
     root_msg="🔁 Re-review queued for *${pr_title}* (<${pr_url}>) — triggered from the project board. Checking for new commits…"
     root_ts="$(wiz_slack_post "$dest_channel" "" "$root_msg" 2>/dev/null)"
     [[ -n "$root_ts" ]] && thread_ts="$root_ts"
