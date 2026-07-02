@@ -60,12 +60,14 @@ post_fail() {
 # ---- parse flags + positionals ----
 resolve_only=false
 build_x86=false
+force=false
 ov_wizard=""; ov_core=""; ov_ai=""
 args=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --resolve-only) resolve_only=true; shift ;;
         --x86) build_x86=true; shift ;;
+        --force) force=true; shift ;;
         --wizard-ref) ov_wizard="${2:-}"; shift 2 ;;
         --wizard-core-ref) ov_core="${2:-}"; shift 2 ;;
         --wizard-ai-ref) ov_ai="${2:-}"; shift 2 ;;
@@ -74,7 +76,7 @@ while [[ $# -gt 0 ]]; do
 done
 set -- "${args[@]}"
 
-[[ $# -ge 3 && $# -le 4 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_build.sh [--resolve-only] [--x86] [--wizard-ref R] [--wizard-core-ref R] [--wizard-ai-ref R] <repo> <pr_number> <release_tag> [thread_ts]"}'; exit 1; }
+[[ $# -ge 3 && $# -le 4 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_build.sh [--resolve-only] [--x86] [--force] [--wizard-ref R] [--wizard-core-ref R] [--wizard-ai-ref R] <repo> <pr_number> <release_tag> [thread_ts]"}'; exit 1; }
 repo="$1"; pr_number="$2"; release_tag="$3"; thread_ts="${4:-}"
 
 command -v jq >/dev/null 2>&1 || { echo '{"ok":false,"stage":"deps","message":"jq not found"}'; exit 1; }
@@ -126,17 +128,49 @@ esac
 git_tag="v${release_tag}"
 release_url="https://github.com/${RELEASE_REPO}/releases/tag/${git_tag}"
 
-# ---- resolve-only: emit the resolved plan and stop (no side effects) ----
+# ---- freshness gate: are the resolved refs up-to-date with develop? ----
+# HARD backstop. Step 1.5 of the skill asks the agent to run wiz_pr_freshness.sh
+# and surface staleness in the confirmation — but a stale/long-running session
+# can carry an old copy of the skill that lacks that step (exactly how PR #751,
+# CONFLICTING against develop, still got dispatched). So the driver itself
+# re-checks and REFUSES to dispatch a build whose branch would conflict with
+# develop, unless --force is given. This gate lives in code, not prose, so no
+# session can skip it. Best-effort: if the check errors, we log and proceed
+# (never block a build on the checker breaking).
+freshness_json='{}'
+freshness_conflict=false
+freshness_conflict_refs=""
+if [[ -x "${script_dir}/wiz_pr_freshness.sh" ]]; then
+    freshness_json="$("${script_dir}/wiz_pr_freshness.sh" check \
+        --wizard-ref "$wizard_ref" --wizard-core-ref "$wizard_core_ref" --wizard-ai-ref "$wizard_ai_ref" 2>/dev/null)"
+    # Guard: if the checker produced nothing parseable, fall back to {} so the
+    # resolve-only emit's --argjson never breaks and the build is not blocked.
+    printf '%s' "$freshness_json" | jq -e . >/dev/null 2>&1 || freshness_json='{}'
+    if printf '%s' "$freshness_json" | jq -e '.any_behind_conflict == true' >/dev/null 2>&1; then
+        freshness_conflict=true
+        freshness_conflict_refs="$(printf '%s' "$freshness_json" \
+            | jq -r '[.refs[] | select(.status=="behind_conflict")
+                     | "\(.repo)@\(.ref) (behind \(.behind); conflicts: \(.conflicts|join(", ")))"] | join("; ")' 2>/dev/null)"
+    fi
+fi
+
+# ---- resolve-only: emit the resolved plan (+ freshness) and stop (no side effects) ----
 if [[ "$resolve_only" == "true" ]]; then
     jq -nc \
         --arg repo "$repo" --arg pr "$pr_number" --arg branch "$pr_branch" \
         --arg tag "$release_tag" --arg gtag "$git_tag" \
         --arg wr "$wizard_ref" --arg wcr "$wizard_core_ref" --arg war "$wizard_ai_ref" \
         --argjson x86 "$build_x86" --arg url "$release_url" \
+        --argjson fresh "${freshness_json:-null}" \
         '{ok:true, mode:"resolve", repo:$repo, pr_number:$pr, pr_branch:$branch,
           release_tag:$tag, git_tag:$gtag, wizard_ref:$wr, wizard_core_ref:$wcr,
-          wizard_ai_ref:$war, build_x86_64:$x86, release_url:$url}'
+          wizard_ai_ref:$war, build_x86_64:$x86, release_url:$url, freshness:$fresh}'
     exit 0
+fi
+
+# ---- HARD block: refuse a conflicting build unless explicitly forced ----
+if [[ "$freshness_conflict" == "true" && "$force" != "true" ]]; then
+    post_fail "freshness" "Refusing to build: branch conflicts with develop and must be reconciled first — ${freshness_conflict_refs}. The author needs to merge/rebase develop into the branch and resolve the conflicts, then re-request the build. (Override with --force to build the stale branch anyway.)"
 fi
 
 # ---- delete any existing release/tag for this build (no --clobber on tagged path) ----
