@@ -13,6 +13,11 @@
 # Per-PR gate (ordering matters — never park a non-launching PR in AI Review 1):
 #   1. PR merged/closed       -> comment + status -> WIZ_BOARD_CLOSED_STATUS (Done)
 #   2. PR open + draft        -> comment + status -> WIZ_BOARD_CLEAR_STATUS  (Backlog)
+#   2.5 status == WIZ_BUILD_STATUS ("Functional Review") -> auto-dispatch a
+#        tagged build (wiz_pr_build.sh --board-trigger). Status is NOT advanced;
+#        a per-PR head-SHA CLAIM (WIZ_BUILD_CLAIM_DIR) makes it fire once per
+#        commit, auto-rebuilding when new commits land. Ack + result go to BOTH
+#        the Slack review thread AND a PR comment.
 #   3. PR open + ready, no existing review  -> flip AI Review 1, fresh review
 #   4. PR open + ready, existing review:
 #        - new commits -> driver advances to AI Review 2 (normal re-review)
@@ -145,7 +150,7 @@ query($owner:String!,$name:String!){
   repository(owner:$owner,name:$name){
     pullRequests(states:OPEN, first:100){
       nodes{
-        number isDraft
+        number isDraft headRefOid
         projectItems(first:10){
           nodes{
             project{ number }
@@ -165,15 +170,19 @@ query($owner:String!,$name:String!){
         log "ERROR: board scan for ${repo} failed (API/scope error). raw: ${scan_error}"
         break
     fi
-    # Emit "repo<TAB>number<TAB>OPEN<TAB>isDraft" for PRs queued on our project.
+    # Emit "repo<TAB>number<TAB>OPEN<TAB>isDraft<TAB>matched_status<TAB>head_sha"
+    # for PRs whose project Status is EITHER the AI-review queue status OR the
+    # tagged-build status. matched_status tells the loop which path to take.
     repo_queued="$(echo "$repo_json" | jq -r \
-        --arg q "$WIZ_QUEUE_STATUS" --arg repo "$repo" --argjson pnum "$WIZ_PROJECT_NUMBER" '
+        --arg q "$WIZ_QUEUE_STATUS" --arg b "$WIZ_BUILD_STATUS" --arg repo "$repo" --argjson pnum "$WIZ_PROJECT_NUMBER" '
       .data.repository.pullRequests.nodes[]?
       | . as $pr
-      | select([ .projectItems.nodes[]?
-                 | select(.project.number == $pnum and .fieldValueByName != null
-                          and .fieldValueByName.name == $q) ] | length > 0)
-      | [ $repo, ($pr.number|tostring), "OPEN", ($pr.isDraft|tostring) ] | @tsv
+      | ([ .projectItems.nodes[]?
+           | select(.project.number == $pnum and .fieldValueByName != null
+                    and (.fieldValueByName.name == $q or .fieldValueByName.name == $b))
+           | .fieldValueByName.name ] | first) as $matched
+      | select($matched != null)
+      | [ $repo, ($pr.number|tostring), "OPEN", ($pr.isDraft|tostring), $matched, ($pr.headRefOid // "") ] | @tsv
     ' 2>/dev/null)"
     [[ -n "$repo_queued" ]] && queued+="${repo_queued}"$'\n'
 done
@@ -188,12 +197,12 @@ if [[ -n "$scan_error" ]]; then
     exit 1
 fi
 
-n_total=0; n_started=0; n_rereview=0; n_nochange=0; n_draft=0; n_closed=0; n_skipped=0
+n_total=0; n_started=0; n_rereview=0; n_nochange=0; n_draft=0; n_closed=0; n_skipped=0; n_build=0; n_build_skip=0
 
 if [[ -z "$queued" ]]; then
-    log "no PRs in '${WIZ_QUEUE_STATUS}'."
+    log "no PRs in '${WIZ_QUEUE_STATUS}' or '${WIZ_BUILD_STATUS}'."
 else
-    while IFS=$'\t' read -r repo pr_number state is_draft; do
+    while IFS=$'\t' read -r repo pr_number state is_draft matched_status head_sha; do
         [[ -n "$repo" && -n "$pr_number" ]] || continue
         n_total=$((n_total + 1))
 
@@ -203,7 +212,7 @@ else
             continue
         fi
 
-        log "PR ${repo}#${pr_number}: state=${state} draft=${is_draft}"
+        log "PR ${repo}#${pr_number}: state=${state} draft=${is_draft} status='${matched_status}'"
 
         # --- gate 1: not open (merged/closed) -> Done ---
         if [[ "$state" != "OPEN" ]]; then
@@ -227,8 +236,80 @@ else
                 continue
             fi
             gh pr comment "$pr_number" --repo "story-wizard/${repo}" \
-                --body "🤖 This PR is in **draft** mode, so the AI code review was not started. Please switch it to *Ready for review* and set the status to *${WIZ_QUEUE_STATUS}* again. Board status cleared to *${WIZ_BOARD_CLEAR_STATUS}*." >/dev/null 2>&1 || true
+                --body "🤖 This PR is in **draft** mode, so nothing was started for status *${matched_status}*. Please switch it to *Ready for review* and set the status again. Board status cleared to *${WIZ_BOARD_CLEAR_STATUS}*." >/dev/null 2>&1 || true
             "${script_dir}/wiz_pr_set_status.sh" "$repo" "$pr_number" "$WIZ_BOARD_CLEAR_STATUS" >/dev/null 2>&1 || true
+            continue
+        fi
+
+        # --- gate 2.5: Functional Review -> auto-dispatch a tagged build ---
+        # A human moving a PR to WIZ_BUILD_STATUS wants an installable build to
+        # test. Unlike the AI-review path we do NOT advance the status (the PR
+        # stays in Functional Review), so idempotency comes from a per-PR CLAIM
+        # keyed on the branch head SHA: build once per commit, auto-rebuild when
+        # new commits land, never every tick. Ack + result go to BOTH the Slack
+        # review thread (recovered, or a fresh root) AND a PR comment (handled by
+        # wiz_pr_build.sh --board-trigger + the watcher).
+        if [[ "$matched_status" == "$WIZ_BUILD_STATUS" ]]; then
+            # wizard-release / wizard-spec PRs cannot drive an app build.
+            case "$repo" in
+                wizard|wizard-ai|wizard-core) : ;;
+                *)
+                    log "  build: repo '${repo}' cannot drive an app build — skipping (left in ${WIZ_BUILD_STATUS})."
+                    n_build_skip=$((n_build_skip + 1))
+                    continue
+                    ;;
+            esac
+
+            claim_dir="${WIZ_BUILD_CLAIM_DIR:-${HOME}/wizard/tmp/wiz-pr-build-claims}"
+            claim_file="${claim_dir}/${repo}-${pr_number}.json"
+            claimed_sha=""
+            [[ -f "$claim_file" ]] && claimed_sha="$(jq -r '.head_sha // empty' "$claim_file" 2>/dev/null)"
+
+            if [[ -n "$head_sha" && "$head_sha" == "$claimed_sha" ]]; then
+                log "  build: already built head ${head_sha:0:8} — skipping (no new commits)."
+                n_build_skip=$((n_build_skip + 1))
+                continue
+            fi
+
+            if [[ "$dry_run" == "true" ]]; then
+                log "  [dry-run] Functional Review -> would dispatch tagged build for head ${head_sha:0:8} (prev claim ${claimed_sha:0:8})."
+                n_build=$((n_build + 1))
+                continue
+            fi
+
+            # Recover the existing review's Slack root ts so the build ack threads
+            # under the SAME conversation (Carol's model). Empty -> the driver
+            # self-posts a fresh root. (Same lookup the re-review path uses.)
+            build_thread_ts=""
+            state_dir="${WIZ_PR_STATE_DIR:-${HOME}/wizard/tmp/wiz-pr-state}"
+            if [[ -d "$state_dir" ]]; then
+                build_thread_ts="$(
+                    for sf in "$state_dir"/*.json; do
+                        [[ -f "$sf" ]] || continue
+                        jq -r --arg repo "$repo" --arg pr "$pr_number" '
+                          select(.repo == $repo and ((.pr_number|tostring) == $pr))
+                          | .thread_ts // empty' "$sf" 2>/dev/null
+                    done | grep -E '.' | sort -n | tail -1
+                )"
+            fi
+
+            # Dispatch. The driver refuses a develop-conflicting build (freshness
+            # gate) and posts that refusal to Slack + PR itself, so we don't
+            # pre-check here. Record the claim ONLY on a successful dispatch so a
+            # failed/refused build is retried next tick (and a fixed conflict
+            # re-dispatches once the SHA changes).
+            if "${script_dir}/wiz_pr_build.sh" --board-trigger "$repo" "$pr_number" "$build_thread_ts" >/dev/null 2>&1; then
+                mkdir -p "$claim_dir" 2>/dev/null || true
+                jq -nc --arg repo "$repo" --arg pr "$pr_number" --arg sha "$head_sha" \
+                    --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                    '{repo:$repo, pr_number:$pr, head_sha:$sha, built_at:$at}' \
+                    > "$claim_file" 2>/dev/null || true
+                n_build=$((n_build + 1))
+                log "  build: dispatched for head ${head_sha:0:8}; claim recorded."
+            else
+                n_build_skip=$((n_build_skip + 1))
+                log "  build: driver returned non-zero (it posts its own failure/refusal); no claim recorded — will retry next tick."
+            fi
             continue
         fi
 
@@ -311,7 +392,9 @@ jq -nc \
     --argjson total "$n_total" --argjson started "$n_started" \
     --argjson rereview "$n_rereview" --argjson nochange "$n_nochange" \
     --argjson draft "$n_draft" --argjson closed "$n_closed" --argjson skipped "$n_skipped" \
+    --argjson build "$n_build" --argjson build_skip "$n_build_skip" \
     --argjson dry "$([[ "$dry_run" == "true" ]] && echo true || echo false)" \
     '{ok:true, action:"scanned", dry_run:$dry, queued_total:$total,
       started:$started, rereview:$rereview, no_changes:$nochange,
-      draft:$draft, closed:$closed, skipped:$skipped}'
+      draft:$draft, closed:$closed, skipped:$skipped,
+      build:$build, build_skip:$build_skip}'

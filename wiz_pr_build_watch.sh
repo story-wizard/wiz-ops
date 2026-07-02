@@ -8,7 +8,12 @@
 # created at/after the dispatch timestamp, then poll it to completion.
 #
 # Usage:
-#   wiz_pr_build_watch.sh <repo> <pr_number> <git_tag> <release_url> <dispatch_at_iso> <thread_ts>
+#   wiz_pr_build_watch.sh <repo> <pr_number> <git_tag> <release_url> <dispatch_at_iso> <thread_ts> [board_trigger]
+#
+# board_trigger (7th arg, "true"/"false", default false): when true this was a
+# board-driven (Functional Review) build, so the finished result — release link
+# + copy-paste install command, or the failure — is mirrored to a PR comment in
+# addition to the Slack thread.
 
 set -uo pipefail
 
@@ -16,8 +21,8 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 die() { echo "Error: $*" >&2; exit 1; }
 
-[[ $# -eq 6 ]] || die "Usage: $(basename "$0") <repo> <pr_number> <git_tag> <release_url> <dispatch_at_iso> <thread_ts>"
-repo="$1"; pr_number="$2"; git_tag="$3"; release_url="$4"; dispatch_at="$5"; thread_ts="$6"
+[[ $# -ge 6 && $# -le 7 ]] || die "Usage: $(basename "$0") <repo> <pr_number> <git_tag> <release_url> <dispatch_at_iso> <thread_ts> [board_trigger]"
+repo="$1"; pr_number="$2"; git_tag="$3"; release_url="$4"; dispatch_at="$5"; thread_ts="$6"; board_trigger="${7:-false}"
 
 # shellcheck source=wiz_pr_pipeline.env
 source "${script_dir}/wiz_pr_pipeline.env" || die "cannot source wiz_pr_pipeline.env"
@@ -35,6 +40,13 @@ max_wait="${WIZ_BUILD_MAX_WAIT:-2400}"  # give up after ~40 min
 find_tries="${WIZ_BUILD_FIND_TRIES:-10}"
 
 post() { wiz_slack_post "$dest_channel" "$thread_ts" "$1" >/dev/null 2>&1 || true; }
+
+# Board-driven builds mirror the finished result to a PR comment too. No-op when
+# not a board build. Takes GitHub-flavored markdown (NOT Slack mrkdwn).
+pr_comment() {
+    [[ "$board_trigger" == "true" ]] || return 0
+    gh pr comment "$pr_number" --repo "story-wizard/${repo}" --body "$1" >/dev/null 2>&1 || true
+}
 
 # ---- 1. find the dispatched run id ----
 # Newest workflow_dispatch run created at/after dispatch_at. Retry a few times:
@@ -72,6 +84,7 @@ done
 if [[ "$status" != "completed" ]]; then
     log "Timed out after ${elapsed}s (status=${status})."
     post "⏱️ Build for PR #${pr_number} (\`${git_tag}\`) is still running after $((max_wait/60)) min. Track it: <${run_url}>"
+    pr_comment "⏱️ Build for PR #${pr_number} (\`${git_tag}\`) is still running after $((max_wait/60)) min. [Track it](${run_url})."
     exit 0
 fi
 
@@ -91,11 +104,14 @@ if [[ "$conclusion" == "success" ]]; then
     # Confirm the release actually exists before linking to it.
     if gh release view "$git_tag" --repo "$RELEASE_REPO" >/dev/null 2>&1; then
         post "✅ ${mention}Tagged build for PR #${pr_number} is ready: *${git_tag}*"$'\n'"Release: <${release_url}>"$'\n'"Install (paste in Terminal):"$'\n'"\`\`\`${install_cmd}\`\`\`${rev_suffix}"
+        pr_comment "✅ **Tagged build ready:** \`${git_tag}\`"$'\n'"[Release page](${release_url})"$'\n\n'"**Install** (paste in Terminal):"$'\n'"\`\`\`bash"$'\n'"${install_cmd}"$'\n'"\`\`\`"
     else
         post "✅ ${mention}Build run for PR #${pr_number} (\`${git_tag}\`) finished successfully, but I couldn't confirm the release page yet — it should appear shortly at <${release_url}> (<${run_url}|run log>).${rev_suffix}"
+        pr_comment "✅ Build for PR #${pr_number} (\`${git_tag}\`) finished successfully, but the release page isn't confirmed yet — it should appear shortly at [${git_tag}](${release_url}) ([run log](${run_url}))."
     fi
     log "Done: success."
 else
     post "❌ ${mention}Tagged build for PR #${pr_number} (\`${git_tag}\`) failed (${conclusion}). Logs: <${run_url}>${rev_suffix}"
+    pr_comment "❌ Tagged build for PR #${pr_number} (\`${git_tag}\`) **failed** (${conclusion}). [Logs](${run_url})."
     log "Done: ${conclusion}."
 fi
