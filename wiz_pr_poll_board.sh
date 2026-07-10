@@ -346,7 +346,7 @@ if [[ -n "$scan_error" ]]; then
     exit 1
 fi
 
-n_total=0; n_started=0; n_rereview=0; n_nochange=0; n_draft=0; n_closed=0; n_skipped=0; n_build=0; n_build_skip=0
+n_total=0; n_started=0; n_rereview=0; n_nochange=0; n_draft=0; n_closed=0; n_skipped=0; n_build=0; n_build_skip=0; n_build_ask=0
 
 if [[ -z "$queued" ]]; then
     log "no PRs in '${WIZ_QUEUE_STATUS}' or '${WIZ_BUILD_STATUS}'."
@@ -390,14 +390,19 @@ else
             continue
         fi
 
-        # --- gate 2.5: Functional Review -> auto-dispatch a tagged build ---
+        # --- gate 2.5: Functional Review -> tagged build (first auto; rebuilds ask) ---
         # A human moving a PR to WIZ_BUILD_STATUS wants an installable build to
         # test. Unlike the AI-review path we do NOT advance the status (the PR
         # stays in Functional Review), so idempotency comes from a per-PR CLAIM
-        # keyed on the branch head SHA: build once per commit, auto-rebuild when
-        # new commits land, never every tick. Ack + result go to BOTH the Slack
-        # review thread (recovered, or a fresh root) AND a PR comment (handled by
-        # wiz_pr_build.sh --board-trigger + the watcher).
+        # keyed on the last successfully built head SHA:
+        #   - no claim yet             -> auto-dispatch once (first FR build)
+        #   - claim matches head       -> already built this commit; skip
+        #   - claim behind head        -> NEW commits: do NOT auto-rebuild.
+        #     Ask the PR author in the Slack review thread whether they want a
+        #     new build; record asked_sha so we only ask once per new head.
+        #     Author replies with a normal build trigger (bucket D: "tagged
+        #     build" / "yes, rebuild" / "build it") to actually dispatch.
+        # Ack + result go to BOTH Slack and a PR comment (wiz_pr_build.sh).
         if [[ "$matched_status" == "$WIZ_BUILD_STATUS" ]]; then
             # wizard-release / wizard-spec PRs cannot drive an app build.
             case "$repo" in
@@ -412,7 +417,11 @@ else
             claim_dir="${WIZ_BUILD_CLAIM_DIR:-${HOME}/wizard/tmp/wiz-pr-build-claims}"
             claim_file="${claim_dir}/${repo}-${pr_number}.json"
             claimed_sha=""
-            [[ -f "$claim_file" ]] && claimed_sha="$(jq -r '.head_sha // empty' "$claim_file" 2>/dev/null)"
+            asked_sha=""
+            if [[ -f "$claim_file" ]]; then
+                claimed_sha="$(jq -r '.head_sha // empty' "$claim_file" 2>/dev/null)"
+                asked_sha="$(jq -r '.asked_sha // empty' "$claim_file" 2>/dev/null)"
+            fi
 
             if [[ -n "$head_sha" && "$head_sha" == "$claimed_sha" ]]; then
                 log "  build: already built head ${head_sha:0:8} — skipping (no new commits)."
@@ -420,15 +429,8 @@ else
                 continue
             fi
 
-            if [[ "$dry_run" == "true" ]]; then
-                log "  [dry-run] Functional Review -> would dispatch tagged build for head ${head_sha:0:8} (prev claim ${claimed_sha:0:8})."
-                n_build=$((n_build + 1))
-                continue
-            fi
-
-            # Recover the existing review's Slack root ts so the build ack threads
-            # under the SAME conversation (Carol's model). Empty -> the driver
-            # self-posts a fresh root. (Same lookup the re-review path uses.)
+            # Recover the existing review's Slack root ts so asks/builds thread
+            # under the SAME conversation (Carol's model).
             build_thread_ts=""
             state_dir="${WIZ_PR_STATE_DIR:-${HOME}/wizard/tmp/wiz-pr-state}"
             if [[ -d "$state_dir" ]]; then
@@ -442,19 +444,77 @@ else
                 )"
             fi
 
+            # --- rebuild path: claim exists for an older head -> ASK, don't auto-build ---
+            if [[ -n "$claimed_sha" ]]; then
+                if [[ -n "$head_sha" && "$head_sha" == "$asked_sha" ]]; then
+                    log "  build: already asked about head ${head_sha:0:8} (last built ${claimed_sha:0:8}) — waiting for author."
+                    n_build_skip=$((n_build_skip + 1))
+                    continue
+                fi
+                if [[ "$dry_run" == "true" ]]; then
+                    log "  [dry-run] Functional Review -> would ASK author about rebuild for head ${head_sha:0:8} (last built ${claimed_sha:0:8})."
+                    n_build_ask=$((n_build_ask + 1))
+                    continue
+                fi
+                # Resolve author + post the ask (threaded when possible).
+                pr_author_login="$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json author --jq '.author.login // empty' 2>/dev/null)"
+                pr_title_b="$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json title --jq '.title // empty' 2>/dev/null)"
+                [[ -n "$pr_title_b" ]] || pr_title_b="PR #${pr_number}"
+                pr_url_b="https://github.com/story-wizard/${repo}/pull/${pr_number}"
+                author_mention=""
+                if [[ -n "$pr_author_login" ]] && command -v wiz_gh_to_slack >/dev/null 2>&1; then
+                    author_sid="$(wiz_gh_to_slack "$pr_author_login" 2>/dev/null)"
+                    [[ -n "$author_sid" ]] && author_mention="<@${author_sid}> "
+                fi
+                ask_msg="🔄 ${author_mention}New commits landed on *${pr_title_b}* (<${pr_url_b}>) since the last tagged build."
+                ask_msg+=$'\n'"Last built: \`${claimed_sha:0:8}\` → now: \`${head_sha:0:8}\`."
+                ask_msg+=$'\n'"Want a **new installable build** of this head?"
+                ask_msg+=$'\n'"Reply here with *yes, rebuild* / *tagged build* / *build it* and I'll generate one. (Say *no* / ignore to keep the existing build.)"
+                if command -v wiz_slack_ready >/dev/null 2>&1 && wiz_slack_ready; then
+                    if [[ -n "$build_thread_ts" ]]; then
+                        wiz_slack_post "$WIZ_ACTIVE_CHANNEL" "$build_thread_ts" "$ask_msg" >/dev/null 2>&1 || true
+                        log "  build: asked author about rebuild head ${head_sha:0:8} in thread ${build_thread_ts}."
+                    else
+                        wiz_slack_post "$WIZ_ACTIVE_CHANNEL" "" "$ask_msg" >/dev/null 2>&1 || true
+                        log "  build: asked author about rebuild head ${head_sha:0:8} via new root (no review thread)."
+                    fi
+                else
+                    log "  build: Slack not ready — could not ask about rebuild for head ${head_sha:0:8}."
+                fi
+                # Record asked_sha so we only ask once per new head. Keep head_sha
+                # as the last successfully *built* SHA.
+                mkdir -p "$claim_dir" 2>/dev/null || true
+                prev_built_at="$(jq -r '.built_at // empty' "$claim_file" 2>/dev/null)"
+                jq -nc --arg repo "$repo" --arg pr "$pr_number" --arg sha "$claimed_sha" \
+                    --arg asked "$head_sha" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+                    --arg built_at "$prev_built_at" \
+                    '{repo:$repo, pr_number:$pr, head_sha:$sha,
+                      built_at:(if $built_at=="" then null else $built_at end),
+                      asked_sha:$asked, asked_at:$at}' \
+                    > "$claim_file" 2>/dev/null || true
+                n_build_ask=$((n_build_ask + 1))
+                continue
+            fi
+
+            # --- first build: no claim yet -> auto-dispatch ---
+            if [[ "$dry_run" == "true" ]]; then
+                log "  [dry-run] Functional Review -> would dispatch FIRST tagged build for head ${head_sha:0:8}."
+                n_build=$((n_build + 1))
+                continue
+            fi
+
             # Dispatch. The driver refuses a develop-conflicting build (freshness
             # gate) and posts that refusal to Slack + PR itself, so we don't
             # pre-check here. Record the claim ONLY on a successful dispatch so a
-            # failed/refused build is retried next tick (and a fixed conflict
-            # re-dispatches once the SHA changes).
+            # failed/refused first build is retried next tick.
             if "${script_dir}/wiz_pr_build.sh" --board-trigger "$repo" "$pr_number" "$build_thread_ts" >/dev/null 2>&1; then
                 mkdir -p "$claim_dir" 2>/dev/null || true
                 jq -nc --arg repo "$repo" --arg pr "$pr_number" --arg sha "$head_sha" \
                     --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-                    '{repo:$repo, pr_number:$pr, head_sha:$sha, built_at:$at}' \
+                    '{repo:$repo, pr_number:$pr, head_sha:$sha, built_at:$at, asked_sha:null, asked_at:null}' \
                     > "$claim_file" 2>/dev/null || true
                 n_build=$((n_build + 1))
-                log "  build: dispatched for head ${head_sha:0:8}; claim recorded."
+                log "  build: dispatched FIRST build for head ${head_sha:0:8}; claim recorded."
             else
                 n_build_skip=$((n_build_skip + 1))
                 log "  build: driver returned non-zero (it posts its own failure/refusal); no claim recorded — will retry next tick."
@@ -542,9 +602,10 @@ jq -nc \
     --argjson rereview "$n_rereview" --argjson nochange "$n_nochange" \
     --argjson draft "$n_draft" --argjson closed "$n_closed" --argjson skipped "$n_skipped" \
     --argjson build "$n_build" --argjson build_skip "$n_build_skip" \
+    --argjson build_ask "$n_build_ask" \
     --argjson approved "$n_approved" \
     --argjson dry "$([[ "$dry_run" == "true" ]] && echo true || echo false)" \
     '{ok:true, action:"scanned", dry_run:$dry, queued_total:$total,
       started:$started, rereview:$rereview, no_changes:$nochange,
       draft:$draft, closed:$closed, skipped:$skipped,
-      build:$build, build_skip:$build_skip, approved:$approved}'
+      build:$build, build_skip:$build_skip, build_ask:$build_ask, approved:$approved}'

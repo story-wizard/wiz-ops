@@ -278,6 +278,21 @@ if [[ "$board_trigger" == "true" ]]; then
     gh pr comment "$pr_number" --repo "story-wizard/${repo}" --body "$pr_ack" >/dev/null 2>&1 || true
 fi
 
+# ---- update Functional Review build claim (board or Slack-triggered rebuild) ----
+# The poller keys rebuild-asks on last built head_sha / asked_sha. Any successful
+# dispatch (including an author "yes, rebuild" via bucket D) should record the
+# current PR head as built and clear a pending ask so we don't re-prompt.
+claim_dir="${WIZ_BUILD_CLAIM_DIR:-${HOME}/wizard/tmp/wiz-pr-build-claims}"
+claim_file="${claim_dir}/${repo}-${pr_number}.json"
+head_now="$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json headRefOid --jq '.headRefOid // empty' 2>/dev/null)"
+if [[ -n "$head_now" ]]; then
+    mkdir -p "$claim_dir" 2>/dev/null || true
+    jq -nc --arg repo "$repo" --arg pr "$pr_number" --arg sha "$head_now" \
+        --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        '{repo:$repo, pr_number:$pr, head_sha:$sha, built_at:$at, asked_sha:null, asked_at:null}' \
+        > "$claim_file" 2>/dev/null || true
+fi
+
 # ---- summary JSON ----
 jq -nc \
     --arg repo "$repo" --arg pr "$pr_number" --arg branch "$pr_branch" \
