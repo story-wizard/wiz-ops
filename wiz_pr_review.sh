@@ -80,17 +80,27 @@ command -v jq >/dev/null 2>&1 || { echo '{"ok":false,"stage":"deps","message":"j
 [[ "$pr_number" =~ ^[0-9]+$ ]] || post_fail "args" "PR number must be numeric, got '${pr_number}'"
 
 # ---- fetch PR title + url (also validates existence) ----
-pr_meta=$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json title,url,state,isDraft 2>&1) \
+pr_meta=$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json title,url,state,isDraft,author 2>&1) \
     || post_fail "pr_lookup" "PR #${pr_number} not found in story-wizard/${repo}: ${pr_meta}"
 pr_title=$(echo "$pr_meta" | jq -r '.title')
 pr_url=$(echo "$pr_meta" | jq -r '.url')
+pr_author_login=$(echo "$pr_meta" | jq -r '.author.login // empty')
 
 # ---- board-trigger: self-post the lifecycle root and thread under it ----
 # There is no Slack trigger message in board mode, so create one. Its ts becomes
 # the thread_ts the rest of the driver (acks, watcher, artifacts) posts under.
+# @-mention the PR author on this root so they get a Slack notification that a
+# board-triggered review of their PR has started (a human-triggered review
+# already threads under the human's own message, so this only applies to the
+# board path where nobody typed in Slack).
 if [[ "$board_trigger" == "true" ]]; then
     if wiz_slack_ready; then
-        root_msg="🤖 AI code review queued for *${pr_title}* (<${pr_url}>) — triggered from the project board. Setting up the Maestro agent…"
+        author_mention=""
+        if [[ -n "$pr_author_login" ]] && command -v wiz_gh_to_slack >/dev/null 2>&1; then
+            author_sid="$(wiz_gh_to_slack "$pr_author_login" 2>/dev/null)"
+            [[ -n "$author_sid" ]] && author_mention="<@${author_sid}> "
+        fi
+        root_msg="🤖 ${author_mention}AI code review queued for *${pr_title}* (<${pr_url}>) — triggered from the project board. Setting up the Maestro agent…"
         root_ts="$(wiz_slack_post "$dest_channel" "" "$root_msg" 2>/dev/null)"
         [[ -n "$root_ts" ]] && thread_ts="$root_ts"
     fi
