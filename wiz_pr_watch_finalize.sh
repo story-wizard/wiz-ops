@@ -71,6 +71,9 @@ source "${script_dir}/wiz_pr_pipeline.env" || die "Cannot source wiz_pr_pipeline
 # shellcheck source=_wiz_slack.sh
 source "${script_dir}/_wiz_slack.sh" || die "Cannot source _wiz_slack.sh"
 wiz_slack_ready || die "SLACK_BOT_TOKEN not available to the watcher"
+# shellcheck source=_maestro_env.sh
+source "${script_dir}/_maestro_env.sh" || die "Cannot source _maestro_env.sh"
+export MAESTRO_USER_DATA="${MAESTRO_USER_DATA:-$HOME/Library/Application Support/maestro}"
 
 ensure_current_attempt() {
     local sf
@@ -96,9 +99,137 @@ log "Will post review artifacts to ${dest_channel}${dest_thread:+ (thread ${dest
 known_worktree_dir="$(jq -r --arg a "$agent_type" '.agents[$a].worktree_dir // empty' \
     "$(wiz_review_state_file "$repo" "$pr_number")" 2>/dev/null)"
 log "Watching Maestro agent ${agent_id}${agent_type:+ (${agent_type})} until Auto Run is fully idle..."
-"${script_dir}/maestro_watch.sh" "$agent_id" "${WIZ_WATCH_GRACE}" "${WIZ_WATCH_POLL}" "$agent_type" \
-    "${WIZ_WATCH_START_TIMEOUT}" "${WIZ_WATCH_MAX_SECONDS}" "$autorun_dir" "$known_worktree_dir" \
-    || die "maestro_watch.sh did not reach verified Auto Run completion"
+
+latest_autorun_error() {
+    local hist="$MAESTRO_USER_DATA/history/${agent_id}.json"
+    local min_ms="$1"
+    local expected_project="$2"
+    [[ -f "$hist" ]] || return 1
+    python3 - "$hist" "$min_ms" "$expected_project" <<'PY'
+import json, sys
+try:
+    data = json.load(open(sys.argv[1]))
+    minimum = int(sys.argv[2])
+    expected_project = sys.argv[3]
+    matches = []
+    for entry in data.get("entries", []):
+        summary = str(entry.get("summary", ""))
+        timestamp = int(entry.get("timestamp", 0) or 0)
+        if (timestamp >= minimum
+                and entry.get("type") == "AUTO"
+                and entry.get("success") is False
+                and entry.get("projectPath") == expected_project
+                and "Auto Run error" in summary):
+            detail = str(entry.get("fullResponse", "")).replace("\n", " ").replace("\x1f", " ")
+            matches.append((timestamp, summary.replace("\x1f", " "), detail))
+    if not matches:
+        raise SystemExit(1)
+    timestamp, summary, detail = max(matches)
+    print(f"{timestamp}\x1f{summary}\x1f{detail[:500]}")
+except Exception:
+    raise SystemExit(1)
+PY
+}
+
+attempt_epoch="$(printf '%s' "$review_attempt" | awk -F- '{print $2}')"
+[[ "$attempt_epoch" =~ ^[0-9]+$ ]] || attempt_epoch="$(date +%s)"
+minimum_error_ms=$((attempt_epoch * 1000))
+resume_count="$(jq -r '.auto_resume_count // 0' "$(wiz_review_state_file "$repo" "$pr_number")" 2>/dev/null)"
+last_error_ms="$(jq -r '.auto_resume_last_error_ms // 0' "$(wiz_review_state_file "$repo" "$pr_number")" 2>/dev/null)"
+[[ "$resume_count" =~ ^[0-9]+$ ]] || die "canonical auto-resume count is malformed"
+[[ "$last_error_ms" =~ ^[0-9]+$ ]] || die "canonical auto-resume error marker is malformed"
+auto_resume_max="${WIZ_WATCH_AUTO_RESUME_MAX:-2}"
+auto_resume_backoff="${WIZ_WATCH_AUTO_RESUME_BACKOFF:-15}"
+resume_command_timeout="${WIZ_WATCH_RESUME_COMMAND_TIMEOUT:-30}"
+[[ "$auto_resume_max" =~ ^[0-9]+$ ]] || die "WIZ_WATCH_AUTO_RESUME_MAX must be numeric"
+[[ "$auto_resume_backoff" =~ ^[0-9]+$ ]] || die "WIZ_WATCH_AUTO_RESUME_BACKOFF must be numeric"
+[[ "$resume_command_timeout" =~ ^[0-9]+$ && "$resume_command_timeout" -gt 0 ]] \
+    || die "WIZ_WATCH_RESUME_COMMAND_TIMEOUT must be a positive integer"
+watch_deadline_epoch="$(wiz_review_state_ensure_watch_deadline "$repo" "$pr_number" "$review_round" "$review_attempt" "$WIZ_WATCH_MAX_SECONDS" 2>/dev/null)"
+[[ "$watch_deadline_epoch" =~ ^[0-9]+$ ]] || die "could not establish the durable attempt watch deadline"
+
+while true; do
+    remaining=$(( watch_deadline_epoch - $(date +%s) ))
+    (( remaining > 0 )) || die "review exceeded the ${WIZ_WATCH_MAX_SECONDS}s overall watch deadline after ${resume_count} automatic resume(s)"
+
+    "${script_dir}/maestro_watch.sh" "$agent_id" "${WIZ_WATCH_GRACE}" "${WIZ_WATCH_POLL}" "$agent_type" \
+        "${WIZ_WATCH_START_TIMEOUT}" "$remaining" "$autorun_dir" "$known_worktree_dir"
+    watch_rc=$?
+    [[ "$watch_rc" -eq 0 ]] && break
+
+    stop_if_stale
+    [[ "$watch_rc" -eq 75 ]] \
+        || die "maestro_watch.sh failed with rc=${watch_rc} after ${resume_count} automatic resume(s)"
+
+    error_record="$(latest_autorun_error "$minimum_error_ms" "$known_worktree_dir" 2>/dev/null || true)"
+    error_ms=""; error_summary=""; error_detail=""
+    IFS=$'\x1f' read -r error_ms error_summary error_detail <<< "$error_record"
+    if [[ ! "$error_ms" =~ ^[0-9]+$ || "$error_ms" -le "$last_error_ms" ]]; then
+        die "Auto Run became idle incomplete without a new explicit Maestro error pause after ${resume_count} automatic resume(s)"
+    fi
+    if (( resume_count >= auto_resume_max )); then
+        die "Auto Run failed repeatedly after ${resume_count} automatic resume(s): ${error_summary}${error_detail:+ — ${error_detail}}"
+    fi
+
+    remaining=$(( watch_deadline_epoch - $(date +%s) ))
+    (( remaining > auto_resume_backoff )) \
+        || die "review exceeded the ${WIZ_WATCH_MAX_SECONDS}s overall watch deadline before automatic-resume backoff"
+    (( auto_resume_backoff > 0 )) && sleep "$auto_resume_backoff"
+    remaining=$(( watch_deadline_epoch - $(date +%s) ))
+    (( remaining > 0 )) \
+        || die "review exceeded the ${WIZ_WATCH_MAX_SECONDS}s overall watch deadline before automatic resume"
+
+    resume_lock="$(wiz_review_launch_lock_acquire "$repo" "$pr_number" 2>/dev/null || true)"
+    [[ -n "$resume_lock" ]] || die "could not acquire the per-PR launch lock for automatic resume"
+    if ! ensure_current_attempt; then
+        wiz_review_launch_lock_release "$resume_lock"
+        finalized=true
+        log "Attempt became stale before automatic resume; exiting without side effects."
+        exit 0
+    fi
+    # Re-read under the launch lock. This prevents an old watcher from acting on
+    # an error record after a successor attempt has claimed the PR.
+    error_record="$(latest_autorun_error "$minimum_error_ms" "$known_worktree_dir" 2>/dev/null || true)"
+    locked_error_ms="${error_record%%$'\x1f'*}"
+    if [[ "$locked_error_ms" != "$error_ms" ]]; then
+        wiz_review_launch_lock_release "$resume_lock"
+        die "Auto Run error state changed while acquiring the resume lock"
+    fi
+
+    persisted_resume_count="$(jq -r '.auto_resume_count // 0' "$(wiz_review_state_file "$repo" "$pr_number")" 2>/dev/null)"
+    if [[ ! "$persisted_resume_count" =~ ^[0-9]+$ || "$persisted_resume_count" -ge "$auto_resume_max" ]]; then
+        wiz_review_launch_lock_release "$resume_lock"
+        die "Auto Run failed repeatedly after ${persisted_resume_count:-unknown} automatic resume(s): ${error_summary}"
+    fi
+    resume_count="$(wiz_review_state_record_auto_resume "$repo" "$pr_number" "$review_round" "$review_attempt" "$error_ms" 2>/dev/null)"
+    if [[ ! "$resume_count" =~ ^[0-9]+$ ]]; then
+        wiz_review_launch_lock_release "$resume_lock"
+        die "could not durably claim the automatic Auto Run resume"
+    fi
+    last_error_ms="$error_ms"
+    log "Auto Run paused on error; automatic resume ${resume_count}/${auto_resume_max}: ${error_summary}"
+    (( remaining < resume_command_timeout )) && command_timeout="$remaining" || command_timeout="$resume_command_timeout"
+    resume_out="$(python3 - "$maestro_cli" "$agent_id" "$command_timeout" <<'PY'
+import subprocess, sys
+try:
+    proc = subprocess.run(
+        ["node", sys.argv[1], "resume-auto-run", "--agent", sys.argv[2], "--json"],
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        timeout=int(sys.argv[3]), check=False)
+    sys.stdout.write(proc.stdout)
+    raise SystemExit(proc.returncode)
+except subprocess.TimeoutExpired as exc:
+    if exc.stdout:
+        sys.stdout.write(exc.stdout if isinstance(exc.stdout, str) else exc.stdout.decode(errors="replace"))
+    raise SystemExit(124)
+PY
+)"
+    resume_rc=$?
+    wiz_review_launch_lock_release "$resume_lock"
+    [[ "$resume_rc" -eq 0 ]] \
+        || die "Maestro refused automatic resume ${resume_count}/${auto_resume_max} (rc=${resume_rc}): ${resume_out}"
+    log "Maestro accepted automatic resume ${resume_count}/${auto_resume_max}; monitoring continues immediately"
+done
 stop_if_stale
 
 # ---- 2. collect + upload review files ----
@@ -111,11 +242,33 @@ done
 [[ ${#missing[@]} -eq 0 ]] || die "required review artifacts missing: ${missing[*]}"
 
 artifact_intro="*AI review${round_label} artifacts ready${agent_label}:* <${pr_url}|${pr_title}>"$'\n'"Final GitHub review verification is still in progress."
-if wiz_slack_upload "$dest_channel" "$dest_thread" "$artifact_intro" "${present[@]}"; then
-    log "Uploaded ${#present[@]} review file(s) to ${dest_channel}"
+slack_phase="$(jq -c '.finalization_phases.slack_artifacts // null' "$(wiz_review_state_file "$repo" "$pr_number")" 2>/dev/null)"
+slack_phase_status="$(printf '%s' "$slack_phase" | jq -r 'if type=="string" then "posted" else .status // empty end' 2>/dev/null)"
+if [[ "$slack_phase_status" == "posted" ]]; then
+    log "Skipping Slack artifact upload; canonical posted phase already exists"
+elif [[ "$slack_phase_status" == "claimed" ]]; then
+    die "Slack artifact upload has an uncertain prior claim; refusing a duplicate upload"
 else
-    upload_rc=$?
-    die "Slack review-artifact upload failed (rc=${upload_rc}); completion was not announced"
+    artifact_lock="$(wiz_review_launch_lock_acquire "$repo" "$pr_number" 2>/dev/null || true)"
+    [[ -n "$artifact_lock" ]] || die "could not acquire per-PR lock for Slack artifact upload"
+    if ! ensure_current_attempt; then
+        wiz_review_launch_lock_release "$artifact_lock"
+        finalized=true
+        log "Attempt became stale before Slack artifact upload; exiting without side effects."
+        exit 0
+    fi
+    wiz_review_state_claim_finalization_phase "$repo" "$pr_number" "$review_round" "$review_attempt" slack_artifacts \
+        || { wiz_review_launch_lock_release "$artifact_lock"; die "could not durably claim Slack artifact upload"; }
+    if wiz_slack_upload "$dest_channel" "$dest_thread" "$artifact_intro" "${present[@]}"; then
+        log "Uploaded ${#present[@]} review file(s) to ${dest_channel}"
+        wiz_review_state_mark_finalization_phase "$repo" "$pr_number" "$review_round" "$review_attempt" slack_artifacts \
+            || { wiz_review_launch_lock_release "$artifact_lock"; die "Slack artifacts uploaded but posted phase recording failed"; }
+        wiz_review_launch_lock_release "$artifact_lock"
+    else
+        upload_rc=$?
+        wiz_review_launch_lock_release "$artifact_lock"
+        die "Slack review-artifact upload failed or is uncertain (rc=${upload_rc}); claim retained to prevent duplicate upload"
+    fi
 fi
 
 # ---- 2b. attach the review artifacts to the PR as a GitHub comment ----
@@ -123,7 +276,23 @@ fi
 # conversation stays readable. GitHub caps a comment at 65536 chars, so each
 # artifact is truncated to a safe budget with a pointer to the Slack thread for
 # the full text. Best-effort: never fail the pipeline on a gh hiccup.
-if [[ ${#present[@]} -gt 0 ]] && command -v gh >/dev/null 2>&1; then
+github_phase="$(jq -c '.finalization_phases.github_artifacts // null' "$(wiz_review_state_file "$repo" "$pr_number")" 2>/dev/null)"
+github_phase_status="$(printf '%s' "$github_phase" | jq -r 'if type=="string" then "posted" else .status // empty end' 2>/dev/null)"
+if [[ "$github_phase_status" == "posted" ]]; then
+    log "Skipping GitHub artifact comment; canonical posted phase already exists"
+elif [[ "$github_phase_status" == "claimed" ]]; then
+    log "WARNING: GitHub artifact comment has an uncertain prior claim; refusing a duplicate comment"
+elif [[ ${#present[@]} -gt 0 ]] && command -v gh >/dev/null 2>&1; then
+    github_artifact_lock="$(wiz_review_launch_lock_acquire "$repo" "$pr_number" 2>/dev/null || true)"
+    [[ -n "$github_artifact_lock" ]] || die "could not acquire per-PR lock for GitHub artifact comment"
+    if ! ensure_current_attempt; then
+        wiz_review_launch_lock_release "$github_artifact_lock"
+        finalized=true
+        log "Attempt became stale before GitHub artifact comment; exiting without side effects."
+        exit 0
+    fi
+    wiz_review_state_claim_finalization_phase "$repo" "$pr_number" "$review_round" "$review_attempt" github_artifacts \
+        || { wiz_review_launch_lock_release "$github_artifact_lock"; die "could not durably claim GitHub artifact comment"; }
     gh_body_file="$(mktemp -t wiz_pr_ghcomment.XXXXXX)"
     # Per-artifact char budget keeps the whole comment well under GitHub's 65536
     # limit even with 5 artifacts + the <details> wrappers.
@@ -151,18 +320,19 @@ if [[ ${#present[@]} -gt 0 ]] && command -v gh >/dev/null 2>&1; then
     } > "$gh_body_file"
     if gh pr comment "$pr_number" --repo "story-wizard/${repo}" --body-file "$gh_body_file" >/dev/null 2>&1; then
         log "Posted review artifacts as a GitHub PR comment on story-wizard/${repo}#${pr_number}"
+        wiz_review_state_mark_finalization_phase "$repo" "$pr_number" "$review_round" "$review_attempt" github_artifacts \
+            || { wiz_review_launch_lock_release "$github_artifact_lock"; die "GitHub artifacts posted but posted phase recording failed"; }
     else
         log "WARNING: gh pr comment failed for story-wizard/${repo}#${pr_number}"
     fi
     rm -f "$gh_body_file"
+    wiz_review_launch_lock_release "$github_artifact_lock"
 elif [[ ${#present[@]} -gt 0 ]]; then
     log "WARNING: gh CLI not found; skipped GitHub PR comment"
 fi
 
 # ---- 3. send finalize prompt and verify a NEW GitHub review ----
 stop_if_stale
-# shellcheck source=_maestro_env.sh
-source "${script_dir}/_maestro_env.sh" || die "Cannot source _maestro_env.sh"
 command -v gh >/dev/null 2>&1 || die "gh CLI not found for final review verification"
 me="$(gh api user --jq '.login' 2>/dev/null)"
 [[ -n "$me" ]] || die "cannot determine authenticated GitHub identity"

@@ -109,12 +109,29 @@ hist="$MAESTRO_USER_DATA/history/${agent}.json"
 # Resolve type + cwd from Maestro so completion detection works for both
 # Claude Code and Codex. The optional fourth arg is a fallback for older CLI
 # output, not the source of truth.
+watch_started="$(date +%s)"
 agent_json=""
 for _meta_try in 1 2 3 4 5; do
-    agent_json="$("${cli[@]}" show agent --json "$agent" 2>/dev/null || true)"
+    _meta_remaining=$(( max_seconds - ($(date +%s) - watch_started) ))
+    (( _meta_remaining > 0 )) || break
+    (( _meta_remaining < 3 )) && _meta_timeout="$_meta_remaining" || _meta_timeout=3
+    agent_json="$(python3 - "$maestro_cli" "$agent" "$_meta_timeout" <<'PY'
+import subprocess, sys
+try:
+    proc = subprocess.run(
+        ["node", sys.argv[1], "show", "agent", "--json", sys.argv[2]],
+        text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+        timeout=int(sys.argv[3]), check=False)
+    if proc.returncode == 0:
+        sys.stdout.write(proc.stdout)
+except subprocess.TimeoutExpired:
+    pass
+PY
+)"
     printf '%s' "$agent_json" | jq -e 'type=="object"' >/dev/null 2>&1 && break
     agent_json=""
-    sleep 1
+    _meta_remaining=$(( max_seconds - ($(date +%s) - watch_started) ))
+    (( _meta_remaining > 0 )) && sleep 1
 done
 name="$(printf '%s' "$agent_json" | jq -r '.name // empty' 2>/dev/null)"
 resolved_type="$(printf '%s' "$agent_json" | jq -r '.toolType // empty' 2>/dev/null)"
@@ -195,10 +212,21 @@ autorun_complete() {
 # ---------- watch loop ----------
 
 start_tasks="$(hist_count)"
-watch_started="$(date +%s)"
 iterations=0
 seen_running=0
 last_pid=""
+
+watch_sleep() {
+    local requested="$1" elapsed remaining sleep_for
+    elapsed=$(( $(date +%s) - watch_started ))
+    remaining=$(( max_seconds - elapsed ))
+    (( remaining > 0 )) || die "watch timed out after ${elapsed}s"
+    sleep_for="$requested"
+    (( sleep_for > remaining )) && sleep_for="$remaining"
+    sleep "$sleep_for"
+    elapsed=$(( $(date +%s) - watch_started ))
+    (( elapsed <= max_seconds )) || die "watch timed out after ${elapsed}s"
+}
 
 echo "[$(ts)] Watching '$name'"
 echo "          agent : $agent"
@@ -219,7 +247,7 @@ while true; do
         fi
         seen_running=1
         last_pid="$cur"
-        sleep "$poll"
+        watch_sleep "$poll"
         continue
     fi
 
@@ -232,9 +260,15 @@ while true; do
             seen_running=1
             continue
         fi
-        (( elapsed < start_timeout )) || die "no agent process or completed artifacts observed within ${start_timeout}s"
+        if (( elapsed >= start_timeout )); then
+            # A resumed iteration can fail before the first process poll. Return
+            # the recoverable idle/incomplete code; the finalizer will resume
+            # only if a new explicit Maestro error-pause record exists.
+            echo "Error: no agent process or completed artifacts observed within ${start_timeout}s" >&2
+            exit 75
+        fi
         echo "[$(ts)] ... not started yet — waiting for first iteration"
-        sleep "$poll"
+        watch_sleep "$poll"
         continue
     fi
 
@@ -242,9 +276,12 @@ while true; do
     echo "[$(ts)] || no process — grace window ${grace}s (watching for next iteration)..."
     waited=0
     respawned=0
+    grace_started="$(date +%s)"
     while (( waited < grace )); do
-        sleep "$poll"
-        waited=$((waited + poll))
+        grace_remaining=$(( grace - waited ))
+        (( grace_remaining < poll )) && grace_sleep="$grace_remaining" || grace_sleep="$poll"
+        watch_sleep "$grace_sleep"
+        waited=$(( $(date +%s) - grace_started ))
         if [[ -n "$(pids)" ]]; then
             echo "[$(ts)] ~ next iteration spawned after ${waited}s — still going"
             respawned=1
@@ -257,7 +294,14 @@ while true; do
     # Grace fully elapsed with no respawn -> fully done only when the review
     # playbooks and required summary are actually complete. An agent crash that
     # merely became idle is a terminal watcher failure, not success.
-    autorun_complete || die "agent became idle but required playbooks/artifacts are incomplete"
+    if ! autorun_complete; then
+        # Exit 75 is intentionally distinct: the finalizer may inspect Maestro's
+        # history and resume an explicit error-paused Auto Run. Other watcher
+        # failures (startup timeout, overall timeout, metadata errors) remain
+        # ordinary terminal failures and must not be blindly resumed.
+        echo "Error: agent became idle but required playbooks/artifacts are incomplete" >&2
+        exit 75
+    fi
     end_tasks="$(hist_count)"
     delta=$((end_tasks - start_tasks))
     echo "[$(ts)] DONE — no new iteration for ${grace}s"

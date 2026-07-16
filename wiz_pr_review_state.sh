@@ -213,21 +213,119 @@ wiz_review_state_bootstrap() {
 wiz_review_state_record_launch() {
     local repo="$1" pr="$2" round="$3" agent="$4" head="$5" thread="$6"
     local agent_id="$7" worktree_name="$8" worktree_dir="$9" autorun_dir="${10}"
-    local launch_status="${11:-running}" attempt_id="${12:-}" sf tmp state_lock rc
+    local launch_status="${11:-running}" attempt_id="${12:-}" sf tmp state_lock rc watch_deadline
     [[ -n "$attempt_id" ]] || attempt_id="r${round}-$(date +%s)-$$-${RANDOM}"
+    watch_deadline=$(( $(date +%s) + ${WIZ_WATCH_MAX_SECONDS:-14400} ))
     sf="$(wiz_review_state_bootstrap "$repo" "$pr")" || return 1
     state_lock="$(wiz_review_state_lock_acquire "$repo" "$pr")" || return 1
     tmp="${sf}.tmp.$$"
     rc=0
     jq --argjson round "$round" --arg agent "$agent" --arg head "$head" --arg thread "$thread" \
        --arg id "$agent_id" --arg wt "$worktree_name" --arg dir "$worktree_dir" --arg ar "$autorun_dir" \
-       --arg status "$launch_status" --arg attempt "$attempt_id" '
+       --arg status "$launch_status" --arg attempt "$attempt_id" --argjson deadline "$watch_deadline" '
        .round=$round | .head_sha=$head | .status=$status | .active_agent_type=$agent |
        .attempt_id=$attempt |
+       .auto_resume_count=0 | .auto_resume_last_error_ms=0 |
+       .watch_deadline_epoch=$deadline | .finalization_phases={} |
        .thread_ts=(if $thread=="" then .thread_ts else $thread end) |
        .watcher_pid=null | .watcher_log=null |
        .agents[$agent]={agent_id:$id,worktree_name:$wt,worktree_dir:$dir,autorun_dir:$ar} |
        .updated_at=(now|todate)' "$sf" > "$tmp" && mv "$tmp" "$sf" || rc=$?
+    wiz_review_state_lock_release "$state_lock"
+    return "$rc"
+}
+
+wiz_review_state_record_auto_resume() {
+    local repo="$1" pr="$2" expected_round="$3" expected_attempt="$4" error_ms="$5"
+    local sf state_lock tmp current_round current_attempt last_error rc count
+    sf="$(wiz_review_state_file "$repo" "$pr")"
+    [[ -s "$sf" && "$error_ms" =~ ^[0-9]+$ ]] || return 1
+    state_lock="$(wiz_review_state_lock_acquire "$repo" "$pr")" || return 1
+    current_round="$(jq -r '.round // 0' "$sf" 2>/dev/null)"
+    current_attempt="$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)"
+    last_error="$(jq -r '.auto_resume_last_error_ms // 0' "$sf" 2>/dev/null)"
+    if [[ "$current_round" != "$expected_round" || "$current_attempt" != "$expected_attempt" \
+        || ! "$last_error" =~ ^[0-9]+$ || "$error_ms" -le "$last_error" ]]; then
+        wiz_review_state_lock_release "$state_lock"
+        return 2
+    fi
+    tmp="${sf}.tmp.$$"; rc=0
+    jq --argjson error_ms "$error_ms" '
+      .auto_resume_count=((.auto_resume_count // 0) + 1) |
+      .auto_resume_last_error_ms=$error_ms |
+      .updated_at=(now|todate)' "$sf" > "$tmp" && mv "$tmp" "$sf" || rc=$?
+    count="$(jq -r '.auto_resume_count // 0' "$sf" 2>/dev/null)"
+    wiz_review_state_lock_release "$state_lock"
+    [[ $rc -eq 0 && "$count" =~ ^[0-9]+$ ]] || return 1
+    printf '%s\n' "$count"
+}
+
+wiz_review_state_ensure_watch_deadline() {
+    local repo="$1" pr="$2" expected_round="$3" expected_attempt="$4" max_seconds="$5"
+    local sf state_lock tmp rc deadline
+    sf="$(wiz_review_state_file "$repo" "$pr")"
+    [[ -s "$sf" && "$max_seconds" =~ ^[0-9]+$ ]] || return 1
+    state_lock="$(wiz_review_state_lock_acquire "$repo" "$pr")" || return 1
+    if [[ "$(jq -r '.round // 0' "$sf" 2>/dev/null)" != "$expected_round" \
+        || "$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)" != "$expected_attempt" ]]; then
+        wiz_review_state_lock_release "$state_lock"
+        return 2
+    fi
+    deadline="$(jq -r '.watch_deadline_epoch // 0' "$sf" 2>/dev/null)"
+    if [[ ! "$deadline" =~ ^[0-9]+$ || "$deadline" -le 0 ]]; then
+        deadline=$(( $(date +%s) + max_seconds ))
+        tmp="${sf}.tmp.$$"; rc=0
+        jq --argjson deadline "$deadline" '.watch_deadline_epoch=$deadline | .updated_at=(now|todate)' \
+            "$sf" > "$tmp" && mv "$tmp" "$sf" || rc=$?
+        [[ $rc -eq 0 ]] || { wiz_review_state_lock_release "$state_lock"; return "$rc"; }
+    fi
+    wiz_review_state_lock_release "$state_lock"
+    printf '%s\n' "$deadline"
+}
+
+wiz_review_state_claim_finalization_phase() {
+    local repo="$1" pr="$2" expected_round="$3" expected_attempt="$4" phase="$5"
+    local sf state_lock tmp rc existing
+    [[ "$phase" =~ ^[a-z_]+$ ]] || return 1
+    sf="$(wiz_review_state_file "$repo" "$pr")"
+    [[ -s "$sf" ]] || return 1
+    state_lock="$(wiz_review_state_lock_acquire "$repo" "$pr")" || return 1
+    if [[ "$(jq -r '.round // 0' "$sf" 2>/dev/null)" != "$expected_round" \
+        || "$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)" != "$expected_attempt" ]]; then
+        wiz_review_state_lock_release "$state_lock"
+        return 2
+    fi
+    existing="$(jq -r --arg phase "$phase" '.finalization_phases[$phase] // empty' "$sf" 2>/dev/null)"
+    if [[ -n "$existing" ]]; then
+        wiz_review_state_lock_release "$state_lock"
+        return 3
+    fi
+    tmp="${sf}.tmp.$$"; rc=0
+    jq --arg phase "$phase" '
+      .finalization_phases=(.finalization_phases // {}) |
+      .finalization_phases[$phase]={status:"claimed",at:(now|todate)} |
+      .updated_at=(now|todate)' "$sf" > "$tmp" && mv "$tmp" "$sf" || rc=$?
+    wiz_review_state_lock_release "$state_lock"
+    return "$rc"
+}
+
+wiz_review_state_mark_finalization_phase() {
+    local repo="$1" pr="$2" expected_round="$3" expected_attempt="$4" phase="$5"
+    local sf state_lock tmp rc
+    [[ "$phase" =~ ^[a-z_]+$ ]] || return 1
+    sf="$(wiz_review_state_file "$repo" "$pr")"
+    [[ -s "$sf" ]] || return 1
+    state_lock="$(wiz_review_state_lock_acquire "$repo" "$pr")" || return 1
+    if [[ "$(jq -r '.round // 0' "$sf" 2>/dev/null)" != "$expected_round" \
+        || "$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)" != "$expected_attempt" ]]; then
+        wiz_review_state_lock_release "$state_lock"
+        return 2
+    fi
+    tmp="${sf}.tmp.$$"; rc=0
+    jq --arg phase "$phase" '
+      .finalization_phases=(.finalization_phases // {}) |
+      .finalization_phases[$phase]={status:"posted",at:(now|todate)} |
+      .updated_at=(now|todate)' "$sf" > "$tmp" && mv "$tmp" "$sf" || rc=$?
     wiz_review_state_lock_release "$state_lock"
     return "$rc"
 }
