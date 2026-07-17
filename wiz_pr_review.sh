@@ -219,10 +219,18 @@ watcher_pid=$!
 disown "$watcher_pid" 2>/dev/null || true
 
 watcher_state_set=true
-wiz_review_state_record_watcher "$repo" "$pr_number" "$review_round" "$watcher_pid" "$watch_log" "$attempt_id" \
-    || watcher_state_set=false
 state_running_set=true
-wiz_review_state_mark_status "$repo" "$pr_number" "$review_round" "running" "$attempt_id" || state_running_set=false
+fast_terminal_status=""
+if ! wiz_review_state_record_watcher "$repo" "$pr_number" "$review_round" "$watcher_pid" "$watch_log" "$attempt_id" 0; then
+    terminal_after_launch="$(jq -r '.status // empty' "$state_file" 2>/dev/null)"
+    case "$terminal_after_launch" in
+        completed|failed) fast_terminal_status="$terminal_after_launch" ;; # child won the CAS
+        *) watcher_state_set=false; state_running_set=false ;;
+    esac
+fi
+# Keep the shared launch lock through parent-side routing, board, and Slack
+# startup effects. The finalizer uses a bounded long-wait acquisition before
+# any terminal transition or publication.
 
 # ---- persist thread -> PR state so a later "re-review" reply can recover it ----
 # A re-review request arrives as a threaded reply with NO PR link, so it cannot
@@ -241,6 +249,17 @@ if [[ -n "${thread_ts:-}" ]]; then
               autorun_dir:$autorun, agent_id:$agent_id, thread_ts:$thread}' \
             > "${state_dir}/${thread_ts}.json" 2>/dev/null \
         || true
+fi
+
+# A terminal child already emitted authoritative completion/failure side effects.
+# Never follow them with a stale in-progress reaction, board transition, or
+# "started" acknowledgement.
+if [[ -n "$fast_terminal_status" ]]; then
+    jq -nc --arg repo "$repo" --arg pr "$pr_number" --arg status "$fast_terminal_status" \
+        --argjson round "$review_round" --arg head "$review_head" \
+        '{ok:($status=="completed"),action:$status,repo:$repo,pr_number:$pr,review_round:$round,head:$head}'
+    [[ "$fast_terminal_status" == completed ]] && exit 0
+    exit 1
 fi
 
 # ---- in-progress reaction on the trigger message ----

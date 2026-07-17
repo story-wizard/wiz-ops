@@ -62,10 +62,10 @@ wiz_review_state_lock_release() {
 }
 
 wiz_review_launch_lock_acquire() {
-    local repo="$1" pr="$2" lock
+    local repo="$1" pr="$2" max_tries="${3:-2}" lock
     lock="$(wiz_review_state_dir)/.${repo}-${pr}.lock"
     mkdir -p "$(wiz_review_state_dir)" || return 1
-    wiz_owner_lock_acquire "$lock" "${WIZ_REVIEW_LAUNCH_LOCK_STALE_SECS:-900}" 1
+    wiz_owner_lock_acquire "$lock" "${WIZ_REVIEW_LAUNCH_LOCK_STALE_SECS:-900}" "$max_tries"
 }
 
 wiz_review_launch_lock_release() {
@@ -226,6 +226,7 @@ wiz_review_state_record_launch() {
        .round=$round | .head_sha=$head | .status=$status | .active_agent_type=$agent |
        .attempt_id=$attempt |
        .auto_resume_count=0 | .auto_resume_last_error_ms=0 |
+       .manual_resume_count=0 | .recovery_generation=0 |
        .watch_deadline_epoch=$deadline | .finalization_phases={} |
        .thread_ts=(if $thread=="" then .thread_ts else $thread end) |
        .watcher_pid=null | .watcher_log=null |
@@ -237,15 +238,17 @@ wiz_review_state_record_launch() {
 
 wiz_review_state_record_auto_resume() {
     local repo="$1" pr="$2" expected_round="$3" expected_attempt="$4" error_ms="$5"
-    local sf state_lock tmp current_round current_attempt last_error rc count
+    local expected_generation="${6:-}" sf state_lock tmp current_round current_attempt current_generation last_error rc count
     sf="$(wiz_review_state_file "$repo" "$pr")"
     [[ -s "$sf" && "$error_ms" =~ ^[0-9]+$ ]] || return 1
     state_lock="$(wiz_review_state_lock_acquire "$repo" "$pr")" || return 1
     current_round="$(jq -r '.round // 0' "$sf" 2>/dev/null)"
     current_attempt="$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)"
+    current_generation="$(jq -r '.recovery_generation // 0' "$sf" 2>/dev/null)"
     last_error="$(jq -r '.auto_resume_last_error_ms // 0' "$sf" 2>/dev/null)"
     if [[ "$current_round" != "$expected_round" || "$current_attempt" != "$expected_attempt" \
-        || ! "$last_error" =~ ^[0-9]+$ || "$error_ms" -le "$last_error" ]]; then
+        || ! "$last_error" =~ ^[0-9]+$ || "$error_ms" -le "$last_error" \
+        || ( -n "$expected_generation" && "$current_generation" != "$expected_generation" ) ]]; then
         wiz_review_state_lock_release "$state_lock"
         return 2
     fi
@@ -260,14 +263,58 @@ wiz_review_state_record_auto_resume() {
     printf '%s\n' "$count"
 }
 
+wiz_review_state_begin_manual_resume() {
+    local repo="$1" pr="$2" expected_round="$3" expected_attempt="$4" deadline="$5" expected_status="$6"
+    local error_marker="${7:-0}"
+    local sf state_lock tmp rc generation
+    sf="$(wiz_review_state_file "$repo" "$pr")"
+    [[ -s "$sf" && "$deadline" =~ ^[0-9]+$ && "$error_marker" =~ ^[0-9]+$ ]] || return 1
+    state_lock="$(wiz_review_state_lock_acquire "$repo" "$pr")" || return 1
+    if [[ "$(jq -r '.round // 0' "$sf" 2>/dev/null)" != "$expected_round" \
+        || "$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)" != "$expected_attempt" \
+        || "$(jq -r '.status // empty' "$sf" 2>/dev/null)" != "$expected_status" ]]; then
+        wiz_review_state_lock_release "$state_lock"
+        return 2
+    fi
+    tmp="${sf}.tmp.$$"; rc=0
+    jq --argjson deadline "$deadline" --argjson error_marker "$error_marker" '
+      .manual_resume_count=((.manual_resume_count // 0) + 1) |
+      .recovery_generation=((.recovery_generation // 0) + 1) |
+      .auto_resume_count=0 | .auto_resume_last_error_ms=$error_marker |
+      .watch_deadline_epoch=$deadline | .status="launching" |
+      # Manual recovery never repeats artifact side effects whose prior claim is
+      # uncertain. Treat those as publication-complete, but clear an abandoned
+      # final-review claim so the recoverable same-agent finalization can retry
+      # after its exact-head review reconciliation check.
+      .finalization_phases=(.finalization_phases // {}) |
+      .finalization_phases.slack_artifacts=(
+        if .finalization_phases.slack_artifacts.status=="claimed"
+        then {status:"posted",recovered_from_uncertain_claim:true,at:(now|todate)}
+        else .finalization_phases.slack_artifacts end) |
+      .finalization_phases.github_artifacts=(
+        if .finalization_phases.github_artifacts.status=="claimed"
+        then {status:"posted",recovered_from_uncertain_claim:true,at:(now|todate)}
+        else .finalization_phases.github_artifacts end) |
+      if .finalization_phases.final_review.status=="claimed"
+      then del(.finalization_phases.final_review) else . end |
+      .watcher_pid=null | .watcher_log=null |
+      .updated_at=(now|todate)' "$sf" > "$tmp" && mv "$tmp" "$sf" || rc=$?
+    generation="$(jq -r '.recovery_generation // 0' "$sf" 2>/dev/null)"
+    wiz_review_state_lock_release "$state_lock"
+    [[ $rc -eq 0 && "$generation" =~ ^[0-9]+$ ]] || return 1
+    printf '%s\n' "$generation"
+}
+
 wiz_review_state_ensure_watch_deadline() {
     local repo="$1" pr="$2" expected_round="$3" expected_attempt="$4" max_seconds="$5"
-    local sf state_lock tmp rc deadline
+    local expected_generation="${6:-}" sf state_lock tmp rc deadline current_generation
     sf="$(wiz_review_state_file "$repo" "$pr")"
     [[ -s "$sf" && "$max_seconds" =~ ^[0-9]+$ ]] || return 1
     state_lock="$(wiz_review_state_lock_acquire "$repo" "$pr")" || return 1
+    current_generation="$(jq -r '.recovery_generation // 0' "$sf" 2>/dev/null)"
     if [[ "$(jq -r '.round // 0' "$sf" 2>/dev/null)" != "$expected_round" \
-        || "$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)" != "$expected_attempt" ]]; then
+        || "$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)" != "$expected_attempt" \
+        || ( -n "$expected_generation" && "$current_generation" != "$expected_generation" ) ]]; then
         wiz_review_state_lock_release "$state_lock"
         return 2
     fi
@@ -285,13 +332,15 @@ wiz_review_state_ensure_watch_deadline() {
 
 wiz_review_state_claim_finalization_phase() {
     local repo="$1" pr="$2" expected_round="$3" expected_attempt="$4" phase="$5"
-    local sf state_lock tmp rc existing
+    local expected_generation="${6:-}" sf state_lock tmp rc existing current_generation
     [[ "$phase" =~ ^[a-z_]+$ ]] || return 1
     sf="$(wiz_review_state_file "$repo" "$pr")"
     [[ -s "$sf" ]] || return 1
     state_lock="$(wiz_review_state_lock_acquire "$repo" "$pr")" || return 1
+    current_generation="$(jq -r '.recovery_generation // 0' "$sf" 2>/dev/null)"
     if [[ "$(jq -r '.round // 0' "$sf" 2>/dev/null)" != "$expected_round" \
-        || "$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)" != "$expected_attempt" ]]; then
+        || "$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)" != "$expected_attempt" \
+        || ( -n "$expected_generation" && "$current_generation" != "$expected_generation" ) ]]; then
         wiz_review_state_lock_release "$state_lock"
         return 2
     fi
@@ -311,13 +360,15 @@ wiz_review_state_claim_finalization_phase() {
 
 wiz_review_state_mark_finalization_phase() {
     local repo="$1" pr="$2" expected_round="$3" expected_attempt="$4" phase="$5"
-    local sf state_lock tmp rc
+    local expected_generation="${6:-}" sf state_lock tmp rc current_generation
     [[ "$phase" =~ ^[a-z_]+$ ]] || return 1
     sf="$(wiz_review_state_file "$repo" "$pr")"
     [[ -s "$sf" ]] || return 1
     state_lock="$(wiz_review_state_lock_acquire "$repo" "$pr")" || return 1
+    current_generation="$(jq -r '.recovery_generation // 0' "$sf" 2>/dev/null)"
     if [[ "$(jq -r '.round // 0' "$sf" 2>/dev/null)" != "$expected_round" \
-        || "$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)" != "$expected_attempt" ]]; then
+        || "$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)" != "$expected_attempt" \
+        || ( -n "$expected_generation" && "$current_generation" != "$expected_generation" ) ]]; then
         wiz_review_state_lock_release "$state_lock"
         return 2
     fi
@@ -332,35 +383,73 @@ wiz_review_state_mark_finalization_phase() {
 
 wiz_review_state_record_watcher() {
     local repo="$1" pr="$2" expected_round="$3" pid="$4" watcher_log="${5:-}" expected_attempt="${6:-}"
-    local sf state_lock tmp current current_attempt rc
+    local expected_generation="${7:-0}"
+    [[ -n "$expected_attempt" ]] || return 1
+    # PID recording and launching→running are one CAS operation, preventing a
+    # fast terminal watcher from being regressed to running by its parent.
+    wiz_review_state_activate_manual_watcher "$repo" "$pr" "$expected_round" "$expected_attempt" \
+        "$expected_generation" "$pid" "$watcher_log"
+}
+
+wiz_review_state_activate_manual_watcher() {
+    local repo="$1" pr="$2" expected_round="$3" expected_attempt="$4" expected_generation="$5"
+    local pid="$6" watcher_log="$7" sf state_lock tmp rc
     sf="$(wiz_review_state_file "$repo" "$pr")"
-    [[ -s "$sf" ]] || return 1
+    [[ -s "$sf" && "$pid" =~ ^[0-9]+$ ]] || return 1
     state_lock="$(wiz_review_state_lock_acquire "$repo" "$pr")" || return 1
-    current="$(jq -r '.round // 0' "$sf" 2>/dev/null)"
-    current_attempt="$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)"
-    if [[ "$current" != "$expected_round" || ( -n "$expected_attempt" && "$current_attempt" != "$expected_attempt" ) ]]; then
+    if [[ "$(jq -r '.round // 0' "$sf" 2>/dev/null)" != "$expected_round" \
+        || "$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)" != "$expected_attempt" \
+        || "$(jq -r '.recovery_generation // 0' "$sf" 2>/dev/null)" != "$expected_generation" \
+        || "$(jq -r '.status // empty' "$sf" 2>/dev/null)" != launching ]]; then
         wiz_review_state_lock_release "$state_lock"
-        return 1
+        return 2
     fi
     tmp="${sf}.tmp.$$"; rc=0
     jq --arg pid "$pid" --arg log "$watcher_log" '
-      .watcher_pid=($pid|tonumber) | .watcher_log=(if $log=="" then null else $log end) |
+      .status="running" | .watcher_pid=($pid|tonumber) |
+      .watcher_log=(if $log=="" then null else $log end) |
+      .updated_at=(now|todate)' "$sf" > "$tmp" && mv "$tmp" "$sf" || rc=$?
+    wiz_review_state_lock_release "$state_lock"
+    return "$rc"
+}
+
+wiz_review_state_mark_status_if() {
+    local repo="$1" pr="$2" expected_round="$3" expected_attempt="$4" expected_generation="$5"
+    local expected_status="$6" new_status="$7" sf state_lock tmp rc
+    sf="$(wiz_review_state_file "$repo" "$pr")"
+    [[ -s "$sf" ]] || return 1
+    state_lock="$(wiz_review_state_lock_acquire "$repo" "$pr")" || return 1
+    if [[ "$(jq -r '.round // 0' "$sf" 2>/dev/null)" != "$expected_round" \
+        || "$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)" != "$expected_attempt" \
+        || "$(jq -r '.recovery_generation // 0' "$sf" 2>/dev/null)" != "$expected_generation" \
+        || "$(jq -r '.status // empty' "$sf" 2>/dev/null)" != "$expected_status" ]]; then
+        wiz_review_state_lock_release "$state_lock"
+        return 2
+    fi
+    tmp="${sf}.tmp.$$"; rc=0
+    jq --arg s "$new_status" '
+      .status=$s |
+      if ($s=="completed" or $s=="failed") then .watcher_pid=null else . end |
       .updated_at=(now|todate)' "$sf" > "$tmp" && mv "$tmp" "$sf" || rc=$?
     wiz_review_state_lock_release "$state_lock"
     return "$rc"
 }
 
 wiz_review_state_mark_status() {
-    local repo="$1" pr="$2" round="$3" status="$4" expected_attempt="${5:-}" sf tmp state_lock rc
+    local repo="$1" pr="$2" round="$3" status="$4" expected_attempt="${5:-}" expected_generation="${6:-}"
+    local sf tmp state_lock rc current_attempt current_generation
     sf="$(wiz_review_state_file "$repo" "$pr")"
     [[ -s "$sf" ]] || return 1
     state_lock="$(wiz_review_state_lock_acquire "$repo" "$pr")" || return 1
-    # The round check and replacement happen under the same state lock, so a
-    # stale watcher cannot race a newer launch between read and atomic rename.
-    if [[ "$(jq -r '.round // 0' "$sf" 2>/dev/null)" != "$round" ]] \
-        || { [[ -n "$expected_attempt" ]] && [[ "$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)" != "$expected_attempt" ]]; }; then
+    current_attempt="$(jq -r '.attempt_id // empty' "$sf" 2>/dev/null)"
+    current_generation="$(jq -r '.recovery_generation // 0' "$sf" 2>/dev/null)"
+    # Round, attempt, and optional recovery generation are compared under the
+    # same state lock as the atomic replacement.
+    if [[ "$(jq -r '.round // 0' "$sf" 2>/dev/null)" != "$round" \
+        || ( -n "$expected_attempt" && "$current_attempt" != "$expected_attempt" ) \
+        || ( -n "$expected_generation" && "$current_generation" != "$expected_generation" ) ]]; then
         wiz_review_state_lock_release "$state_lock"
-        [[ -n "$expected_attempt" ]] && return 2
+        [[ -n "$expected_attempt" || -n "$expected_generation" ]] && return 2
         return 0
     fi
     tmp="${sf}.tmp.$$"

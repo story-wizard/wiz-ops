@@ -144,6 +144,7 @@ active_agent_id="$(jq -r --arg a "$active_agent" '.agents[$a].agent_id // empty'
 active_worktree="$(jq -r --arg a "$active_agent" '.agents[$a].worktree_dir // empty' "$state_file")"
 watcher_pid="$(jq -r '.watcher_pid // empty' "$state_file")"
 current_attempt="$(jq -r '.attempt_id // empty' "$state_file")"
+current_generation="$(jq -r '.recovery_generation // 0' "$state_file")"
 [[ "$current_round" =~ ^[0-9]+$ && "$current_round" -ge 1 ]] \
     || post_fail "state" "no prior AI review is recorded for this PR"
 [[ -n "$thread_ts" ]] || thread_ts="$(jq -r '.thread_ts // empty' "$state_file")"
@@ -181,10 +182,15 @@ if [[ "$current_status" == "running" || "$current_status" == "launching" ]]; the
             "$active_agent_id" "$active_agent" "$active_worktree" "$active_autorun" "${WIZ_WATCH_GRACE:-60}"; then
             : # agent is still active; remain busy until a later retry observes it idle
         else
-            wiz_review_state_mark_status "$repo" "$pr_number" "$current_round" "failed" "$current_attempt" \
-                || post_fail "state" "dead watcher detected but canonical state could not be marked failed"
-            current_status="failed"
-            idle_verified=true
+            if wiz_review_state_mark_status_if "$repo" "$pr_number" "$current_round" "$current_attempt" \
+                "$current_generation" "$current_status" failed; then
+                current_status="failed"
+                idle_verified=true
+            else
+                # A concurrent watcher transition won; reload instead of
+                # regressing completed or a newer recovery generation.
+                current_status="$(jq -r '.status // empty' "$state_file" 2>/dev/null)"
+            fi
         fi
     fi
 fi
@@ -397,30 +403,24 @@ nohup "${script_dir}/wiz_pr_watch_finalize.sh" \
     "$agent_type" "$next_round" "$attempt_id" >"$watch_log" 2>&1 &
 watcher_pid=$!; disown "$watcher_pid" 2>/dev/null || true
 watcher_state_set=true
-wiz_review_state_record_watcher "$repo" "$pr_number" "$next_round" "$watcher_pid" "$watch_log" "$attempt_id" \
-    || watcher_state_set=false
-
 state_running_set=true
-if wiz_review_state_mark_status "$repo" "$pr_number" "$next_round" "running" "$attempt_id"; then
+fast_terminal_status=""
+if wiz_review_state_record_watcher "$repo" "$pr_number" "$next_round" "$watcher_pid" "$watch_log" "$attempt_id" 0; then
     rm -f "$rollback_state"
 else
-    state_running_set=false
+    terminal_after_launch="$(jq -r '.status // empty' "$state_file" 2>/dev/null)"
+    case "$terminal_after_launch" in
+        completed) rm -f "$rollback_state"; fast_terminal_status=completed ;;
+        failed) rm -f "$rollback_state"; fast_terminal_status=failed ;;
+        *) watcher_state_set=false; state_running_set=false ;;
+    esac
 fi
+# Keep the shared launch lock through parent-side GitHub, routing, board, and
+# Slack startup effects. Finalizer terminal transitions wait for this owner.
 
-# Dismiss only our own latest standing REQUEST_CHANGES review, and only after
-# the replacement review and its watcher are confirmed launched. A synchronous
-# setup/launch failure therefore cannot accidentally unblock the PR.
-me="$(gh api user --jq '.login' 2>/dev/null)"
-if [[ -n "$me" ]]; then
-    stale_id="$(gh api "repos/story-wizard/${repo}/pulls/${pr_number}/reviews" --paginate \
-        --jq "[.[] | select(.user.login == \"${me}\")] | last | if .state == \"CHANGES_REQUESTED\" then .id else empty end" 2>/dev/null)"
-    if [[ -n "$stale_id" ]] && gh api --method PUT \
-        "repos/story-wizard/${repo}/pulls/${pr_number}/reviews/${stale_id}/dismissals" \
-        -f message="Superseded by AI re-review after new commits — re-evaluating." \
-        -f event="DISMISS" >/dev/null 2>&1; then
-        dismissed_reviews=1
-    fi
-fi
+# Prior blocking AI reviews are never auto-dismissed. A local lock cannot
+# serialize GitHub pushes, so retaining the block is the only fail-closed choice;
+# a human may dismiss it after inspecting the verified replacement review.
 
 # Keep the Slack thread routing backstop aligned with the active round.
 if [[ -n "$thread_ts" ]]; then
@@ -432,6 +432,16 @@ if [[ -n "$thread_ts" ]]; then
         '{repo:$repo,pr_number:$pr,agent_type:$agent,worktree_name:$wt,
           autorun_dir:$autorun,agent_id:$agent_id,thread_ts:$thread,review_round:$round}' \
         > "${state_dir}/${thread_ts}.json" 2>/dev/null || true
+fi
+
+# The child already emitted the authoritative terminal lifecycle message. Do not
+# overwrite it with board/status/start side effects from this parent.
+if [[ -n "$fast_terminal_status" ]]; then
+    jq -nc --arg repo "$repo" --arg pr "$pr_number" --arg status "$fast_terminal_status" \
+        --argjson round "$next_round" --arg head "$current_head" \
+        '{ok:($status=="completed"),action:$status,repo:$repo,pr_number:$pr,review_round:$round,head:$head}'
+    [[ "$fast_terminal_status" == completed ]] && exit 0
+    exit 1
 fi
 
 status_set=true; status_msg=""
