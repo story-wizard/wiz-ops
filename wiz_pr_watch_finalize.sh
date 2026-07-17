@@ -21,6 +21,8 @@ failure_reason="watcher exited before verified finalization"
 finalized=false
 terminal_lock=""
 recoverable_head_drift=false
+confirmed_head_drift=false
+observed_live_head=""
 die() { failure_reason="$*"; echo "Error: $*" >&2; exit 1; }
 run_bounded() {
     local seconds="$1"
@@ -106,8 +108,8 @@ watcher_exit() {
     return "$rc"
 }
 trap watcher_exit EXIT
-trap 'failure_reason="watcher interrupted"; exit 130' INT
-trap 'failure_reason="watcher terminated"; exit 143' TERM
+trap 'recoverable_head_drift=false; confirmed_head_drift=false; failure_reason="watcher interrupted"; exit 130' INT
+trap 'recoverable_head_drift=false; confirmed_head_drift=false; failure_reason="watcher terminated"; exit 143' TERM
 
 # shellcheck source=wiz_pr_pipeline.env
 source "${script_dir}/wiz_pr_pipeline.env" || die "Cannot source wiz_pr_pipeline.env"
@@ -138,10 +140,17 @@ expected_head="$(jq -r '.head_sha // empty' "$(wiz_review_state_file "$repo" "$p
 [[ -n "$expected_head" ]] || die "canonical expected head is missing"
 ensure_live_head_matches() {
     local live
-    command -v gh >/dev/null 2>&1 || return 1
-    live="$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json headRefOid --jq '.headRefOid' 2>/dev/null)"
-    [[ -n "$live" && "$live" == "$expected_head" ]] || return 1
-    return 0
+    confirmed_head_drift=false
+    observed_live_head=""
+    command -v gh >/dev/null 2>&1 || return 2
+    live="$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json headRefOid --jq '.headRefOid' 2>/dev/null)" || return 2
+    [[ -n "$live" ]] || return 2
+    observed_live_head="$live"
+    if [[ "$live" == "$expected_head" ]]; then
+        return 0
+    fi
+    confirmed_head_drift=true
+    return 1
 }
 queue_retry_is_pending() {
     local status_json status
@@ -157,8 +166,12 @@ finalization_is_pristine() {
     [[ "$(jq -r '(.finalization_phases // {}) | length' "$sf" 2>/dev/null)" == 0 ]]
 }
 head_drift_die() {
-    recoverable_head_drift=true
-    die "$1"
+    if [[ "$confirmed_head_drift" == true ]]; then
+        recoverable_head_drift=true
+        die "$1"
+    fi
+    recoverable_head_drift=false
+    die "could not verify the live PR head during exact-head validation"
 }
 
 dest_channel="${WIZ_ACTIVE_CHANNEL}"
@@ -520,10 +533,9 @@ fi
     || die "GitHub review commit ${review_commit:-missing} does not match reviewed head ${expected_head:-missing}"
 log "Verified GitHub review ${review_url:-id $(printf '%s' "$new_review" | jq -r .id)} (${review_state})"
 stop_if_stale
-live_head="$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json headRefOid --jq '.headRefOid' 2>/dev/null)"
-[[ -n "$live_head" ]] || die "cannot determine live PR head before completion"
-[[ "$live_head" == "$expected_head" ]] \
-    || head_drift_die "live PR head ${live_head} advanced after review of ${expected_head}; refusing stale completion"
+if ! ensure_live_head_matches; then
+    head_drift_die "live PR head ${observed_live_head:-unknown} advanced after review of ${expected_head}; refusing stale completion"
+fi
 
 # Hold the per-PR lock across canonical completion and its terminal Slack
 # message/reaction so a successor cannot begin startup between them.
@@ -554,10 +566,9 @@ fi
 # Close the check→write window: validate the remote head again after the
 # canonical completion write and before any success announcement. A push racing
 # the write causes EXIT to CAS completed→failed under the same terminal lock.
-post_complete_head="$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json headRefOid --jq '.headRefOid' 2>/dev/null)"
-[[ -n "$post_complete_head" ]] || die "cannot determine live PR head after canonical completion"
-[[ "$post_complete_head" == "$expected_head" ]] \
-    || head_drift_die "PR head advanced to ${post_complete_head} during completion of ${expected_head}; reverting completion"
+if ! ensure_live_head_matches; then
+    head_drift_die "PR head advanced to ${observed_live_head:-unknown} during completion of ${expected_head}; reverting completion"
+fi
 finalized=true
 
 # ---- 4. final confirmation, @-mentioning the original poster ----
