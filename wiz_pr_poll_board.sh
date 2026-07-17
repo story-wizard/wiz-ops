@@ -589,8 +589,11 @@ else
                 log "  re-review round ${launched_round} launched with ${launched_agent} (driver set AI Review 2)."
             else
                 n_skipped=$((n_skipped + 1))
-                defer_seen=true
-                log "  re-review driver did not report a launch (action=${action:-unknown}); leaving driver failure handling authoritative."
+                log "  re-review launch failed (action=${action:-unknown}) — restoring status to ${restore_status} to avoid a retry storm."
+                if ! "${script_dir}/wiz_pr_set_status.sh" "$repo" "$pr_number" "$restore_status" >/dev/null 2>&1; then
+                    defer_seen=true
+                    log "  failed-launch status restore failed; retry checkpoint deferred."
+                fi
             fi
             continue
         fi
