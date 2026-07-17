@@ -150,7 +150,7 @@ attempt_epoch="$(printf '%s' "$review_attempt" | awk -F- '{print $2}')"
 [[ "$attempt_epoch" =~ ^[0-9]+$ ]] || post_fail state "attempt timestamp is malformed"
 case "$canonical_status" in
     failed|running|launching|legacy_running) ;;
-    completed) post_fail state "canonical review is completed but has no exact-head review to reconcile" ;;
+    completed) ;;
     *) post_fail state "canonical status '${canonical_status:-missing}' is not resumable" ;;
 esac
 [[ -n "$agent_type" && -n "$agent_id" && -d "$worktree_dir" && -d "$autorun_dir" ]] \
@@ -176,6 +176,9 @@ if [[ -n "$existing_review_id" ]]; then
     reconcile_live_head="$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json headRefOid --jq '.headRefOid' 2>/dev/null)"
     [[ "$reconcile_live_head" == "$canonical_head" ]] \
         || post_fail stale_head "live PR head changed before existing-review reconciliation"
+    wiz_review_state_mark_finalization_phase "$repo" "$pr_number" "$review_round" "$review_attempt" \
+        final_review "$canonical_generation" \
+        || post_fail state "could not reconcile the existing exact-head review phase"
     wiz_review_state_mark_status "$repo" "$pr_number" "$review_round" completed "$review_attempt" "$canonical_generation" \
         || post_fail state "could not reconcile the existing exact-head review"
     post_reconcile_head="$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json headRefOid --jq '.headRefOid' 2>/dev/null)"
@@ -184,12 +187,16 @@ if [[ -n "$existing_review_id" ]]; then
             "$canonical_generation" completed failed >/dev/null 2>&1 || true
         post_fail stale_head "live PR head changed during existing-review reconciliation"
     fi
-    ack="✅ AI code review #${review_round} was already posted at the current PR head; canonical state is reconciled."
-    wiz_slack_post "$dest_channel" "$thread_ts" "$ack" >/dev/null 2>&1 || true
+    if [[ "$canonical_status" != completed ]]; then
+        ack="✅ AI code review #${review_round} was already posted at the current PR head; canonical state is reconciled."
+        wiz_slack_post "$dest_channel" "$thread_ts" "$ack" >/dev/null 2>&1 || true
+    fi
     jq -nc --arg repo "$repo" --arg pr "$pr_number" --arg review_id "$existing_review_id" \
         '{ok:true,action:"already_completed",repo:$repo,pr_number:$pr,review_id:$review_id}'
     exit 0
 fi
+[[ "$canonical_status" != completed ]] \
+    || post_fail state "canonical review is completed but has no exact-head review to reconcile"
 
 if [[ "$watcher_pid" =~ ^[0-9]+$ ]]; then
     watcher_cmd="$(ps -p "$watcher_pid" -o command= 2>/dev/null || true)"

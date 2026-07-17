@@ -306,9 +306,9 @@ wiz_review_state_begin_manual_resume() {
       .auto_resume_count=0 | .auto_resume_last_error_ms=$error_marker |
       .watch_deadline_epoch=$deadline | .status="launching" |
       # Manual recovery never repeats artifact side effects whose prior claim is
-      # uncertain. Treat those as publication-complete, but clear an abandoned
-      # final-review claim so the recoverable same-agent finalization can retry
-      # after its exact-head review reconciliation check.
+      # uncertain. Treat artifact claims as publication-complete. Preserve an
+      # uncertain final-review claim permanently: the prior prompt may still
+      # submit later, so recovery may reconcile but must never resend it.
       .finalization_phases=(.finalization_phases // {}) |
       .finalization_phases.slack_artifacts=(
         if .finalization_phases.slack_artifacts.status=="claimed"
@@ -318,8 +318,6 @@ wiz_review_state_begin_manual_resume() {
         if .finalization_phases.github_artifacts.status=="claimed"
         then {status:"posted",recovered_from_uncertain_claim:true,at:(now|todate)}
         else .finalization_phases.github_artifacts end) |
-      if .finalization_phases.final_review.status=="claimed"
-      then del(.finalization_phases.final_review) else . end |
       .watcher_pid=null | .watcher_log=null |
       .updated_at=(now|todate)' "$sf" > "$tmp" && mv "$tmp" "$sf" || rc=$?
     generation="$(jq -r '.recovery_generation // 0' "$sf" 2>/dev/null)"

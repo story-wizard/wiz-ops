@@ -191,10 +191,16 @@ last_error_ms="$(jq -r '.auto_resume_last_error_ms // 0' "$(wiz_review_state_fil
 auto_resume_max="${WIZ_WATCH_AUTO_RESUME_MAX:-2}"
 auto_resume_backoff="${WIZ_WATCH_AUTO_RESUME_BACKOFF:-15}"
 resume_command_timeout="${WIZ_WATCH_RESUME_COMMAND_TIMEOUT:-30}"
+final_review_verify_timeout="${WIZ_FINAL_REVIEW_VERIFY_TIMEOUT:-300}"
+final_review_verify_poll="${WIZ_FINAL_REVIEW_VERIFY_POLL:-2}"
 [[ "$auto_resume_max" =~ ^[0-9]+$ ]] || die "WIZ_WATCH_AUTO_RESUME_MAX must be numeric"
 [[ "$auto_resume_backoff" =~ ^[0-9]+$ ]] || die "WIZ_WATCH_AUTO_RESUME_BACKOFF must be numeric"
 [[ "$resume_command_timeout" =~ ^[0-9]+$ && "$resume_command_timeout" -gt 0 ]] \
     || die "WIZ_WATCH_RESUME_COMMAND_TIMEOUT must be a positive integer"
+[[ "$final_review_verify_timeout" =~ ^[0-9]+$ && "$final_review_verify_timeout" -gt 0 ]] \
+    || die "WIZ_FINAL_REVIEW_VERIFY_TIMEOUT must be a positive integer"
+[[ "$final_review_verify_poll" =~ ^[0-9]+$ && "$final_review_verify_poll" -gt 0 ]] \
+    || die "WIZ_FINAL_REVIEW_VERIFY_POLL must be a positive integer"
 watch_deadline_epoch="$(wiz_review_state_ensure_watch_deadline "$repo" "$pr_number" "$review_round" "$review_attempt" "$WIZ_WATCH_MAX_SECONDS" "$review_generation" 2>/dev/null)"
 [[ "$watch_deadline_epoch" =~ ^[0-9]+$ ]] || die "could not establish the durable attempt watch deadline"
 
@@ -443,10 +449,12 @@ else
 fi
 wiz_review_launch_lock_release "$final_review_lock"
 
-# GitHub may take a moment to expose the submitted review. Completion requires
-# a bot review from this attempt on the exact analyzed head; APPROVED remains
-# forbidden below.
-for _attempt in 1 2 3 4 5 6 7 8 9 10; do
+# A bounded finalize send can time out while the underlying agent continues and
+# submits asynchronously. Keep polling the durably claimed phase without ever
+# resending. Completion still requires this attempt's exact analyzed head;
+# APPROVED remains forbidden below.
+final_review_verify_deadline=$(( $(date +%s) + final_review_verify_timeout ))
+while :; do
     [[ -n "$new_review" ]] && break
     reviews_json="$(gh api "repos/story-wizard/${repo}/pulls/${pr_number}/reviews" --paginate --slurp 2>/dev/null \
         | jq -c 'add' 2>/dev/null || true)"
@@ -456,7 +464,12 @@ for _attempt in 1 2 3 4 5 6 7 8 9 10; do
        select(((.submitted_at | fromdateiso8601?) // 0) >= $since)] | last // empty
     ' 2>/dev/null)"
     [[ -n "$new_review" ]] && break
-    sleep 2
+    final_review_verify_remaining=$(( final_review_verify_deadline - $(date +%s) ))
+    (( final_review_verify_remaining > 0 )) || break
+    final_review_verify_sleep="$final_review_verify_poll"
+    (( final_review_verify_sleep > final_review_verify_remaining )) \
+        && final_review_verify_sleep="$final_review_verify_remaining"
+    sleep "$final_review_verify_sleep"
 done
 if [[ -z "$new_review" ]]; then
     if [[ "$final_phase_status" == claimed ]]; then

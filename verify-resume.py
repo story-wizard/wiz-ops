@@ -305,6 +305,9 @@ def test_existing_exact_head_review_reconciles_without_reposting() -> None:
         error_pause=False, complete=True, existing_review=True,
     )
     try:
+        state = json.loads(state_file.read_text())
+        state["status"] = "completed"
+        state_file.write_text(json.dumps(state) + "\n")
         run = subprocess.run(
             [str(root / "app/wiz_pr_resume.sh"), "fixture", "1", "111.222"],
             text=True, capture_output=True, env=env, timeout=30,
@@ -319,7 +322,10 @@ def test_existing_exact_head_review_reconciles_without_reposting() -> None:
         assert " auto-run " not in node_events, node_events
         state = json.loads(state_file.read_text())
         assert state["status"] == "completed", state
+        assert state["finalization_phases"]["final_review"]["status"] == "posted", state
         assert state.get("manual_resume_count") is None, state
+        slack_event = root / "events/slack"
+        assert not slack_event.exists(), "completed reconciliation posted a duplicate Slack acknowledgement"
     finally:
         shutil.rmtree(root)
 
@@ -554,7 +560,7 @@ def test_manual_resume_reconciles_abandoned_publication_claims() -> None:
         assert phases["slack_artifacts"]["status"] == "posted", phases
         assert phases["slack_artifacts"]["recovered_from_uncertain_claim"] is True, phases
         assert phases["github_artifacts"]["status"] == "posted", phases
-        assert "final_review" not in phases, phases
+        assert phases["final_review"]["status"] == "claimed", phases
     finally:
         shutil.rmtree(root)
 
