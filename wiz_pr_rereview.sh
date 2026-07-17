@@ -272,18 +272,13 @@ fi
 [[ -n "$agent_id" ]] || post_fail "agent_id" "could not find Maestro agent named '${worktree_name}'"
 [[ -d "$playbook_dir" ]] || post_fail "playbooks" "playbook dir not found at ${playbook_dir}"
 
-# Existing parity worktrees are synced to the PR's upstream. A rebase/force-push
-# is recovered by resetting the isolated review branch; no developer checkout is touched.
+# Existing parity worktrees must synchronize to the exact GitHub pull ref.
+# Do not trust @{upstream}: gh pr checkout --branch may leave it tracking the
+# generated review branch, which is frozen after the PR receives new commits.
 if [[ "$created_agent" != "true" ]]; then
-    pull_out="$(git -C "$worktree_dir" pull --ff-only 2>&1)"; pull_rc=$?
-    if [[ $pull_rc -ne 0 ]]; then
-        upstream="$(git -C "$worktree_dir" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)"
-        if [[ -n "$upstream" ]] && git -C "$worktree_dir" fetch >/dev/null 2>&1 \
-            && git -C "$worktree_dir" reset --hard "$upstream" >/dev/null 2>&1; then
-            pull_out="reset to ${upstream} after non-fast-forward"
-        else
-            post_fail "git_pull" "could not sync ${agent_type} worktree:"$'\n'"${pull_out}"
-        fi
+    if ! wiz_review_sync_worktree_to_pr_head "$repo" "$pr_number" "$worktree_dir" "$current_head"; then
+        synced_head="$(git -C "$worktree_dir" rev-parse HEAD 2>/dev/null)"
+        post_fail "git_sync" "could not synchronize ${agent_type} worktree from the exact PR pull ref; worktree remains at ${synced_head:-unknown}, expected PR head ${current_head}"
     fi
 fi
 synced_head="$(git -C "$worktree_dir" rev-parse HEAD 2>/dev/null)"

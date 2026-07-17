@@ -244,8 +244,9 @@ echo "Playbooks configured."
 # Check the PR out into a uniquely-named review branch instead of the PR's real
 # head branch. This avoids "fatal: '<head>' is already checked out" when the
 # author already has the head branch checked out in another clone/worktree.
-# gh still sets the new branch's upstream to the PR head ref, so a plain
-# `git pull` in the review worktree fast-forwards the author's new commits.
+# The generated branch's upstream is not authoritative: gh may point it at a
+# same-named remote review branch. Re-review synchronization therefore fetches
+# the exact GitHub pull ref instead of relying on `git pull`.
 review_branch="${pr_head_ref}-review-$(date +%Y%m%d-%H%M%S)"
 
 printf "\n%s" "Checking out PR #${pr_number} as '${review_branch}' in worktree at ${worktree_dir}..."
@@ -261,7 +262,7 @@ popd || exit
 
 printf "\n%s\n" "PR review setup done!"
 echo "  Worktree : ${worktree_dir}"
-echo "  Branch   : ${review_branch} (tracks ${pr_head_ref}; 'git pull' to update)"
+echo "  Branch   : ${review_branch} (PR head: ${pr_head_ref}; re-review syncs the exact pull ref)"
 echo "  Playbooks: ${playbook_dest}"
 echo "  Agent ID : ${agent_id}"
 

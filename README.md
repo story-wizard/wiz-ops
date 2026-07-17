@@ -312,10 +312,10 @@ Slack thread reply: "re-review this"  (no PR link)
    └─ Hermes gateway (wiz-pr-review-pipeline skill)
         │  recovers repo+PR from session history / thread-state file
         └─ wiz_pr_rereview.sh
-             ├─ git pull --ff-only in the review worktree
+             ├─ fetch + verify the exact refs/pull/<PR>/head into the review worktree
              ├─ no new commits? -> post "no changes, ask again" and stop
              └─ new commits:
-                  ├─ dismiss our own standing Request-Changes review (if any)
+                  ├─ retain standing Request-Changes review for human handling
                   ├─ archive prior artifacts -> <autorun>/review_<N>/
                   ├─ uncheck all code-review playbook checkboxes
                   ├─ relaunch the Maestro auto-run
@@ -448,20 +448,20 @@ no PR link of its own).
 1. Locates the existing review worktree, autorun dir, and Maestro agent using
    the same deterministic `<repo>-pr-<pr_number>-<agent_type>` naming review 1
    used (fails clearly if no prior review exists for that PR/agent)
-2. `git pull --ff-only` in the worktree — if the author force-pushed/rebased
-   (non-fast-forward), it fetches and hard-resets the review branch to its
-   upstream (the PR head) so the worktree always matches the latest PR state
+2. Fetches `refs/pull/<PR>/head` directly from `story-wizard/<repo>`, verifies
+   that fetched SHA equals the API-derived PR head, and hard-resets only the
+   isolated review worktree. This intentionally ignores the generated review
+   branch's upstream, which `gh pr checkout --branch` may leave pointing at a
+   frozen remote review branch. Force-pushes and fork-backed PRs are therefore
+   synchronized to the exact reviewed commit or fail closed.
 3. **If HEAD is unchanged** (no new commits): posts _"There are no changes in
    the branch. Please make your changes and ask again."_ to the thread and exits
    (`action:"no_changes"`). Nothing else happens — no archive, no relaunch.
 4. **If there are new commits:**
-   - **Dismisses our own standing `CHANGES_REQUESTED` review**, if our most
-     recent review on the PR is one. A GitHub Request-Changes review is sticky —
-     it keeps blocking the PR until the *same* reviewer dismisses it; posting a
-     new COMMENT/approve review does not lift it. So after the author pushes
-     fixes, the old block is dismissed (message: "Superseded by AI re-review…")
-     so the PR state reflects the new round. Scoped to the bot's own token
-     (`gh api user`); never touches another bot's or a human's review.
+   - Leaves any standing `CHANGES_REQUESTED` review in place. A local pipeline
+     lock cannot serialize a concurrent GitHub push, so automatic dismissal
+     could unblock a newly advanced, unreviewed head. A human may dismiss the
+     old block after checking the current review/head.
    - Archives the previous round's artifacts (`WIZ_REVIEW_FILES` + `PR_COMMENT.md`)
      into `<autorun_dir>/review_<N>/`, where `N` is the round being archived
      (first re-review → `review_1`, next → `review_2`, …)

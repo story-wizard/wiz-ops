@@ -17,6 +17,29 @@ wiz_review_history_dir() {
     printf '%s/%s/%s-pr-%s' "${WIZ_REVIEW_HISTORY_ROOT:-${_wiz_review_history_root_default}}" "$1" "$1" "$2"
 }
 
+# Synchronize an isolated persistent review worktree to the exact GitHub PR head.
+# Do not trust @{upstream}: gh pr checkout --branch may point it at the generated
+# review branch, which remains frozen after later PR pushes. Fetching the pull ref
+# also handles force-pushes and fork-backed PRs without touching a developer tree.
+# Optional fifth argument injects a fetch URL for deterministic fixtures.
+wiz_review_sync_worktree_to_pr_head() {
+    local repo="$1" pr="$2" worktree_dir="$3" expected_head="$4"
+    local fetch_url="${5:-git@github.com:story-wizard/${repo}.git}"
+    local fetched_head actual_head
+
+    [[ -n "$repo" && "$pr" =~ ^[0-9]+$ && -d "$worktree_dir" \
+        && "$expected_head" =~ ^[0-9a-f]{40}$ ]] || return 1
+
+    git -C "$worktree_dir" fetch --no-tags "$fetch_url" "refs/pull/${pr}/head" \
+        >/dev/null 2>&1 || return 1
+    fetched_head="$(git -C "$worktree_dir" rev-parse FETCH_HEAD 2>/dev/null)" || return 1
+    [[ "$fetched_head" == "$expected_head" ]] || return 2
+
+    git -C "$worktree_dir" reset --hard "$fetched_head" >/dev/null 2>&1 || return 1
+    actual_head="$(git -C "$worktree_dir" rev-parse HEAD 2>/dev/null)" || return 1
+    [[ "$actual_head" == "$expected_head" ]]
+}
+
 wiz_review_state_lock_dir() {
     printf '%s/.%s-%s.state-lock' "$(wiz_review_state_dir)" "$1" "$2"
 }
