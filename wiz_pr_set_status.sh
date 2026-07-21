@@ -5,7 +5,7 @@
 #
 # Usage: wiz_pr_set_status.sh <repo> <pr_number> "<status_name>"
 #
-#   repo         One of: wizard wizard-ai wizard-core wizard-release wizard-spec
+#   repo         One of: wizard wizard-ai wizard-core wizard-link wizard-release wizard-spec
 #   pr_number    Numeric PR number
 #   status_name  Exact Status option name, e.g. "AI Review 1"
 #
@@ -36,7 +36,7 @@ PROJECT_NUMBER=1
 # The script re-resolves them live, so these are documentation only:
 #   project   PVT_kwDOD80ZKM4BRWNs
 #   Status    PVTSSF_lADOD80ZKM4BRWNszg_M5nE
-VALID_REPOS=(wizard wizard-ai wizard-core wizard-release wizard-spec Qt-Advanced-Docking-System)
+VALID_REPOS=(wizard wizard-ai wizard-core wizard-link wizard-release wizard-spec Qt-Advanced-Docking-System)
 
 die() { echo "Error: $*" >&2; exit 1; }
 

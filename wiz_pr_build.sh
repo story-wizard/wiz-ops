@@ -22,6 +22,7 @@
 #   - wizard PR     -> wizard_ref = PR branch;  wizard_core_ref = inferred;  wizard_ai_ref = develop
 #   - wizard-ai PR  -> wizard_ai_ref = PR branch; wizard_core_ref = inferred; wizard_ref = develop
 #   - wizard-core PR-> wizard_core_ref = PR branch; wizard_ref = develop; wizard_ai_ref = develop
+#   - wizard-link PR -> all three refs stay at develop (no dedicated ref input in build workflow)
 # "inferred" = read .github/wizard-core-ref from the PR branch; if it is anything
 # other than 'develop', use it; else 'develop'. (Only consulted for wizard / wizard-ai PRs.)
 #
@@ -111,7 +112,7 @@ command -v jq >/dev/null 2>&1 || { echo '{"ok":false,"stage":"deps","message":"j
 command -v gh >/dev/null 2>&1 || post_fail "deps" "gh not found"
 [[ "$pr_number" =~ ^[0-9]+$ ]] || post_fail "args" "PR number must be numeric, got '${pr_number}'"
 case "$repo" in
-    wizard|wizard-ai|wizard-core) : ;;
+    wizard|wizard-ai|wizard-core|wizard-link) : ;;
     wizard-release|wizard-spec) post_fail "args" "repo '${repo}' cannot drive a wizard app build" ;;
     *) post_fail "args" "invalid repo '${repo}'" ;;
 esac

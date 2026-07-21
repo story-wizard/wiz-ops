@@ -7,7 +7,7 @@
 #
 # Usage: wiz_pr_get_status.sh <repo> <pr_number> [--json]
 #
-#   repo         One of: wizard wizard-ai wizard-core wizard-release wizard-spec
+#   repo         One of: wizard wizard-ai wizard-core wizard-link wizard-release wizard-spec
 #   pr_number    Numeric PR number
 #   --json       Emit a machine-readable JSON line instead of plain text
 #
@@ -47,7 +47,7 @@ fi
 
 ORG="story-wizard"
 PROJECT_NUMBER=1
-VALID_REPOS=(wizard wizard-ai wizard-core wizard-release wizard-spec Qt-Advanced-Docking-System)
+VALID_REPOS=(wizard wizard-ai wizard-core wizard-link wizard-release wizard-spec Qt-Advanced-Docking-System)
 
 emit_json=false
 die() {

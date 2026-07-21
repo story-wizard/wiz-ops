@@ -401,7 +401,7 @@ else
         if [[ "$matched_status" == "$WIZ_BUILD_STATUS" ]]; then
             # wizard-release / wizard-spec PRs cannot drive an app build.
             case "$repo" in
-                wizard|wizard-ai|wizard-core) : ;;
+                wizard|wizard-ai|wizard-core|wizard-link) : ;;
                 *)
                     log "  build: repo '${repo}' cannot drive an app build — skipping (left in ${WIZ_BUILD_STATUS})."
                     n_build_skip=$((n_build_skip + 1))

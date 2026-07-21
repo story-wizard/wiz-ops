@@ -410,7 +410,7 @@ detached watcher.
 
 | Argument | Description |
 | --- | --- |
-| `repo` | One of: `wizard`, `wizard-ai`, `wizard-core`, `wizard-release`, `wizard-spec` |
+| `repo` | One of: `wizard`, `wizard-ai`, `wizard-core`, `wizard-link`, `wizard-release`, `wizard-spec` |
 | `pr_number` | The PR number (numeric) |
 | `agent_type` | Optional agent type. Defaults to `WIZ_DEFAULT_AGENT_TYPE` (`claude-code`) |
 | `thread_ts` | Optional Slack thread timestamp to post all output under |
@@ -509,6 +509,7 @@ skill crafts the human-meaningful slug; the script treats it as opaque.
 | `wizard` | PR branch | inferred¹ | `develop` |
 | `wizard-ai` | `develop` | inferred¹ | PR branch |
 | `wizard-core` | `develop` | PR branch | `develop` |
+| `wizard-link` | `develop` | `develop` | `develop` |
 
 ¹ *inferred* = read `.github/wizard-core-ref` from the PR branch; if it's anything
 other than `develop`, use that value (this is how a wizard/-ai PR pins a matching
@@ -525,7 +526,7 @@ override any of these (used to honor a user's edits at the confirmation step).
   dispatch `build-release.yml`, post a threaded ack, and launch the detached
   watcher.
 
-`wizard-release` / `wizard-spec` PRs are rejected (they can't drive an app build).
+`wizard-release` / `wizard-spec` PRs are rejected (they can't drive an app build). `wizard-link` PRs are build-eligible but all three refs default to `develop`.
 Prints one JSON summary line to stdout.
 
 ### `wiz_pr_build_watch.sh` — watch a dispatched build and post the result
@@ -557,7 +558,7 @@ pipeline to mark a PR as "AI Review 1", but usable standalone.
 
 | Argument | Description |
 | --- | --- |
-| `repo` | One of: `wizard`, `wizard-ai`, `wizard-core`, `wizard-release`, `wizard-spec` |
+| `repo` | One of: `wizard`, `wizard-ai`, `wizard-core`, `wizard-link`, `wizard-release`, `wizard-spec` |
 | `pr_number` | The PR number (numeric) |
 | `status_name` | Exact Status option name, e.g. `"AI Review 1"` |
 

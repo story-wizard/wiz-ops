@@ -5,7 +5,7 @@
 # Usage: maestro_wt.sh <repo> <worktree_name> [agent_type]
 #        maestro_wt.sh --delete [--force] <repo> <worktree_name> [agent_type]
 
-VALID_REPOS=(wizard wizard-ai wizard-core wizard-release wizard-spec Qt-Advanced-Docking-System)
+VALID_REPOS=(wizard wizard-ai wizard-core wizard-link wizard-release wizard-spec Qt-Advanced-Docking-System)
 VALID_AGENT_TYPES=(claude-code codex opencode)
 
 format_options() {

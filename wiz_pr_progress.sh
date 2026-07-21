@@ -10,7 +10,7 @@
 #   wiz_pr_progress.sh --autorun <autorun_dir>
 #   wiz_pr_progress.sh --json   <repo> <pr_number> [agent_type]
 #
-#   repo        One of: wizard wizard-ai wizard-core wizard-release wizard-spec
+#   repo        One of: wizard wizard-ai wizard-core wizard-link wizard-release wizard-spec
 #   agent_type  Optional (default from wiz_pr_pipeline.env, usually claude-code)
 #   --json      Emit a machine-readable JSON summary instead of the text report.
 #
