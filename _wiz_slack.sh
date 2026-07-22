@@ -24,11 +24,26 @@ _wiz_slack_api() {
 
 wiz_slack_post() {
     # wiz_slack_post <channel> <thread_ts|""> <text>
-    local ch="$1" th="$2" text="$3" payload
+    # Echoes the posted message ts on success. On ANY failure (empty channel,
+    # Slack API error) prints the reason to stderr and returns nonzero — a
+    # failed post is never a silent exit-0 no-op (2026-07-22 incident: an
+    # unset WIZ_ACTIVE_CHANNEL produced channel_not_found that jq swallowed,
+    # and the caller went NO_REPLY on a message nobody ever saw).
+    local ch="$1" th="$2" text="$3" payload resp
+    if [[ -z "$ch" ]]; then
+        echo "wiz_slack_post: empty channel (source wiz_pr_pipeline.env for WIZ_ACTIVE_CHANNEL)" >&2
+        return 1
+    fi
     payload=$(jq -nc --arg ch "$ch" --arg txt "$text" --arg th "$th" \
         'if $th == "" then {channel:$ch, text:$txt} else {channel:$ch, text:$txt, thread_ts:$th} end')
-    _wiz_slack_api chat.postMessage -H "Content-type: application/json; charset=utf-8" --data "$payload" \
-        | jq -r '.ts // empty'
+    resp=$(_wiz_slack_api chat.postMessage -H "Content-type: application/json; charset=utf-8" --data "$payload")
+    if [[ "$(printf '%s' "$resp" | jq -r '.ok // false')" == "true" ]]; then
+        printf '%s' "$resp" | jq -r '.ts // empty'
+        return 0
+    fi
+    printf 'wiz_slack_post: chat.postMessage failed: %s\n' \
+        "$(printf '%s' "$resp" | jq -c '{error, needed, provided}' 2>/dev/null || printf '%s' "$resp")" >&2
+    return 1
 }
 
 _wiz_slack_upload_one() {
@@ -46,18 +61,27 @@ _wiz_slack_upload_one() {
 wiz_slack_upload() {
     # wiz_slack_upload <channel> <thread_ts|""> <intro> <file...>
     local ch="$1" th="$2" intro="$3"; shift 3
-    local ids=() fp fid payload
+    local ids=() fp fid payload resp
+    if [[ -z "$ch" ]]; then
+        echo "wiz_slack_upload: empty channel (source wiz_pr_pipeline.env for WIZ_ACTIVE_CHANNEL)" >&2
+        return 1
+    fi
     for fp in "$@"; do
         if fid="$(_wiz_slack_upload_one "$fp")"; then ids+=("$fid|$(basename "$fp")"); fi
     done
     [[ ${#ids[@]} -gt 0 ]] || return 2
     local files_json
-    files_json=$(printf "%s\n" "${ids[@]}" | jq -R "split(\"|\") | {id: .[0], title: .[1]}" | jq -s .)
+    files_json=$(printf '%s\n' "${ids[@]}" | jq -R "split(\"|\") | {id: .[0], title: .[1]}" | jq -s .)
     payload=$(jq -nc --argjson files "$files_json" --arg ch "$ch" --arg txt "$intro" --arg th "$th" \
         'if $th == "" then {files:$files, channel_id:$ch, initial_comment:$txt}
          else {files:$files, channel_id:$ch, initial_comment:$txt, thread_ts:$th} end')
-    _wiz_slack_api files.completeUploadExternal -H "Content-type: application/json; charset=utf-8" --data "$payload" \
-        | jq -e '.ok == true' >/dev/null
+    resp=$(_wiz_slack_api files.completeUploadExternal -H "Content-type: application/json; charset=utf-8" --data "$payload")
+    if [[ "$(printf '%s' "$resp" | jq -r '.ok // false')" == "true" ]]; then
+        return 0
+    fi
+    printf 'wiz_slack_upload: files.completeUploadExternal failed: %s\n' \
+        "$(printf '%s' "$resp" | jq -c '{error, needed, provided}' 2>/dev/null || printf '%s' "$resp")" >&2
+    return 1
 }
 
 wiz_slack_thread_author() {
