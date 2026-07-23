@@ -206,11 +206,33 @@ case "$canonical_status" in
 esac
 [[ -n "$agent_type" && -n "$agent_id" && -d "$worktree_dir" && -d "$autorun_dir" ]] \
     || post_fail state "canonical agent/worktree/autorun metadata is incomplete"
-[[ "$canonical_head" == "$live_head" ]] \
-    || post_fail stale_head "canonical head ${canonical_head:-missing} does not match live PR head ${live_head}"
+head_drift_detected=false
+[[ "$live_head" != "$canonical_head" ]] && head_drift_detected=true
 worktree_head="$(git -C "$worktree_dir" rev-parse HEAD 2>/dev/null)"
 [[ "$worktree_head" == "$canonical_head" ]] \
     || post_fail stale_head "worktree head ${worktree_head:-missing} does not match canonical head ${canonical_head}"
+
+post_resume_head_drift_warning() {
+    local warning_phase warning_status slack_posted=false github_posted=false body_file
+    [[ "$head_drift_detected" == true ]] || return 0
+    warning_phase="$(jq -c '.finalization_phases.head_drift_warning // null' "$state_file" 2>/dev/null)"
+    warning_status="$(printf '%s' "$warning_phase" | jq -r 'if type=="string" then "posted" else .status // empty end' 2>/dev/null)"
+    [[ "$warning_status" != "posted" && "$warning_status" != "claimed" ]] || return 0
+    wiz_slack_post "$dest_channel" "$thread_ts" \
+        "⚠️ *Head drift warning for AI review #${review_round}:* the PR head advanced while the review was running."$'\n'"Analyzed head: \`${canonical_head}\`"$'\n'"Current head: \`${live_head}\`"$'\n'"Artifacts and the GitHub review are for the analyzed head; newer commits may not be covered." \
+        >/dev/null 2>&1 && slack_posted=true || true
+    body_file="$(mktemp -t wiz_pr_resume_head_drift.XXXXXX)"
+    printf '## ⚠️ AI review head-drift warning\n\nThe PR head advanced while this AI review was running.\n\n- Analyzed head: `%s`\n- Current head: `%s`\n\nArtifacts and the GitHub review are for the analyzed head; newer commits may not be covered.\n' \
+        "$canonical_head" "$live_head" > "$body_file"
+    gh pr comment "$pr_number" --repo "story-wizard/${repo}" --body-file "$body_file" >/dev/null 2>&1 \
+        && github_posted=true || true
+    rm -f "$body_file"
+    if [[ "$slack_posted" == true || "$github_posted" == true ]]; then
+        wiz_review_state_claim_finalization_phase "$repo" "$pr_number" "$review_round" "$review_attempt" head_drift_warning "$canonical_generation" \
+            && wiz_review_state_mark_finalization_phase "$repo" "$pr_number" "$review_round" "$review_attempt" head_drift_warning "$canonical_generation" \
+            || true
+    fi
+}
 
 reviews_json="$(gh api "repos/story-wizard/${repo}/pulls/${pr_number}/reviews" --paginate --slurp 2>&1)" \
     || post_fail review_lookup "could not inspect existing PR reviews: ${reviews_json}"
@@ -224,22 +246,17 @@ existing_review_id="$(printf '%s' "$reviews_json" | jq -r --arg user "$WIZ_GH_AC
       select(.state=="COMMENTED" or .state=="CHANGES_REQUESTED") |
       select(((.submitted_at | fromdateiso8601?) // 0) >= $attempt_epoch) | .id] | last // empty' 2>/dev/null)"
 if [[ -n "$existing_review_id" ]]; then
-    reconcile_live_head="$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json headRefOid --jq '.headRefOid' 2>/dev/null)"
-    [[ "$reconcile_live_head" == "$canonical_head" ]] \
-        || post_fail stale_head "live PR head changed before existing-review reconciliation"
+    post_resume_head_drift_warning
     wiz_review_state_mark_finalization_phase "$repo" "$pr_number" "$review_round" "$review_attempt" \
         final_review "$canonical_generation" \
-        || post_fail state "could not reconcile the existing exact-head review phase"
+        || post_fail state "could not reconcile the existing canonical-head review phase"
     wiz_review_state_mark_status "$repo" "$pr_number" "$review_round" completed "$review_attempt" "$canonical_generation" \
-        || post_fail state "could not reconcile the existing exact-head review"
-    post_reconcile_head="$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json headRefOid --jq '.headRefOid' 2>/dev/null)"
-    if [[ "$post_reconcile_head" != "$canonical_head" ]]; then
-        wiz_review_state_mark_status_if "$repo" "$pr_number" "$review_round" "$review_attempt" \
-            "$canonical_generation" completed failed >/dev/null 2>&1 || true
-        post_fail stale_head "live PR head changed during existing-review reconciliation"
-    fi
+        || post_fail state "could not reconcile the existing canonical-head review"
     if [[ "$canonical_status" != completed ]]; then
-        ack="✅ AI code review #${review_round} was already posted at the current PR head; canonical state is reconciled."
+        ack="✅ AI code review #${review_round} was already posted for the analyzed head; canonical state is reconciled."
+        if [[ "$head_drift_detected" == true ]]; then
+            ack+=$'\n'"⚠️ Head drift: reviewed \`${canonical_head}\`; current PR head is \`${live_head}\`."
+        fi
         wiz_slack_post "$dest_channel" "$thread_ts" "$ack" >/dev/null 2>&1 || true
     fi
     jq -nc --arg repo "$repo" --arg pr "$pr_number" --arg review_id "$existing_review_id" \

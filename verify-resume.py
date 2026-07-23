@@ -222,14 +222,15 @@ if [[ "$1 $2" == "pr view" ]]; then
   if [[ "$*" == *"--jq"* ]]; then
     count_file="{events / 'head-jq-count'}"
     count="$(cat "$count_file" 2>/dev/null || echo 0)"; count=$((count+1)); printf '%s' "$count" > "$count_file"
-    if [[ $count -ge 2 ]]; then printf '%s\\n' '{post_reconcile_head}'; else printf '%s\\n' '{reconcile_head}'; fi
+    if [[ $count -ge 2 ]]; then printf '%s\n' '{post_reconcile_head}'; else printf '%s\n' '{reconcile_head}'; fi
   else
-    printf '%s\\n' '{{"title":"Fixture PR","url":"https://github.com/story-wizard/fixture/pull/1","state":"OPEN","isDraft":false,"headRefOid":"{reported_head}"}}'
+    printf '%s\n' '{{"title":"Fixture PR","url":"https://github.com/story-wizard/fixture/pull/1","state":"OPEN","isDraft":false,"headRefOid":"{reported_head}"}}'
   fi
   exit 0
 fi
-if [[ "$1 $2" == "api user" ]]; then printf 'wiz-maestro\\n'; exit 0; fi
-if [[ "$*" == *"pulls/1/reviews"* ]]; then printf '%s\\n' '{review_result}'; exit 0; fi
+if [[ "$1 $2" == "api user" ]]; then printf 'wiz-maestro\n'; exit 0; fi
+if [[ "$1 $2" == "pr comment" ]]; then printf '%s\n' "$*" >> "{events / 'gh-comments'}"; exit 0; fi
+if [[ "$*" == *"pulls/1/reviews"* ]]; then printf '%s\n' '{review_result}'; exit 0; fi
 if [[ "$1" == "api" ]]; then printf '[]\\n'; exit 0; fi
 exit 1
 ''')
@@ -399,20 +400,26 @@ def test_manual_generation_claim_rejects_status_race() -> None:
         shutil.rmtree(root)
 
 
-def test_stale_head_fails_without_mutating_or_launching() -> None:
-    root, env, state_file = build_fixture(live_head="b" * 40)
+def test_live_head_drift_resumes_finalization_instead_of_failing() -> None:
+    root, env, state_file = build_fixture(
+        error_pause=False, complete=True, live_head="b" * 40,
+    )
     try:
-        before = state_file.read_text()
         run = subprocess.run(
             [str(root / "app/wiz_pr_resume.sh"), "fixture", "1", "111.222"],
             text=True, capture_output=True, env=env, timeout=30,
         )
-        assert run.returncode != 0, run.stdout + run.stderr
+        assert run.returncode == 0, run.stdout + run.stderr
         result = json.loads(run.stdout.strip().splitlines()[-1])
-        assert result["stage"] == "stale_head", result
-        assert state_file.read_text() == before
-        assert not (root / "events/node").exists()
-        assert not (root / "events/finalizer").exists()
+        assert result["action"] == "resumed_finalization", result
+        state = json.loads(state_file.read_text())
+        assert state["status"] == "running", state
+        finalizer_event = root / "events/finalizer"
+        for _ in range(20):
+            if finalizer_event.exists():
+                break
+            time.sleep(0.05)
+        assert finalizer_event.exists(), "drifted finalization was not resumed"
     finally:
         shutil.rmtree(root)
 
@@ -631,42 +638,27 @@ def test_dismissed_exact_head_review_is_not_completion() -> None:
         shutil.rmtree(root)
 
 
-def test_head_change_during_existing_review_reconciliation_fails_closed() -> None:
+def test_head_drift_existing_review_reconciles_with_warning() -> None:
     root, env, state_file = build_fixture(
-        error_pause=False, complete=True, existing_review=True,
-        head_changes_on_reconcile=True,
-    )
-    try:
-        before = state_file.read_text()
-        run = subprocess.run(
-            [str(root / "app/wiz_pr_resume.sh"), "fixture", "1", "111.222"],
-            text=True, capture_output=True, env=env, timeout=30,
-        )
-        assert run.returncode != 0, run.stdout + run.stderr
-        result = json.loads(run.stdout.strip().splitlines()[-1])
-        assert result["stage"] == "stale_head", result
-        assert state_file.read_text() == before
-        assert not (root / "events/finalizer").exists(), "stale finalizer was launched"
-    finally:
-        shutil.rmtree(root)
-
-
-def test_head_change_after_reconciliation_write_reverts_completion() -> None:
-    root, env, state_file = build_fixture(
-        error_pause=False, complete=True, existing_review=True,
-        head_changes_after_reconcile_write=True,
+        error_pause=False, complete=True, existing_review=True, live_head="b" * 40,
     )
     try:
         run = subprocess.run(
             [str(root / "app/wiz_pr_resume.sh"), "fixture", "1", "111.222"],
             text=True, capture_output=True, env=env, timeout=30,
         )
-        assert run.returncode != 0, run.stdout + run.stderr
+        assert run.returncode == 0, run.stdout + run.stderr
         result = json.loads(run.stdout.strip().splitlines()[-1])
-        assert result["stage"] == "stale_head", result
+        assert result["action"] == "already_completed", result
         state = json.loads(state_file.read_text())
-        assert state["status"] == "failed", state
-        assert "already_completed" not in run.stdout, run.stdout
+        assert state["status"] == "completed", state
+        assert state["finalization_phases"]["final_review"]["status"] == "posted", state
+        assert state["finalization_phases"]["head_drift_warning"]["status"] == "posted", state
+        slack = (root / "events/slack").read_text()
+        assert "Head drift warning" in slack, slack
+        assert "Head drift: reviewed" in slack, slack
+        assert (root / "events/gh-comments").exists(), "PR head-drift warning was not posted"
+        assert not (root / "events/finalizer").exists(), "duplicate finalizer started"
     finally:
         shutil.rmtree(root)
 
@@ -799,7 +791,7 @@ if __name__ == "__main__":
     test_complete_playbooks_restart_finalization_only()
     test_existing_exact_head_review_reconciles_without_reposting()
     test_manual_generation_claim_rejects_status_race()
-    test_stale_head_fails_without_mutating_or_launching()
+    test_live_head_drift_resumes_finalization_instead_of_failing()
     test_live_watcher_returns_already_running_without_mutation()
     test_thread_routing_agent_mismatch_fails_closed()
     test_thread_routing_attempt_mismatch_fails_closed()
@@ -811,8 +803,7 @@ if __name__ == "__main__":
     test_show_agent_timeout_releases_without_claiming_generation()
     test_fast_terminal_child_cannot_be_regressed_to_running()
     test_dismissed_exact_head_review_is_not_completion()
-    test_head_change_during_existing_review_reconciliation_fails_closed()
-    test_head_change_after_reconciliation_write_reverts_completion()
+    test_head_drift_existing_review_reconciles_with_warning()
     test_manual_resume_preserves_fast_terminal_child_result()
     test_manual_resume_reconciles_abandoned_publication_claims()
     test_fresh_launch_watcher_registration_cannot_regress_terminal_state()
