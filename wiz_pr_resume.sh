@@ -214,10 +214,9 @@ agent_json="$(run_bounded "$resume_command_timeout" node "$maestro_cli" show age
    && "$(printf '%s' "$agent_json" | jq -r '.toolType // empty')" == "$agent_type" ]] \
     || post_fail agent "Maestro agent metadata does not match canonical state"
 
+auto_run_already_active=false
 if "${script_dir}/maestro_watch.sh" --is-running "$agent_id" "$agent_type" "$worktree_dir" "$autorun_dir" "${WIZ_WATCH_GRACE:-60}"; then
-    jq -nc --arg repo "$repo" --arg pr "$pr_number" \
-        '{ok:true,action:"already_running",repo:$repo,pr_number:$pr,message:"the Maestro Auto Run is already active"}'
-    exit 0
+    auto_run_already_active=true
 fi
 
 error_record="$(latest_error_pause 2>/dev/null || true)"
@@ -231,7 +230,11 @@ missing_artifacts="$(printf '%s' "$progress" | jq -r '.artifacts_missing | lengt
 [[ "$done_n" =~ ^[0-9]+$ && "$total_n" =~ ^[0-9]+$ && "$total_n" -gt 0 \
    && "$missing_artifacts" =~ ^[0-9]+$ ]] \
     || post_fail classify "could not read persistent Auto Run playbook progress"
-if [[ "$error_ms" =~ ^[0-9]+$ && "$error_ms" -gt "$handled_error_ms" ]]; then
+if [[ "$auto_run_already_active" == true ]]; then
+    resume_mode=attach
+    result_action=reattached_watcher
+    manual_error_marker="$handled_error_ms"
+elif [[ "$error_ms" =~ ^[0-9]+$ && "$error_ms" -gt "$handled_error_ms" ]]; then
     resume_mode=paused
     result_action=resumed_auto_run
     manual_error_marker="$error_ms"
@@ -254,7 +257,10 @@ generation="$(wiz_review_state_begin_manual_resume "$repo" "$pr_number" "$review
 recovery_started=true
 recovery_state=launching
 
-if [[ "$resume_mode" == paused ]]; then
+if [[ "$resume_mode" == attach ]]; then
+    resume_out="Maestro Auto Run already active; attaching finalizer only"
+    resume_rc=0
+elif [[ "$resume_mode" == paused ]]; then
     resume_out="$(run_bounded "$resume_command_timeout" node "$maestro_cli" resume-auto-run --agent "$agent_id" --json 2>&1)"; resume_rc=$?
 elif [[ "$resume_mode" == playbooks ]]; then
     playbook_dir="${autorun_dir}/development/code-review"
@@ -311,7 +317,9 @@ recovery_state=running
 # Keep the launch lock through the acknowledgement. Finalizer terminal
 # transitions wait for this owner, preventing stale ordering.
 
-if [[ "$resume_mode" == finalization ]]; then
+if [[ "$resume_mode" == attach ]]; then
+    ack="👀 Re-attached the finalizer for AI code review #${review_round}; the Maestro Auto Run was already active (${done_n}/${total_n} tasks complete)."
+elif [[ "$resume_mode" == finalization ]]; then
     ack="▶️ Resumed finalization for AI code review #${review_round}; all ${total_n} playbook tasks were already complete."
 else
     ack="▶️ Resumed AI code review #${review_round} with *${agent_type}* from its existing playbook state (${done_n}/${total_n} tasks complete)."
