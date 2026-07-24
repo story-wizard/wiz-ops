@@ -214,10 +214,29 @@ wiz_review_agent_for_round() {
     fi
 }
 
+# Thread discovery prefers exact per-PR records (<thread_ts>/<repo>-<pr>.json):
+# in a multi-PR Slack thread the legacy top-level pointer is rewritten by every
+# launch, so the last-launched PR would be the only one discoverable. Matching
+# exact records by repo AND pr number first means a legacy pointer for PR B can
+# never hide PR A's thread. Legacy top-level files remain the fallback for
+# pre-migration threads. Within each tier the latest thread_ts wins (the
+# historical single-thread semantics for repeated reviews).
 wiz_review_find_thread_ts() {
-    local repo="$1" pr="$2" state_dir sf
+    local repo="$1" pr="$2" state_dir sf exact
     state_dir="${WIZ_PR_STATE_DIR:-${HOME}/wizard/tmp/wiz-pr-state}"
     [[ -d "$state_dir" ]] || return 0
+    exact="$(
+        for sf in "$state_dir"/*/"${repo}-${pr}.json"; do
+            [[ -f "$sf" ]] || continue
+            jq -r --arg repo "$repo" --arg pr "$pr" '
+              select(.repo == $repo and ((.pr_number|tostring) == $pr))
+              | .thread_ts // empty' "$sf" 2>/dev/null
+        done | grep -E '.' | sort -n | tail -1
+    )"
+    if [[ -n "$exact" ]]; then
+        printf '%s\n' "$exact"
+        return 0
+    fi
     for sf in "$state_dir"/*.json; do
         [[ -f "$sf" ]] || continue
         jq -r --arg repo "$repo" --arg pr "$pr" '
@@ -227,9 +246,21 @@ wiz_review_find_thread_ts() {
 }
 
 wiz_review_find_thread_agent() {
-    local repo="$1" pr="$2" state_dir sf
+    local repo="$1" pr="$2" state_dir sf exact
     state_dir="${WIZ_PR_STATE_DIR:-${HOME}/wizard/tmp/wiz-pr-state}"
     [[ -d "$state_dir" ]] || return 0
+    exact="$(
+        for sf in "$state_dir"/*/"${repo}-${pr}.json"; do
+            [[ -f "$sf" ]] || continue
+            jq -r --arg repo "$repo" --arg pr "$pr" '
+              select(.repo == $repo and ((.pr_number|tostring) == $pr))
+              | [(.thread_ts // ""),(.agent_type // "")] | @tsv' "$sf" 2>/dev/null
+        done | grep -E '.' | sort -n | tail -1
+    )"
+    if [[ -n "$exact" ]]; then
+        printf '%s' "$exact" | cut -f2
+        return 0
+    fi
     for sf in "$state_dir"/*.json; do
         [[ -f "$sf" ]] || continue
         jq -r --arg repo "$repo" --arg pr "$pr" '
