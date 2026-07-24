@@ -35,7 +35,8 @@ def build_fixture(*, error_pause: bool = True, complete: bool = False,
                   routing_missing: bool = False,
                   routing_legacy: bool = False,
                   routing_conflicting_legacy: bool = False,
-                  routing_overrides: dict[str, object] | None = None) -> tuple[Path, dict[str, str], Path]:
+                  routing_overrides: dict[str, object] | None = None,
+                  worktree_head: str | None = None) -> tuple[Path, dict[str, str], Path]:
     root = Path(tempfile.mkdtemp(prefix="wiz-resume-fixture-"))
     app = root / "app"
     app.mkdir()
@@ -234,9 +235,10 @@ if [[ "$*" == *"pulls/1/reviews"* ]]; then printf '%s\n' '{review_result}'; exit
 if [[ "$1" == "api" ]]; then printf '[]\\n'; exit 0; fi
 exit 1
 ''')
+    worktree_reported_head = worktree_head or head
     executable(bindir / "git", f'''#!/bin/bash
 printf '%s\\n' "$*" >> "{events / 'git'}"
-if [[ "$*" == *"rev-parse HEAD"* ]]; then printf '{head}\\n'; exit 0; fi
+if [[ "$*" == *"rev-parse HEAD"* ]]; then printf '{worktree_reported_head}\\n'; exit 0; fi
 exit 1
 ''')
     if watcher_alive:
@@ -420,6 +422,41 @@ def test_live_head_drift_resumes_finalization_instead_of_failing() -> None:
                 break
             time.sleep(0.05)
         assert finalizer_event.exists(), "drifted finalization was not resumed"
+    finally:
+        shutil.rmtree(root)
+
+
+def test_worktree_head_drift_salvages_missing_artifact_and_resumes_finalization() -> None:
+    root, env, state_file = build_fixture(
+        error_pause=False, complete=True, worktree_head="d" * 40,
+    )
+    try:
+        autorun = root / "home/autorun"
+        worktree = root / "home/worktree"
+        (autorun / "SECURITY_ISSUES.md").unlink()
+        (worktree / "SECURITY_ISSUES.md").write_text("SECURITY_ISSUES.md from worktree\n")
+        run = subprocess.run(
+            [str(root / "app/wiz_pr_resume.sh"), "fixture", "1", "111.222"],
+            text=True, capture_output=True, env=env, timeout=30,
+        )
+        assert run.returncode == 0, run.stdout + run.stderr
+        result = json.loads(run.stdout.strip().splitlines()[-1])
+        assert result["action"] == "resumed_finalization", result
+        assert (autorun / "SECURITY_ISSUES.md").read_text() == "SECURITY_ISSUES.md from worktree\n"
+        state = json.loads(state_file.read_text())
+        assert state["status"] == "running", state
+        assert state["finalization_phases"]["worktree_drift_warning"]["status"] == "posted", state
+        slack_events = (root / "events/slack").read_text()
+        assert "Worktree drift warning" in slack_events, slack_events
+        assert "Recovered misplaced artifact(s)" in slack_events, slack_events
+        gh_comments = (root / "events/gh-comments").read_text()
+        assert "pr comment" in gh_comments, gh_comments
+        finalizer_event = root / "events/finalizer"
+        for _ in range(20):
+            if finalizer_event.exists():
+                break
+            time.sleep(0.05)
+        assert finalizer_event.exists(), "worktree-drifted finalization was not resumed"
     finally:
         shutil.rmtree(root)
 

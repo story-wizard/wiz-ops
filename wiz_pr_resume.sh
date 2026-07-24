@@ -219,9 +219,11 @@ esac
     || post_fail state "canonical agent/worktree/autorun metadata is incomplete"
 head_drift_detected=false
 [[ "$live_head" != "$canonical_head" ]] && head_drift_detected=true
+worktree_head_drift_detected=false
 worktree_head="$(git -C "$worktree_dir" rev-parse HEAD 2>/dev/null)"
-[[ "$worktree_head" == "$canonical_head" ]] \
-    || post_fail stale_head "worktree head ${worktree_head:-missing} does not match canonical head ${canonical_head}"
+if [[ -z "$worktree_head" || "$worktree_head" != "$canonical_head" ]]; then
+    worktree_head_drift_detected=true
+fi
 
 post_resume_head_drift_warning() {
     local warning_phase warning_status slack_posted=false github_posted=false body_file
@@ -245,6 +247,30 @@ post_resume_head_drift_warning() {
     fi
 }
 
+post_resume_worktree_drift_warning() {
+    local warning_phase warning_status slack_posted=false github_posted=false body_file
+    [[ "$worktree_head_drift_detected" == true ]] || return 0
+    warning_phase="$(jq -c '.finalization_phases.worktree_drift_warning // null' "$state_file" 2>/dev/null)"
+    warning_status="$(printf '%s' "$warning_phase" | jq -r 'if type=="string" then "posted" else .status // empty end' 2>/dev/null)"
+    [[ "$warning_status" != "posted" && "$warning_status" != "claimed" ]] || return 0
+    wiz_slack_post "$dest_channel" "$thread_ts" \
+        "⚠️ *Worktree drift warning for AI review #${review_round}:* the review worktree head differs from the canonical analyzed head."$'\n'"Analyzed head: \`${canonical_head}\`"$'\n'"Worktree head: \`${worktree_head:-missing}\`"$'\n'"Resume will continue; artifacts and the GitHub review remain anchored to the analyzed head." \
+        >/dev/null 2>&1 && slack_posted=true || true
+    body_file="$(mktemp -t wiz_pr_resume_worktree_drift.XXXXXX)"
+    printf '## ⚠️ AI review worktree-drift warning\n\nThe review worktree head differs from the canonical analyzed head.\n\n- Analyzed head: `%s`\n- Worktree head: `%s`\n\nResume continued anyway. Artifacts and the GitHub review remain anchored to the analyzed head.\n' \
+        "$canonical_head" "${worktree_head:-missing}" > "$body_file"
+    gh pr comment "$pr_number" --repo "story-wizard/${repo}" --body-file "$body_file" >/dev/null 2>&1 \
+        && github_posted=true || true
+    rm -f "$body_file"
+    if [[ "$slack_posted" == true || "$github_posted" == true ]]; then
+        wiz_review_state_claim_finalization_phase "$repo" "$pr_number" "$review_round" "$review_attempt" worktree_drift_warning "$canonical_generation" \
+            && wiz_review_state_mark_finalization_phase "$repo" "$pr_number" "$review_round" "$review_attempt" worktree_drift_warning "$canonical_generation" \
+            || true
+    fi
+}
+
+post_resume_worktree_drift_warning
+
 reviews_json="$(gh api "repos/story-wizard/${repo}/pulls/${pr_number}/reviews" --paginate --slurp 2>&1)" \
     || post_fail review_lookup "could not inspect existing PR reviews: ${reviews_json}"
 unauthorized_approval="$(printf '%s' "$reviews_json" | jq -r --arg user "$WIZ_GH_ACCOUNT" --arg head "$canonical_head" \
@@ -267,6 +293,9 @@ if [[ -n "$existing_review_id" ]]; then
         ack="✅ AI code review #${review_round} was already posted for the analyzed head; canonical state is reconciled."
         if [[ "$head_drift_detected" == true ]]; then
             ack+=$'\n'"⚠️ Head drift: reviewed \`${canonical_head}\`; current PR head is \`${live_head}\`."
+        fi
+        if [[ "$worktree_head_drift_detected" == true ]]; then
+            ack+=$'\n'"⚠️ Worktree drift: analyzed head is \`${canonical_head}\`; worktree head is \`${worktree_head:-missing}\`."
         fi
         wiz_slack_post "$dest_channel" "$thread_ts" "$ack" >/dev/null 2>&1 || true
     fi
@@ -302,6 +331,18 @@ error_record="$(latest_error_pause 2>/dev/null || true)"
 error_ms="${error_record%%$'\x1f'*}"
 handled_error_ms="$(jq -r '.auto_resume_last_error_ms // 0' "$state_file" 2>/dev/null)"
 [[ "$handled_error_ms" =~ ^[0-9]+$ ]] || post_fail state "handled Auto Run error marker is malformed"
+salvaged_artifacts=""
+if [[ "$worktree_head_drift_detected" == true ]]; then
+    for artifact in REVIEW_SCOPE.md CODE_ISSUES.md SECURITY_ISSUES.md TEST_GAPS.md REVIEW_SUMMARY.md; do
+        if [[ ! -s "${autorun_dir}/${artifact}" && -s "${worktree_dir}/${artifact}" ]]; then
+            artifact_mtime="$(stat -f %m "${worktree_dir}/${artifact}" 2>/dev/null || printf '0')"
+            if [[ "$artifact_mtime" =~ ^[0-9]+$ && "$artifact_mtime" -ge "$attempt_epoch" ]] \
+               && cp "${worktree_dir}/${artifact}" "${autorun_dir}/${artifact}"; then
+                salvaged_artifacts+="${artifact} "
+            fi
+        fi
+    done
+fi
 progress="$("${script_dir}/wiz_pr_progress.sh" --json --autorun "$autorun_dir" 2>/dev/null || true)"
 done_n="$(printf '%s' "$progress" | jq -r '.overall_done // 0' 2>/dev/null)"
 total_n="$(printf '%s' "$progress" | jq -r '.overall_total // 0' 2>/dev/null)"
@@ -402,6 +443,12 @@ elif [[ "$resume_mode" == finalization ]]; then
     ack="▶️ Resumed finalization for AI code review #${review_round}; all ${total_n} playbook tasks were already complete."
 else
     ack="▶️ Resumed AI code review #${review_round} with *${agent_type}* from its existing playbook state (${done_n}/${total_n} tasks complete)."
+fi
+if [[ "$worktree_head_drift_detected" == true ]]; then
+    ack+=$'\n'"⚠️ Worktree drift: analyzed head is \`${canonical_head}\`; worktree head is \`${worktree_head:-missing}\`."
+fi
+if [[ -n "$salvaged_artifacts" ]]; then
+    ack+=$'\n'"Recovered misplaced artifact(s) from the review worktree: \`${salvaged_artifacts% }\`."
 fi
 wiz_slack_post "$dest_channel" "$thread_ts" "$ack" >/dev/null 2>&1 || true
 
