@@ -173,16 +173,10 @@ approval_notify() {
     [[ -n "$pr_title" ]] || pr_title="PR #${pr_number}"
 
     # Recover the existing review thread (same lookup the build path uses).
-    local thread_ts="" state_dir="${WIZ_PR_STATE_DIR:-${HOME}/wizard/tmp/wiz-pr-state}"
-    if [[ -d "$state_dir" ]]; then
-        thread_ts="$(
-            for sf in "$state_dir"/*.json; do
-                [[ -f "$sf" ]] || continue
-                jq -r --arg repo "$repo" --arg pr "$pr_number" '
-                  select(.repo == $repo and ((.pr_number|tostring) == $pr)) | .thread_ts // empty' "$sf" 2>/dev/null
-            done | grep -E '.' | sort -n | tail -1
-        )"
-    fi
+    # Exact-aware: in a multi-PR thread, this PR's exact record is found even
+    # when the legacy top-level pointer names a different PR.
+    local thread_ts=""
+    thread_ts="$(wiz_review_find_thread_ts "$repo" "$pr_number")"
 
     local author_sid author_mention=""
     author_sid="$(wiz_gh_to_slack "$author_login" 2>/dev/null)"
@@ -429,19 +423,11 @@ else
             fi
 
             # Recover the existing review's Slack root ts so asks/builds thread
-            # under the SAME conversation (Carol's model).
+            # under the SAME conversation (Carol's model). Exact-aware lookup:
+            # a legacy pointer rewritten by another PR's launch cannot hide
+            # this PR's thread record.
             build_thread_ts=""
-            state_dir="${WIZ_PR_STATE_DIR:-${HOME}/wizard/tmp/wiz-pr-state}"
-            if [[ -d "$state_dir" ]]; then
-                build_thread_ts="$(
-                    for sf in "$state_dir"/*.json; do
-                        [[ -f "$sf" ]] || continue
-                        jq -r --arg repo "$repo" --arg pr "$pr_number" '
-                          select(.repo == $repo and ((.pr_number|tostring) == $pr))
-                          | .thread_ts // empty' "$sf" 2>/dev/null
-                    done | grep -E '.' | sort -n | tail -1
-                )"
-            fi
+            build_thread_ts="$(wiz_review_find_thread_ts "$repo" "$pr_number")"
 
             # --- rebuild path: claim exists for an older head -> ASK, don't auto-build ---
             if [[ -n "$claimed_sha" ]]; then
