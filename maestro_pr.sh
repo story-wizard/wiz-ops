@@ -10,14 +10,7 @@
 
 VALID_REPOS=(wizard wizard-ai wizard-core wizard-link wizard-release wizard-spec Qt-Advanced-Docking-System OpenColorIO)
 VALID_AGENT_TYPES=(claude-code codex opencode grok)
-PLAYBOOKS_SOURCE="${HOME}/src/Maestro-Playbooks/Development/Code-Review"
 
-# GitHub fallback for the Code Review playbooks, used when PLAYBOOKS_SOURCE is
-# not checked out locally. Mirrors:
-#   https://github.com/RunMaestro/Maestro-Playbooks/tree/main/Development/Code-Review
-PLAYBOOKS_GH_REPO="RunMaestro/Maestro-Playbooks"
-PLAYBOOKS_GH_REF="main"
-PLAYBOOKS_GH_PATH="Development/Code-Review"
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 MAESTRO_WT="${script_dir}/maestro_wt.sh"
@@ -69,28 +62,6 @@ EOF
 die() {
     echo "Error: $*" >&2
     exit 1
-}
-
-# Download all Code Review playbook *.md files from GitHub into $1.
-# Used when the local PLAYBOOKS_SOURCE checkout is unavailable.
-fetch_playbooks_from_github() {
-    local dest="$1"
-    local listing name url
-
-    echo "Local playbooks not found; fetching from github.com/${PLAYBOOKS_GH_REPO} (${PLAYBOOKS_GH_PATH})..." >&2
-
-    # List directory contents via the GitHub API: "<name>\t<download_url>" per .md file.
-    listing=$(gh api "repos/${PLAYBOOKS_GH_REPO}/contents/${PLAYBOOKS_GH_PATH}?ref=${PLAYBOOKS_GH_REF}" \
-        --jq '.[] | select(.type == "file" and (.name | endswith(".md"))) | "\(.name)\t\(.download_url)"' 2>&1) \
-        || die "Failed to list playbooks from GitHub:\n${listing}"
-
-    [[ -n "$listing" ]] || die "No playbook .md files found at ${PLAYBOOKS_GH_REPO}/${PLAYBOOKS_GH_PATH}"
-
-    while IFS=$'\t' read -r name url; do
-        [[ -n "$name" && -n "$url" ]] || continue
-        gh api "$url" > "${dest}/${name}" \
-            || die "Failed to download playbook '${name}' from GitHub"
-    done <<< "$listing"
 }
 
 # ---------- argument parsing ----------
@@ -210,32 +181,8 @@ agent_id=$(jq -r .agentId "${agent_json}") \
 playbook_dest="${autorun_dir}/development/code-review"
 
 printf "\n%s\n" "Setting up Code Review playbooks in ${playbook_dest}..."
-mkdir -p "${playbook_dest}" || die "Cannot create ${playbook_dest}"
-
-# Prefer the local checkout; fall back to fetching the playbooks from GitHub.
-if compgen -G "${PLAYBOOKS_SOURCE}/"'*.md' > /dev/null; then
-    cp "${PLAYBOOKS_SOURCE}/"*.md "${playbook_dest}/" || die "Failed to copy playbooks"
-else
-    fetch_playbooks_from_github "${playbook_dest}"
-fi
-
-rm -f "${playbook_dest}/README.md"
-
-[[ -f "${playbook_dest}/1_ANALYZE_CHANGES.md" ]] \
-    || die "Playbooks missing 1_ANALYZE_CHANGES.md after setup"
-
-# Substitute ONLY the displayed placeholder PR URL. The validation task below
-# intentionally keeps the literal USER/PROJECT/pull/XXXX sentinel; replacing it
-# too makes the real PR URL compare equal to "the placeholder" and stalls every
-# literal agent (observed with Codex on wizard#885).
-perl -pi -e \
-    'if (/^\*\*Pull Request\*\*:/) { s@https://github\.com/USER/PROJECT/pull/XXXX@https://github.com/story-wizard/'"${repo}"'/pull/'"${pr_number}"'@; }' \
-    "${playbook_dest}/1_ANALYZE_CHANGES.md" \
-    || die "Failed to update PR URL in 1_ANALYZE_CHANGES.md"
-# The URL is configured by this script, so remove the template's human setup note.
-perl -pi -e 's@^NOTE: \*\(Update the URL above before running this playbook\)\*$@NOTE: *(Configured automatically by maestro_pr.sh)*@' \
-    "${playbook_dest}/1_ANALYZE_CHANGES.md" \
-    || die "Failed to update PR configuration note"
+"${script_dir}/wiz_pr_playbooks.sh" refresh "$playbook_dest" "$repo" "$pr_number" \
+    || die "Failed to install pristine Code Review playbooks"
 
 echo "Playbooks configured."
 

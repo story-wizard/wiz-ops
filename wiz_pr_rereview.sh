@@ -25,6 +25,7 @@ archive_source=""
 orphan_stage=""
 orphan_installed_dir=""
 orphan_source=""
+playbook_backup=""
 thread_state_backup=""
 
 rollback_archive_transaction() {
@@ -70,6 +71,13 @@ rollback_orphan_transaction() {
     return "$failed"
 }
 
+rollback_playbook_transaction() {
+    [[ -n "$playbook_backup" && -d "$playbook_backup" && -n "${playbook_dir:-}" ]] || return 0
+    rm -rf "$playbook_dir" 2>/dev/null || return 1
+    mv "$playbook_backup" "$playbook_dir" 2>/dev/null || return 1
+    playbook_backup=""
+}
+
 rollback_thread_state_transaction() {
     [[ -n "$thread_state_backup" ]] || return 0
     wiz_review_thread_state_restore "$repo" "$pr_number" "$thread_ts" "$thread_state_backup" >/dev/null 2>&1
@@ -91,6 +99,7 @@ handle_signal() {
         rollback_thread_state_transaction || true
     fi
     if [[ "$agent_launched" == "false" ]]; then
+        rollback_playbook_transaction || true
         rollback_orphan_transaction || true
         rollback_archive_transaction || true
     fi
@@ -108,6 +117,7 @@ post_fail() {
             mv "$rollback_state" "$state_file" 2>/dev/null || true
             rollback_thread_state_transaction || true
         fi
+        rollback_playbook_transaction || true
         rollback_orphan_transaction || true
         rollback_archive_transaction || true
     fi
@@ -383,16 +393,15 @@ if [[ -n "$orphan_stage" ]]; then
     orphan_installed_dir="$stale_target_dir"
     orphan_stage=""
 fi
+# Auto Run agents write findings and operational narration directly beneath
+# each checkbox. Reusing those expanded files makes the next review treat stale
+# notes as instructions and repeatedly re-verify them. Replace the entire
+# working set from Maestro-Playbooks for every new review attempt; resume keeps
+# the same files because it continues the same attempt.
+playbook_backup="${archive_dir}/playbooks"
+"${script_dir}/wiz_pr_playbooks.sh" refresh "$playbook_dir" "$repo" "$pr_number" "$playbook_backup" \
+    || post_fail "playbooks" "could not install pristine Code Review playbooks"
 unchecked_files=0
-shopt -s nullglob
-for pb in "${playbook_dir}"/*.md; do
-    if grep -qiE '^[[:space:]]*-[[:space:]]\[[xX]\]' "$pb"; then
-        perl -pi -e 's/^(\s*-\s*)\[[xX]\]/${1}[ ]/' "$pb" \
-            || post_fail "uncheck" "failed to uncheck boxes in ${pb}"
-        unchecked_files=$((unchecked_files + 1))
-    fi
-done
-shopt -u nullglob
 
 # Launch selected Maestro agent. From this point until synchronous failure is
 # reported, launch outcome is uncertain; signal handling must leave canonical

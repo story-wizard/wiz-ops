@@ -277,6 +277,11 @@ The watcher runs until the agent is fully done (or you interrupt it with `Ctrl-C
 
 ## Slack-triggered PR review pipeline
 
+Every fresh review and re-review replaces its working playbook documents with
+pristine templates from `RunMaestro/Maestro-Playbooks`. Auto Run task notes are
+attempt-local execution state and are not carried into later reviews. A
+same-attempt resume deliberately preserves them so checked work can continue.
+
 The `wiz_pr_*` scripts turn a GitHub PR link dropped into a Slack channel into a
 fully automated Maestro code review, with all status updates and artifacts
 posted back to the same Slack thread.

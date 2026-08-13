@@ -1,0 +1,89 @@
+#!/bin/bash
+# wiz_pr_playbooks.sh — atomically install pristine Maestro Code Review templates.
+set -uo pipefail
+
+PLAYBOOKS_SOURCE="${WIZ_PLAYBOOKS_SOURCE:-${HOME}/src/Maestro-Playbooks/Development/Code-Review}"
+PLAYBOOKS_GH_REPO="${WIZ_PLAYBOOKS_GH_REPO:-RunMaestro/Maestro-Playbooks}"
+PLAYBOOKS_GH_REF="${WIZ_PLAYBOOKS_GH_REF:-main}"
+PLAYBOOKS_GH_PATH="${WIZ_PLAYBOOKS_GH_PATH:-Development/Code-Review}"
+
+fail() { echo "Error: $*" >&2; exit 1; }
+
+fetch_playbooks_from_github() {
+    local dest="$1" commit listing name
+    command -v gh >/dev/null 2>&1 || fail "gh is required to fetch Maestro playbooks"
+    echo "Local playbooks not found; fetching from github.com/${PLAYBOOKS_GH_REPO} (${PLAYBOOKS_GH_PATH})..." >&2
+    commit="$(gh api "repos/${PLAYBOOKS_GH_REPO}/commits/${PLAYBOOKS_GH_REF}" --jq .sha 2>&1)" \
+        || fail "Failed to resolve ${PLAYBOOKS_GH_REF} to an immutable commit: ${commit}"
+    [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || fail "GitHub returned an invalid playbook commit: ${commit}"
+    listing="$(gh api "repos/${PLAYBOOKS_GH_REPO}/contents/${PLAYBOOKS_GH_PATH}?ref=${commit}" \
+        --jq '.[] | select(.type == "file" and (.name | endswith(".md"))) | .name' 2>&1)" \
+        || fail "Failed to list playbooks from GitHub: ${listing}"
+    [[ -n "$listing" ]] || fail "No playbook .md files found at ${PLAYBOOKS_GH_REPO}/${PLAYBOOKS_GH_PATH}"
+    while IFS= read -r name; do
+        [[ -n "$name" ]] || continue
+        gh api "repos/${PLAYBOOKS_GH_REPO}/contents/${PLAYBOOKS_GH_PATH}/${name}?ref=${commit}" \
+            -H 'Accept: application/vnd.github.raw+json' > "${dest}/${name}" \
+            || fail "Failed to download playbook '${name}' from GitHub"
+    done <<< "$listing"
+}
+
+validate_playbooks() {
+    local dest="$1" required
+    for required in 1_ANALYZE_CHANGES.md 2_REVIEW_CODE.md 3_CHECK_SECURITY.md 4_VERIFY_TESTS.md 5_SUMMARIZE.md; do
+        [[ -s "$dest/$required" ]] || fail "Playbooks missing required ${required} after setup"
+    done
+}
+
+configure_playbooks() {
+    local dest="$1" repo="$2" pr_number="$3" agent_name agent_path autorun_folder current_date pb
+    agent_name="$(basename "$(dirname "$(dirname "$dest")")")"
+    agent_path="${HOME}/wizard/worktrees/${repo}/${agent_name}"
+    autorun_folder="$(cd "$(dirname "$(dirname "$dest")")" && pwd)"
+    current_date="$(date +%Y-%m-%d)"
+    for pb in "$dest"/*.md; do
+        WIZ_AGENT_NAME="$agent_name" WIZ_AGENT_PATH="$agent_path" WIZ_AUTORUN_FOLDER="$autorun_folder" WIZ_CURRENT_DATE="$current_date" \
+        perl -pi -e 's/\{\{AGENT_NAME\}\}/$ENV{WIZ_AGENT_NAME}/g; s/\{\{AGENT_PATH\}\}/$ENV{WIZ_AGENT_PATH}/g; s/\{\{AUTORUN_FOLDER\}\}/$ENV{WIZ_AUTORUN_FOLDER}/g; s/\{\{DATE\}\}/$ENV{WIZ_CURRENT_DATE}/g;' "$pb" \
+            || fail "Failed to substitute runtime values in ${pb}"
+    done
+    WIZ_PR_URL="https://github.com/story-wizard/${repo}/pull/${pr_number}" perl -pi -e '
+        if (/^\*\*Pull Request\*\*:/) { s@https://github\.com/USER/PROJECT/pull/XXXX@$ENV{WIZ_PR_URL}@; }
+    ' "$dest/1_ANALYZE_CHANGES.md" || fail "Failed to update PR URL in 1_ANALYZE_CHANGES.md"
+    perl -pi -e 's@^NOTE: \*\(Update the URL above before running this playbook\)\*$@NOTE: *(Configured automatically by maestro_pr.sh)*@' \
+        "$dest/1_ANALYZE_CHANGES.md" || fail "Failed to update PR configuration note"
+}
+
+refresh_playbooks() {
+    local dest="$1" repo="$2" pr_number="$3" retained_backup="${4:-}" parent stage backup=""
+    [[ "$repo" =~ ^[A-Za-z0-9._-]+$ ]] || fail "invalid repository name"
+    [[ "$pr_number" =~ ^[0-9]+$ ]] || fail "invalid PR number"
+    parent="$(dirname "$dest")"; mkdir -p "$parent" || fail "Cannot create playbook parent ${parent}"
+    stage="$(mktemp -d "${parent}/.code-review.stage.XXXXXX")" || fail "Cannot create playbook staging directory"
+    if compgen -G "${PLAYBOOKS_SOURCE}/"'*.md' >/dev/null; then
+        cp "${PLAYBOOKS_SOURCE}/"*.md "$stage/" || { rm -rf "$stage"; fail "Failed to copy playbooks"; }
+    else
+        if ! fetch_playbooks_from_github "$stage"; then rm -rf "$stage"; exit 1; fi
+    fi
+    rm -f "$stage/README.md"
+    validate_playbooks "$stage" || { rm -rf "$stage"; exit 1; }
+    configure_playbooks "$stage" "$repo" "$pr_number" || { rm -rf "$stage"; exit 1; }
+    if [[ -e "$dest" ]]; then
+        backup="${retained_backup:-${parent}/.code-review.previous.$$}"
+        [[ ! -e "$backup" ]] || { rm -rf "$stage"; fail "Playbook backup already exists at ${backup}"; }
+        mkdir -p "$(dirname "$backup")" || { rm -rf "$stage"; fail "Cannot create playbook backup parent"; }
+        mv "$dest" "$backup" || { rm -rf "$stage"; fail "Cannot stage existing playbooks for replacement"; }
+    fi
+    if ! mv "$stage" "$dest"; then
+        [[ -n "$backup" && -e "$backup" ]] && mv "$backup" "$dest" 2>/dev/null || true
+        rm -rf "$stage"; fail "Cannot install pristine playbooks"
+    fi
+    if [[ -z "$retained_backup" && -n "$backup" && -e "$backup" ]]; then rm -rf "$backup"; fi
+    return 0
+}
+
+case "${1:-}" in
+    refresh)
+        [[ $# -eq 4 || $# -eq 5 ]] || fail "Usage: $(basename "$0") refresh <destination> <repo> <pr_number> [retained_backup]"
+        refresh_playbooks "$2" "$3" "$4" "${5:-}" ;;
+    *) fail "Usage: $(basename "$0") refresh <destination> <repo> <pr_number> [retained_backup]" ;;
+esac
