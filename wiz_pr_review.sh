@@ -13,9 +13,13 @@
 # channel), so the agent does not need to post anything and can reply NO_REPLY.
 #
 # Usage:
-#   wiz_pr_review.sh <repo> <pr_number> <thread_ts>
-#   wiz_pr_review.sh <repo> <pr_number> <agent_type> <thread_ts>
+#   wiz_pr_review.sh [--ready] <repo> <pr_number> <thread_ts>
+#   wiz_pr_review.sh [--ready] <repo> <pr_number> <agent_type> <thread_ts>
 #   wiz_pr_review.sh --board-trigger <repo> <pr_number> [agent_type]
+#
+# --ready: used only after the human requester explicitly confirms that a draft
+#   PR should be marked Ready for review. The driver marks it ready, verifies the
+#   transition, and then launches the fresh review.
 #
 # --board-trigger: invoked by wiz_pr_poll_board.sh (GitHub board status change,
 #   not a Slack message). There is no triggering Slack message to thread under,
@@ -70,16 +74,25 @@ post_fail() {
     exit 1
 }
 
-[[ $# -ge 1 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_review.sh [--board-trigger] <repo> <pr_number> [agent_type] [thread_ts]"}'; exit 1; }
+[[ $# -ge 1 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_review.sh [--board-trigger] [--ready] <repo> <pr_number> [agent_type] [thread_ts]"}'; exit 1; }
 
-# Optional leading --board-trigger flag (board poller invocation).
+# Optional leading flags. Keep parsing compatible with macOS Bash 3.2.
 board_trigger=false
-if [[ "$1" == "--board-trigger" ]]; then
-    board_trigger=true
-    shift
+mark_ready=false
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --board-trigger) board_trigger=true; shift ;;
+        --ready) mark_ready=true; shift ;;
+        *) break ;;
+    esac
+done
+
+if [[ "$board_trigger" == "true" && "$mark_ready" == "true" ]]; then
+    echo '{"ok":false,"stage":"args","message":"--ready requires an explicit human-triggered Slack thread"}'
+    exit 1
 fi
 
-[[ $# -ge 2 && $# -le 4 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_review.sh [--board-trigger] <repo> <pr_number> [agent_type] [thread_ts]"}'; exit 1; }
+[[ $# -ge 2 && $# -le 4 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_review.sh [--board-trigger] [--ready] <repo> <pr_number> [agent_type] [thread_ts]"}'; exit 1; }
 
 repo="$1"
 pr_number="$2"
@@ -142,6 +155,42 @@ pr_meta=$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json title,url
 pr_title=$(echo "$pr_meta" | jq -r '.title')
 pr_url=$(echo "$pr_meta" | jq -r '.url')
 pr_author_login=$(echo "$pr_meta" | jq -r '.author.login // empty')
+pr_state=$(echo "$pr_meta" | jq -r '.state // empty')
+pr_is_draft=$(echo "$pr_meta" | jq -r 'if has("isDraft") then .isDraft else true end')
+[[ "$pr_state" == "OPEN" ]] || post_fail "pr_lookup" "PR #${pr_number} is not open"
+
+# Draft eligibility must be decided before board roots, canonical state,
+# worktrees, Maestro agents, or Auto Run directories are created. A human can
+# opt in to the state transition with --ready after explicitly confirming in
+# the lifecycle thread.
+if [[ "$pr_is_draft" == "true" && "$mark_ready" != "true" ]]; then
+    if [[ "$board_trigger" == "true" ]]; then
+        jq -nc --arg repo "$repo" --arg pr "$pr_number" --arg title "$pr_title" --arg url "$pr_url" \
+            '{ok:true,action:"draft_skipped",repo:$repo,pr_number:$pr,pr_title:$title,pr_url:$url,is_draft:true}'
+        exit 0
+    fi
+    draft_prompt="⚠️ *${pr_title}* (<${pr_url}>) is still in draft mode. Would you like me to mark it Ready for review and launch the AI code review?"
+    if wiz_slack_ready; then
+        wiz_slack_post "$dest_channel" "$thread_ts" "$draft_prompt" >/dev/null || true
+    fi
+    jq -nc --arg repo "$repo" --arg pr "$pr_number" --arg title "$pr_title" --arg url "$pr_url" \
+        '{ok:true,action:"draft_confirmation_required",repo:$repo,pr_number:$pr,pr_title:$title,pr_url:$url,is_draft:true}'
+    exit 0
+fi
+
+if [[ "$pr_is_draft" == "true" && "$mark_ready" == "true" ]]; then
+    ready_out=$(gh pr ready "$pr_number" --repo "story-wizard/${repo}" 2>&1) \
+        || post_fail "mark_ready" "could not mark PR #${pr_number} Ready for review: ${ready_out}"
+    pr_meta=$(gh pr view "$pr_number" --repo "story-wizard/${repo}" --json title,url,state,isDraft,author 2>&1) \
+        || post_fail "pr_lookup" "could not verify Ready-for-review transition for PR #${pr_number}: ${pr_meta}"
+    pr_title=$(echo "$pr_meta" | jq -r '.title')
+    pr_url=$(echo "$pr_meta" | jq -r '.url')
+    pr_author_login=$(echo "$pr_meta" | jq -r '.author.login // empty')
+    [[ "$(echo "$pr_meta" | jq -r '.state // empty')" == "OPEN" ]] \
+        || post_fail "mark_ready" "PR #${pr_number} is no longer open after Ready-for-review transition"
+    [[ "$(echo "$pr_meta" | jq -r 'if has("isDraft") then .isDraft else true end')" == "false" ]] \
+        || post_fail "mark_ready" "PR #${pr_number} is still a draft after gh pr ready"
+fi
 
 # ---- board-trigger: self-post the lifecycle root and thread under it ----
 # There is no Slack trigger message in board mode, so create one. Its ts becomes
