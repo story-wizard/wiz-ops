@@ -8,7 +8,7 @@
 # created at/after the dispatch timestamp, then poll it to completion.
 #
 # Usage:
-#   wiz_pr_build_watch.sh <repo> <pr_number> <git_tag> <release_url> <dispatch_at_iso> <thread_ts> [board_trigger] [workflow_ref]
+#   wiz_pr_build_watch.sh <repo> <pr_number> <git_tag> <release_url> <dispatch_at_iso> <thread_ts> [board_trigger]
 #
 # board_trigger (7th arg, "true"/"false", default false): when true this was a
 # board-driven (Functional Review) build, so the finished result — release link
@@ -21,8 +21,8 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 die() { echo "Error: $*" >&2; exit 1; }
 
-[[ $# -ge 6 && $# -le 8 ]] || die "Usage: $(basename "$0") <repo> <pr_number> <git_tag> <release_url> <dispatch_at_iso> <thread_ts> [board_trigger] [workflow_ref]"
-repo="$1"; pr_number="$2"; git_tag="$3"; release_url="$4"; dispatch_at="$5"; thread_ts="$6"; board_trigger="${7:-false}"; workflow_ref="${8:-main}"
+[[ $# -ge 6 && $# -le 7 ]] || die "Usage: $(basename "$0") <repo> <pr_number> <git_tag> <release_url> <dispatch_at_iso> <thread_ts> [board_trigger]"
+repo="$1"; pr_number="$2"; git_tag="$3"; release_url="$4"; dispatch_at="$5"; thread_ts="$6"; board_trigger="${7:-false}"
 
 # shellcheck source=wiz_pr_pipeline.env
 source "${script_dir}/wiz_pr_pipeline.env" || die "cannot source wiz_pr_pipeline.env"
@@ -55,8 +55,8 @@ run_id=""
 for ((i=1; i<=find_tries; i++)); do
     run_id="$(gh run list --repo "$RELEASE_REPO" --workflow "$BUILD_WORKFLOW" \
         --event workflow_dispatch --limit 15 \
-        --json databaseId,createdAt,headBranch \
-        --jq "[.[] | select(.createdAt >= \"${dispatch_at}\" and .headBranch == \"${workflow_ref}\")] | sort_by(.createdAt) | .[0].databaseId // empty" 2>/dev/null)"
+        --json databaseId,createdAt \
+        --jq "[.[] | select(.createdAt >= \"${dispatch_at}\")] | sort_by(.createdAt) | .[0].databaseId // empty" 2>/dev/null)"
     [[ -n "$run_id" ]] && break
     sleep 6
 done
@@ -68,7 +68,7 @@ if [[ -z "$run_id" ]]; then
 fi
 
 run_url="https://github.com/${RELEASE_REPO}/actions/runs/${run_id}"
-log "Tracking run ${run_id} for ${repo} PR #${pr_number} -> ${git_tag} via ${workflow_ref} (${run_url})"
+log "Tracking run ${run_id} for ${repo} PR #${pr_number} -> ${git_tag} (${run_url})"
 
 # ---- 2. poll to completion ----
 elapsed=0

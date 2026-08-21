@@ -28,14 +28,12 @@
 #
 # Overrides (applied after routing, so the skill can honor user edits from the
 # confirmation): --wizard-ref R  --wizard-core-ref R  --wizard-ai-ref R
-# Build backend: --blacksmith dispatches build-release.yml from the
-# wizard-release branch blacksmith-migration-5992002 instead of main.
 #
 # Usage:
-#   wiz_pr_build.sh [--resolve-only] [--x86] [--force] [--blacksmith] \
+#   wiz_pr_build.sh [--resolve-only] [--x86] [--force] \
 #       [--wizard-ref R] [--wizard-core-ref R] [--wizard-ai-ref R] \
 #       <repo> <pr_number> <release_tag> [thread_ts]
-#   wiz_pr_build.sh --board-trigger [--x86] [--force] [--blacksmith] \
+#   wiz_pr_build.sh --board-trigger [--x86] [--force] \
 #       [--wizard-ref R] [--wizard-core-ref R] [--wizard-ai-ref R] \
 #       <repo> <pr_number> [thread_ts]           # release_tag auto-generated
 #
@@ -57,8 +55,6 @@ source "${script_dir}/_wiz_slack.sh" || { echo '{"ok":false,"stage":"config","me
 dest_channel="${WIZ_ACTIVE_CHANNEL}"
 RELEASE_REPO="story-wizard/wizard-release"
 BUILD_WORKFLOW="build-release.yml"
-DEFAULT_WORKFLOW_REF="main"
-BLACKSMITH_WORKFLOW_REF="blacksmith-migration-5992002"
 
 post_fail() {
     # post_fail <stage> <msg> [exit_code] — exit_code defaults to 1. The
@@ -87,8 +83,6 @@ resolve_only=false
 build_x86=false
 force=false
 board_trigger=false
-blacksmith=false
-workflow_ref="$DEFAULT_WORKFLOW_REF"
 ov_wizard=""; ov_core=""; ov_ai=""
 args=()
 while [[ $# -gt 0 ]]; do
@@ -96,7 +90,6 @@ while [[ $# -gt 0 ]]; do
         --resolve-only) resolve_only=true; shift ;;
         --x86) build_x86=true; shift ;;
         --force) force=true; shift ;;
-        --blacksmith) blacksmith=true; workflow_ref="$BLACKSMITH_WORKFLOW_REF"; shift ;;
         --board-trigger) board_trigger=true; shift ;;
         --wizard-ref) ov_wizard="${2:-}"; shift 2 ;;
         --wizard-core-ref) ov_core="${2:-}"; shift 2 ;;
@@ -108,10 +101,10 @@ set -- "${args[@]}"
 
 if [[ "$board_trigger" == "true" ]]; then
     # Board mode: <repo> <pr_number> [thread_ts] — release_tag is auto-generated.
-    [[ $# -ge 2 && $# -le 3 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_build.sh --board-trigger [--x86] [--force] [--blacksmith] [--wizard-ref R] [--wizard-core-ref R] [--wizard-ai-ref R] <repo> <pr_number> [thread_ts]"}'; exit 1; }
+    [[ $# -ge 2 && $# -le 3 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_build.sh --board-trigger [--x86] [--force] [--wizard-ref R] [--wizard-core-ref R] [--wizard-ai-ref R] <repo> <pr_number> [thread_ts]"}'; exit 1; }
     repo="$1"; pr_number="$2"; release_tag=""; thread_ts="${3:-}"
 else
-    [[ $# -ge 3 && $# -le 4 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_build.sh [--resolve-only] [--x86] [--force] [--blacksmith] [--wizard-ref R] [--wizard-core-ref R] [--wizard-ai-ref R] <repo> <pr_number> <release_tag> [thread_ts]"}'; exit 1; }
+    [[ $# -ge 3 && $# -le 4 ]] || { echo '{"ok":false,"stage":"args","message":"usage: wiz_pr_build.sh [--resolve-only] [--x86] [--force] [--wizard-ref R] [--wizard-core-ref R] [--wizard-ai-ref R] <repo> <pr_number> <release_tag> [thread_ts]"}'; exit 1; }
     repo="$1"; pr_number="$2"; release_tag="$3"; thread_ts="${4:-}"
 fi
 
@@ -210,13 +203,11 @@ if [[ "$resolve_only" == "true" ]]; then
         --arg repo "$repo" --arg pr "$pr_number" --arg branch "$pr_branch" \
         --arg tag "$release_tag" --arg gtag "$git_tag" \
         --arg wr "$wizard_ref" --arg wcr "$wizard_core_ref" --arg war "$wizard_ai_ref" \
-        --arg workflow_ref "$workflow_ref" --argjson blacksmith "$blacksmith" \
         --argjson x86 "$build_x86" --arg url "$release_url" \
         --argjson fresh "${freshness_json:-null}" \
         '{ok:true, mode:"resolve", repo:$repo, pr_number:$pr, pr_branch:$branch,
           release_tag:$tag, git_tag:$gtag, wizard_ref:$wr, wizard_core_ref:$wcr,
-          wizard_ai_ref:$war, workflow_ref:$workflow_ref, blacksmith:$blacksmith,
-          build_x86_64:$x86, release_url:$url, freshness:$fresh}'
+          wizard_ai_ref:$war, build_x86_64:$x86, release_url:$url, freshness:$fresh}'
     exit 0
 fi
 
@@ -255,7 +246,6 @@ fi
 # ---- dispatch the workflow ----
 dispatch_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 disp_out="$(gh workflow run "$BUILD_WORKFLOW" --repo "$RELEASE_REPO" \
-    --ref "$workflow_ref" \
     -f "release_tag=${release_tag}" \
     -f "wizard_ref=${wizard_ref}" \
     -f "wizard_core_ref=${wizard_core_ref}" \
@@ -270,7 +260,7 @@ disp_rc=$?
 log_dir="${HOME}/wizard/tmp/wiz-pr-logs"; mkdir -p "$log_dir"
 watch_log="${log_dir}/build-${repo}-pr-${pr_number}-$(date +%Y%m%d-%H%M%S).log"
 nohup "${script_dir}/wiz_pr_build_watch.sh" \
-    "$repo" "$pr_number" "$git_tag" "$release_url" "$dispatch_at" "$thread_ts" "$board_trigger" "$workflow_ref" \
+    "$repo" "$pr_number" "$git_tag" "$release_url" "$dispatch_at" "$thread_ts" "$board_trigger" \
     >"$watch_log" 2>&1 &
 watcher_pid=$!
 disown "$watcher_pid" 2>/dev/null || true
@@ -278,7 +268,6 @@ disown "$watcher_pid" 2>/dev/null || true
 # ---- post the threaded ack ----
 ack="🛠️ *Tagged build dispatched* for *story-wizard/${repo}* PR #${pr_number} → tag \`${git_tag}\`."
 ack+=$'\n'"• wizard: \`${wizard_ref}\`  • wizard-core: \`${wizard_core_ref}\`  • wizard-ai: \`${wizard_ai_ref}\`"
-[[ "$blacksmith" == "true" ]] && ack+=$'\n'"• wizard-release workflow: \`${workflow_ref}\` (BlackSmith)"
 [[ "$build_x86" == "true" ]] && ack+=$'\n'"• also building x86_64 (Rosetta)"
 [[ "$existing" == "deleted_existing" ]] && ack+=$'\n'"_(replaced an existing build with the same tag)_"
 ack+=$'\n'"Build takes ~10–13 min; I'll post the release link here when it's done. <https://github.com/${RELEASE_REPO}/actions/workflows/${BUILD_WORKFLOW}|Watch the run>"
@@ -292,7 +281,6 @@ fi
 if [[ "$board_trigger" == "true" ]]; then
     pr_ack="🛠️ **Tagged build dispatched** for \`story-wizard/${repo}\` PR #${pr_number} → tag \`${git_tag}\`."$'\n'
     pr_ack+="- wizard: \`${wizard_ref}\`  •  wizard-core: \`${wizard_core_ref}\`  •  wizard-ai: \`${wizard_ai_ref}\`"$'\n'
-    [[ "$blacksmith" == "true" ]] && pr_ack+="- wizard-release workflow: \`${workflow_ref}\` (BlackSmith)"$'\n'
     [[ "$build_x86" == "true" ]] && pr_ack+="- also building x86_64 (Rosetta)"$'\n'
     pr_ack+="Build takes ~10–13 min; I'll add the release link + install command here when it's done. [Watch the run](https://github.com/${RELEASE_REPO}/actions/workflows/${BUILD_WORKFLOW})."
     gh pr comment "$pr_number" --repo "story-wizard/${repo}" --body "$pr_ack" >/dev/null 2>&1 || true
@@ -318,12 +306,10 @@ jq -nc \
     --arg repo "$repo" --arg pr "$pr_number" --arg branch "$pr_branch" \
     --arg tag "$release_tag" --arg gtag "$git_tag" \
     --arg wr "$wizard_ref" --arg wcr "$wizard_core_ref" --arg war "$wizard_ai_ref" \
-    --arg workflow_ref "$workflow_ref" --argjson blacksmith "$blacksmith" \
     --argjson x86 "$build_x86" --arg existing "$existing" \
     --argjson board "$board_trigger" \
     --arg pid "$watcher_pid" --arg wlog "$watch_log" --arg url "$release_url" --arg ch "$dest_channel" \
     '{ok:true, mode:"dispatch", repo:$repo, pr_number:$pr, pr_branch:$branch,
       release_tag:$tag, git_tag:$gtag, wizard_ref:$wr, wizard_core_ref:$wcr,
-      wizard_ai_ref:$war, workflow_ref:$workflow_ref, blacksmith:$blacksmith,
-      build_x86_64:$x86, prior_release:$existing, board_trigger:$board,
+      wizard_ai_ref:$war, build_x86_64:$x86, prior_release:$existing, board_trigger:$board,
       watcher_pid:$pid, watcher_log:$wlog, release_url:$url, posted_to:$ch}'

@@ -498,7 +498,7 @@ branch routed to the correct app ref.
 **Usage:**
 
 ```zsh
-./wiz_pr_build.sh [--resolve-only] [--x86] [--blacksmith] \
+./wiz_pr_build.sh [--resolve-only] [--x86] \
     [--wizard-ref R] [--wizard-core-ref R] [--wizard-ai-ref R] \
     <repo> <pr_number> <release_tag> [thread_ts]
 ```
@@ -527,11 +527,6 @@ override any of these (used to honor a user's edits at the confirmation step).
 - `--resolve-only` — resolve the three refs + tag and print them as JSON. **No
   side effects** (no tag delete, no dispatch, no Slack). The skill uses this to
   build the confirmation message it shows the requester before committing.
-- `--blacksmith` — dispatch `build-release.yml` from wizard-release branch
-  `blacksmith-migration-5992002` instead of `main`. The wizard, wizard-core,
-  and wizard-ai refs are unchanged. Use this when the requester explicitly asks
-  to build with BlackSmith, and include the workflow branch in the required
-  confirmation plan.
 - default — delete any existing release/tag with the same name (the tagged
   `gh release create` has no `--clobber`, so a rebuild would otherwise fail),
   dispatch `build-release.yml`, post a threaded ack, and launch the detached
@@ -544,8 +539,8 @@ Prints one JSON summary line to stdout.
 
 Launched **detached** by `wiz_pr_build.sh`. Because `gh workflow run` returns no
 run id, it locates the run as the newest `build-release.yml` `workflow_dispatch`
-run created at/after the dispatch timestamp **on the dispatched wizard-release
-workflow branch**, then polls it to completion and posts to the thread:
+run created at/after the dispatch timestamp, then polls it to completion and posts
+to the thread:
 
 1. **success** → posts the release link (`…/releases/tag/v<tag>`), @-mentioning the
    requester (after confirming the release page exists);
