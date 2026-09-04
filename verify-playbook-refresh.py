@@ -9,6 +9,7 @@ from typing import Optional
 
 OPS = Path(__file__).resolve().parent
 REFRESH = OPS / "wiz_pr_playbooks.sh"
+VERIFY_TESTS_FIXTURE = OPS / "testdata/4_VERIFY_TESTS.upstream.md"
 
 
 def run_refresh(source: Path, dest: Path, backup: Optional[Path] = None) -> subprocess.CompletedProcess:
@@ -47,8 +48,9 @@ def fixture() -> tuple[tempfile.TemporaryDirectory[str], Path, Path]:
         "- [ ] sentinel https://github.com/USER/PROJECT/pull/XXXX\n"
         "Agent={{AGENT_NAME}} Path={{AGENT_PATH}} Date={{DATE}} Run={{AUTORUN_FOLDER}}\n"
     )
-    for name in ("2_REVIEW_CODE.md", "3_CHECK_SECURITY.md", "4_VERIFY_TESTS.md", "5_SUMMARIZE.md"):
+    for name in ("2_REVIEW_CODE.md", "3_CHECK_SECURITY.md", "5_SUMMARIZE.md"):
         (source / name).write_text(f"# {name}\n- [ ] review\n")
+    (source / "4_VERIFY_TESTS.md").write_text(VERIFY_TESTS_FIXTURE.read_text())
     return tmp, source, dest
 
 
@@ -124,9 +126,64 @@ def test_retained_backup_supports_outer_prelaunch_rollback() -> None:
         tmp.cleanup()
 
 
+def test_refresh_replaces_local_test_execution_with_existing_ci_review() -> None:
+    tmp, source, dest = fixture()
+    try:
+        run = run_refresh(source, dest)
+        assert run.returncode == 0, run.stdout + run.stderr
+        text = (dest / "4_VERIFY_TESTS.md").read_text()
+        assert "### Task 5: Review Existing CI Evidence" in text
+        assert "Do not build, run, rerun, or execute local test suites" in text
+        assert "absence of local test execution is not a coverage gap or blocker" in text
+        assert "## Existing CI Evidence" in text
+        assert "### Task 5: Run Tests (if possible)" not in text
+        assert "**Execute test suite**" not in text
+        assert "## Test Execution Results" not in text
+    finally:
+        tmp.cleanup()
+
+
+def test_refresh_rejects_additional_local_test_execution_instruction() -> None:
+    tmp, source, dest = fixture()
+    try:
+        playbook = source / "4_VERIFY_TESTS.md"
+        playbook.write_text(
+            playbook.read_text()
+            + "\n- [ ] **Run CTest too**: Execute `ctest --test-dir build`.\n"
+        )
+        existing = "# Existing attempt\n- [x] preserve me\n"
+        (dest / "existing.md").write_text(existing)
+        run = run_refresh(source, dest)
+        assert run.returncode != 0
+        assert "unexpected upstream 4_VERIFY_TESTS.md SHA-256" in run.stderr
+        assert (dest / "existing.md").read_text() == existing
+    finally:
+        tmp.cleanup()
+
+
+def test_refresh_rejects_duplicate_upstream_execution_block() -> None:
+    tmp, source, dest = fixture()
+    try:
+        playbook = source / "4_VERIFY_TESTS.md"
+        text = playbook.read_text()
+        task = text[text.index("### Task 5:"):text.index("## Test Execution Results")]
+        playbook.write_text(text + "\n" + task)
+        existing = "# Existing attempt\n- [x] preserve me\n"
+        (dest / "existing.md").write_text(existing)
+        run = run_refresh(source, dest)
+        assert run.returncode != 0
+        assert "unexpected upstream 4_VERIFY_TESTS.md SHA-256" in run.stderr
+        assert (dest / "existing.md").read_text() == existing
+    finally:
+        tmp.cleanup()
+
+
 if __name__ == "__main__":
     test_refresh_replaces_expanded_notes_with_pristine_templates()
     test_refresh_configures_only_displayed_pr_url_and_runtime_placeholders()
     test_failed_source_validation_preserves_existing_playbooks()
     test_retained_backup_supports_outer_prelaunch_rollback()
+    test_refresh_replaces_local_test_execution_with_existing_ci_review()
+    test_refresh_rejects_additional_local_test_execution_instruction()
+    test_refresh_rejects_duplicate_upstream_execution_block()
     print("ALL PLAYBOOK REFRESH TESTS PASSED")

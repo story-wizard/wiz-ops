@@ -123,7 +123,19 @@ The playbooks are sourced in two ways, in order:
    private access.
 
 Either way, `README.md` is dropped and the PR URL is patched into
-`1_ANALYZE_CHANGES.md`.
+`1_ANALYZE_CHANGES.md`. The installer also applies the Wizard review policy to
+`4_VERIFY_TESTS.md`: Crucible agents inspect existing PR/branch CI evidence but
+do not build projects, execute local test suites, trigger CI workflows, or make
+lack of a local test run a review blocker. Static test mapping, coverage-gap
+analysis, test-quality review, and `TEST_GAPS.md` remain required. The overlay
+pins the complete upstream `4_VERIFY_TESTS.md` template by SHA-256 and fails
+closed on any upstream change, preventing a template update from silently
+restoring local CI execution. The pinned fixture must be deliberately reviewed
+and updated before accepting a new upstream template.
+
+Fresh reviews and re-reviews receive this policy when pristine playbooks are
+installed. Same-attempt resumes preserve their existing playbook copies, so an
+in-flight review is never rewritten underneath its Maestro agent.
 
 ### `maestro_wt.sh` — Named Worktree + Maestro Agent
 

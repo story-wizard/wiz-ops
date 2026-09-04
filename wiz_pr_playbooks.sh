@@ -9,6 +9,53 @@ PLAYBOOKS_GH_PATH="${WIZ_PLAYBOOKS_GH_PATH:-Development/Code-Review}"
 
 fail() { echo "Error: $*" >&2; exit 1; }
 
+apply_test_review_policy() {
+    local playbook="$1"
+    python3 - "$playbook" <<'PY'
+import hashlib
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+text = path.read_text()
+expected_sha256 = "05ffed3387690d4ae0367401b9f004fb58d26fcc4334d63a09a04006ea1097e7"
+actual_sha256 = hashlib.sha256(text.encode()).hexdigest()
+if actual_sha256 != expected_sha256:
+    raise SystemExit(
+        f"unexpected upstream 4_VERIFY_TESTS.md SHA-256 in {path}: "
+        f"expected {expected_sha256}, got {actual_sha256}"
+    )
+old_task = """### Task 5: Run Tests (if possible)
+
+- [ ] **Execute test suite**: If test runner is available:
+  ```bash
+  npm test  # or equivalent
+  ```
+  Note any failures or warnings.
+"""
+new_task = """### Task 5: Review Existing CI Evidence (do not run tests locally)
+
+- [ ] **Inspect existing CI evidence**: Review read-only PR check status and existing CI logs/results when available.
+  - Do not build, run, rerun, or execute local test suites as part of the Crucible review.
+  - Do not invoke project test runners, compilers, build systems, or CI workflows.
+  - CI execution remains the responsibility of the developer workflow and feature-branch CI.
+  - Record the observed CI status, or state that it was unavailable or not inspected.
+  - The absence of local test execution is not a coverage gap or blocker.
+"""
+old_report = """## Test Execution Results
+[If tests were run, note results here]"""
+new_report = """## Existing CI Evidence
+[Record existing PR/branch CI status if available. Do not run tests locally.]"""
+
+if text.count(old_task) != 1:
+    raise SystemExit(f"expected exactly one upstream local-test task in {path}")
+if text.count(old_report) != 1:
+    raise SystemExit(f"expected exactly one upstream test-results section in {path}")
+text = text.replace(old_task, new_task, 1).replace(old_report, new_report, 1)
+path.write_text(text)
+PY
+}
+
 fetch_playbooks_from_github() {
     local dest="$1" commit listing name
     command -v gh >/dev/null 2>&1 || fail "gh is required to fetch Maestro playbooks"
@@ -66,6 +113,8 @@ refresh_playbooks() {
     fi
     rm -f "$stage/README.md"
     validate_playbooks "$stage" || { rm -rf "$stage"; exit 1; }
+    apply_test_review_policy "$stage/4_VERIFY_TESTS.md" \
+        || { rm -rf "$stage"; fail "Failed to apply Wizard test-review policy"; }
     configure_playbooks "$stage" "$repo" "$pr_number" || { rm -rf "$stage"; exit 1; }
     if [[ -e "$dest" ]]; then
         backup="${retained_backup:-${parent}/.code-review.previous.$$}"
