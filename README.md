@@ -120,7 +120,9 @@ The playbooks are sourced in two ways, in order:
 2. **GitHub fallback** — otherwise the script fetches them via `gh api` from
    [`RunMaestro/Maestro-Playbooks`](https://github.com/RunMaestro/Maestro-Playbooks/tree/main/Development/Code-Review)
    (the `main` branch). This uses your authenticated `gh`, so it also works for
-   private access.
+   private access. Each API response is downloaded to an attempt-local file and
+   retried on transient failures; the staged directory is discarded if retries
+   are exhausted, leaving the installed playbooks unchanged.
 
 Either way, `README.md` is dropped and the PR URL is patched into
 `1_ANALYZE_CHANGES.md`. The installer also applies the Wizard review policy to

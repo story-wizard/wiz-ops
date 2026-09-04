@@ -56,22 +56,60 @@ path.write_text(text)
 PY
 }
 
+gh_api_to_file_retry() {
+    local output="$1"; shift
+    local attempts="${WIZ_PLAYBOOK_FETCH_ATTEMPTS:-3}"
+    local delay="${WIZ_PLAYBOOK_FETCH_RETRY_DELAY:-1}"
+    local attempt=1 tmp="${output}.download.$$"
+    [[ "$attempts" =~ ^[1-9][0-9]*$ ]] || { echo "Error: invalid WIZ_PLAYBOOK_FETCH_ATTEMPTS '${attempts}'" >&2; return 1; }
+    [[ "$delay" =~ ^[0-9]+$ ]] || { echo "Error: invalid WIZ_PLAYBOOK_FETCH_RETRY_DELAY '${delay}'" >&2; return 1; }
+    while (( attempt <= attempts )); do
+        rm -f "$tmp"
+        if gh api "$@" > "$tmp"; then
+            mv "$tmp" "$output" || { rm -f "$tmp"; return 1; }
+            return 0
+        fi
+        rm -f "$tmp"
+        if (( attempt < attempts )); then
+            echo "Warning: GitHub playbook fetch attempt ${attempt}/${attempts} failed; retrying..." >&2
+            sleep "$delay"
+        fi
+        attempt=$((attempt + 1))
+    done
+    return 1
+}
+
 fetch_playbooks_from_github() {
-    local dest="$1" commit listing name
-    command -v gh >/dev/null 2>&1 || fail "gh is required to fetch Maestro playbooks"
+    local dest="$1" commit listing name commit_file listing_file
+    command -v gh >/dev/null 2>&1 || { echo "Error: gh is required to fetch Maestro playbooks" >&2; return 1; }
     echo "Local playbooks not found; fetching from github.com/${PLAYBOOKS_GH_REPO} (${PLAYBOOKS_GH_PATH})..." >&2
-    commit="$(gh api "repos/${PLAYBOOKS_GH_REPO}/commits/${PLAYBOOKS_GH_REF}" --jq .sha 2>&1)" \
-        || fail "Failed to resolve ${PLAYBOOKS_GH_REF} to an immutable commit: ${commit}"
-    [[ "$commit" =~ ^[0-9a-f]{40}$ ]] || fail "GitHub returned an invalid playbook commit: ${commit}"
-    listing="$(gh api "repos/${PLAYBOOKS_GH_REPO}/contents/${PLAYBOOKS_GH_PATH}?ref=${commit}" \
-        --jq '.[] | select(.type == "file" and (.name | endswith(".md"))) | .name' 2>&1)" \
-        || fail "Failed to list playbooks from GitHub: ${listing}"
-    [[ -n "$listing" ]] || fail "No playbook .md files found at ${PLAYBOOKS_GH_REPO}/${PLAYBOOKS_GH_PATH}"
+    commit_file="${dest}/.source-commit"
+    if ! gh_api_to_file_retry "$commit_file" \
+        "repos/${PLAYBOOKS_GH_REPO}/commits/${PLAYBOOKS_GH_REF}" --jq .sha; then
+        echo "Error: Failed to resolve ${PLAYBOOKS_GH_REF} to an immutable commit" >&2
+        return 1
+    fi
+    commit="$(< "$commit_file")"; rm -f "$commit_file"
+    [[ "$commit" =~ ^[0-9a-f]{40}$ ]] \
+        || { echo "Error: GitHub returned an invalid playbook commit: ${commit}" >&2; return 1; }
+    listing_file="${dest}/.source-listing"
+    if ! gh_api_to_file_retry "$listing_file" \
+        "repos/${PLAYBOOKS_GH_REPO}/contents/${PLAYBOOKS_GH_PATH}?ref=${commit}" \
+        --jq '.[] | select(.type == "file" and (.name | endswith(".md"))) | .name'; then
+        echo "Error: Failed to list playbooks from GitHub" >&2
+        return 1
+    fi
+    listing="$(< "$listing_file")"; rm -f "$listing_file"
+    [[ -n "$listing" ]] \
+        || { echo "Error: No playbook .md files found at ${PLAYBOOKS_GH_REPO}/${PLAYBOOKS_GH_PATH}" >&2; return 1; }
     while IFS= read -r name; do
         [[ -n "$name" ]] || continue
-        gh api "repos/${PLAYBOOKS_GH_REPO}/contents/${PLAYBOOKS_GH_PATH}/${name}?ref=${commit}" \
-            -H 'Accept: application/vnd.github.raw+json' > "${dest}/${name}" \
-            || fail "Failed to download playbook '${name}' from GitHub"
+        if ! gh_api_to_file_retry "${dest}/${name}" \
+            "repos/${PLAYBOOKS_GH_REPO}/contents/${PLAYBOOKS_GH_PATH}/${name}?ref=${commit}" \
+            -H 'Accept: application/vnd.github.raw+json'; then
+            echo "Error: Failed to download playbook '${name}' from GitHub after ${WIZ_PLAYBOOK_FETCH_ATTEMPTS:-3} attempt(s)" >&2
+            return 1
+        fi
     done <<< "$listing"
 }
 

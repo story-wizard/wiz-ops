@@ -12,9 +12,16 @@ REFRESH = OPS / "wiz_pr_playbooks.sh"
 VERIFY_TESTS_FIXTURE = OPS / "testdata/4_VERIFY_TESTS.upstream.md"
 
 
-def run_refresh(source: Path, dest: Path, backup: Optional[Path] = None) -> subprocess.CompletedProcess:
+def run_refresh(
+    source: Path,
+    dest: Path,
+    backup: Optional[Path] = None,
+    extra_env: Optional[dict[str, str]] = None,
+) -> subprocess.CompletedProcess:
     env = os.environ.copy()
     env["WIZ_PLAYBOOKS_SOURCE"] = str(source)
+    if extra_env:
+        env.update(extra_env)
     args = [
         "/bin/bash",
         str(REFRESH),
@@ -31,6 +38,42 @@ def run_refresh(source: Path, dest: Path, backup: Optional[Path] = None) -> subp
         capture_output=True,
         env=env,
     )
+
+
+def make_gh_stub(root: Path) -> Path:
+    bindir = root / "bin"
+    bindir.mkdir()
+    stub = bindir / "gh"
+    stub.write_text(
+        """#!/usr/bin/env python3
+import os
+import sys
+from pathlib import Path
+
+endpoint = sys.argv[2]
+if "/commits/" in endpoint:
+    print("a" * 40)
+    raise SystemExit(0)
+if endpoint.endswith("Development/Code-Review?ref=" + "a" * 40):
+    print("1_ANALYZE_CHANGES.md")
+    print("2_REVIEW_CODE.md")
+    print("3_CHECK_SECURITY.md")
+    print("4_VERIFY_TESTS.md")
+    print("5_SUMMARIZE.md")
+    raise SystemExit(0)
+
+name = endpoint.split("/Development/Code-Review/", 1)[1].split("?", 1)[0]
+counter = Path(os.environ["GH_STUB_STATE"]) / (name + ".count")
+count = int(counter.read_text()) + 1 if counter.exists() else 1
+counter.write_text(str(count))
+if name == os.environ.get("GH_STUB_FAIL_NAME") and count <= int(os.environ.get("GH_STUB_FAIL_TIMES", "0")):
+    print("gh: HTTP 504", file=sys.stderr)
+    raise SystemExit(1)
+sys.stdout.buffer.write((Path(os.environ["GH_STUB_SOURCE"]) / name).read_bytes())
+"""
+    )
+    stub.chmod(0o755)
+    return bindir
 
 
 def fixture() -> tuple[tempfile.TemporaryDirectory[str], Path, Path]:
@@ -178,6 +221,52 @@ def test_refresh_rejects_duplicate_upstream_execution_block() -> None:
         tmp.cleanup()
 
 
+def github_stub_env(root: Path, source: Path, fail_times: int) -> dict[str, str]:
+    state = root / "gh-state"
+    state.mkdir()
+    bindir = make_gh_stub(root)
+    return {
+        "WIZ_PLAYBOOKS_SOURCE": str(root / "missing-source"),
+        "WIZ_PLAYBOOK_FETCH_ATTEMPTS": "2",
+        "WIZ_PLAYBOOK_FETCH_RETRY_DELAY": "0",
+        "GH_STUB_STATE": str(state),
+        "GH_STUB_SOURCE": str(source),
+        "GH_STUB_FAIL_NAME": "5_SUMMARIZE.md",
+        "GH_STUB_FAIL_TIMES": str(fail_times),
+        "PATH": str(bindir) + os.pathsep + os.environ["PATH"],
+    }
+
+
+def test_github_fetch_retries_transient_504() -> None:
+    tmp, source, dest = fixture()
+    try:
+        root = Path(tmp.name)
+        env = github_stub_env(root, source, fail_times=1)
+        run = run_refresh(source, dest, extra_env=env)
+        assert run.returncode == 0, run.stdout + run.stderr
+        assert (root / "gh-state/5_SUMMARIZE.md.count").read_text() == "2"
+        assert (dest / "5_SUMMARIZE.md").read_bytes() == (source / "5_SUMMARIZE.md").read_bytes()
+        assert not list(dest.parent.glob(".code-review.stage.*"))
+    finally:
+        tmp.cleanup()
+
+
+def test_github_fetch_permanent_failure_cleans_stage_and_preserves_destination() -> None:
+    tmp, source, dest = fixture()
+    try:
+        root = Path(tmp.name)
+        existing = "# Existing attempt\n- [x] preserve me\n"
+        (dest / "existing.md").write_text(existing)
+        env = github_stub_env(root, source, fail_times=99)
+        run = run_refresh(source, dest, extra_env=env)
+        assert run.returncode != 0
+        assert (root / "gh-state/5_SUMMARIZE.md.count").read_text() == "2"
+        assert (dest / "existing.md").read_text() == existing
+        assert not list(dest.parent.glob(".code-review.stage.*"))
+    finally:
+        tmp.cleanup()
+
+
 if __name__ == "__main__":
     test_refresh_replaces_expanded_notes_with_pristine_templates()
     test_refresh_configures_only_displayed_pr_url_and_runtime_placeholders()
@@ -186,4 +275,6 @@ if __name__ == "__main__":
     test_refresh_replaces_local_test_execution_with_existing_ci_review()
     test_refresh_rejects_additional_local_test_execution_instruction()
     test_refresh_rejects_duplicate_upstream_execution_block()
+    test_github_fetch_retries_transient_504()
+    test_github_fetch_permanent_failure_cleans_stage_and_preserves_destination()
     print("ALL PLAYBOOK REFRESH TESTS PASSED")
