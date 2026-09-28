@@ -1,0 +1,22 @@
+import path from 'node:path';
+import {strict as assert} from 'node:assert';
+import {randomUUID} from 'node:crypto';
+import {nativeCall,verifyDesktopOwner,verifyDesktopPaths,launchDesktop} from './adapter.mjs';
+import {readJSON,writeJSON} from '../runner/files.mjs';
+import {pause} from '../runner/engine.mjs';
+const file=process.argv[2],s=await readJSON(file);
+verifyDesktopOwner(s);
+assert.throws(()=>verifyDesktopPaths({...s,bundle:'/Applications/Wizard.app'}),/outside/);
+assert.throws(()=>verifyDesktopOwner({...s,executable:'/bin/sh'}),/Unexpected/);
+assert.throws(()=>verifyDesktopOwner({...s,pid:process.pid}),/no longer belongs/);
+await assert.rejects(()=>launchDesktop({...s}),/still alive/);
+await assert.rejects(()=>nativeCall(file,'action',{target:'not-observed'}),/Action unavailable/);
+await assert.rejects(()=>nativeCall(file,'unsupported'),/Unsupported/);
+const ready=await readJSON(path.join(s.native,'ready.json')),id=randomUUID();await writeJSON(path.join(s.native,'request.json'),{id,generation:'stale-generation',op:'inspect'});
+let response;for(let i=0;i<30;i++){try{response=await readJSON(path.join(s.native,`response-${id}.json`));break;}catch(e){if(e.code!=='ENOENT')throw e;}await pause(100);}
+assert.equal(response?.ok,false);assert.equal(response?.error,'Stale GUI generation');assert.equal(response?.generation,ready.generation);
+const ui=await nativeCall(file,'inspect');await assert.rejects(()=>nativeCall(file,'key',{target:ui.widgets.find(w=>w.class==='MainWindow').id,key:'NotAKey'}),/Unsupported key name/);
+await assert.rejects(()=>nativeCall(file,'type-text',{target:ui.widgets.find(w=>w.class==='MainWindow').id,text:'\n'}),/printable ASCII/);
+for(const op of ['context-click','drop-model-item','snapshot-presented'])await assert.rejects(()=>nativeCall(file,op,{target:'not-observed'}),/unavailable|required|observed/);
+const main=ui.widgets.find(w=>w.class==='MainWindow');await assert.rejects(()=>nativeCall(file,'click',{target:main.id,x:main.width+.5,y:10}),/outside target/);
+await writeJSON(path.join(s.root,'desktop-guards-report.json'),{status:'Pass',checks:13,pid:s.pid,generation:s.generation,guards:['external bundle','wrong executable','unowned PID','duplicate launch','unobserved action','unsupported operation','stale generation','unknown key name','non-printable typed input','unobserved context target','unobserved drag source/target','unobserved capture target','fractional out-of-bounds coordinate']});console.log('13 desktop guards passed.');

@@ -1,0 +1,62 @@
+{
+  "id": "local-services-v1",
+  "revision": 2,
+  "title": "Local application services",
+  "target": "Owned background GUI services and app export worker; no keyboard/mouse or foreground UI acceptance",
+  "cases": [
+    {
+      "id": "S-MGFX-DUPLICATE-DEFAULT",
+      "sourceId": "OZ-08",
+      "title": "Duplicate admitted MGFX with default descriptor fields",
+      "expected": "A successfully admitted graphic with an omitted optional group label duplicates without a descriptor error."
+    },
+    {
+      "id": "S-MGFX-DUPLICATE",
+      "sourceId": "OZ-08",
+      "title": "Independent graphic duplication",
+      "expected": "Application duplication creates independent generation and compound identities; editing copied parameters changes copied pixels only."
+    },
+    {
+      "id": "S-MGFX-CLIP-COPY",
+      "sourceId": "OZ-07",
+      "title": "Independent generated clip copy",
+      "expected": "The application operation used by MGFX copy/paste creates independent MGFX state; editing the copy preserves original values and pixels. Keyboard clipboard remains separate."
+    },
+    {
+      "id": "S-MGFX-UNDO-PUBLISH",
+      "sourceId": "OZ-13",
+      "title": "Undo and redo a graphic publication",
+      "expected": "Undo removes the generated placement; redo restores its identities and rendered pixels. Retained undo files are not classified as orphaned artifacts."
+    },
+    {
+      "id": "S-MGFX-PERSIST",
+      "sourceId": "OZ-12",
+      "title": "Persist independently edited graphics",
+      "expected": "A fresh owned process restores generation values, compound placements and rendered pixels."
+    },
+    {
+      "id": "S-EXPORT-PRORES",
+      "sourceId": "EX-01",
+      "title": "Application ProRes export",
+      "expected": "The app export worker renders and publishes 48 decodable 1080p24 ProRes frames with PCM audio."
+    },
+    {
+      "id": "S-EXPORT-AV1",
+      "sourceId": "EX-01",
+      "title": "Application AV1 export",
+      "expected": "The app export worker renders and publishes 48 decodable 1080p24 AV1 frames with AAC audio."
+    },
+    {
+      "id": "S-EXPORT-UNSET-RATE",
+      "sourceId": "EX-02",
+      "title": "Export a timeline with an unset rate",
+      "expected": "A disposable fixture with stored timeline rate 0/1 resolves to 24/1 and exports 48 decodable H.264 frames; a 1 fps fallback must fail this check."
+    },
+    {
+      "id": "S-PF-IDLE",
+      "sourceId": "PF-25",
+      "title": "Ten-minute idle editor CPU",
+      "expected": "The owned editor remains paused and unchanged for ten minutes. Over the final five minutes, average CPU is at most 2% and time-weighted p95 is at most 5% of one CPU core. Limits are provisional; raw process CPU and RSS samples are retained."
+    }
+  ]
+}

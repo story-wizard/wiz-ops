@@ -1,0 +1,28 @@
+# Deterministic GP preparation. No model downloads or provider requests.
+max_workers = 1
+enrichment_workers = 1
+[wizserver]
+backend = "http"
+[pipeline]
+model_prefetch = false
+mode = "interleaved"
+[asr]
+enabled = false
+[embeddings]
+enabled = false
+[visual_enrichment]
+enabled = false
+[audio_analysis]
+enabled = false
+[camera_motion]
+enabled = false
+[speaker_faces]
+enabled = false
+[llm]
+enrich_enabled = false
+[diarization]
+backend = "none"
+[multicam]
+enabled = false
+[project_context]
+enabled = false

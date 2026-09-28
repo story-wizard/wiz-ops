@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {towerSnapshot} from '../tower.mjs';
+const course={cases:[{id:'D-A',title:'Action',steps:['Click'],expected:'Expected'}],target:'Local GUI'};
+const snapshot=towerSnapshot({runner:{prepared:false,course,active:null},desktop:{course,serviceCourse:course,outcomes:['Confirmed defect'],jobs:[],runs:[{id:'desktop-old',startedAt:'2026-01-01',status:'Fail',course,reportHash:'old',results:[{id:'D-A',status:'Fail',error:'Nothing happened'}]}]},runs:[{id:'new',name:'Package',created_at:'2026-02-01',build:'Package A',execution:{state:'Passed',recipe:course,package:{runtime:{appHash:'desktop-hash'}}},results:[{test_id:'D-A',status:'Pass'}]}],guide:{rows:[{id:'D-A',title:'Action',reference:{runId:'desktop-old',status:'Pass',context:'Harness issue'},history:[],operations:['project.read']}]},details:()=>{throw Error('No jobs expected')}});
+assert.equal(snapshot.runs[0].id,'new');
+assert.equal(snapshot.runs[0].kind,'composed','Mixed runtime evidence must not be labeled packaged-only');
+assert.equal(snapshot.runs[1].results[0].status,'Fail','Curated reference must never overwrite run evidence');
+assert.equal(snapshot.runs[1].context,'Harness issue');
+assert.equal(snapshot.runs[1].results[0].canPrepare,true);
+assert.equal(snapshot.runs[0].results[0].canPrepare,false);
+assert.equal(snapshot.runner.prepared,false);
+assert.deepEqual(snapshot.checks[0].operations,['project.read']);
+assert.equal(snapshot.active,false);
+console.log('Tower projection: run evidence, scope, handoff eligibility, context and Ops preserved');

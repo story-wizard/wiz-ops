@@ -8,6 +8,10 @@ This repo collects convenience scripts that support day-to-day development workf
 
 The lower-level `maestro_*` scripts set up isolated worktrees and Maestro agents on demand. The `wiz_pr_*` scripts build a fully automated, Slack-triggered PR-review pipeline on top of them (see [Slack-triggered PR review pipeline](#slack-triggered-pr-review-pipeline)).
 
+## Smoke testing
+
+[`smoke/`](smoke/README.md) contains the local Wizard smoke catalog, agent-friendly CLI, runner, adapters and web dashboard. It is an initial development import for WIZ-423. Run its framework checks without Wizard; actual app checks require an explicitly configured compatible runtime. No existing review/build pipeline is changed by this import.
+
 ## Requirements
 
 - [`gh`](https://cli.github.com/) — GitHub CLI, authenticated

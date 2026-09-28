@@ -1,0 +1,99 @@
+# Wizard smoke framework
+
+A local catalog, CLI and runner for repeatable Wizard smoke tests. It creates disposable projects, executes selected checks, verifies state and output independently, and retains evidence. The web dashboard uses the same local service as agents and optional native clients.
+
+This is the first source import for **WIZ-423 — Smoke Test Framework V1**. It remains a development capability pending runtime portability and first team pilot. See [import scope and remaining work](docs/import-status.md).
+
+## Start without a Wizard build
+
+Requires Node.js 22.13 or newer; this import was verified with Node 24.19.0. There are no npm dependencies to install.
+
+From the `wiz-ops` checkout:
+
+```sh
+cd smoke
+npm test
+npm run scope:check
+npm start
+```
+
+Open <http://127.0.0.1:4317>. Use `PORT=4318 npm start` if that port is occupied. The server binds only to loopback. Starting the service does not launch Wizard or run a course.
+
+A clean checkout shows the catalog and **no run history**. The versioned checklist contains criteria and coverage only; imported workbook outcomes are excluded. The field guide at `/explainer` describes checks and their operations; local evidence appears only when retained runs exist.
+
+## Compose and run a course
+
+Start the service above, then use the CLI in another terminal:
+
+```sh
+node scripts/smoke.mjs list --category color
+node scripts/smoke.mjs courses
+node scripts/smoke.mjs course save --file examples/color-regression.json
+node scripts/smoke.mjs course show --id color-regression
+```
+
+With a compatible local Wizard package and the prerequisites below:
+
+```sh
+node scripts/smoke.mjs plan --app /Applications/Wizard.app --course color-regression --out /tmp/color-plan.json
+node scripts/smoke.mjs run --plan /tmp/color-plan.json --operator "Developer name" --request-id color-change-001 --wait
+node scripts/smoke.mjs status --request-id color-change-001
+node scripts/smoke.mjs report --run RUN_ID
+```
+
+Planning fingerprints the selected package, fixture recipe, generated media and runner. Running rechecks those identities. Selection adds declared prerequisites, deduplicates overlapping checks and freezes the effective course. An uncertain mutation is not silently replayed.
+
+See [agent-friendly courses](docs/agent-courses.md) for explicit IDs, categories, groups, cancellation and recovery by request ID.
+
+## What is included
+
+| Execution target | Definitions | Boundary |
+| --- | ---: | --- |
+| Packaged engine | 57 | Uses the selected package's headless engine, shipped CLI and local ingest tools |
+| Foreground desktop | 77 | Uses an explicitly retained instrumented app, paired CLI and Qt test adapter |
+| Background app services | 9 | Uses the instrumented runtime and export worker with UI input disabled; includes the provisional idle CPU candidate |
+| **Total** | **143** | Definition count, not passing coverage |
+
+**137 definitions are accepted for custom-course selection.** Five unlinked team checks and the new idle CPU candidate remain outside that registry. The 137 original checklist rows are a different count: 77 have mapped counterparts, 32 have none, 24 NAS rows are deferred and four are placeholders. A mapped row can still lack part of its original behavior.
+
+- [Proposed full scope](docs/v1-scope.md)
+- [Shared interaction library](docs/interaction-library.md)
+- [Idle CPU candidate](docs/idle-candidate.md)
+
+The testing lead's accepted-definition registry is source-controlled. Saving a custom course cannot accept new definitions or change canonical membership.
+
+## Runtime prerequisites
+
+The framework checks and catalog work without Wizard. Actual smoke execution currently targets macOS and additionally needs:
+
+- A compatible retained `Wizard.app` with shipped CLI/headless engine, ingest runtime and media tools. The exact operation-schema check rejects unreviewed packages.
+- Local FFmpeg/FFprobe for synthetic media. The fixture builder defaults to Homebrew paths; preparation accepts overrides.
+- For speech checks, the pinned cached Parakeet CoreML model and local macOS speech synthesis. Preparation does not download a model.
+- For desktop/service checks, an explicitly supplied instrumented GUI, paired CLI, compatible native adapter/Qt workaround and retained library dependencies. Foreground tests need an unlocked desktop.
+
+Native adapter compilation currently assumes Homebrew Qt at `/opt/homebrew`; see `desktop/native/build.sh`. This import does not bundle those runtime components or establish that an arbitrary release build is compatible.
+
+Fresh starts as an empty project and receives synthetic media/state as needed. Story-user, Large and NAS remain deferred. Full desktop OS interaction and human judgments are separate from CLI or Qt action assertions.
+
+## Data and evidence
+
+Definitions, normalized checklist data, acceptance records, fixture recipes and source are versioned. Runtime state is ignored by Git: SQLite databases, plans, copied applications, media/model caches, runs, captures and reports.
+
+The default workspace on macOS is `~/Library/Application Support/WizardSmoke` (`~/.local/state/WizardSmoke` elsewhere). It holds databases, courses, plans, fixtures, copied apps, native builds, runs, reports and kits. Set an absolute `SMOKE_DATA_DIR` to use another disk or location. The server and every related CLI command must use the same setting. Paths inside a Git checkout, including symlink aliases, are rejected.
+
+```sh
+export SMOKE_DATA_DIR="$HOME/Library/Application Support/WizardSmoke"
+npm start
+```
+
+Read-only source definitions live in `catalog/`. Do not move existing run folders blindly: saved plans and evidence retain absolute paths and exact source/build identities. Older local history is not migrated automatically.
+
+Each actual run retains its build identity, immutable check snapshots, operation receipts, observations and report. Automated observations cannot be overwritten through the manual-result endpoint. Fail, Blocked and Unknown remain distinct. Local reports do not imply team publication or release acceptance.
+
+## Development and integrations
+
+`npm test` exercises temporary databases, process fixtures, local HTTP servers, deliberately wrong responses and interruption handling. It does not run a Wizard course. `npm run scope:check` verifies the inventory and recipe hashes without launching Wizard.
+
+The optional native client consumes the same API; its source is not included. The lightweight read-only live feed is described in [tower-live.md](docs/tower-live.md). This import adds no build-pipeline hook, deployment, Studio service, scheduled job or external message delivery.
+
+For checkout handoff and the first team pilot, use [source-handoff.md](docs/source-handoff.md).

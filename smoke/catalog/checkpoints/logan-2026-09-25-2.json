@@ -1,0 +1,1241 @@
+{
+  "source": "Wizard Smoke Test Checklist - 9_25-2.xlsx",
+  "sha256": "9377d91e6e6d0984dad9b93a10addff8ca546520d1ccac87d27549cf6d327e78",
+  "sheet": "Smoke Test",
+  "sourceBuild": "Wizard story-weekly-26-09-24 released",
+  "rows": [
+    {
+      "id": "NF-01",
+      "area": "New Features",
+      "criteria": "OFX plug-in load, disable/enable, crash handling, and basic effects + export",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 9,
+      "sourceIssue": null
+    },
+    {
+      "id": "NF-02",
+      "area": "New Features",
+      "criteria": "[New feature 2]",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 10,
+      "sourceIssue": null
+    },
+    {
+      "id": "NF-03",
+      "area": "New Features",
+      "criteria": "[New feature 3]",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 11,
+      "sourceIssue": null
+    },
+    {
+      "id": "NF-04",
+      "area": "New Features",
+      "criteria": "[New feature 4]",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 12,
+      "sourceIssue": null
+    },
+    {
+      "id": "NF-05",
+      "area": "New Features",
+      "criteria": "[New feature 5]",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 13,
+      "sourceIssue": null
+    },
+    {
+      "id": "LP-01",
+      "area": "Launch and project",
+      "criteria": "Launch the app fresh, confirm default dock layout appears",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 16,
+      "sourceIssue": null
+    },
+    {
+      "id": "LP-02",
+      "area": "Launch and project",
+      "criteria": "New project, save, quit, relaunch, reopen it",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 17,
+      "sourceIssue": null
+    },
+    {
+      "id": "LP-03",
+      "area": "Launch and project",
+      "criteria": "Open an existing older project (format compatibility)",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 18,
+      "sourceIssue": null
+    },
+    {
+      "id": "LP-04",
+      "area": "Launch and project",
+      "criteria": "Cmd+S then check the close prompt doesn't flag dirty; make an edit and confirm Discard resets it",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 19,
+      "sourceIssue": null
+    },
+    {
+      "id": "IN-01",
+      "area": "Ingestion / media bin",
+      "criteria": "Test ingestion of a mixed folder (ProRes, H.264, audio-only, still image, MXF)",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 22,
+      "sourceIssue": null
+    },
+    {
+      "id": "IN-02",
+      "area": "Ingestion / media bin",
+      "criteria": "Test ingestion from NAS as well, note time",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 23,
+      "sourceIssue": null
+    },
+    {
+      "id": "IN-03",
+      "area": "Ingestion / media bin",
+      "criteria": "Ingest footage from outside the bundle's parent folder",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 24,
+      "sourceIssue": null
+    },
+    {
+      "id": "IN-04",
+      "area": "Ingestion / media bin",
+      "criteria": "Check thumbnails, filmstrips, waveforms populate",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 25,
+      "sourceIssue": null
+    },
+    {
+      "id": "IN-05",
+      "area": "Ingestion / media bin",
+      "criteria": "Check detected source colour space column is populated and looks right",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 26,
+      "sourceIssue": null
+    },
+    {
+      "id": "IN-06",
+      "area": "Ingestion / media bin",
+      "criteria": "Confirm transcripts generate for clips with speech",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 27,
+      "sourceIssue": null
+    },
+    {
+      "id": "IN-07",
+      "area": "Ingestion / media bin",
+      "criteria": "Duplicate a bin item, rename it, delete it",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 28,
+      "sourceIssue": null
+    },
+    {
+      "id": "IN-08",
+      "area": "Ingestion / media bin",
+      "criteria": "Move a source file on disk and test relink",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 29,
+      "sourceIssue": null
+    },
+    {
+      "id": "SS-01",
+      "area": "Semantic search",
+      "criteria": "Search the bin by a spoken phrase from a transcript, confirm the right clip and timestamp come back",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 32,
+      "sourceIssue": null
+    },
+    {
+      "id": "SS-02",
+      "area": "Semantic search",
+      "criteria": "Search by a visual description (\"wide shot of the beach\") with no matching transcript text",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 33,
+      "sourceIssue": null
+    },
+    {
+      "id": "SS-03",
+      "area": "Semantic search",
+      "criteria": "Search a term that appears in a clip name only",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 34,
+      "sourceIssue": null
+    },
+    {
+      "id": "SS-04",
+      "area": "Semantic search",
+      "criteria": "Search for something not in the project, confirm an empty result rather than a bad match",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 35,
+      "sourceIssue": null
+    },
+    {
+      "id": "SS-05",
+      "area": "Semantic search",
+      "criteria": "Ingest a new clip and confirm it becomes searchable without a restart",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 36,
+      "sourceIssue": null
+    },
+    {
+      "id": "SS-06",
+      "area": "Semantic search",
+      "criteria": "Ask Oz to find footage by description and confirm it uses the same results",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 37,
+      "sourceIssue": null
+    },
+    {
+      "id": "SS-07",
+      "area": "Semantic search",
+      "criteria": "Search across a project with two timelines and confirm results aren't scoped to the focused one",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 38,
+      "sourceIssue": null
+    },
+    {
+      "id": "TL-01",
+      "area": "Timeline editing",
+      "criteria": "Drag clips from bin to timeline, overwrite and insert",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 41,
+      "sourceIssue": null
+    },
+    {
+      "id": "TL-02",
+      "area": "Timeline editing",
+      "criteria": "Cut with blade (B) on a selection and with nothing selected",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 42,
+      "sourceIssue": null
+    },
+    {
+      "id": "TL-03",
+      "area": "Timeline editing",
+      "criteria": "Trim, ripple delete a gap (Shift+Delete), slip a clip (T and Alt-drag)",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 43,
+      "sourceIssue": null
+    },
+    {
+      "id": "TL-04",
+      "area": "Timeline editing",
+      "criteria": "Copy/paste clips (Cmd+C/V), cut/paste, paste between timelines of different frame rates",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 44,
+      "sourceIssue": null
+    },
+    {
+      "id": "TL-05",
+      "area": "Timeline editing",
+      "criteria": "Link/unlink a V/A pair, toggle Linked Selection (Cmd+Shift+L)",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 45,
+      "sourceIssue": null
+    },
+    {
+      "id": "TL-06",
+      "area": "Timeline editing",
+      "criteria": "Lock a track and confirm blade and drag are refused on it",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 46,
+      "sourceIssue": null
+    },
+    {
+      "id": "TL-07",
+      "area": "Timeline editing",
+      "criteria": "Toggle track targeting (V1/A1 badges) and Cmd+A",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 47,
+      "sourceIssue": null
+    },
+    {
+      "id": "TL-08",
+      "area": "Timeline editing",
+      "criteria": "Create a compound clip, open it, edit inside, return",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 48,
+      "sourceIssue": null
+    },
+    {
+      "id": "TL-09",
+      "area": "Timeline editing",
+      "criteria": "Open several timelines in tabs, switch tabs, close and reopen a tab, confirm zoom/scroll restore",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 49,
+      "sourceIssue": null
+    },
+    {
+      "id": "UP-01",
+      "area": "Undo / persistence",
+      "criteria": "Undo/redo a run of 20 edits across two timelines",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 52,
+      "sourceIssue": null
+    },
+    {
+      "id": "UP-02",
+      "area": "Undo / persistence",
+      "criteria": "Edit a timeline externally (wiz-cli or text edit) while the app is open, confirm reload toast and Ctrl+Shift+R",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 53,
+      "sourceIssue": null
+    },
+    {
+      "id": "UP-03",
+      "area": "Undo / persistence",
+      "criteria": "Change the working colour space, then undo it as one step",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 54,
+      "sourceIssue": null
+    },
+    {
+      "id": "CO-01",
+      "area": "Colour",
+      "criteria": "Test primary grade (wheels, pivot, Model selector)",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 57,
+      "sourceIssue": null
+    },
+    {
+      "id": "CO-02",
+      "area": "Colour",
+      "criteria": "Test Tone panel including Zones, reset each zone",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 58,
+      "sourceIssue": null
+    },
+    {
+      "id": "CO-03",
+      "area": "Colour",
+      "criteria": "Test RGB curves and hue curves, copy/paste a curve between clips",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 59,
+      "sourceIssue": null
+    },
+    {
+      "id": "CO-04",
+      "area": "Colour",
+      "criteria": "Test Balance panel - Exposure/Contrast, white balance/temp",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 60,
+      "sourceIssue": null
+    },
+    {
+      "id": "CO-05",
+      "area": "Colour",
+      "criteria": "Copy Nodes / Paste Nodes between clips (Cmd+Opt+C/V)",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 61,
+      "sourceIssue": null
+    },
+    {
+      "id": "CO-06",
+      "area": "Colour",
+      "criteria": "Add some color nodes manually to the render graph, confirm they work",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 62,
+      "sourceIssue": null
+    },
+    {
+      "id": "CO-07",
+      "area": "Colour",
+      "criteria": "Bypass a node with D, bypass a grade panel, disable a clip",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 63,
+      "sourceIssue": null
+    },
+    {
+      "id": "CO-08",
+      "area": "Colour",
+      "criteria": "Manually override a clip's source colour space, then revert",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 64,
+      "sourceIssue": null
+    },
+    {
+      "id": "CO-09",
+      "area": "Colour",
+      "criteria": "Open histogram, vectorscope, waveform and the value readout while scrubbing/playback/grade edit. Test switching between taps. Pre-IDT should be source, post-primary and pre-IDT should render the same currently (show the grade)",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 65,
+      "sourceIssue": null
+    },
+    {
+      "id": "RG-01",
+      "area": "Render graph / Inspector",
+      "criteria": "Open the Render Graph panel, add, connect, copy/paste, delete nodes",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 68,
+      "sourceIssue": null
+    },
+    {
+      "id": "RG-02",
+      "area": "Render graph / Inspector",
+      "criteria": "Select each node type and confirm Inspector controls appear and edit live",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 69,
+      "sourceIssue": null
+    },
+    {
+      "id": "RG-03",
+      "area": "Render graph / Inspector",
+      "criteria": "Connect a matte to a maskable node",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 70,
+      "sourceIssue": "WIZ-475"
+    },
+    {
+      "id": "RG-04",
+      "area": "Render graph / Inspector",
+      "criteria": "Edit values in some nodes and confirm they cooperate",
+      "environment": "Local",
+      "owner": "Sam",
+      "sourceRow": 71,
+      "sourceIssue": null
+    },
+    {
+      "id": "SB-01",
+      "area": "Spellbook",
+      "criteria": "Open the Spellbook panel, create a new spell (Cmd+Shift+N) and via the \"+\" corner button",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 74,
+      "sourceIssue": null
+    },
+    {
+      "id": "SB-02",
+      "area": "Spellbook",
+      "criteria": "Quick search the glossary (Cmd+Shift+K and Cmd+K), drag a node from results onto the canvas",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 75,
+      "sourceIssue": null
+    },
+    {
+      "id": "SB-03",
+      "area": "Spellbook",
+      "criteria": "Build a small spell: source → two effect nodes → output, connect and disconnect edges",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 76,
+      "sourceIssue": null
+    },
+    {
+      "id": "SB-04",
+      "area": "Spellbook",
+      "criteria": "Edit node params in the Inspector and confirm the canvas preview updates",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 77,
+      "sourceIssue": null
+    },
+    {
+      "id": "SB-05",
+      "area": "Spellbook",
+      "criteria": "Bypass a node with D, then re-enable",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 78,
+      "sourceIssue": null
+    },
+    {
+      "id": "SB-06",
+      "area": "Spellbook",
+      "criteria": "Run the spell, confirm the run console shows progress and the result lands in the bin",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 79,
+      "sourceIssue": null
+    },
+    {
+      "id": "SB-07",
+      "area": "Spellbook",
+      "criteria": "Turn on verbose Spellbook logging in Preferences → Debug and confirm the console mirrors [debug] lines",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 80,
+      "sourceIssue": null
+    },
+    {
+      "id": "SB-08",
+      "area": "Spellbook",
+      "criteria": "Rename, duplicate, close and reopen a spell tab, confirm scene and params restore",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 81,
+      "sourceIssue": null
+    },
+    {
+      "id": "SB-09",
+      "area": "Spellbook",
+      "criteria": "Drop the Spellbook dock into a different position, float it, redock it, confirm the canvas survives",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 82,
+      "sourceIssue": null
+    },
+    {
+      "id": "SB-10",
+      "area": "Spellbook",
+      "criteria": "Apply a spell's result to a timeline clip and confirm it renders in playback",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 83,
+      "sourceIssue": null
+    },
+    {
+      "id": "SB-11",
+      "area": "Spellbook",
+      "criteria": "Undo a spell edit, confirm one undo entry per gesture",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 84,
+      "sourceIssue": null
+    },
+    {
+      "id": "SB-12",
+      "area": "Spellbook",
+      "criteria": "Save, quit, relaunch, confirm spells persist in the bundle",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 85,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-01",
+      "area": "Oz / MGFX",
+      "criteria": "Start an Oz session with one of the new models (Opus 5.5, GPT-6 Sol, or GPT-6 Luna), send a plain-text turn, get a reply",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 88,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-02",
+      "area": "Oz / MGFX",
+      "criteria": "Turn on \"Show Oz payloads in chat\" and confirm nle_state carries the focused timeline, selection and playhead",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 89,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-03",
+      "area": "Oz / MGFX",
+      "criteria": "Ask Oz to make a rough cut from a description, confirm the timeline updates and is undoable",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 90,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-04",
+      "area": "Oz / MGFX",
+      "criteria": "Ask Oz to find a moment by description, confirm it returns a clip and timecode",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 91,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-05",
+      "area": "Oz / MGFX",
+      "criteria": "Ask Oz to create a lower third / title graphic, confirm the MGFX generation publishes into the bin",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 92,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-06",
+      "area": "Oz / MGFX",
+      "criteria": "Drag the generated MGFX clip to the timeline and play it",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 93,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-07",
+      "area": "Oz / MGFX",
+      "criteria": "Copy/paste the MGFX clip, confirm the copy edits independently from the source",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 94,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-08",
+      "area": "Oz / MGFX",
+      "criteria": "Duplicate the MGFX clip from the bin and confirm the same independence",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 95,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-09",
+      "area": "Oz / MGFX",
+      "criteria": "Drag an SVG into the chat, ask Oz to animate it or build a graphic from it, confirm the attachment preview shows and the result uses the SVG",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 96,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-10",
+      "area": "Oz / MGFX",
+      "criteria": "Drag a PNG / WebP still into the chat and ask Oz to use it in a graphic",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 97,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-11",
+      "area": "Oz / MGFX",
+      "criteria": "Drag a timeline clip reference into the chat and ask Oz about it",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 98,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-12",
+      "area": "Oz / MGFX",
+      "criteria": "Ask Oz to modify an existing generated graphic (change text, colour), confirm it updates in place rather than minting a duplicate",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 99,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-13",
+      "area": "Oz / MGFX",
+      "criteria": "Undo past a generation publish and confirm no orphaned artifacts or broken clips",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 100,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-14",
+      "area": "Oz / MGFX",
+      "criteria": "Cancel a generation mid-flight, confirm the app stays responsive and nothing half-publishes",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 101,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-15",
+      "area": "Oz / MGFX",
+      "criteria": "Start Oz on project A, switch to project B, confirm Oz stops receiving project A's ids",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 102,
+      "sourceIssue": null
+    },
+    {
+      "id": "OZ-16",
+      "area": "Oz / MGFX",
+      "criteria": "Confirm no user media is uploaded off the machine during any of the above",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 103,
+      "sourceIssue": null
+    },
+    {
+      "id": "AU-01",
+      "area": "Audio",
+      "criteria": "Adjust mixer levels, mute/solo tracks",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 106,
+      "sourceIssue": null
+    },
+    {
+      "id": "AU-02",
+      "area": "Audio",
+      "criteria": "Open an AU plugin editor on a track",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 107,
+      "sourceIssue": null
+    },
+    {
+      "id": "AU-03",
+      "area": "Audio",
+      "criteria": "Check loudness metering during playback",
+      "environment": "Local",
+      "owner": "Aryan",
+      "sourceRow": 108,
+      "sourceIssue": null
+    },
+    {
+      "id": "EX-01",
+      "area": "Export",
+      "criteria": "Export a short range via Cmd+E, check output plays and colour matches the preview",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 111,
+      "sourceIssue": null
+    },
+    {
+      "id": "EX-02",
+      "area": "Export",
+      "criteria": "Export a timeline with an unset frame rate",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 112,
+      "sourceIssue": null
+    },
+    {
+      "id": "EX-03",
+      "area": "Export",
+      "criteria": "Export a still at the playhead (Cmd+E -> Format -> Still at Playhead)",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 113,
+      "sourceIssue": null
+    },
+    {
+      "id": "EX-04",
+      "area": "Export",
+      "criteria": "Export a timeline containing an MGFX clip and a compound clip",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 114,
+      "sourceIssue": null
+    },
+    {
+      "id": "UI-01",
+      "area": "Panels / shortcuts / UI",
+      "criteria": "Float a panel, move it to a second display, redock it",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 117,
+      "sourceIssue": null
+    },
+    {
+      "id": "UI-02",
+      "area": "Panels / shortcuts / UI",
+      "criteria": "Hold the redock modifier while dragging and confirm drop overlays hide",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 118,
+      "sourceIssue": null
+    },
+    {
+      "id": "UI-03",
+      "area": "Panels / shortcuts / UI",
+      "criteria": "Rebind a shortcut in Help → Keyboard Shortcuts, confirm it works, reset it",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 119,
+      "sourceIssue": null
+    },
+    {
+      "id": "UI-04",
+      "area": "Panels / shortcuts / UI",
+      "criteria": "Open a document in the document editor, add a chip with @, bold/link some text, save",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 120,
+      "sourceIssue": null
+    },
+    {
+      "id": "UI-05",
+      "area": "Panels / shortcuts / UI",
+      "criteria": "Check Preferences opens both application-only and per-project pages",
+      "environment": "Local",
+      "owner": "All",
+      "sourceRow": 121,
+      "sourceIssue": null
+    },
+    {
+      "id": "CLI-01",
+      "area": "Server / CLI",
+      "criteria": "Confirm the embedded WizServer starts on launch and wiz-cli can reach the open bundle",
+      "environment": "Local",
+      "owner": "TBD (All or Aryan?)",
+      "sourceRow": 124,
+      "sourceIssue": null
+    },
+    {
+      "id": "CLI-02",
+      "area": "Server / CLI",
+      "criteria": "Run a wiz-cli op against the open project and confirm the app picks it up",
+      "environment": "Local",
+      "owner": "TBD (All or Aryan?)",
+      "sourceRow": 125,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-01",
+      "area": "Playback",
+      "criteria": "Play, pause, scrub, in/out points, loop",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 128,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-02",
+      "area": "Playback",
+      "criteria": "Play, pause, scrub, in/out points, loop",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 129,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-03",
+      "area": "Playback",
+      "criteria": "Play across a cut with linked audio, confirm sync holds",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 130,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-04",
+      "area": "Playback",
+      "criteria": "Play across a cut with linked audio, confirm sync holds",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 131,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-05",
+      "area": "Playback",
+      "criteria": "Play a mixed-codec timeline (ProRes, H.264, still, MGFX) end to end without drops",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 132,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-06",
+      "area": "Playback",
+      "criteria": "Play a mixed-codec timeline (ProRes, H.264, still, MGFX) end to end without drops",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 133,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-07",
+      "area": "Playback",
+      "criteria": "Play a compound clip and a nested compound",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 134,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-08",
+      "area": "Playback",
+      "criteria": "Play a compound clip and a nested compound",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 135,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-09",
+      "area": "Playback",
+      "criteria": "Play a timeline with a different frame rate from its clips",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 136,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-10",
+      "area": "Playback",
+      "criteria": "Play a timeline with a different frame rate from its clips",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 137,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-11",
+      "area": "Playback",
+      "criteria": "Scrub quickly back and forth across 20 clips, confirm no stale frames",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 138,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-12",
+      "area": "Playback",
+      "criteria": "Scrub quickly back and forth across 20 clips, confirm no stale frames",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 139,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-13",
+      "area": "Playback",
+      "criteria": "Full-screen preview, play, exit",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 140,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-14",
+      "area": "Playback",
+      "criteria": "Full-screen preview, play, exit",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 141,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-15",
+      "area": "Playback",
+      "criteria": "Play while a spell is running and while an Oz generation is in flight",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 142,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-16",
+      "area": "Playback",
+      "criteria": "Play while a spell is running and while an Oz generation is in flight",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 143,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-17",
+      "area": "Playback",
+      "criteria": "Playback while Oz is ingesting",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 144,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-18",
+      "area": "Playback",
+      "criteria": "Playback while Oz is ingesting",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 145,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-19",
+      "area": "Playback",
+      "criteria": "Play from a timeline tab that isn't the entry timeline, switch tabs mid-playback",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 146,
+      "sourceIssue": null
+    },
+    {
+      "id": "PB-20",
+      "area": "Playback",
+      "criteria": "Play from a timeline tab that isn't the entry timeline, switch tabs mid-playback",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 147,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-01",
+      "area": "Performance",
+      "criteria": "Add 6 grades to a clip and test playback stays real-time",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 150,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-02",
+      "area": "Performance",
+      "criteria": "Add 6 grades to a clip and test playback stays real-time",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 151,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-03",
+      "area": "Performance",
+      "criteria": "Stack 6 graded clips on 6 video tracks and play",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 152,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-04",
+      "area": "Performance",
+      "criteria": "Stack 6 graded clips on 6 video tracks and play",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 153,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-05",
+      "area": "Performance",
+      "criteria": "Drag a primary grade wheel on a cold cache and confirm the first frames don't stall",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 154,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-06",
+      "area": "Performance",
+      "criteria": "Drag a primary grade wheel on a cold cache and confirm the first frames don't stall",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 155,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-07",
+      "area": "Performance",
+      "criteria": "Drag a Tone or curve control continuously for 10 s and watch the preview stay live",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 156,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-08",
+      "area": "Performance",
+      "criteria": "Drag a Tone or curve control continuously for 10 s and watch the preview stay live",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 157,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-09",
+      "area": "Performance",
+      "criteria": "Scrub with all four scopes open, confirm the UI stays responsive",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 158,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-10",
+      "area": "Performance",
+      "criteria": "Scrub with all four scopes open, confirm the UI stays responsive",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 159,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-11",
+      "area": "Performance",
+      "criteria": "Open the Inspector on a complex node and play, confirm no frame drops from Inspector resolves",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 160,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-12",
+      "area": "Performance",
+      "criteria": "Open the Inspector on a complex node and play, confirm no frame drops from Inspector resolves",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 161,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-13",
+      "area": "Performance",
+      "criteria": "Ingest 200+ clips and check the bin stays scrollable during probes",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 162,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-14",
+      "area": "Performance",
+      "criteria": "Ingest 200+ clips and check the bin stays scrollable during probes",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 163,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-15",
+      "area": "Performance",
+      "criteria": "Open a project with 20 timelines and 500 clips, time the open",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 164,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-16",
+      "area": "Performance",
+      "criteria": "Open a project with 20 timelines and 500 clips, time the open",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 165,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-17",
+      "area": "Performance",
+      "criteria": "Undo/redo 50 steps in a long-history project, confirm each step is quick",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 166,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-18",
+      "area": "Performance",
+      "criteria": "Undo/redo 50 steps in a long-history project, confirm each step is quick",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 167,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-19",
+      "area": "Performance",
+      "criteria": "Copy/paste a large number of clips from one timeline to another",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 168,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-20",
+      "area": "Performance",
+      "criteria": "Copy/paste a large number of clips from one timeline to another",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 169,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-21",
+      "area": "Performance",
+      "criteria": "Export a 5-minute graded timeline and note wall-clock time against the previous build",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 170,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-22",
+      "area": "Performance",
+      "criteria": "Export a 5-minute graded timeline and note wall-clock time against the previous build",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 171,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-23",
+      "area": "Performance",
+      "criteria": "Watch memory during a 10-minute playback loop, confirm it doesn't climb",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 172,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-24",
+      "area": "Performance",
+      "criteria": "Watch memory during a 10-minute playback loop, confirm it doesn't climb",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 173,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-25",
+      "area": "Performance",
+      "criteria": "Leave the app idle for 10 minutes, confirm CPU drops to near zero",
+      "environment": "Local",
+      "owner": "Gianni",
+      "sourceRow": 174,
+      "sourceIssue": null
+    },
+    {
+      "id": "PF-26",
+      "area": "Performance",
+      "criteria": "Leave the app idle for 10 minutes, confirm CPU drops to near zero",
+      "environment": "NAS",
+      "owner": "Gianni",
+      "sourceRow": 175,
+      "sourceIssue": null
+    }
+  ]
+}

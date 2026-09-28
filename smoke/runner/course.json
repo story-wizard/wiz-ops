@@ -1,0 +1,821 @@
+{
+  "id": "local-core-v0",
+  "revision": 6,
+  "title": "Local core smoke",
+  "target": "Packaged headless editor engine",
+  "scope": "Packaged headless editor checks for media, offline speech/search, projects, bins/documents, edits/history, colour/graphs, rendered frames/audio and bounded larger projects. GUI interaction, live playback, provider generation, NAS and movie export have separate coverage requirements.",
+  "timeoutSeconds": 1800,
+  "caseTimeoutSeconds": 90,
+  "cases": [
+    {
+      "id": "A-CLI-01",
+      "sourceId": "CLI-01",
+      "title": "Packaged engine connection",
+      "stage": "Connect",
+      "scope": "Start an owned packaged headless process; create and inspect a new project through its shipped CLI.",
+      "expected": "The endpoint PID matches the launched process, and the created project has the exact requested name and a nonempty revision.",
+      "operations": [
+        "project.create",
+        "project.get_name"
+      ]
+    },
+    {
+      "id": "IN-01",
+      "sourceId": "IN-01",
+      "title": "Mixed-media import and local ingest",
+      "stage": "Media",
+      "scope": "Register and probe eight synthetic local files, then run packaged ingest on the two editorial video fixtures with model analysis disabled. Verify terminal job results and durable source records.",
+      "expected": "Each identity resolves to the correct file and its probe matches the fixture. Both video assets have successful ingest operations and completion hashes matching their technical source hashes.",
+      "operations": [
+        "media.add_media_root",
+        "media.import_asset",
+        "media.resolve_path",
+        "media.probe"
+      ]
+    },
+    {
+      "id": "IN-03",
+      "sourceId": "IN-03",
+      "title": "Import outside the bundle parent",
+      "stage": "Media",
+      "scope": "Import a fixture from a sibling directory outside the bundle parent, close and reopen the project, then resolve and probe it.",
+      "expected": "The same asset identity resolves to the external fixture and remains readable after reopening.",
+      "operations": [
+        "media.import_asset",
+        "media.resolve_path",
+        "media.probe",
+        "project.checkpoint",
+        "project.close",
+        "project.open"
+      ]
+    },
+    {
+      "id": "A-IN-04-T",
+      "sourceId": "IN-04",
+      "title": "Decode thumbnail frames",
+      "stage": "Media",
+      "scope": "Generate three 320\u00d7180 thumbnail frames from the synthetic motion clip. Check midpoint times, dimensions and distinct decoded pixels. Waveforms and their display in the UI remain in IN-04.",
+      "expected": "Three files represent source times 1, 3 and 5 seconds in bucket order, with valid nonblank RGB pixels that change with motion.",
+      "operations": [
+        "media.generate_timeline_thumbnails"
+      ]
+    },
+    {
+      "id": "A-TL-01",
+      "sourceId": "TL-01",
+      "title": "Insert and overwrite through editor operations",
+      "stage": "Edit",
+      "scope": "Place known clips, insert a copy with destination ripple, then overwrite an occupied interval with another clip. Mouse dragging remains in TL-01.",
+      "expected": "The inserted clip shifts the expected following content; overwrite replaces exactly the destination interval without altering the source.",
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.move_clips",
+        "timeline.inspect"
+      ]
+    },
+    {
+      "id": "A-TL-02",
+      "sourceId": "TL-02",
+      "title": "Split explicit single and multiple clips",
+      "stage": "Edit",
+      "scope": "Split one explicitly addressed clip, then two clips on separate tracks. Keyboard and UI selection behavior remain in TL-02.",
+      "expected": "The requested clip identities split at exact timeline frames, with contiguous source ranges and no changes to unrelated clips.",
+      "operations": [
+        "timeline.split_clips",
+        "timeline.inspect"
+      ]
+    },
+    {
+      "id": "A-TL-03",
+      "sourceId": "TL-03",
+      "title": "Trim, slip and ripple-remove a clip",
+      "stage": "Edit",
+      "scope": "Trim a clip, slip its source window, then ripple-remove it. Deleting an existing empty gap and UI gestures remain in TL-03.",
+      "expected": "Trim changes the expected frame bounds, slip changes only the source window, and ripple removal shifts later content by the removed duration.",
+      "operations": [
+        "timeline.trim_extend_edges",
+        "timeline.slip_clips",
+        "timeline.remove_clips",
+        "timeline.inspect"
+      ]
+    },
+    {
+      "id": "A-TL-04",
+      "sourceId": "TL-04",
+      "title": "Copy and move across frame rates",
+      "stage": "Edit",
+      "scope": "Copy a clip between 24 fps and 25 fps timelines, then move a second clip. Uses whole-second boundaries; clipboard UI and fractional rounding cases remain separate.",
+      "expected": "Destination frame spans are correct for 25 fps, source ranges and identities are preserved, copies leave the original, and moves remove it.",
+      "operations": [
+        "timeline.move_clips",
+        "timeline.inspect"
+      ]
+    },
+    {
+      "id": "A-TL-05",
+      "sourceId": "TL-05",
+      "title": "Linked audio/video edits",
+      "stage": "Edit",
+      "scope": "Place linked AV, move the video with link expansion, unlink the pair, and move only the video. UI linked-selection controls remain in TL-05.",
+      "expected": "The linked audio follows the first move. After unlinking, the audio stays fixed while the video moves.",
+      "operations": [
+        "timeline.place_cuts",
+        "timeline.move_clips",
+        "timeline.set_clip_links",
+        "timeline.inspect"
+      ]
+    },
+    {
+      "id": "A-TL-06",
+      "sourceId": "TL-06",
+      "title": "Locked track rejects edits",
+      "stage": "Edit",
+      "scope": "Lock a track, attempt a split and a move, and inspect the unchanged project after each rejected request.",
+      "expected": "Both commands return a lock-specific rejection and all clip/track state remains identical.",
+      "operations": [
+        "timeline.manage_tracks",
+        "timeline.split_clips",
+        "timeline.move_clips",
+        "timeline.inspect"
+      ]
+    },
+    {
+      "id": "UP-01",
+      "sourceId": "UP-01",
+      "title": "Twenty edits, undo and redo",
+      "stage": "History",
+      "scope": "Apply 20 known clip moves, alternating between two timelines. Undo all and redo all, checking both timelines after every step.",
+      "expected": "Every observed state matches the corresponding previously captured state; complete undo restores the baseline and redo restores the final edit.",
+      "operations": [
+        "timeline.move_clips",
+        "timeline.inspect",
+        "undo.undo",
+        "undo.redo"
+      ]
+    },
+    {
+      "id": "A-EX-03",
+      "sourceId": "EX-03",
+      "title": "Export stills across clips and an empty interval",
+      "stage": "Render",
+      "scope": "Export timeline frames from two clips and a gap; compare occupied frames to independent source decodes and repeat an earlier frame. The export dialog, playhead UI and calibrated colour matching remain manual.",
+      "expected": "1080p exports correspond to their intended source frames, the empty interval is black, and repeated export of the same frame restores its pixels.",
+      "operations": [
+        "render.export_still"
+      ]
+    },
+    {
+      "id": "A-CO-07",
+      "sourceId": "CO-07",
+      "title": "Disable and restore a rendered clip",
+      "stage": "Render",
+      "scope": "Disable a placed clip, verify its pixels disappear, then enable it and reopen the project. UI shortcuts and grade-panel toggles remain in CO-07; graph-node bypass is covered by A-RG-01.",
+      "expected": "Clip readback reports the requested enabled state, disabling produces a black frame, and enabling/reopening restores the original pixels.",
+      "operations": [
+        "timeline.set_enabled",
+        "timeline.inspect",
+        "render.export_still",
+        "project.checkpoint",
+        "project.close",
+        "project.open"
+      ]
+    },
+    {
+      "id": "A-RG-01",
+      "sourceId": "RG-01",
+      "title": "Render graph insertion, edit, bypass and removal",
+      "stage": "Render graph",
+      "scope": "Insert a Gaussian blur into a known clip graph, edit its radius, bypass it, then remove it and restore the original connection. Verify graph state and rendered pixels. UI clipboard copy/paste remains in RG-01.",
+      "expected": "The inserted node has the expected edges; blur reduces image edge contrast, zero radius and bypass restore reference pixels, and removal restores both original graph topology and pixels.",
+      "operations": [
+        "graph.get_clip_graph",
+        "graph.insert_on_edge",
+        "graph.set_param",
+        "graph.set_bypass",
+        "graph.edit_batch",
+        "render.export_still"
+      ]
+    },
+    {
+      "id": "A-LP-04",
+      "sourceId": "LP-04",
+      "title": "Checkpoint and discard project edits",
+      "stage": "Persistence",
+      "scope": "Checkpoint a known timeline, perform another edit, then discard through the project operation. Cmd+S and the close prompt remain in LP-04.",
+      "expected": "The checkpoint reports the saved revision; discard restores that revision and the exact saved timeline state.",
+      "operations": [
+        "project.checkpoint",
+        "project.discard_changes",
+        "timeline.move_clips",
+        "timeline.inspect"
+      ]
+    },
+    {
+      "id": "A-LP-02",
+      "sourceId": "LP-02",
+      "title": "Packaged engine restart persistence",
+      "stage": "Persistence",
+      "scope": "Save a populated project, stop the owned headless process, launch a new process from the same package, and reopen it. Desktop launch/layout behavior remains in LP-02.",
+      "expected": "A different owned PID reopens the same project with identical settings, asset identities and timeline state.",
+      "operations": [
+        "project.checkpoint",
+        "project.open",
+        "project.get_name",
+        "project.get_settings",
+        "media.resolve_path",
+        "timeline.inspect"
+      ]
+    },
+    {
+      "id": "IN-06",
+      "sourceId": "IN-06",
+      "title": "Offline speech transcription",
+      "stage": "Media",
+      "scope": "Transcribe synthetic speech using the pinned, already-cached CoreML model; all downloads, embeddings and external enrichment disabled.",
+      "expected": "Known phrases and word timestamps match the fixture, with current source-linked transcript coverage.",
+      "operations": [
+        "media.import_asset"
+      ],
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "SS-01",
+      "sourceId": "SS-01",
+      "title": "Transcript phrase and source-range search",
+      "stage": "Search",
+      "scope": "Search real offline-ingested speech for words absent from its filename.",
+      "expected": "The expected speech asset has transcript evidence and an annotated source range.",
+      "operations": [
+        "search.query"
+      ],
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "SS-03",
+      "sourceId": "SS-03",
+      "title": "Filename-only search",
+      "stage": "Search",
+      "scope": "Search the local project with only the name lane enabled.",
+      "expected": "Exactly the expected asset identity is returned with only name evidence.",
+      "operations": [
+        "search.query"
+      ]
+    },
+    {
+      "id": "SS-04",
+      "sourceId": "SS-04",
+      "title": "No-match filename search",
+      "stage": "Search",
+      "scope": "Compare a known positive filename query with an absent token using exhaustive name search.",
+      "expected": "The positive control succeeds and the absent name returns no matches. Semantic relevance thresholds remain separate.",
+      "operations": [
+        "search.query"
+      ]
+    },
+    {
+      "id": "SS-05",
+      "sourceId": "SS-05",
+      "title": "Search becomes available after speech ingest",
+      "stage": "Search",
+      "scope": "Query before and after adding and transcribing a speech video asset in the same engine process; refresh the project registry after ingest.",
+      "expected": "An explicit missing-index state becomes ready and the new transcript phrase becomes searchable without restarting the packaged engine.",
+      "operations": [
+        "media.import_asset",
+        "search.query"
+      ],
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "A-SS-07",
+      "sourceId": "SS-07",
+      "title": "Project, asset and bin search scopes",
+      "stage": "Search",
+      "scope": "Search a multi-timeline project, then constrain eligible assets and a bin. GUI timeline focus remains in SS-07.",
+      "expected": "Project search finds the media, an excluded-asset scope returns nothing, and the correct bin returns its asset.",
+      "operations": [
+        "search.query",
+        "bins.create",
+        "bins.set_item_bin"
+      ]
+    },
+    {
+      "id": "A-IN-07-B",
+      "sourceId": "IN-07",
+      "title": "Bin folders and media organization",
+      "stage": "Media",
+      "scope": "Create nested bins, rename, assign media, reopen, search each bin, move and delete empty folders. Duplicate-item UI remains in IN-07.",
+      "expected": "Stable bin identities, nested scope and media assignments persist; removing empty folders preserves media.",
+      "operations": [
+        "bins.create",
+        "bins.rename",
+        "bins.move",
+        "bins.set_item_bin",
+        "bins.list",
+        "bins.delete",
+        "search.query"
+      ]
+    },
+    {
+      "id": "A-IN-07-D",
+      "sourceId": "IN-07",
+      "title": "Bin soft-delete and restore",
+      "stage": "Media",
+      "scope": "Soft-delete a source used on a timeline, render, restore the same source identity and reopen.",
+      "expected": "Search hides the deleted asset while placed clips remain unchanged and render identically; restore returns the original identity.",
+      "operations": [
+        "bins.delete_item",
+        "bins.restore_item",
+        "search.query",
+        "render.export_still"
+      ]
+    },
+    {
+      "id": "A-UI-04",
+      "sourceId": "UI-04",
+      "title": "Markdown document lifecycle",
+      "stage": "Documents",
+      "scope": "Create and import Markdown documents; inspect saved bytes, rename, reopen and delete one. Rich editing, chips and shortcuts remain manual.",
+      "expected": "Created/imported documents have independent identities and exact contents; rename persists and deletion targets only the selected document.",
+      "operations": [
+        "documents.create",
+        "documents.import",
+        "documents.rename",
+        "documents.delete",
+        "documents.list"
+      ]
+    },
+    {
+      "id": "A-AU-01",
+      "sourceId": "AU-01",
+      "title": "Mixer gain, mute and solo",
+      "stage": "Audio",
+      "scope": "Render a known tone through the offline mixer before and after track changes. Mixer widgets and audible monitoring remain manual.",
+      "expected": "Gain lowers RMS by 6 dB, mute is silent, solo and restored state retain the reference level after reopen.",
+      "operations": [
+        "audio.set_track",
+        "audio.mix_report"
+      ]
+    },
+    {
+      "id": "A-AU-01-C",
+      "sourceId": "AU-01",
+      "title": "Clip audio gain and undo",
+      "stage": "Audio",
+      "scope": "Change audio clip gain and measure rendered samples through mix analysis.",
+      "expected": "RMS falls by 12 dB and undo restores the original level.",
+      "operations": [
+        "audio.set_clip_gain",
+        "audio.mix_report",
+        "undo.undo"
+      ]
+    },
+    {
+      "id": "A-AU-01-EQ",
+      "sourceId": "AU-01",
+      "title": "Native audio EQ and bypass",
+      "stage": "Audio",
+      "scope": "Apply a 440 Hz EQ cut to the synthetic 440 Hz tone and compare offline rendered audio. External plugins remain manual.",
+      "expected": "EQ lowers the known tone by more than 10 dB; bypass restores the original RMS.",
+      "operations": [
+        "audio.set_eq",
+        "audio.mix_report"
+      ]
+    },
+    {
+      "id": "A-AU-03",
+      "sourceId": "AU-03",
+      "title": "Offline loudness analysis",
+      "stage": "Audio",
+      "scope": "Render four seconds of known audio and verify reported sample count, RMS, peak and integrated loudness. Live playback meters remain manual.",
+      "expected": "Exactly 192,000 samples render at 48 kHz with fixture-reference RMS/peak and finite integrated loudness.",
+      "operations": [
+        "audio.mix_report"
+      ]
+    },
+    {
+      "id": "A-CO-01",
+      "sourceId": "CO-01",
+      "title": "Primary saturation render, save and reset",
+      "stage": "Colour",
+      "scope": "Add a primary grade and adjust saturation through graph operations. Wheels, model selector and panel interactions remain manual.",
+      "expected": "Neutral pixels match the reference, saturation reduces chroma, edits persist after reopening, and reset restores pixels.",
+      "operations": [
+        "graph.insert_on_edge",
+        "graph.set_param",
+        "graph.get_clip_graph",
+        "render.export_still"
+      ]
+    },
+    {
+      "id": "A-CO-02",
+      "sourceId": "CO-02",
+      "title": "Tone contrast render, save and reset",
+      "stage": "Colour",
+      "scope": "Edit a Tone node S-Contrast value and render before/after. Individual zone controls and panel interactions remain manual.",
+      "expected": "The edit changes pixels, persists after reopening and resetting contrast restores reference pixels.",
+      "operations": [
+        "graph.insert_on_edge",
+        "graph.set_param",
+        "graph.get_clip_graph",
+        "render.export_still"
+      ]
+    },
+    {
+      "id": "A-CO-04",
+      "sourceId": "CO-04",
+      "title": "Balance exposure render, save and reset",
+      "stage": "Colour",
+      "scope": "Edit exposure in a Balance node through graph operations; GUI controls and white balance remain manual.",
+      "expected": "Positive exposure brightens rendered pixels, persists after reopening and reset restores the reference.",
+      "operations": [
+        "graph.insert_on_edge",
+        "graph.set_param",
+        "graph.get_clip_graph",
+        "render.export_still"
+      ]
+    },
+    {
+      "id": "UP-03",
+      "sourceId": "UP-03",
+      "title": "Working colour-space change and undo",
+      "stage": "Colour",
+      "scope": "Switch the working colour space to ACEScg, render, then undo once.",
+      "expected": "The requested setting is active and renders; one undo restores the prior setting and reference pixels.",
+      "operations": [
+        "color.get_working_space",
+        "color.set_working_space",
+        "render.export_still",
+        "undo.undo"
+      ]
+    },
+    {
+      "id": "RG-03",
+      "sourceId": "RG-03",
+      "title": "Procedural matte connection and undo",
+      "stage": "Render graph",
+      "scope": "Create rectangle and Apply Matte nodes, then connect their returned durable identities in one atomic graph edit and render a half-frame mask.",
+      "expected": "The graph retains the left source pixels and blacks out the right; one undo restores the complete frame.",
+      "operations": [
+        "graph.add_pass",
+        "graph.edit_batch",
+        "graph.get_clip_graph",
+        "render.export_still",
+        "undo.undo"
+      ]
+    },
+    {
+      "id": "A-RG-04",
+      "sourceId": "RG-04",
+      "title": "Chained effects and independent bypass",
+      "stage": "Render graph",
+      "scope": "Chain blur and exposure, render the combined result, then bypass each independently. UI Inspector controls remain manual.",
+      "expected": "Blur smooths edges, exposure brightens the blurred image, and bypassing each restores the expected preceding result.",
+      "operations": [
+        "graph.insert_on_edge",
+        "graph.set_bypass",
+        "render.export_still"
+      ]
+    },
+    {
+      "id": "A-TL-04-D",
+      "sourceId": "TL-04",
+      "title": "Independent timeline duplication",
+      "stage": "Edit",
+      "scope": "Duplicate a timeline through the operation surface, edit the copy and reopen. Clipboard and tab UI remain manual.",
+      "expected": "Sources and timing copy into independent identities; editing the duplicate leaves the original unchanged.",
+      "operations": [
+        "timeline.duplicate",
+        "timeline.inspect",
+        "timeline.move_clips"
+      ]
+    },
+    {
+      "id": "A-TL-03-R",
+      "sourceId": "TL-03",
+      "title": "Clip speed change and undo",
+      "stage": "Edit",
+      "scope": "Retime a clip to double speed without ripple, then undo.",
+      "expected": "The source window is preserved, timeline duration halves, later content stays fixed and undo restores timing.",
+      "operations": [
+        "timeline.retime_clips",
+        "timeline.inspect",
+        "undo.undo"
+      ]
+    },
+    {
+      "id": "A-LP-02-S",
+      "sourceId": "LP-02",
+      "title": "Save As and project-copy independence",
+      "stage": "Persistence",
+      "scope": "Save a populated project to a new owned bundle, edit the copy and inspect the original. File dialogs remain manual.",
+      "expected": "The saved copy preserves project content and editing it leaves the original unchanged.",
+      "operations": [
+        "project.save_as",
+        "project.open",
+        "project.checkpoint",
+        "timeline.inspect",
+        "timeline.move_clips"
+      ]
+    },
+    {
+      "id": "A-IN-04-W",
+      "sourceId": "IN-04",
+      "title": "Decode source audio and waveform data",
+      "stage": "Media",
+      "scope": "Extract a known two-second tone through the packaged media operation and measure samples, frequency and waveform envelope. Visible waveform/filmstrip UI remains separate.",
+      "expected": "Exactly 32,000 finite 16 kHz mono samples contain the known 440 Hz tone.",
+      "operations": [
+        "media.extract_audio"
+      ],
+      "timeoutSeconds": 90
+    },
+    {
+      "id": "A-IN-05",
+      "sourceId": "IN-05",
+      "title": "Detected source colour and ingest transform",
+      "stage": "Colour",
+      "scope": "Detect video/still input colour using the installed rules; compare the ingested clip transform. UI column presentation remains separate.",
+      "expected": "The expected colour encodings, provenance and confirmation status are returned; the clip uses the detected encoding.",
+      "operations": [
+        "media.detect_color",
+        "graph.get_clip_graph"
+      ],
+      "timeoutSeconds": 90
+    },
+    {
+      "id": "A-IN-08-R",
+      "sourceId": "IN-08",
+      "title": "Missing local source and recovery",
+      "stage": "Media",
+      "scope": "Move an owned source away, reopen, verify missing media, restore the original path and reopen. Choosing a different relink path remains separate.",
+      "expected": "Missing media is reported while asset and clip identity remain stable; restoring the file restores rendered pixels.",
+      "operations": [
+        "media.resolve_path",
+        "project.open",
+        "render.export_still",
+        "media.probe"
+      ],
+      "timeoutSeconds": 90
+    },
+    {
+      "id": "A-CO-03-R",
+      "sourceId": "CO-03",
+      "title": "RGB curve render and persistence",
+      "stage": "Colour",
+      "scope": "Change master curve control points, reopen and remove the override. Curve widgets and clipboard remain separate.",
+      "expected": "Control points and changed pixels persist; resetting the curve restores the baseline.",
+      "operations": [
+        "graph.insert_on_edge",
+        "graph.set_param",
+        "graph.remove_param",
+        "render.export_still"
+      ],
+      "timeoutSeconds": 90
+    },
+    {
+      "id": "A-CO-03-H",
+      "sourceId": "CO-03",
+      "title": "Hue curve render and persistence",
+      "stage": "Colour",
+      "scope": "Change hue-versus-saturation curve points, reopen and reset. Curve widgets and clipboard remain separate.",
+      "expected": "The hue curve changes rendered pixels, persists and resets to the baseline.",
+      "operations": [
+        "graph.insert_on_edge",
+        "graph.set_param",
+        "graph.remove_param",
+        "render.export_still"
+      ],
+      "timeoutSeconds": 90
+    },
+    {
+      "id": "A-CO-04-W",
+      "sourceId": "CO-04",
+      "title": "White balance temperature and tint",
+      "stage": "Colour",
+      "scope": "Change temperature and tint through a native graph node, then reset/undo. Panel widgets remain separate.",
+      "expected": "Temperature and tint each affect pixels; neutral temperature and tint undo restore the reference.",
+      "operations": [
+        "graph.insert_on_edge",
+        "graph.set_param",
+        "render.export_still",
+        "undo.undo"
+      ],
+      "timeoutSeconds": 90
+    },
+    {
+      "id": "A-CO-05",
+      "sourceId": "CO-05",
+      "title": "Copy grade values between independent clips",
+      "stage": "Colour",
+      "scope": "Read a grade and recreate its type/parameters on another clip through shared helpers. Clipboard routing remains separate.",
+      "expected": "The copy reproduces pixels and editing it leaves the original grade intact after reopen.",
+      "operations": [
+        "graph.get_clip_graph",
+        "graph.insert_on_edge",
+        "graph.set_param",
+        "render.export_still"
+      ],
+      "timeoutSeconds": 90
+    },
+    {
+      "id": "A-PF-01",
+      "sourceId": "PF-01",
+      "title": "Render six grades on one clip",
+      "stage": "Render",
+      "scope": "Render six connected native grades and bypass all six. Retain elapsed time; real-time playback remains separate.",
+      "expected": "All six grades affect the image and bypass restores source pixels.",
+      "operations": [
+        "graph.insert_on_edge",
+        "graph.set_bypass",
+        "render.export_still"
+      ],
+      "timeoutSeconds": 90
+    },
+    {
+      "id": "A-PF-03",
+      "sourceId": "PF-03",
+      "title": "Render six overlapping graded tracks",
+      "stage": "Render",
+      "scope": "Stack six graded clips, render, hide the top clip and undo. Playback rate remains separate.",
+      "expected": "Six layers render, hiding the top reveals the lower grade and undo restores it.",
+      "operations": [
+        "timeline.manage_tracks",
+        "timeline.place_cuts",
+        "graph.insert_on_edge",
+        "timeline.set_enabled",
+        "render.export_still"
+      ],
+      "timeoutSeconds": 90
+    },
+    {
+      "id": "A-PB-11",
+      "sourceId": "PB-11",
+      "title": "Random access across twenty cuts",
+      "stage": "Render",
+      "scope": "Export twenty alternating clips in a back-and-forth order against known reference frames. GUI scrubbing and real-time playback remain separate.",
+      "expected": "Every requested frame matches its intended source; no stale frames appear.",
+      "operations": [
+        "timeline.place_cuts",
+        "render.export_still"
+      ],
+      "timeoutSeconds": 90
+    },
+    {
+      "id": "A-PF-15",
+      "sourceId": "PF-15",
+      "title": "Reopen twenty timelines with 500 clips",
+      "stage": "Scale",
+      "scope": "Construct twenty timelines with 25 clips each, checkpoint/reopen and verify all contents. Record headless open time; GUI latency and cross-build performance acceptance remain separate.",
+      "expected": "All 500 clips retain identities, source windows and timeline positions after reopen.",
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "project.open",
+        "timeline.inspect"
+      ],
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "A-PF-17",
+      "sourceId": "PF-17",
+      "title": "Fifty-step edit history",
+      "stage": "Scale",
+      "scope": "Perform fifty edits across two timelines, undo all and redo all with state checks and timings. GUI responsiveness remains separate.",
+      "expected": "Every undo/redo exactly reproduces the corresponding recorded state.",
+      "operations": [
+        "timeline.move_clips",
+        "timeline.inspect",
+        "undo.undo",
+        "undo.redo"
+      ],
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "A-PF-19",
+      "sourceId": "PF-19",
+      "title": "Copy one hundred clips across frame rates",
+      "stage": "Scale",
+      "scope": "Copy 100 clips from 24 fps to 25 fps and undo the copy. Clipboard UI, fractional rounding and performance baseline remain separate.",
+      "expected": "All copies have independent IDs, exact timing and sources; undo removes only the copies.",
+      "operations": [
+        "timeline.place_cuts",
+        "timeline.move_clips",
+        "timeline.inspect",
+        "undo.undo"
+      ],
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "A-TL-08-N",
+      "sourceId": "TL-08",
+      "title": "Nested timeline rendering and child edits",
+      "stage": "Render",
+      "scope": "Build two levels of ordinary timeline references; render child edits, undo/redo and reopen. Compound UI authoring and live playback remain separate.",
+      "expected": "Parent and grandparent renders follow the child edit and undo; references, exact content and edited pixels survive reopening.",
+      "operations": [
+        "timeline.place_cuts",
+        "graph.set_param",
+        "render.export_still",
+        "undo.undo",
+        "undo.redo"
+      ],
+      "timeoutSeconds": 120
+    },
+    {
+      "id": "A-PB-05-R",
+      "sourceId": "PB-05",
+      "title": "Mixed-codec timeline rendering",
+      "stage": "Render",
+      "scope": "Ingest ProRes, H.264 and MXF, place consecutive cuts and seek out of order. Still-image admission, MGFX and live playback/drop measurement remain separate.",
+      "expected": "Each cut renders pixels matching an independent source decode; seeking back selects the intended media.",
+      "operations": [
+        "media.import_asset",
+        "timeline.place_cuts",
+        "render.export_still"
+      ],
+      "timeoutSeconds": 120
+    },
+    {
+      "id": "A-PB-09-R",
+      "sourceId": "PB-09",
+      "title": "Render media across integer and fractional rates",
+      "stage": "Render",
+      "scope": "Render a 24 fps clip on 25, 24000/1001 and 30000/1001 timelines using exact frame addressing. Live cadence and A/V sync remain separate.",
+      "expected": "Each timeline retains its exact rational rate and resolves the requested frame to the expected source image.",
+      "operations": [
+        "timeline.create",
+        "timeline.inspect",
+        "render.export_still"
+      ],
+      "timeoutSeconds": 120
+    },
+    {
+      "id": "A-TL-04-F",
+      "sourceId": "TL-04",
+      "title": "Fractional-rate copy, undo and persistence",
+      "stage": "Edit",
+      "scope": "Copy a 24-frame 24000/1001 span to frames 3\u201333 at 30000/1001, undo/redo and reopen. Clipboard routing remains separate.",
+      "expected": "The copy has independent identity, exact fractional bounds and source window; undo removes only the copy and redo persists.",
+      "operations": [
+        "timeline.move_clips",
+        "timeline.inspect",
+        "undo.undo",
+        "undo.redo"
+      ],
+      "timeoutSeconds": 120
+    },
+    {
+      "id": "A-PB-03-R",
+      "sourceId": "PB-03",
+      "title": "Linked cut audio and video continuity",
+      "stage": "Render",
+      "scope": "Split linked video/audio and compare offline samples and frames immediately around the cut. Live A/V sync remains separate.",
+      "expected": "Both streams retain contiguous source ranges and links, audio sample count/peak with RMS within 0.01 dB, and identical frames before/on/after the cut.",
+      "operations": [
+        "timeline.split_clips",
+        "timeline.inspect",
+        "audio.mix_report",
+        "render.export_still"
+      ],
+      "timeoutSeconds": 120
+    },
+    {
+      "id": "A-PF-13-I",
+      "sourceId": "PF-13",
+      "title": "Bulk local ingest of 201 video assets",
+      "stage": "Scale",
+      "scope": "Register 201 tiny synthetic videos and ingest in bounded batches with model analysis disabled. Verify all sidecars after reopen and sampled search/path identities. UI scrolling during ingest remains separate.",
+      "expected": "All 201 independent source identities have completed current ingest evidence after reopen; sampled search returns the intended asset.",
+      "operations": [
+        "media.import_asset",
+        "media.resolve_path",
+        "media.list_assets",
+        "search.query",
+        "project.open"
+      ],
+      "timeoutSeconds": 300
+    }
+  ],
+  "deferred": {
+    "LP-02": "Desktop app lifecycle remains a GUI check; A-LP-02 covers the packaged headless engine only.",
+    "CLI-01": "Embedded GUI endpoint requires a separate desktop session contract; A-CLI-01 covers the shipped headless endpoint.",
+    "CLI-02": "A server readback alone cannot prove the visible editor adopted a CLI edit; needs an independent GUI observation.",
+    "IN-07": "A-IN-07-B and A-IN-07-D cover folder organization and asset soft-delete/restore. General item duplicate/rename UI remains manual.",
+    "IN-08": "A-IN-08-R tests missing local source and restoration at the original path. No explicit different-path relink operation is exposed.",
+    "SS-07": "A-SS-07 covers project, asset and bin scope; observing search independently of GUI timeline focus remains manual.",
+    "SB-03": "No Spellbook operation group in the selected package schema.",
+    "SB-12": "No Spellbook operation group in the selected package schema.",
+    "EX-02": "The CLI exposes still export, not a movie-export job contract or unset-rate fallback oracle.",
+    "A-IN-04": "A-IN-04-T verifies thumbnails; A-IN-04-W verifies decoded PCM and waveform data. Filmstrip/waveform display and cache integration remain separate.",
+    "A-TL-08": "A nested timeline reference is not proof of the application's compound creation and editing path.",
+    "A-CO-08": "Needs a source-colour override contract and independent rendered-pixel checks.",
+    "A-SB-06": "No Spellbook run/delivery operation group in the selected package schema.",
+    "A-EX-01": "No bounded movie-export job contract in the installed CLI surface; FFmpeg encoding alone would not test Wizard export."
+  },
+  "preparation": {
+    "adapter": "Packaged Python / wiz-ingest submit",
+    "profile": "ingest-local.toml",
+    "scope": "Local video source preparation plus a synthetic speech fixture and pinned cached CoreML ASR model. Speech checks explicitly opt into offline ASR; all other model analysis and downloads disabled."
+  }
+}

@@ -1,0 +1,2259 @@
+{
+  "format": "wizard-smoke-scope/v1",
+  "id": "v1-candidate-2026-09-27",
+  "status": "Proposed",
+  "jira": "WIZ-423",
+  "approvedBy": null,
+  "approvedAt": null,
+  "policy": "All 143 current definitions remain required candidates, including failed and blocked checks. A scope change must be explicit; this snapshot is not release acceptance.",
+  "courses": [
+    {
+      "file": "runner/course.json",
+      "sha256": "7f742e897b050f4dbddc808928cabfbf0863ea48405499e177ffba88feae1598",
+      "id": "local-core-v0",
+      "revision": 6,
+      "target": "Packaged headless editor engine",
+      "requiredCheckIds": [
+        "A-CLI-01",
+        "IN-01",
+        "IN-03",
+        "A-IN-04-T",
+        "A-TL-01",
+        "A-TL-02",
+        "A-TL-03",
+        "A-TL-04",
+        "A-TL-05",
+        "A-TL-06",
+        "UP-01",
+        "A-EX-03",
+        "A-CO-07",
+        "A-RG-01",
+        "A-LP-04",
+        "A-LP-02",
+        "IN-06",
+        "SS-01",
+        "SS-03",
+        "SS-04",
+        "SS-05",
+        "A-SS-07",
+        "A-IN-07-B",
+        "A-IN-07-D",
+        "A-UI-04",
+        "A-AU-01",
+        "A-AU-01-C",
+        "A-AU-01-EQ",
+        "A-AU-03",
+        "A-CO-01",
+        "A-CO-02",
+        "A-CO-04",
+        "UP-03",
+        "RG-03",
+        "A-RG-04",
+        "A-TL-04-D",
+        "A-TL-03-R",
+        "A-LP-02-S",
+        "A-IN-04-W",
+        "A-IN-05",
+        "A-IN-08-R",
+        "A-CO-03-R",
+        "A-CO-03-H",
+        "A-CO-04-W",
+        "A-CO-05",
+        "A-PF-01",
+        "A-PF-03",
+        "A-PB-11",
+        "A-PF-15",
+        "A-PF-17",
+        "A-PF-19",
+        "A-TL-08-N",
+        "A-PB-05-R",
+        "A-PB-09-R",
+        "A-TL-04-F",
+        "A-PB-03-R",
+        "A-PF-13-I"
+      ]
+    },
+    {
+      "file": "desktop/course.json",
+      "sha256": "ad9b5ae33ddeb5e1b7b88518703b3a422137ae9016dc7309dae49c7a69b53ef1",
+      "id": "local-desktop-v1",
+      "revision": 8,
+      "target": "Instrumented local GUI with isolated Qt runtime",
+      "requiredCheckIds": [
+        "D-CLI-01",
+        "D-CLI-02",
+        "D-PB-01",
+        "D-LP-02-SAVE",
+        "D-LP-02-RELAUNCH",
+        "D-MEDIA-VIEWS",
+        "D-MEDIA-OPEN",
+        "D-MEDIA-TIMELINE",
+        "D-TRANSPORT-KEYS",
+        "D-TIMELINE-TOOLS",
+        "D-EDIT-SPLIT-REDO",
+        "D-EDIT-DELETE",
+        "D-EDIT-DISABLE",
+        "D-EDIT-NUDGE",
+        "D-EDIT-DRAG",
+        "D-EDIT-TRIM",
+        "D-TRACK-ADD",
+        "D-PROJECT-CANCEL-CLOSE",
+        "D-MEDIA-SEARCH",
+        "D-EXPORT-CANCEL",
+        "D-EDIT-CLIPBOARD",
+        "D-INSPECTOR-01",
+        "D-EXPORT-01",
+        "D-MGFX-01",
+        "D-UI-DEFAULT",
+        "D-UI-PREFERENCES",
+        "D-PREVIEW-FULLSCREEN",
+        "D-SELECT-ALL",
+        "D-CUT-PASTE",
+        "D-SHORTCUT-REBIND",
+        "D-SB-CREATE",
+        "D-SB-GRAPH",
+        "D-SB-PARAMS",
+        "D-SB-BYPASS",
+        "D-SB-UNDO",
+        "D-SB-ATOMIC",
+        "D-SB-STALE",
+        "D-SB-INSTANCE",
+        "D-SB-PERSIST",
+        "D-SB-QUICK-SEARCH",
+        "D-CROSSRATE-CLIPBOARD",
+        "D-PLAYBACK-SWITCH",
+        "D-SCOPES-01",
+        "D-SB-LOGGING",
+        "D-COMPOUND-CREATE",
+        "D-COMPOUND-EDIT",
+        "D-MGFX-CLIPBOARD",
+        "D-EXPORT-COMPOUND",
+        "D-COMPOUND-DISSOLVE",
+        "D-EXPORT-STILL",
+        "D-LINKED-SELECTION",
+        "D-TRACK-LOCK-UI",
+        "D-TRACK-TARGETING",
+        "D-RIPPLE-GAP",
+        "D-BIN-RENAME",
+        "D-BIN-DUPLICATE",
+        "D-BIN-DELETE",
+        "D-BIN-MGFX",
+        "D-EDIT-SLIP",
+        "D-LINK-UNLINK-UI",
+        "D-BLADE-NO-SELECTION",
+        "D-FRACTIONAL-CLIPBOARD",
+        "D-TIMELINE-TABS",
+        "D-SAVE-DISCARD",
+        "D-NODE-CLIPBOARD-BYPASS",
+        "D-DOCUMENT-EDIT",
+        "D-PREVIEW-SCRUB",
+        "D-PLAYBACK-INOUT",
+        "D-PLAYBACK-LOOP",
+        "D-SCRUB-CUTS",
+        "D-SB-TAB-RENAME",
+        "D-SB-TAB-DUPLICATE",
+        "D-SB-SEARCH-DROP",
+        "D-SB-INSPECTOR-PREVIEW",
+        "D-MEDIA-RELINK",
+        "D-CURVE-RGB-CLIPBOARD",
+        "D-CURVE-HUE-RESET"
+      ]
+    },
+    {
+      "file": "desktop/service-course.json",
+      "sha256": "e4b2bd748e47ff5f2f918d9a568a4a259ec5bccd1462259461abf52965a75dea",
+      "id": "local-services-v1",
+      "revision": 2,
+      "target": "Owned background GUI services and app export worker; no keyboard/mouse or foreground UI acceptance",
+      "requiredCheckIds": [
+        "S-MGFX-DUPLICATE-DEFAULT",
+        "S-MGFX-DUPLICATE",
+        "S-MGFX-CLIP-COPY",
+        "S-MGFX-UNDO-PUBLISH",
+        "S-MGFX-PERSIST",
+        "S-EXPORT-PRORES",
+        "S-EXPORT-AV1",
+        "S-EXPORT-UNSET-RATE",
+        "S-PF-IDLE"
+      ]
+    }
+  ],
+  "checkpoint": {
+    "file": "catalog/checkpoints/logan-2026-09-25-2.json",
+    "sha256": "bc557d1db3f07f1f7b8ed49ed553bdbf641fb46c11b9619d2bdbac731b08cf0b",
+    "rowCount": 137
+  },
+  "fixtureSources": [
+    {
+      "file": "runner/fixtures.mjs",
+      "sha256": "9a862bd42e8243f974206ef0809d9cebfe1906e0ff43b66510fa210a99f6c57b"
+    },
+    {
+      "file": "runner/ingest-local.toml",
+      "sha256": "76425fe82bfa785fd3dd79c472eddf094ec3b881adb1000f030c134fdc0a044b"
+    }
+  ],
+  "sourceRows": [
+    {
+      "id": "NF-01",
+      "area": "New Features",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs an approved OFX plugin, controlled crash fixture and application export path. Native grades do not prove OFX hosting."
+    },
+    {
+      "id": "NF-02",
+      "area": "New Features",
+      "disposition": "Undefined",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Replace the placeholder with a concrete feature and expected result."
+    },
+    {
+      "id": "NF-03",
+      "area": "New Features",
+      "disposition": "Undefined",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Replace the placeholder with a concrete feature and expected result."
+    },
+    {
+      "id": "NF-04",
+      "area": "New Features",
+      "disposition": "Undefined",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Replace the placeholder with a concrete feature and expected result."
+    },
+    {
+      "id": "NF-05",
+      "area": "New Features",
+      "disposition": "Undefined",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Replace the placeholder with a concrete feature and expected result."
+    },
+    {
+      "id": "LP-01",
+      "area": "Launch and project",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-UI-DEFAULT"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Default panels and editor controls are checked with fresh isolated settings. Visual layout correctness and alternate window sizes remain."
+    },
+    {
+      "id": "LP-02",
+      "area": "Launch and project",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-LP-02",
+        "A-LP-02-S",
+        "D-LP-02-SAVE",
+        "D-LP-02-RELAUNCH"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Save and real GUI relaunch are exercised. New-project and Save As dialogs remain."
+    },
+    {
+      "id": "LP-03",
+      "area": "Launch and project",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs an approved older-format project and expected migration result. A newly created GP cannot prove backward compatibility."
+    },
+    {
+      "id": "LP-04",
+      "area": "Launch and project",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-LP-04",
+        "D-PROJECT-CANCEL-CLOSE",
+        "D-SAVE-DISCARD"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Cancel-close, clean close after Save and Discard followed by fresh-process reopen are exercised. Other dirty resource types remain."
+    },
+    {
+      "id": "IN-01",
+      "area": "Ingestion / media bin",
+      "disposition": "Partial",
+      "checkIds": [
+        "IN-01",
+        "A-PB-05-R"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Eight synthetic files import and probe; ProRes, H.264 and MXF source preparation/rendering are covered. Packaged ingest excludes PNG, so a registered still cannot yet pass timeline conformance. Complete still-image preparation and the original folder/UI path remain."
+    },
+    {
+      "id": "IN-02",
+      "area": "Ingestion / media bin",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "IN-03",
+      "area": "Ingestion / media bin",
+      "disposition": "Partial",
+      "checkIds": [
+        "IN-03"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "IN-04",
+      "area": "Ingestion / media bin",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-IN-04-T",
+        "A-IN-04-W"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "IN-05",
+      "area": "Ingestion / media bin",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-IN-05"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "IN-06",
+      "area": "Ingestion / media bin",
+      "disposition": "Partial",
+      "checkIds": [
+        "IN-06"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "IN-07",
+      "area": "Ingestion / media bin",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-IN-07-B",
+        "A-IN-07-D",
+        "D-BIN-RENAME",
+        "D-BIN-DUPLICATE",
+        "D-BIN-DELETE"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Real bin rename, duplicate, delete and undo are exercised with source, placement and reopen checks. Reopening an ordinary duplicate incorrectly gives the original its copied display name; that failure is retained."
+    },
+    {
+      "id": "IN-08",
+      "area": "Ingestion / media bin",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-IN-08-R",
+        "D-MEDIA-RELINK"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The local relink folder dialog is exercised after reopening with a missing file. Saved path, live resolution and restart rendering are checked independently; consult the retained verdict. NAS remains deferred."
+    },
+    {
+      "id": "SS-01",
+      "area": "Semantic search",
+      "disposition": "Partial",
+      "checkIds": [
+        "SS-01"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "SS-02",
+      "area": "Semantic search",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs pinned local visual embeddings, distinct visual fixtures and an expected ranked result. Filename/transcript search does not exercise this path."
+    },
+    {
+      "id": "SS-03",
+      "area": "Semantic search",
+      "disposition": "Partial",
+      "checkIds": [
+        "SS-03",
+        "D-MEDIA-SEARCH"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "A GUI filename-search check exists but search is unavailable in the local build. Resolve setup and verify actual matches."
+    },
+    {
+      "id": "SS-04",
+      "area": "Semantic search",
+      "disposition": "Partial",
+      "checkIds": [
+        "SS-04"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "SS-05",
+      "area": "Semantic search",
+      "disposition": "Partial",
+      "checkIds": [
+        "SS-05"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "SS-06",
+      "area": "Semantic search",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs an owned Oz session and observation of its actual search tool/result selection."
+    },
+    {
+      "id": "SS-07",
+      "area": "Semantic search",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-SS-07"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Project/asset/bin search scope is covered. Needs focus changes in the visible editor and an independent result observation."
+    },
+    {
+      "id": "TL-01",
+      "area": "Timeline editing",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-TL-01",
+        "D-EDIT-DRAG"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Partial desktop coverage is mapped above. Remaining gestures and human acceptance in the original criterion are not implied by an automated pass."
+    },
+    {
+      "id": "TL-02",
+      "area": "Timeline editing",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-TL-02",
+        "D-EDIT-SPLIT-REDO",
+        "D-BLADE-NO-SELECTION"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Selected and no-selection blade paths execute with source-window and exact-timing assertions. Rejected timing authority remains a finding for investigation."
+    },
+    {
+      "id": "TL-03",
+      "area": "Timeline editing",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-TL-03",
+        "A-TL-03-R",
+        "D-TIMELINE-TOOLS",
+        "D-EDIT-DELETE",
+        "D-EDIT-NUDGE",
+        "D-EDIT-TRIM",
+        "D-RIPPLE-GAP",
+        "D-EDIT-SLIP"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Delete, disable, nudge, move, trim and ripple-gap deletion are exercised. Slip now executes with an exact source-timing assertion. Consult retained run verdicts for timing failures."
+    },
+    {
+      "id": "TL-04",
+      "area": "Timeline editing",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-TL-04",
+        "A-TL-04-D",
+        "A-TL-04-F",
+        "D-EDIT-CLIPBOARD",
+        "D-CUT-PASTE",
+        "D-CROSSRATE-CLIPBOARD",
+        "D-FRACTIONAL-CLIPBOARD"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Same-timeline copy/paste, cut/paste and 24-to-25 fps GUI clipboard checks are executable. Fractional-rate GUI clipboard is now included. Broader selections remain; consult run verdicts for passing evidence."
+    },
+    {
+      "id": "TL-05",
+      "area": "Timeline editing",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-TL-05",
+        "D-LINKED-SELECTION",
+        "D-LINK-UNLINK-UI"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The visible Linked Selection toggle changes whether a one-frame nudge moves both streams or video alone. Link/unlink keyboard authoring and independent/relinked nudges now run too. Broader selections remain."
+    },
+    {
+      "id": "TL-06",
+      "area": "Timeline editing",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-TL-06",
+        "D-TRACK-LOCK-UI"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The visible padlock prevents blade and drag edits; unlocking permits a move and undo restores it. Cross-track and linked-lock combinations remain."
+    },
+    {
+      "id": "TL-07",
+      "area": "Timeline editing",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-SELECT-ALL",
+        "D-TRACK-TARGETING"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "V1/A1 targeting controls which tracks Select All/Delete affects, and undo restores content. Broader target combinations remain."
+    },
+    {
+      "id": "TL-08",
+      "area": "Timeline editing",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-TL-08-N",
+        "D-COMPOUND-CREATE",
+        "D-COMPOUND-EDIT",
+        "D-COMPOUND-DISSOLVE"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Command+G conversion, opening the child from Media, disable/undo with parent pixel verification, and Command+Shift+G dissolve/undo are executable. This build creates an editorial timeline reference; explicit compound-kind creation, inline expansion and deeper nested gestures remain separate."
+    },
+    {
+      "id": "TL-09",
+      "area": "Timeline editing",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-MEDIA-TIMELINE",
+        "D-TIMELINE-TABS"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Tab close/reopen now checks content, zoom and horizontal scroll. The current probe preserves zoom but resets horizontal scroll to zero; consult the retained verdict."
+    },
+    {
+      "id": "UP-01",
+      "area": "Undo / persistence",
+      "disposition": "Partial",
+      "checkIds": [
+        "UP-01"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "UP-02",
+      "area": "Undo / persistence",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "UP-03",
+      "area": "Undo / persistence",
+      "disposition": "Partial",
+      "checkIds": [
+        "UP-03"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "CO-01",
+      "area": "Colour",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-CO-01"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "CO-02",
+      "area": "Colour",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-CO-02"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "CO-03",
+      "area": "Colour",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-CO-03-R",
+        "A-CO-03-H",
+        "D-CURVE-RGB-CLIPBOARD",
+        "D-CURVE-HUE-RESET"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Actual RGB and Hue Shift curve gestures change parameters and rendered pixels. Curve copy/paste and independent reset are exercised; broader channels and shapes remain."
+    },
+    {
+      "id": "CO-04",
+      "area": "Colour",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-CO-04",
+        "A-CO-04-W"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "CO-05",
+      "area": "Colour",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-CO-05",
+        "D-NODE-CLIPBOARD-BYPASS"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Actual Copy/Paste Nodes is checked for independent identities, parameters and pixels, with node and grade bypass. Broader node types and multi-clip targets remain."
+    },
+    {
+      "id": "CO-06",
+      "area": "Colour",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-CO-01",
+        "A-CO-02",
+        "A-CO-04",
+        "A-RG-04"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "CO-07",
+      "area": "Colour",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-CO-07",
+        "D-EDIT-DISABLE"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Clip disable/undo is exercised. The CO-05 counterpart also exercises node and grade-panel bypass; broader node/panel combinations remain."
+    },
+    {
+      "id": "CO-08",
+      "area": "Colour",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs an application-owned input-colour override operation; the clip input CST is locked to ordinary graph edits."
+    },
+    {
+      "id": "CO-09",
+      "area": "Colour",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-SCOPES-01"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Histogram, luma/RGB waveform and RGB parade image response is exercised at Post IDT, Post Primary and Pre DVT. Vectorscope, value readout, graded-tap equivalence and numerical colour calibration remain."
+    },
+    {
+      "id": "RG-01",
+      "area": "Render graph / Inspector",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-RG-01"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "RG-02",
+      "area": "Render graph / Inspector",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-INSPECTOR-01"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Inspector Position X and reset change graph values and pixels. Expand to other controls and node types."
+    },
+    {
+      "id": "RG-03",
+      "area": "Render graph / Inspector",
+      "disposition": "Partial",
+      "checkIds": [
+        "RG-03"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Matte connection and rendered pixels are covered. WIZ-475 concerns copying/pasting a mask node; the current connection test does not prove that clipboard path."
+    },
+    {
+      "id": "RG-04",
+      "area": "Render graph / Inspector",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-RG-04"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "SB-01",
+      "area": "Spellbook",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-SB-CREATE"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Panel opening, New Spell shortcut and plus-button creation are exercised. Broader layout variants remain."
+    },
+    {
+      "id": "SB-02",
+      "area": "Spellbook",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-SB-QUICK-SEARCH",
+        "D-SB-SEARCH-DROP"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Quick-search insertion and undo cover double-click and the application MIME/drop-event path. Physical OS drag and the alternate shortcut remain."
+    },
+    {
+      "id": "SB-03",
+      "area": "Spellbook",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-SB-GRAPH"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "CLI authors Source and two effects, connects, disconnects and reconnects. Source media binding, output delivery and wire gestures remain."
+    },
+    {
+      "id": "SB-04",
+      "area": "Spellbook",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-SB-PARAMS",
+        "D-SB-INSPECTOR-PREVIEW"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The Inspector slider changes native radius and one undo restores it. This combined check stays blocked because local graph evaluation and canvas pixel response are not verified."
+    },
+    {
+      "id": "SB-05",
+      "area": "Spellbook",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-SB-BYPASS"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Application operations toggle node bypass and restore it. D shortcut and pixel effects remain."
+    },
+    {
+      "id": "SB-06",
+      "area": "Spellbook",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The retained local smoke build exposes Spellbook operations. This row still needs its specific UI, execution or output observations; support in a schema alone is not coverage."
+    },
+    {
+      "id": "SB-07",
+      "area": "Spellbook",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-SB-LOGGING"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The project Debug preference and visible console reconstruction messages are exercised; provider-generation traces remain separate."
+    },
+    {
+      "id": "SB-08",
+      "area": "Spellbook",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-SB-INSTANCE",
+        "D-SB-TAB-RENAME",
+        "D-SB-TAB-DUPLICATE"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Rename, close/reopen and fresh-process persistence are exercised. Tab duplication remains blocked because no duplicate-tab action is exposed; instances remain separately covered."
+    },
+    {
+      "id": "SB-09",
+      "area": "Spellbook",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The retained local smoke build exposes Spellbook operations. This row still needs its specific UI, execution or output observations; support in a schema alone is not coverage."
+    },
+    {
+      "id": "SB-10",
+      "area": "Spellbook",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The retained local smoke build exposes Spellbook operations. This row still needs its specific UI, execution or output observations; support in a schema alone is not coverage."
+    },
+    {
+      "id": "SB-11",
+      "area": "Spellbook",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-SB-UNDO"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "One keyboard undo/redo reverses a multi-action CLI batch. Per-gesture history for other canvas edits remains."
+    },
+    {
+      "id": "SB-12",
+      "area": "Spellbook",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-SB-PERSIST"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Authored graphs, parameters and instances survive a fresh GUI process. Retained generation results and bound media need fixtures."
+    },
+    {
+      "id": "OZ-01",
+      "area": "Oz / MGFX",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The installed headless MGFX admission returns runtime_verifier_unavailable. Needs an owned GUI agent/generator session, controlled synthetic attachments and provider authorization where a model is required."
+    },
+    {
+      "id": "OZ-02",
+      "area": "Oz / MGFX",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The installed headless MGFX admission returns runtime_verifier_unavailable. Needs an owned GUI agent/generator session, controlled synthetic attachments and provider authorization where a model is required."
+    },
+    {
+      "id": "OZ-03",
+      "area": "Oz / MGFX",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The installed headless MGFX admission returns runtime_verifier_unavailable. Needs an owned GUI agent/generator session, controlled synthetic attachments and provider authorization where a model is required."
+    },
+    {
+      "id": "OZ-04",
+      "area": "Oz / MGFX",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The installed headless MGFX admission returns runtime_verifier_unavailable. Needs an owned GUI agent/generator session, controlled synthetic attachments and provider authorization where a model is required."
+    },
+    {
+      "id": "OZ-05",
+      "area": "Oz / MGFX",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The installed headless MGFX admission returns runtime_verifier_unavailable. Needs an owned GUI agent/generator session, controlled synthetic attachments and provider authorization where a model is required."
+    },
+    {
+      "id": "OZ-06",
+      "area": "Oz / MGFX",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The installed headless MGFX admission returns runtime_verifier_unavailable. Needs an owned GUI agent/generator session, controlled synthetic attachments and provider authorization where a model is required."
+    },
+    {
+      "id": "OZ-07",
+      "area": "Oz / MGFX",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-MGFX-CLIPBOARD",
+        "S-MGFX-CLIP-COPY"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The shared generation operation and actual Command+C/V routing are exercised with independent values and pixels. Broader selections and cross-project clipboard remain."
+    },
+    {
+      "id": "OZ-08",
+      "area": "Oz / MGFX",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-BIN-MGFX",
+        "S-MGFX-DUPLICATE-DEFAULT",
+        "S-MGFX-DUPLICATE"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Placement-free, placed and actual bin context-menu generation duplication are exercised, including independent parameters, pixels and reopen. Omitted-group-label duplication retains a failure; actual Oz conversation routing remains."
+    },
+    {
+      "id": "OZ-09",
+      "area": "Oz / MGFX",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The installed headless MGFX admission returns runtime_verifier_unavailable. Needs an owned GUI agent/generator session, controlled synthetic attachments and provider authorization where a model is required."
+    },
+    {
+      "id": "OZ-10",
+      "area": "Oz / MGFX",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The installed headless MGFX admission returns runtime_verifier_unavailable. Needs an owned GUI agent/generator session, controlled synthetic attachments and provider authorization where a model is required."
+    },
+    {
+      "id": "OZ-11",
+      "area": "Oz / MGFX",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The installed headless MGFX admission returns runtime_verifier_unavailable. Needs an owned GUI agent/generator session, controlled synthetic attachments and provider authorization where a model is required."
+    },
+    {
+      "id": "OZ-12",
+      "area": "Oz / MGFX",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-MGFX-01",
+        "S-MGFX-PERSIST"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Local MGFX parameter changes affect rendered pixels. This uses the paired CLI; actual Oz conversation/tool selection remains."
+    },
+    {
+      "id": "OZ-13",
+      "area": "Oz / MGFX",
+      "disposition": "Partial",
+      "checkIds": [
+        "S-MGFX-UNDO-PUBLISH"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Undo/redo removes and restores generated placement identities and pixels. Orphan-file accounting and actual Oz publication remain separate."
+    },
+    {
+      "id": "OZ-14",
+      "area": "Oz / MGFX",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The installed headless MGFX admission returns runtime_verifier_unavailable. Needs an owned GUI agent/generator session, controlled synthetic attachments and provider authorization where a model is required."
+    },
+    {
+      "id": "OZ-15",
+      "area": "Oz / MGFX",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The installed headless MGFX admission returns runtime_verifier_unavailable. Needs an owned GUI agent/generator session, controlled synthetic attachments and provider authorization where a model is required."
+    },
+    {
+      "id": "OZ-16",
+      "area": "Oz / MGFX",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs an owned agent/provider session with a defined local-media boundary and evidence of outbound request bodies. Disabling providers cannot prove this scenario."
+    },
+    {
+      "id": "AU-01",
+      "area": "Audio",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-AU-01",
+        "A-AU-01-C",
+        "A-AU-01-EQ"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "AU-02",
+      "area": "Audio",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs an approved installed AU plugin and owned editor window; verify opening the actual plugin editor."
+    },
+    {
+      "id": "AU-03",
+      "area": "Audio",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-AU-03"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "EX-01",
+      "area": "Export",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-EXPORT-CANCEL",
+        "D-EXPORT-01",
+        "S-EXPORT-PRORES",
+        "S-EXPORT-AV1"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "GUI H.264 export/cancel and worker ProRes/AV1 export are exercised. Additional formats and calibrated preview/export colour agreement remain."
+    },
+    {
+      "id": "EX-02",
+      "area": "Export",
+      "disposition": "Partial",
+      "checkIds": [
+        "S-EXPORT-UNSET-RATE"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Worker rate resolution is exercised, but the manually edited unset-rate fixture describes an incoherent timeline. This check is blocked until supported creation provides a valid unset-rate project; a black exploratory export is not acceptance evidence."
+    },
+    {
+      "id": "EX-03",
+      "area": "Export",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-EX-03",
+        "D-EXPORT-STILL"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Still at Playhead is exercised through the real Export dialog, with decoded image correspondence to the selected playhead frame. Other still formats and calibrated colour agreement remain."
+    },
+    {
+      "id": "EX-04",
+      "area": "Export",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-EXPORT-COMPOUND"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "The real Export dialog prepares a local MGFX generation plus a Command+G-converted media timeline. Decoded frames distinguish both segments. Consult the retained verdict; calibrated colour and audio synchronization remain separate."
+    },
+    {
+      "id": "UI-01",
+      "area": "Panels / shortcuts / UI",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs an owned editor window, dock driver and a second display to verify floating/redocking."
+    },
+    {
+      "id": "UI-02",
+      "area": "Panels / shortcuts / UI",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+    },
+    {
+      "id": "UI-03",
+      "area": "Panels / shortcuts / UI",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-SHORTCUT-REBIND"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Play/pause is rebound, exercised, reset and exercised again. Conflict handling and other command contexts remain."
+    },
+    {
+      "id": "UI-04",
+      "area": "Panels / shortcuts / UI",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-UI-04",
+        "D-DOCUMENT-EDIT"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Real keyboard bold/link formatting, @ chip insertion, saved Markdown and fresh-process reopening are exercised. The current app uses a fixture mention registry; live project-item resolution remains."
+    },
+    {
+      "id": "UI-05",
+      "area": "Panels / shortcuts / UI",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-UI-PREFERENCES"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Application and Current Project preferences pages open with a project loaded. Projectless Preferences and setting-specific behavior remain."
+    },
+    {
+      "id": "CLI-01",
+      "area": "Server / CLI",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-CLI-01",
+        "D-CLI-01"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Owned local GUI connection is exercised. Repeat against an approved release smoke build before claiming packaged desktop acceptance."
+    },
+    {
+      "id": "CLI-02",
+      "area": "Server / CLI",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-CLI-02"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "CLI rename adoption is observed in the GUI. Expand to other mutation types and the release target."
+    },
+    {
+      "id": "PB-01",
+      "area": "Playback",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-PB-01",
+        "D-TRANSPORT-KEYS",
+        "D-PREVIEW-SCRUB",
+        "D-PLAYBACK-INOUT",
+        "D-PLAYBACK-LOOP"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Transport, frame stepping, scrubber drag with displayed pixels, and In/Out marking/navigation/clearing are exercised. Loop is blocked by the missing control; audible sync and drop measurement remain."
+    },
+    {
+      "id": "PB-02",
+      "area": "Playback",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PB-03",
+      "area": "Playback",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-PB-03-R"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs an owned GUI/session host, transport control and independent frame/audio observations. Offline still checks cover only their stated frames."
+    },
+    {
+      "id": "PB-04",
+      "area": "Playback",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PB-05",
+      "area": "Playback",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-PB-05-R"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "ProRes, H.264 and MXF offline rendering is covered. Packaged ingest excludes PNG and its registered asset cannot be placed without completed ingest. Still-image admission, MGFX and live playback/drop measurement remain."
+    },
+    {
+      "id": "PB-06",
+      "area": "Playback",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PB-07",
+      "area": "Playback",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-TL-08-N"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Two levels of ordinary timeline references render and follow child edits. Compound-kind authoring and live transport remain separate."
+    },
+    {
+      "id": "PB-08",
+      "area": "Playback",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PB-09",
+      "area": "Playback",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-PB-09-R"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs an owned GUI/session host, transport control and independent frame/audio observations. Offline still checks cover only their stated frames."
+    },
+    {
+      "id": "PB-10",
+      "area": "Playback",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PB-11",
+      "area": "Playback",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-PB-11",
+        "D-SCRUB-CUTS"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "A twenty-cut colour/grayscale fixture checks settled preview pixels after back-and-forth scrubber jumps. Continuous drag timing and real-time drop-rate measurement remain."
+    },
+    {
+      "id": "PB-12",
+      "area": "Playback",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PB-13",
+      "area": "Playback",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-PREVIEW-FULLSCREEN"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Fullscreen controls play/pause and Escape restores normal preview. Image fidelity and audible synchronization remain."
+    },
+    {
+      "id": "PB-14",
+      "area": "Playback",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PB-15",
+      "area": "Playback",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs an owned GUI/session host, transport control and independent frame/audio observations. Offline still checks cover only their stated frames."
+    },
+    {
+      "id": "PB-16",
+      "area": "Playback",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PB-17",
+      "area": "Playback",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs an owned GUI/session host, transport control and independent frame/audio observations. Offline still checks cover only their stated frames."
+    },
+    {
+      "id": "PB-18",
+      "area": "Playback",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PB-19",
+      "area": "Playback",
+      "disposition": "Partial",
+      "checkIds": [
+        "D-PLAYBACK-SWITCH"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Secondary timeline transport and switching to Main are exercised. Seamless audio/video continuity remains."
+    },
+    {
+      "id": "PB-20",
+      "area": "Playback",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PF-01",
+      "area": "Performance",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-PF-01"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+    },
+    {
+      "id": "PF-02",
+      "area": "Performance",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PF-03",
+      "area": "Performance",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-PF-03"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+    },
+    {
+      "id": "PF-04",
+      "area": "Performance",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PF-05",
+      "area": "Performance",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+    },
+    {
+      "id": "PF-06",
+      "area": "Performance",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PF-07",
+      "area": "Performance",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+    },
+    {
+      "id": "PF-08",
+      "area": "Performance",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PF-09",
+      "area": "Performance",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+    },
+    {
+      "id": "PF-10",
+      "area": "Performance",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PF-11",
+      "area": "Performance",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+    },
+    {
+      "id": "PF-12",
+      "area": "Performance",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PF-13",
+      "area": "Performance",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-PF-13-I"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "201 tiny videos complete bounded local ingest with durable source and search checks. This does not measure bin scrolling while ingest is active or model-analysis throughput."
+    },
+    {
+      "id": "PF-14",
+      "area": "Performance",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PF-15",
+      "area": "Performance",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-PF-15"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+    },
+    {
+      "id": "PF-16",
+      "area": "Performance",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PF-17",
+      "area": "Performance",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-PF-17"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+    },
+    {
+      "id": "PF-18",
+      "area": "Performance",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PF-19",
+      "area": "Performance",
+      "disposition": "Partial",
+      "checkIds": [
+        "A-PF-19"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+    },
+    {
+      "id": "PF-20",
+      "area": "Performance",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PF-21",
+      "area": "Performance",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+    },
+    {
+      "id": "PF-22",
+      "area": "Performance",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PF-23",
+      "area": "Performance",
+      "disposition": "Not automated",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+    },
+    {
+      "id": "PF-24",
+      "area": "Performance",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    },
+    {
+      "id": "PF-25",
+      "area": "Performance",
+      "disposition": "Partial",
+      "checkIds": [
+        "S-PF-IDLE"
+      ],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "Candidate ten-minute measurement of the owned editor process with synthetic Fresh media. Provisional 2% mean / 5% p95 CPU limits approved September 28; runtime result, child-process scope and definition acceptance remain separate."
+    },
+    {
+      "id": "PF-26",
+      "area": "Performance",
+      "disposition": "Deferred",
+      "checkIds": [],
+      "originalProjectVariants": [
+        "Fresh",
+        "Story-user",
+        "Large"
+      ],
+      "representativeVariantAcceptance": "Not established by synthetic fixtures",
+      "remaining": "NAS setup, reads and disconnects are deferred by the current project scope."
+    }
+  ],
+  "deliveryGates": [
+    {
+      "id": "chosen-package",
+      "jira": "WIZ-506",
+      "state": "Open",
+      "requirement": "Select a retained package and supported course without editing scripts; bind all execution stages to the intended build."
+    },
+    {
+      "id": "negative-evidence",
+      "jira": "WIZ-507",
+      "state": "Open",
+      "requirement": "Retain acceptance evidence for wrong responses, changed fixtures, failed ingest and interrupted mutation; required output checks reject deliberately wrong results."
+    },
+    {
+      "id": "desktop",
+      "jira": "WIZ-510",
+      "state": "Open",
+      "requirement": "Validate owned desktop control and real save/quit/relaunch/reopen on the supported package configuration."
+    },
+    {
+      "id": "human-resume",
+      "jira": "WIZ-511",
+      "state": "Open",
+      "requirement": "One real human/Oz handoff survives interruption and resumes from a verified checkpoint; preserve human failures."
+    },
+    {
+      "id": "drive-report",
+      "jira": "WIZ-512",
+      "state": "Open",
+      "requirement": "Publish a readable report and accessible evidence with retry-safe run identity, including failed and incomplete runs."
+    },
+    {
+      "id": "slack-summary",
+      "jira": "WIZ-513",
+      "state": "Open",
+      "requirement": "Deliver an accurate categorized summary linked to the report without duplicate messages."
+    },
+    {
+      "id": "build-kit",
+      "jira": "WIZ-514",
+      "state": "Open",
+      "requirement": "Optional Build + Smoke and a workstation kit run on another machine; CI does not wait for a person."
+    },
+    {
+      "id": "pilot",
+      "jira": "WIZ-515",
+      "state": "Open",
+      "requirement": "Another developer repeats the complete workflow; record automation duration and actual human effort."
+    }
+  ],
+  "manualEffortBaseline": {
+    "state": "Not measured",
+    "note": "The workbook records outcomes, not elapsed time. Do not infer time savings."
+  },
+  "exclusions": [
+    "NAS fault injection remains deferred.",
+    "Paid-provider quality, exhaustive platform/codec/HDR coverage, the WIZ-405 golden-image infrastructure and the WIZ-309 performance program remain separate.",
+    "Uncovered parts of original source rows remain visible; they are not silently accepted or removed from Jira scope."
+  ]
+}

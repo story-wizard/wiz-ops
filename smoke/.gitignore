@@ -1,0 +1,18 @@
+# Runtime data belongs in SMOKE_DATA_DIR, outside this checkout.
+data/
+artifacts/
+runs/
+results/
+reports/
+exports/
+*.sqlite*
+*.jsonl
+*.log
+*.xlsx
+node_modules/
+.DS_Store
+.env
+.env.*
+.codebase-memory/
+desktop/native/build/
+desktop/native/bridge.moc
