@@ -2,7 +2,7 @@ import {mkdir,appendFile,readFile,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {ROOT,inside,writeJSON} from './files.mjs';
-import {assert,OutcomeError,command} from './engine.mjs';
+import {assert,OutcomeError,command,retainProcess} from './engine.mjs';
 
 export const ingestPython=app=>path.join(app,'Contents/Resources/python',process.arch==='arm64'?'arm64':'x86_64','bin/python3');
 export function validateIngestProfile(app){
@@ -52,7 +52,7 @@ export async function ingestAssets(engine,bundle,clips,{speech=false}={}){
   const request={wiz_path:bundle,clips,operations:['all'],force_rerun:false};
   engine.ingestController=new AbortController();
   let receipt;
-  try{receipt=await command(python,['-m','wiz_ingest','submit','--request-json',JSON.stringify(request)],{env,cwd:engine.root,timeout:Math.max(1,Math.min(speech?150000:60000,(engine.deadline||Infinity)-Date.now())),signal:engine.ingestController.signal,processGroup:true});}
+  try{receipt=await command(python,['-m','wiz_ingest','submit','--request-json',JSON.stringify(request)],{env,cwd:engine.root,timeout:Math.max(1,Math.min(speech?150000:60000,(engine.deadline||Infinity)-Date.now())),signal:engine.ingestController.signal,processGroup:true,onSpawn:pid=>retainProcess(engine.root,pid,true)});}
   finally{engine.ingestController=null;}
   await appendFile(path.join(engine.root,'operations.jsonl'),JSON.stringify({sequence:++engine.counter,caseId:engine.caseId,operation:'wiz-ingest.submit',profile:speech?'offline-speech':'local-source-preparation',params:request,...receipt})+'\n');
   const snapshot=parseIngest(receipt,bundle,clips.map(c=>c.asset_id));

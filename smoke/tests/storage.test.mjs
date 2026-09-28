@@ -1,12 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,mkdirSync,symlinkSync,existsSync,readFileSync,rmSync} from 'node:fs';
+import {mkdtempSync,mkdirSync,symlinkSync,existsSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {spawnSync} from 'node:child_process';
+import {spawnSync,spawn} from 'node:child_process';
+import {once} from 'node:events';
 import {ROOT,dataDirectory,externalPath} from '../runner/files.mjs';
 import {verifyDesktopPaths} from '../desktop/adapter.mjs';
 import {cleanupInterrupted} from '../runner/store.mjs';
+import {retainProcess} from '../runner/engine.mjs';
+
+test('interruption cleanup stops registered engines and ingest groups but rejects changed process identity',{timeout:5000},async()=>{
+ const workspace=dataDirectory(mkdtempSync(path.join(tmpdir(),'smoke-processes-'))),id='22222222-2222-4222-8222-222222222222',root=path.join(workspace,'runs',id),children=[];
+ mkdirSync(root,{recursive:true});
+ try{
+  for(const group of [false,true]){
+   const child=spawn(process.execPath,['-e','console.log("ready");setInterval(()=>{},1000)','--',root],{detached:group,stdio:['ignore','pipe','ignore']});children.push(child);await once(child.stdout,'data');
+   retainProcess(root,child.pid,group);
+  }
+  const file=path.join(root,'owned-processes.jsonl'),original=readFileSync(file,'utf8');
+  writeFileSync(file,original.split('\n').filter(Boolean).map(l=>JSON.stringify({...JSON.parse(l),started:'not the current process'})).join('\n')+'\n');
+  cleanupInterrupted({run_id:id,artifact_root:root},workspace);
+  for(const c of children)assert.doesNotThrow(()=>process.kill(c.pid,0));
+  assert.ok(JSON.parse(readFileSync(path.join(root,'interruption-cleanup.json'))).attempts.every(a=>!a.signal));
+  writeFileSync(file,original);const exits=children.map(c=>once(c,'exit'));
+  cleanupInterrupted({run_id:id,artifact_root:root},workspace);
+  await Promise.all(exits);
+  assert.equal(JSON.parse(readFileSync(path.join(root,'interruption-cleanup.json'))).attempts.filter(a=>a.signal).length,2);
+ }finally{for(const c of children)if(c.exitCode===null&&!c.signalCode)c.kill('SIGKILL');rmSync(workspace,{recursive:true,force:true});}
+});
 
 test('runtime storage stays external and desktop ownership/cleanup stay bound to that workspace',()=>{
  const workspace=dataDirectory(mkdtempSync(path.join(tmpdir(),'smoke-storage-')));

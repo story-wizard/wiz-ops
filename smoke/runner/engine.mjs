@@ -1,4 +1,5 @@
-import {spawn} from 'node:child_process';
+import {spawn,execFileSync} from 'node:child_process';
+import {appendFileSync} from 'node:fs';
 import {mkdir,readFile,appendFile,open} from 'node:fs/promises';
 import {isDeepStrictEqual} from 'node:util';
 import path from 'node:path';
@@ -8,6 +9,12 @@ export class OutcomeError extends Error{constructor(message,status='Fail'){super
 export function assert(condition,message){if(!condition)throw new OutcomeError(message);}
 export function near(actual,expected,label){assert(Number.isFinite(actual)&&Math.abs(actual-expected)<1e-6,`${label}: expected ${expected}, observed ${actual}`);}
 export const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+export function retainProcess(root,pid,group=false){
+  const inspect=field=>execFileSync('/bin/ps',['-p',String(pid),'-o',field+'='],{encoding:'utf8',timeout:2000}).trim();
+  const command=inspect('command'),started=inspect('lstart');
+  assert(command.includes(root),'Owned process command must name its isolated workspace.');
+  appendFileSync(path.join(root,'owned-processes.jsonl'),JSON.stringify({pid,command,started,group})+'\n');
+}
 export function command(file,args,{env,cwd,timeout=20000,signal,processGroup=false,onSpawn}={}){
   return new Promise((resolve,reject)=>{
     if(signal?.aborted)return resolve({code:null,stdout:'',stderr:'',aborted:true});
@@ -39,6 +46,7 @@ export class PackagedEngine{
     this.env={PATH:`${this.macos}:/usr/bin:/bin`,HOME:process.env.HOME||'',LANG:'en_US.UTF-8',TMPDIR:temp,WIZSERVER_RUNTIME_DIR:runtime,WIZSERVER_SANDBOX_ROOT:this.root,WIZARD_SETTINGS:settings,WIZARD_MACOS_DIR:this.macos,HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1'};
     const out=await open(path.join(this.root,`engine-${this.generation}.stdout.log`),'a'),err=await open(path.join(this.root,`engine-${this.generation}.stderr.log`),'a');
     this.child=spawn(path.join(this.macos,'wizard-headless'),['--port','0','--sandbox-root',this.root],{env:this.env,stdio:['ignore',out.fd,err.fd]});
+    if(this.child.pid)try{retainProcess(this.root,this.child.pid);}catch(error){this.child.kill('SIGTERM');await out.close();await err.close();throw error;}
     this.spawnError=null;this.child.on('error',e=>{this.spawnError=e;});await out.close();await err.close();
     const deadline=Date.now()+15000;
     while(Date.now()<deadline){

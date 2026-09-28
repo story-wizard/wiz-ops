@@ -56,6 +56,16 @@ Acceptance review is still explicit and manual in this slice. No new approval da
 
 Framework test results are evidence about the runner. They are not Wizard smoke passes. Human observations, desktop behavior and unit/build validation retain separate evidence types.
 
+### Qualify interruption handling locally
+
+Use an isolated service and external workspace for this destructive probe. Prepare a selection containing `A-CLI-01`, `IN-01` and at least one later check. The probe admits its own new run, waits until ingest starts, verifies the runner's identity, then kills that runner. It requires an explicit server so it cannot silently target another dashboard.
+
+```sh
+node scripts/verify-interruption.mjs --server http://127.0.0.1:4318 --plan /absolute/external/pilot-plan.json --check IN-01 --out /absolute/external/interruption.json
+```
+
+It verifies the connection passed, interrupted ingest became Unknown, and identity-verified owned processes exited. Recovery retains process commands/start times, checks them again before signaling, and records cleanup receipts. A missing cleanup receipt or surviving owned process fails the probe. No uncertain operation is replayed. Keep this evidence with the run, outside Git.
+
 ## Local delivery
 
 ```sh

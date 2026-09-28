@@ -67,6 +67,17 @@ export function cleanupInterrupted(row,configuredDataDir){
   const data=dataDirectory(configuredDataDir),root=path.join(data,'runs',row.run_id);if(root!==row.artifact_root)return 'No process cleanup outside the owned workspace.';
   if(existsSync(root)&&realpathSync(root)!==root)return 'No cleanup through a redirected run path.';
   const attempts=[];
+  const processes=path.join(root,'owned-processes.jsonl');
+  if(existsSync(processes)&&realpathSync(processes)===processes)for(const line of readFileSync(processes,'utf8').split('\n').filter(Boolean)){
+    try{
+      const p=JSON.parse(line);
+      if(!Number.isInteger(p.pid)||p.pid<=1||!p.command?.includes(root)||!p.started||typeof p.group!=='boolean')continue;
+      const inspect=field=>execFileSync('/bin/ps',['-p',String(p.pid),'-o',field+'='],{encoding:'utf8',timeout:2000}).trim();
+      if(inspect('command')!==p.command||inspect('lstart')!==p.started){attempts.push({pid:p.pid,kind:'process identity changed'});continue;}
+      if(p.group&&Number(inspect('pgid'))!==p.pid){attempts.push({pid:p.pid,kind:'process group changed'});continue;}
+      process.kill(p.group?-p.pid:p.pid,'SIGTERM');attempts.push({pid:p.pid,kind:p.group?'owned ingest group':'owned engine',signal:'SIGTERM'});
+    }catch(e){attempts.push({kind:'process already gone or identity unavailable',detail:e.message});}
+  }
   for(const target of ['service','desktop']){
     const directory=path.join(root,'stages',target);if(!existsSync(directory))continue;
     for(const name of readdirSync(directory).filter(n=>/^desktop-[A-Za-z0-9]+$/.test(n))){
@@ -85,5 +96,5 @@ export function cleanupInterrupted(row,configuredDataDir){
     }
   }
   if(existsSync(root))writeFileSync(path.join(root,'interruption-cleanup.json'),JSON.stringify({at:new Date().toISOString(),attempts},null,2));
-  return attempts.some(a=>a.signal)?'Sent termination only to identity-verified owned processes; inspect retained cleanup receipts.':'No live desktop process was verified for cleanup.';
+  return attempts.some(a=>a.signal)?'Sent termination only to identity-verified owned processes; inspect retained cleanup receipts.':'No live owned process was verified for cleanup.';
 }

@@ -108,9 +108,11 @@ For desktop/service selections, pass `--runtime runtime.json`. Use explicit reta
 
 The optional `libraries` directory holds retained development libraries. The plan fingerprints those files, the native bridge and the paired schema. The app must expose the isolated automation startup hooks. It is recorded separately from `--app`, the packaged engine used for preparation and packaged checks. No historical run is needed to select a runtime. `runtime --file runtime.json` retains a runtime descriptor; `runtimes` lists descriptors. Descriptors are checked again during preparation and launch.
 
+The isolated desktop app uses the search worker bundled in the explicitly selected preparation package. That worker is covered by the package fingerprint. GUI search therefore exercises the instrumented app together with this packaged worker; it is not a claim about an independently distributed desktop bundle.
+
 `list --target desktop` filters discovery. Category selection defaults to packaged checks for compatibility; `plan --category color --target all` includes corresponding checks across targets. Explicit check IDs and saved courses can mix targets without this flag.
 
-The `examples/accepted-automated.json` course groups all 137 accepted definitions. It does not approve the separate 142-candidate V1 scope.
+The `examples/accepted-automated.json` course groups all 137 accepted definitions. It does not approve the separate 143-candidate V1 scope.
 
 Fresh is the available empty starting project. A check's setup populates it as required. Story-user and Large are reserved future inputs and currently fail readiness explicitly.
 
@@ -118,7 +120,7 @@ Color-only plans use the six-file synthetic core pack and no speech model. Speec
 
 Current package compatibility remains conservative: the selected package must match the mapped operation schema. A local run kit retains the exact runtime inputs and lists required external libraries. It does not automatically qualify arbitrary new schemas or promise a self-contained installer.
 
-The canonical full Smoke Test course and V1 scope remain distinct from a custom course. The maintained `packaged-full` selection represents all 57 packaged checks, not all 142 automated definitions or every behavior in Logan's checklist.
+The canonical full Smoke Test course and V1 scope remain distinct from a custom course. The maintained `packaged-full` selection represents all 57 packaged checks, not all 143 automated definitions or every behavior in Logan's checklist.
 
 ## Local run kits
 

@@ -35,7 +35,7 @@ export async function pairDesktopCli(session,pairedCli){
   const cli=path.join(directory,'wiz-cli');await cp(source,cli);
   session.desktopCli=cli;session.desktopCliHash=await sha(cli);
   session.schema=JSON.parse(execFileSync(cli,['project','create','--schema','--no-spawn'],{encoding:'utf8',timeout:10000,maxBuffer:8*1024*1024,env:session.plan.runtime?.libraries?{...process.env,DYLD_LIBRARY_PATH:session.plan.runtime.libraries}:process.env}));
-  session.scope='Instrumented local GUI build and paired CLI; installed package used only for fixture preparation and media tools; separate from release smoke';
+  session.scope='Instrumented local GUI build and paired CLI; selected package supplies fixture preparation, media tools and the search worker; separate from release smoke';
   await writeJSON(path.join(session.root,'session.json'),session);
 }
 
@@ -66,6 +66,8 @@ export async function launchDesktop(session,{foreground=true}={}){
   session.bridgeHash=await sha(path.join(plugins,'styles/libwizard_smoke.dylib'));session.native=native;
   if(session.qtCocoa){assert(await sha(session.qtCocoa.source)===session.qtCocoa.sha256,'Selected smoke Qt plugin changed.');await mkdir(path.join(plugins,'platforms'),{recursive:true});session.qtCocoa.loadedPath=path.join(plugins,'platforms/libqcocoa.dylib');await cp(session.qtCocoa.source,session.qtCocoa.loadedPath);assert(await sha(session.qtCocoa.loadedPath)===session.qtCocoa.sha256,'Copied smoke Qt plugin differs.');}
   const env={PATH:`${path.join(session.cliApp,'Contents/MacOS')}:/usr/bin:/bin`,HOME:process.env.HOME,LANG:'en_US.UTF-8',TMPDIR:temp,QT_PLUGIN_PATH:plugins,QT_QUICK_CONTROLS_STYLE:"Basic",WIZ_SMOKE_CONTROL_DIR:native,WIZSERVER_RUNTIME_DIR:runtime,WIZSERVER_SANDBOX_ROOT:session.root,WIZARD_SETTINGS:settings,XDG_CONFIG_HOME:settings,WIZ_HARNESS_RUN_ID:session.harnessId,WIZ_AUTOMATION_PROJECT:session.bundle,WIZ_AUTOMATION_TIMELINE:session.main.id,WIZ_MGFX_SEMANTIC_TRACE:'1',HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1'};
+  // The instrumented app has no bundled Python. Use the worker in the fingerprinted preparation package.
+  env.WIZ_SEARCH_WORKER=path.join(session.cliApp,'Contents/Resources/python',process.arch==='arm64'?'arm64':'x86_64','bin/wiz-search-worker');
   if(session.plan.runtime?.libraries)env.DYLD_LIBRARY_PATH=session.plan.runtime.libraries;
   const stdout=await open(path.join(session.root,`gui-${generation}.stdout.log`),'a'),stderr=await open(path.join(session.root,`gui-${generation}.stderr.log`),'a');
   const child=spawn(session.executable,['-style','Basic'],{env,cwd:session.root,stdio:['ignore',stdout.fd,stderr.fd]});await stdout.close();await stderr.close();
