@@ -4,6 +4,7 @@ import {prepareDesktop,launchDesktop,stopDesktop,retainChild,desktopCall,nativeC
 import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 import {command,assert,same,snapshotState} from '../runner/engine.mjs';
 import {saveDiscard} from './check-lifecycle.mjs';
+import {unsetRateExport} from './check-unset-rate.mjs';
 import {beginCheck,endCheck,selectorNamesTimeline} from './check-support.mjs';
 export async function executeDesktop(prepared,{onResult=async()=>{},isCancelled=()=>false,signal}={}){
 const fullCourse=await readJSON(new URL('./course.json',import.meta.url)),ids=prepared?.ids||fullCourse.cases.map(c=>c.id),course={...fullCourse,cases:fullCourse.cases.filter(c=>ids.includes(c.id))},total=course.cases.length;
@@ -12,7 +13,7 @@ const session=await prepareDesktop(source,qtCocoaPlugin,prepared?.runtime.cli||p
 const report={course,scope:session.scope,startedAt:new Date().toISOString(),guiHash:session.guiHash,cliHash:session.desktopCliHash,qtCocoa:session.qtCocoa,results:[],sources:{}};
 const map=await readJSON(new URL('./check-map.json',import.meta.url)),wants=name=>map[name]?.some(id=>ids.includes(id));
 const here=path.dirname(fileURLToPath(import.meta.url));
-for(const name of ['adapter.mjs','run.mjs','check-core.mjs','check-editor.mjs','check-paths.mjs','check-support.mjs','check-workspace.mjs','check-scopes.mjs','check-spellbook.mjs','check-compounds.mjs','check-selection-bin.mjs','check-next.mjs','check-surface.mjs','check-lifecycle.mjs','check-playback.mjs','check-spell-ui.mjs','check-relink.mjs','check-curves.mjs','export-dialog.mjs','generated-fixture.mjs','course.json','native/bridge.cpp','native/build.sh','native/smoke-style.json','check-guards.mjs'])report.sources[name]=await sha(path.join(here,name));
+for(const name of ['adapter.mjs','run.mjs','check-core.mjs','check-editor.mjs','check-paths.mjs','check-support.mjs','check-workspace.mjs','check-scopes.mjs','check-spellbook.mjs','check-compounds.mjs','check-selection-bin.mjs','check-next.mjs','check-surface.mjs','check-lifecycle.mjs','check-unset-rate.mjs','check-offline-export.mjs','check-playback.mjs','check-spell-ui.mjs','check-relink.mjs','check-curves.mjs','export-dialog.mjs','generated-fixture.mjs','course.json','native/bridge.cpp','native/build.sh','native/smoke-style.json','check-guards.mjs'])report.sources[name]=await sha(path.join(here,name));
 let live,currentCheck;
 async function script(name,result,expectedCount=0,args=[],merge=false){
  if(!wants(name))return;if(isCancelled())throw Object.assign(Error('Course cancelled; no further actions dispatched.'),{status:'Unknown'});
@@ -61,6 +62,7 @@ try{
   // fixture changes after the established baseline checks to avoid cascading failures.
   await script('check-selection-bin.mjs','desktop-selection-bin-report.json',8);
   if(wants('check-selection-bin.mjs')){await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file));await script('check-selection-bin.mjs','desktop-bin-reopen-report.json',4,['verify'],true);}
+  if(ids.includes('S-EXPORT-UNSET-RATE')){await beginCheck(file,'S-EXPORT-UNSET-RATE');const holder={live};let value;try{value=await unsetRateExport(file,holder);}finally{live=holder.live;}report.results.push(value);await endCheck(file,value);await onResult(value,session.root);}
 }catch(e){report.error=e.message;if(currentCheck)report.results.push({id:currentCheck,status:e.status||'Fail',error:e.message});}
 finally{
   if(live&&live.child.exitCode===null&&!live.child.signalCode)try{await stopDesktop(file);await live.closed;}catch(e){report.cleanupError=e.message;}

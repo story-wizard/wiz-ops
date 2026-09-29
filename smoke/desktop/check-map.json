@@ -9,8 +9,7 @@
   ],
   "check-offline-export.mjs": [
     "S-EXPORT-PRORES",
-    "S-EXPORT-AV1",
-    "S-EXPORT-UNSET-RATE"
+    "S-EXPORT-AV1"
   ],
   "check-curves.mjs": [
     "D-CURVE-RGB-CLIPBOARD",
@@ -116,5 +115,8 @@
   ],
   "check-idle.mjs": [
     "S-PF-IDLE"
+  ],
+  "check-unset-rate.mjs": [
+    "S-EXPORT-UNSET-RATE"
   ]
 }

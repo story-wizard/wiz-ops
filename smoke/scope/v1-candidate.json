@@ -75,9 +75,9 @@
     },
     {
       "file": "desktop/course.json",
-      "sha256": "ad9b5ae33ddeb5e1b7b88518703b3a422137ae9016dc7309dae49c7a69b53ef1",
+      "sha256": "7e6dfdce8c2625b785378ebd600da6e2c5005dc1fe108319a238444e80cf8438",
       "id": "local-desktop-v1",
-      "revision": 8,
+      "revision": 9,
       "target": "Instrumented local GUI with isolated Qt runtime",
       "requiredCheckIds": [
         "D-CLI-01",
@@ -156,14 +156,15 @@
         "D-SB-INSPECTOR-PREVIEW",
         "D-MEDIA-RELINK",
         "D-CURVE-RGB-CLIPBOARD",
-        "D-CURVE-HUE-RESET"
+        "D-CURVE-HUE-RESET",
+        "S-EXPORT-UNSET-RATE"
       ]
     },
     {
       "file": "desktop/service-course.json",
-      "sha256": "e4b2bd748e47ff5f2f918d9a568a4a259ec5bccd1462259461abf52965a75dea",
+      "sha256": "89e69c0f5f4569c6f208fb3a2d0b2d94f07da608a5b5aa7f6c80de860af1448a",
       "id": "local-services-v1",
-      "revision": 2,
+      "revision": 3,
       "target": "Owned background GUI services and app export worker; no keyboard/mouse or foreground UI acceptance",
       "requiredCheckIds": [
         "S-MGFX-DUPLICATE-DEFAULT",
@@ -173,7 +174,6 @@
         "S-MGFX-PERSIST",
         "S-EXPORT-PRORES",
         "S-EXPORT-AV1",
-        "S-EXPORT-UNSET-RATE",
         "S-PF-IDLE"
       ]
     }
@@ -1013,7 +1013,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "The Inspector slider changes native radius and one undo restores it. This combined check stays blocked because local graph evaluation and canvas pixel response are not verified."
+      "remaining": "A bound local image and blur graph establish a real canvas thumbnail. Inspector edits must change native radius and displayed pixels; Undo must restore both. Explicit rerender is diagnostic only. Runtime passing evidence and representative project variants remain separate."
     },
     {
       "id": "SB-05",
@@ -1427,7 +1427,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Worker rate resolution is exercised, but the manually edited unset-rate fixture describes an incoherent timeline. This check is blocked until supported creation provides a valid unset-rate project; a black exploratory export is not acceptance evidence."
+      "remaining": "The app-created empty Fresh timeline is exported as 48 black frames with an independently probed 24 fps rate. Populated unset-rate timelines and representative Story-user/Large variants remain unqualified."
     },
     {
       "id": "EX-03",

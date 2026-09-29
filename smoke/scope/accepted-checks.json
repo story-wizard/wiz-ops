@@ -1518,7 +1518,7 @@
     {
       "id": "S-EXPORT-UNSET-RATE",
       "title": "Export a timeline with an unset rate",
-      "target": "service",
+      "target": "desktop",
       "sourceIds": [
         "EX-02"
       ],

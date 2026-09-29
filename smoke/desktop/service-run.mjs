@@ -19,8 +19,8 @@ async function script(name,output,count,args=[]){
 }
 try{
   live=await launchDesktop(session,{foreground:false});report.bridgeHash=(await readJSON(file)).bridgeHash;
-  for(const op of ['context-click','drop-model-item','snapshot-presented','type-text','key','click','action','activate','text','select','drag','item-click','close-window','clipboard-save'])await strict.rejects(()=>nativeCall(file,op,{target:'not-used',key:'Space'}),/cannot dispatch UI input/);
-  report.guards={status:'Pass',checks:14,scope:'Background service sessions reject every UI input path tested'};
+  for(const op of ['context-click','drop-model-item','snapshot-presented','type-text','key','click','action','activate','text','select','drag','item-click','close-window','clipboard-save','spellbook-run-local','snapshot-node-preview'])await strict.rejects(()=>nativeCall(file,op,{target:'not-used',key:'Space'}),/cannot dispatch UI input/);
+  report.guards={status:'Pass',checks:16,scope:'Background service sessions reject every UI input path tested'};
   await script('check-generated.mjs','service-generated-report.json',4);
   await script('check-idle.mjs','service-idle-report.json',1);
   await stopDesktop(file);await live.closed;

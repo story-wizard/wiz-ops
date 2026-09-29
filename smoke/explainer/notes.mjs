@@ -73,7 +73,7 @@ export const methods={
 'D-SB-TAB-RENAME':'Create a Spell, rename it through the tab menu, author retained text, save and close the tab. Reopen it from Media and compare content; inspect the same document again in a fresh process.',
 'D-SB-TAB-DUPLICATE':'Inspect the actual Spell tab menu for duplication. No duplicate-tab action is present. Instantiation is tested separately and does not satisfy this user path.',
 'D-SB-SEARCH-DROP':'Search for Text, ask the application’s result model for its actual MIME payload and deliver Qt drag/drop events to the canvas. Require native node creation and one-step undo. This is not an OS pointer-drag test.',
-'D-SB-INSPECTOR-PREVIEW':'Bind a local still to a source/blur graph, select the blur and drag its real Inspector slider. Native radius and undo are verified. The combined check remains Blocked because a rendered canvas-preview comparison is not established.',
+'D-SB-INSPECTOR-PREVIEW':'Bind a local still to a source/blur graph and use the app render command to establish a preview. Drag the Inspector slider, require the actual canvas thumbnail pixels to change without another render command, then Undo and require the original pixels. Provider graphs are rejected.',
 'D-MEDIA-RELINK':'Move a disposable source and restart to refresh offline availability. Use the real Locate/Relink folder dialog and Save; compare live and saved paths, identity, source hash and rendered pixels, then restart and compare again.',
 'D-CURVE-RGB-CLIPBOARD':'Drag a Master curve point in the unified Curves panel and compare graph points and rendered pixels. Copy/paste the curve to another clip, double-click reset the copy and verify the original remains edited.',
 'D-CURVE-HUE-RESET':'Expand the Hue group, select Hue Shift and drag a curve point. Check native curve points and changed rendered pixels, then double-click reset and require neutral pixels.',
@@ -84,5 +84,5 @@ export const methods={
 'S-MGFX-PERSIST':'Restart the owned app and inspect both generated owners and timelines. Render the retained copied timeline and compare with the saved reference image.',
 'S-EXPORT-PRORES':'Ask Wizard’s export worker to prepare a ProRes request, export 48 frames, then independently probe/decode the movie. Check stream format, duration, PCM audio and nonblank image content.',
 'S-EXPORT-AV1':'Use the actual Wizard export worker for a two-second AV1 movie. Check all 48 frames were written, probe codec/rate/dimensions and AAC audio, and decode a nonblank image.',
-'S-EXPORT-UNSET-RATE':'Prepare a copied bundle with an unset-rate fixture and query the worker’s sample request. The fixture produces an incoherent duration and remains Blocked; it cannot prove a valid fallback policy.'
+'S-EXPORT-UNSET-RATE':'Create a genuine empty unset-rate project through New Project, change only its raster, and stop the app. Require the export worker to resolve 24 fps and write 48 black H.264 frames without rewriting the timeline; probe/decode independently. Restore the original project. This uses the foreground desktop lane and does not cover populated unset-rate timelines.'
 };

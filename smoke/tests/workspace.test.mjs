@@ -23,9 +23,9 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     const {data:catalog}=await request('/catalog');
     assert.equal(catalog.tests.length,275);
     assert.equal(catalog.checkpoint.rows.length,137);
-    assert.equal(catalog.tests.filter(t=>t.course==='Local desktop').length,77);
-    assert.equal(catalog.tests.filter(t=>t.course==='Local services').length,9);
-    assert.equal((await request('/desktop')).data.serviceCourse.cases.length,9);
+    assert.equal(catalog.tests.filter(t=>t.course==='Local desktop').length,78);
+    assert.equal(catalog.tests.filter(t=>t.course==='Local services').length,8);
+    assert.equal((await request('/desktop')).data.serviceCourse.cases.length,8);
     assert.ok(catalog.checkpoint.rows.find(r=>r.id==='EX-02').checks.some(c=>c.id==='S-EXPORT-UNSET-RATE'));
     assert.ok(catalog.checkpoint.rows.find(r=>r.id==='TL-02').checks.some(c=>c.id==='D-EDIT-SPLIT-REDO'));
     assert.deepEqual((await request('/desktop')).data.runs,[]);

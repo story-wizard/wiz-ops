@@ -6,7 +6,7 @@ import path from 'node:path';
 import {spawnSync,spawn} from 'node:child_process';
 import {once} from 'node:events';
 import {ROOT,dataDirectory,externalPath} from '../runner/files.mjs';
-import {verifyDesktopPaths} from '../desktop/adapter.mjs';
+import {verifyDesktopPaths,assertLocalPreviewGraph} from '../desktop/adapter.mjs';
 import {cleanupInterrupted} from '../runner/store.mjs';
 import {retainProcess} from '../runner/engine.mjs';
 
@@ -56,4 +56,16 @@ test('runtime storage stays external and desktop ownership/cleanup stay bound to
   assert.match(cleanupInterrupted({run_id:id,artifact_root:other},workspace),/outside/);
   assert.equal(existsSync(path.join(other,'interruption-cleanup.json')),false);
  }finally{rmSync(workspace,{recursive:true,force:true});}
+});
+
+// Local rendering must never dispatch a provider graph or read another workspace's image.
+test('local preview rejects provider nodes, incomplete graphs and outside media',()=>{
+ const root=dataDirectory(mkdtempSync(path.join(tmpdir(),'smoke-local-preview-'))),image=path.join(root,'image.png');writeFileSync(image,'owned');
+ try{
+  const graph={coverage:{next_offset:null,graph_nodes:2,other_scene_objects_unprojected:0},nodes:[{node_ref:'source',type:'image_source',media:{bound:true,path:image}},{node_ref:'blur',type:'gaussian_blur',bypassed:false}],edges:[{from:{node_ref:'source'},to:{node_ref:'blur'}}]};assertLocalPreviewGraph(graph,root);
+  assert.throws(()=>assertLocalPreviewGraph({...graph,nodes:[graph.nodes[0],{...graph.nodes[1],type:'wiz.gen.img2img'}]},root),/provider nodes/);
+  assert.throws(()=>assertLocalPreviewGraph({...graph,coverage:{...graph.coverage,next_offset:2}},root),/complete/);
+  assert.throws(()=>assertLocalPreviewGraph({...graph,nodes:[{...graph.nodes[0],media:{bound:true,path:'/etc/hosts'}},graph.nodes[1]]},root),/owned image/);
+  assert.throws(()=>assertLocalPreviewGraph({...graph,edges:[]},root),/connection/);
+ }finally{rmSync(root,{recursive:true,force:true});}
 });

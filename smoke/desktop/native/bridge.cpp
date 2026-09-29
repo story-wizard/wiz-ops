@@ -72,6 +72,7 @@ class SmokeBridge : public QObject {
             if(!w->isVisible())continue;
             QJsonObject item{{"active",w->isActiveWindow()},{"id",id(w)},{"class",w->metaObject()->className()},{"name",w->objectName()},{"tooltip",w->toolTip()},{"parent",w->parentWidget()?id(w->parentWidget()):QString()},{"enabled",w->isEnabled()},{"title",w->windowTitle()},{"window",id(w->window())},{"width",w->width()},{"height",w->height()}};
             const auto pos=w->mapTo(w->window(),QPoint{});item["x"]=pos.x();item["y"]=pos.y();
+            for(auto* owner=w;owner;owner=owner->parentWidget())if(auto* proxy=owner->graphicsProxyWidget();proxy&&proxy->scene()&&!proxy->scene()->views().isEmpty()){item["graphView"]=id(proxy->scene()->views().front());break;}
             if(auto* p=qobject_cast<QLabel*>(w))item["text"]=p->text();
             if(auto* p=qobject_cast<QAbstractButton*>(w)){item["text"]=p->text();item["checked"]=p->isChecked();}
             if(auto* p=qobject_cast<QLineEdit*>(w);p&&p->echoMode()==QLineEdit::Normal)item["text"]=p->text();
@@ -112,13 +113,23 @@ class SmokeBridge : public QObject {
             QJsonArray formats;const auto* mime=QGuiApplication::clipboard()->mimeData();if(mime)for(const auto& f:mime->formats())formats.append(f);return {{"formats",formats}};
         }
         if(op=="clipboard-restore")return {{"restored",restoreClipboard()}};
-        if(op=="screenshot"||op=="snapshot-widget"||op=="snapshot-presented"){
+        if(op=="screenshot"||op=="snapshot-widget"||op=="snapshot-presented"||op=="snapshot-node-preview"){
             if(!widget||!widget->isVisible()||(op=="screenshot"&&!widget->isWindow()))throw QString("Choose an observed visible window or widget");
             const QString name="screen-"+request["id"].toString()+".png";
-            const auto image=op=="snapshot-presented"?presented(widget):widget->grab();
+            QPixmap image;
+            if(op=="snapshot-node-preview"){
+                auto* view=qobject_cast<QGraphicsView*>(widget);if(!view||!view->scene()||request["label"].toString().isEmpty())throw QString("Observed graph and node label required");
+                QList<QGraphicsPixmapItem*> matches;
+                for(auto* item:view->scene()->items())if(auto* pix=qgraphicsitem_cast<QGraphicsPixmapItem*>(item);pix&&pix->isVisible()&&pix->pixmap().width()>64&&pix->pixmap().height()>64){
+                    auto* node=item;while(node&&!(node->flags()&QGraphicsItem::ItemIsSelectable))node=node->parentItem();if(!node)continue;
+                    bool found=false;for(auto* child:node->childItems())if(auto* proxy=qgraphicsitem_cast<QGraphicsProxyWidget*>(child);proxy&&proxy->widget())for(auto* label:proxy->widget()->findChildren<QLabel*>())found|=label->text()==request["label"].toString();
+                    if(found)matches.append(pix);
+                }
+                if(matches.size()!=1)throw QString("Expected one rendered node preview");image=matches.front()->pixmap();
+            }else image=op=="snapshot-presented"?presented(widget):widget->grab();
             if(!image.save(root+"/"+name))throw QString("Window capture failed");
-            QJsonObject result{{"path",root+"/"+name},{"width",widget->width()},{"height",widget->height()}};
-            if(op=="snapshot-widget"||op=="snapshot-presented"){
+            QJsonObject result{{"path",root+"/"+name},{"width",op=="snapshot-node-preview"?image.width():widget->width()},{"height",op=="snapshot-node-preview"?image.height():widget->height()}};
+            if(op=="snapshot-widget"||op=="snapshot-presented"||op=="snapshot-node-preview"){
                 const auto small=image.toImage().scaled(64,32,Qt::IgnoreAspectRatio,Qt::SmoothTransformation).convertToFormat(QImage::Format_RGB888);
                 QByteArray rgb;for(int y=0;y<small.height();y++)rgb.append(reinterpret_cast<const char*>(small.constScanLine(y)),small.width()*3);
                 result["sampleRgb"]=QString::fromLatin1(rgb.toBase64());result["sampleWidth"]=small.width();result["sampleHeight"]=small.height();
@@ -166,6 +177,10 @@ class SmokeBridge : public QObject {
             if(sequence.count()!=1)throw QString("Supply one key combination");
             if(sequence[0].key()==Qt::Key_unknown)throw QString("Unsupported key name; use Qt PortableText");
             widget->setFocus();const auto combo=sequence[0];QTimer::singleShot(0,widget,[widget,combo]{QTest::keyClick(widget,combo.key(),combo.keyboardModifiers());});
+        }else if(op=="spellbook-run-local"){
+            // The adapter admits only an inspected local image -> blur graph.
+            if(!widget||!widget->isVisible()||QString(widget->metaObject()->className())!="DetachedGraphPanel")throw QString("Observed Spellbook panel required");
+            if(!QMetaObject::invokeMethod(widget,"onRun",Qt::QueuedConnection))throw QString("Spellbook render command unavailable");
         }else if(op=="select"){
             auto* combo=qobject_cast<QComboBox*>(target);int index=request["index"].toInt(-1);
             if(!combo||index<0||index>=combo->count())throw QString("Invalid combo selection");combo->setCurrentIndex(index);emit combo->activated(index);

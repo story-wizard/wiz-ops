@@ -1,6 +1,6 @@
 # V1 scope proposal
 
-The source inventory in [v1-candidate.json](../scope/v1-candidate.json) records 143 candidate definitions: 57 packaged engine, 77 foreground desktop and nine background service checks. It remains **Proposed**, with no full-scope approver or approval time. The separate accepted registry permits reuse of 137 definitions in custom courses; it does not assert passing execution.
+The source inventory in [v1-candidate.json](../scope/v1-candidate.json) records 143 candidate definitions: 57 packaged engine, 78 foreground desktop and eight background service checks. It remains **Proposed**, with no full-scope approver or approval time. The separate accepted registry permits reuse of 137 definitions in custom courses; it does not assert passing execution.
 
 All 137 original checklist rows remain visible: 77 have mapped counterparts, 32 have none, 24 NAS rows are deferred and four are undefined placeholders. The existing Partial label is an inventory disposition, not an assertion that every mapped criterion is incomplete or fully satisfied. Consult the original criterion and the specific executable assertions.
 
@@ -13,8 +13,8 @@ Use the existing [accepted-automated course](../examples/accepted-automated.json
 | Required lane | Checks | What its evidence establishes |
 |---|---:|---|
 | Packaged engine | 57 | The explicitly selected package executes the operations and produces the asserted project, media and output state. |
-| Background services | 8 | The retained instrumented app and its workers satisfy the selected service contracts. |
-| Foreground desktop | 72 | The retained instrumented app responds to the authored interaction and state checks. |
+| Background services | 7 | The retained instrumented app and its workers satisfy the selected service contracts. |
+| Foreground desktop | 73 | The retained instrumented app responds to the authored interaction and state checks. |
 
 This is a proposal for required membership, not a new approval record. The broader 143-definition inventory remains unchanged: five unlinked team additions and the provisional idle-CPU check remain candidates outside this proposed course. Existing acceptance applies to check definitions, not to runtime results or the complete V1 delivery scope.
 
@@ -32,7 +32,7 @@ Retain the selected package/runtime identities, source snapshot, frozen course, 
 - Focused wrong-result checks that prove assertions reject incorrect successful responses, bad renders and failed ingest. These are runner regression evidence; they do not replace a real app course.
 - A complete required-course run on the intended runtime, with every failure or blocker resolved or explicitly reviewed. Mixed packaged and instrumented builds must retain both identities and cannot claim single-package release qualification.
 
-The desktop adapter explicitly binds GUI search to the worker in the selected preparation package; reports retain both the instrumented app and preparation-package identities. Remaining blocked-check work needs a supported unset-rate export fixture, an exposed playback-loop control, actual Spell-tab duplication, and a locally rendered Spellbook preview fixture. Preserve each blocked outcome until its original criterion is exercised.
+The desktop adapter explicitly binds GUI search to the worker in the selected preparation package; reports retain both the instrumented app and preparation-package identities. Unset-rate export now uses an app-created empty project and therefore runs in the foreground desktop lane. Its check ID and accepted expected result are unchanged; acceptance metadata records the corrected target. Populated unset-rate export remains unqualified. The preview check now asserts rendered thumbnail changes. Playback-loop and Spell-tab duplication still need supported controls. Preserve failing or blocked outcomes until the original criterion is exercised.
 
 The desktop/service target is an instrumented runtime and is distinct from packaged-engine evidence. Release qualification, second-machine execution, human handoff, remote build integration and shared publication each require their own retained evidence.
 

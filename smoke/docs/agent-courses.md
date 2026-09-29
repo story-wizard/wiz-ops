@@ -16,7 +16,7 @@ Each selected course adds its connection checks and any declared shared-fixture 
 
 Custom courses can reference only accepted check definitions. A positive acceptance entry binds a check ID to the digest of its executable definition. Changed definitions become ineligible until reviewed again. Saving a course cannot change test definitions, acceptance or the maintained full course.
 
-Charles accepted all existing checks linked to Logan’s checklist on September 27: 137 definitions (57 packaged, 72 desktop, 8 service). Five unlinked team additions and the subsequent idle CPU candidate remain outside that decision. The CLI can compose all 137 accepted definitions. Acceptance does not require a current passing outcome. Runtime failures and broader checklist coverage are unchanged.
+Charles accepted all existing checks linked to Logan’s checklist on September 27: 137 definitions. The current execution lanes contain 57 packaged, 73 desktop and 7 service checks: unset-rate export moved to the desktop lane because its valid fixture uses New Project. Five unlinked team additions and the subsequent idle CPU candidate remain outside that decision. The CLI can compose all 137 accepted definitions. Acceptance does not require a current passing outcome. Runtime failures and broader checklist coverage are unchanged.
 
 Acceptance is read from `scope/accepted-checks.json`. It is a lead-reviewed source record, not an agent-callable approval operation. Without that record, discovery still works but saving/planning custom courses is blocked. A prior passing run alone does not create acceptance.
 

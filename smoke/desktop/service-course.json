@@ -1,6 +1,6 @@
 {
   "id": "local-services-v1",
-  "revision": 2,
+  "revision": 3,
   "title": "Local application services",
   "target": "Owned background GUI services and app export worker; no keyboard/mouse or foreground UI acceptance",
   "cases": [
@@ -45,12 +45,6 @@
       "sourceId": "EX-01",
       "title": "Application AV1 export",
       "expected": "The app export worker renders and publishes 48 decodable 1080p24 AV1 frames with AAC audio."
-    },
-    {
-      "id": "S-EXPORT-UNSET-RATE",
-      "sourceId": "EX-02",
-      "title": "Export a timeline with an unset rate",
-      "expected": "A disposable fixture with stored timeline rate 0/1 resolves to 24/1 and exports 48 decodable H.264 frames; a 1 fps fallback must fail this check."
     },
     {
       "id": "S-PF-IDLE",

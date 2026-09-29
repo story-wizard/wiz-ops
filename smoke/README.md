@@ -50,8 +50,8 @@ See [agent-friendly courses](docs/agent-courses.md) for explicit IDs, categories
 | Execution target | Definitions | Boundary |
 | --- | ---: | --- |
 | Packaged engine | 57 | Uses the selected package's headless engine, shipped CLI and local ingest tools |
-| Foreground desktop | 77 | Uses an explicitly retained instrumented app, paired CLI and Qt test adapter |
-| Background app services | 9 | Uses the instrumented runtime and export worker with UI input disabled; includes the provisional idle CPU candidate |
+| Foreground desktop | 78 | Uses an explicitly retained instrumented app, paired CLI and Qt test adapter |
+| Background app services | 8 | Uses the instrumented runtime and export worker with UI input disabled; includes the provisional idle CPU candidate |
 | **Total** | **143** | Definition count, not passing coverage |
 
 **137 definitions are accepted for custom-course selection.** Five unlinked team checks and the new idle CPU candidate remain outside that registry. The 137 original checklist rows are a different count: 77 have mapped counterparts, 32 have none, 24 NAS rows are deferred and four are placeholders. A mapped row can still lack part of its original behavior.

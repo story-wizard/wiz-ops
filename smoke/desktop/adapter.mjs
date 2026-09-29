@@ -123,9 +123,20 @@ export async function desktopCall(file,operation,params={},expectedError){
   }finally{await held.close();await unlink(lock);}
 }
 
+export function assertLocalPreviewGraph(graph,root){
+  assert(graph.coverage?.next_offset===null&&graph.coverage.graph_nodes===2&&graph.coverage.other_scene_objects_unprojected===0&&graph.nodes?.length===2,'Local preview requires a complete two-node graph');
+  const source=graph.nodes.find(n=>n.type==='image_source'),blur=graph.nodes.find(n=>n.type==='gaussian_blur');
+  assert(source?.media?.bound&&typeof source.media.path==='string'&&inside(root,realpathSync(source.media.path))&&blur&&!blur.bypassed,'Local preview requires an owned image and a blur; provider nodes are forbidden');
+  assert(graph.edges?.length===1&&graph.edges[0].from.node_ref===source.node_ref&&graph.edges[0].to.node_ref===blur.node_ref,'Local preview requires the image-to-blur connection');
+}
 export async function nativeCall(file,op,params={}){
   const session=await readJSON(file);verifyDesktopOwner(session);
   assert(session.inputMode!=='service'||['inspect','screenshot','snapshot-widget'].includes(op),'Background service sessions cannot dispatch UI input. Run the foreground desktop course for UI evidence.');
+  if(op==='spellbook-run-local'){
+    const graph=await desktopCall(file,'spellbook.inspect',{document_id:params.documentId,view:'overview',limit:100});assertLocalPreviewGraph(graph,session.root);
+    const ui=await nativeCall(file,'inspect'),panel=ui.widgets.find(w=>w.id===params.target&&w.class==='DetachedGraphPanel');
+    assert(panel&&ui.widgets.some(w=>w.window===panel.window&&((w.class==='QTabBar'&&w.tabs?.[w.index]===graph.name)||(w.name==='panelSubtabSelector'&&w.text===graph.name))),'Local preview must target the inspected active Spell');
+  }
   const ready=await readJSON(path.join(session.native,'ready.json'));assert(ready.pid===session.pid&&ready.harness===session.harnessId,'Native bridge identity mismatch.');
   const lock=path.join(session.root,'native-call.lock'),held=await open(lock,'wx'),id=randomUUID();
   const request={...params,id,generation:ready.generation,op};
