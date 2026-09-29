@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
 import {ROOT,fingerprint} from '../runner/files.mjs';
-import {connect,createExecution,execution,record} from '../runner/store.mjs';
+import {connect,createExecution,execution,record,updateExecution} from '../runner/store.mjs';
+import {saveCheckpoint} from '../runner/checkpoints.mjs';
+import {humanCheckpoint} from '../runner/catalog.mjs';
 
 test('catalog integrity, frozen run definitions, durable edits and honest result recording',async()=>{
   const sourceBefore=(await fingerprint(ROOT)).sha256;
@@ -102,6 +104,19 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
       assert.equal(JSON.stringify(recovered.results.find(r=>r.test_id==='A-CLI-01').snapshot),snapshot);
       assert.throws(()=>createExecution(db,plan,dir),/differs from its mapped executable contract/);
       assert.equal(db.prepare('SELECT COUNT(*) AS n FROM executions').get().n,1);
+      mkdirSync(execution(db,id).artifact_root,{recursive:true});
+      const checkpoint=saveCheckpoint(db,id,{state:'Waiting',definition:humanCheckpoint,observations:[],requests:[],diagnostics:[],prompt:'Synthetic integration fixture; no Wizard session.'});
+      updateExecution(db,id,'Waiting for human','Synthetic checkpoint fixture');
+      assert.equal((await request('/checkpoints')).data.checkpoints[0].runId,id);
+      assert.equal((await request(`/runs/${id}/checkpoint/resume`,'POST',{revision:checkpoint.revision,requestId:'no-human'})).status,409);
+      const finding={revision:checkpoint.revision,requestId:'synthetic-human',operator:'Integration fixture',outcome:'Blocked',note:'Synthetic UI/service fixture; no human acceptance',handsOnSeconds:0,recordedVia:'human'};
+      assert.equal((await request(`/runs/${id}/checkpoint/observe`,'POST',finding)).status,200);
+      await stop();await start();
+      const waiting=(await request(`/runs/${id}`)).data;
+      assert.equal(waiting.execution.state,'Waiting for human');assert.equal(waiting.checkpoint.observations.length,1);
+      assert.equal((await request(`/runs/${id}/checkpoint/observe`,'POST',finding)).data.reused,true);
+      assert.equal((await request(`/runs/${id}/checkpoint/resume`,'POST',{revision:waiting.checkpoint.revision,requestId:'blocked-human'})).status,409);
+      assert.equal((await request(`/runs/${id}/checkpoint/observe`,'POST',{...finding,requestId:'stale-revision'})).status,409);
     }finally{db.close();}
   }finally{await stop();rmSync(dir,{recursive:true,force:true});}
   assert.equal((await fingerprint(ROOT)).sha256,sourceBefore,'Catalog, run recording, reports and exports must leave source untouched');

@@ -29,6 +29,18 @@ test('report retains exact outcomes, detects missing or mismatched evidence and 
   assert.ok(subsetHTML.includes('1 requested checks'));assert.ok(subsetHTML.includes('1 checks not selected'));assert.ok(subsetHTML.includes('My &lt;group&gt;'));assert.ok(subsetHTML.includes('does not claim full Smoke Test acceptance'));
   const first=await exportLocalReport(run,data),second=await exportLocalReport(run,data);assert.equal(first.path,second.path,'Identical report delivery is idempotent');
   assert.equal(JSON.parse(await readFile(path.join(path.dirname(first.path),'report.json'))).cases[0].status,'Pass');
+  // A paused course can publish a snapshot; successful automated checks do not supply a human verdict.
+  recipe.checkpoint={id:'test-human'};run.execution.state='Waiting for human';
+  run.checkpoint={state:'Waiting',definition:{title:'Human playback'},observations:[{operator:'Fixture tester',recordedVia:'agent-transcription',outcome:'Fail',note:'Synthetic <finding>',handsOnSeconds:17}]};
+  await writeJSON(path.join(root,'course.json'),recipe);await writeJSON(path.join(root,'checkpoint.json'),run.checkpoint);
+  await writeJSON(path.join(root,'report.json'),{runId:id,state:'Waiting for human',planHash:plan.planHash,results:[{id:'CHECK',status:'Pass',note:results[0].note}]});
+  report=(await localReport(run,data)).report;
+  assert.equal(report.execution.state,'Waiting for human');assert.equal(report.cases[0].status,'Pass');assert.equal(report.checkpoint.observations[0].outcome,'Fail');
+  const humanHTML=renderReport(report);assert.match(humanHTML,/Synthetic &lt;finding&gt;/);assert.match(humanHTML,/17 seconds/);assert.match(humanHTML,/Fixture tester/);
+  await writeJSON(path.join(root,'checkpoint.json'),{...run.checkpoint,observations:[]});
+  report=(await localReport(run,data)).report;assert.ok(report.acceptance.gaps.some(s=>s.includes('Checkpoint artifact differs')));
+  delete recipe.checkpoint;delete run.checkpoint;run.execution.state='Passed';
+  await writeJSON(path.join(root,'course.json'),recipe);await writeJSON(path.join(root,'report.json'),{runId:id,state:'Passed',planHash:plan.planHash,results:[{id:'CHECK',status:'Pass',note:results[0].note}]});
   await writeFile(path.join(root,'operations.jsonl'),'');
   report=(await localReport(run,data)).report;assert.equal(report.acceptance.evidenceStatus,'Gaps found');assert.equal(report.cases[0].status,'Pass','Do not rewrite the original assertion result');assert.ok(report.acceptance.gaps.some(s=>s.includes('no operation receipts')));
   await writeJSON(path.join(root,'report.json'),{runId:'other',state:'Passed',planHash:plan.planHash,results:[]});

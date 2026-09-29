@@ -4,15 +4,16 @@ import {execFileSync} from 'node:child_process';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {ROOT,dataDirectory} from './files.mjs';
+import {initializeCheckpoints,checkpoint,saveCheckpoint} from './checkpoints.mjs';
 import {initializeCourses,validateRecipe} from './catalog.mjs';
 import {verifyDesktopOwner,verifyDesktopPaths} from '../desktop/adapter.mjs';
 export const course=JSON.parse(readFileSync(path.join(ROOT,'runner/course.json'),'utf8'));
-export const activeStates=['Queued','Preflight','Running'];
+export const activeStates=['Queued','Preflight','Running','Waiting for human','Continuing'];
 export function connect(dataDir){dataDir=dataDirectory(dataDir);const db=new DatabaseSync(path.join(dataDir,'smoke.sqlite'));db.exec('PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;');return db;}
 export function initializeAutomation(db){
   db.exec(`CREATE TABLE IF NOT EXISTS executions(run_id TEXT PRIMARY KEY REFERENCES runs(id),state TEXT NOT NULL,pid INTEGER,plan_hash TEXT NOT NULL,package_json TEXT NOT NULL,course_json TEXT NOT NULL,artifact_root TEXT NOT NULL,updated_at TEXT NOT NULL,message TEXT NOT NULL DEFAULT '');
   CREATE TABLE IF NOT EXISTS result_events(id INTEGER PRIMARY KEY,run_id TEXT NOT NULL,test_id TEXT NOT NULL,status TEXT NOT NULL,note TEXT NOT NULL,created_at TEXT NOT NULL);`);
-  initializeCourses(db);
+  initializeCourses(db);initializeCheckpoints(db);
   const marker=`automation-catalog-${course.id}-${course.revision}`;
   if(db.prepare('SELECT value FROM metadata WHERE key=?').get(marker))return;
   db.exec('BEGIN IMMEDIATE');
@@ -34,7 +35,7 @@ export function createExecution(db,plan,dataDir,operator='Local runner',requestI
   const recipe=plan.recipe||course;validateRecipe(recipe);
   db.exec('BEGIN IMMEDIATE');
   try{
-    if(db.prepare("SELECT run_id FROM executions WHERE state IN ('Queued','Preflight','Running')").get())throw new Error('A local course is already active.');
+    if(db.prepare("SELECT run_id FROM executions WHERE state IN ('Queued','Preflight','Running','Waiting for human','Continuing')").get())throw new Error('A local course is already active.');
     const definitions=db.prepare('SELECT definition FROM tests').all().map(r=>JSON.parse(r.definition));
     const selected=recipe.cases.map(c=>{const t=definitions.find(t=>t.id===c.id);if(!t||t.execution!=='Automated'||(c.target===undefined&&t.approach!==c.scope)||t.expected!==c.expected)throw new Error(`The definition of ${c.id} differs from its mapped executable contract. Review the recipe before running.`);return t;});
     const id=randomUUID(),at=new Date().toISOString();
@@ -50,14 +51,15 @@ export function record(db,runId,testId,status,note,evidence){
   const at=new Date().toISOString();db.exec('BEGIN IMMEDIATE');
   try{db.prepare("UPDATE results SET status=?,note=?,evidence=?,recorded_by='Automated course runner',updated_at=?,revision=revision+1 WHERE run_id=? AND test_id=?").run(status,note,evidence||'',at,runId,testId);db.prepare('INSERT INTO result_events(run_id,test_id,status,note,created_at) VALUES (?,?,?,?,?)').run(runId,testId,status,note,at);db.exec('COMMIT');}catch(error){db.exec('ROLLBACK');throw error;}
 }
-export function runnerAlive(row){if(!row.pid)return false;try{const cmd=execFileSync('/bin/ps',['-p',String(row.pid),'-o','command='],{encoding:'utf8',timeout:2000});return cmd.includes('runner/run.mjs')&&cmd.includes(row.run_id);}catch{return false;}}
+export function runnerAlive(row){if(!row.pid)return false;try{const cmd=execFileSync('/bin/ps',['-p',String(row.pid),'-o','command='],{encoding:'utf8',timeout:2000});return (cmd.includes('runner/run.mjs')||cmd.includes('runner/checkpoint-worker.mjs'))&&cmd.includes(row.run_id);}catch{return false;}}
 export function recoverInterrupted(db){
-  for(const row of db.prepare("SELECT * FROM executions WHERE state IN ('Queued','Preflight','Running')").all()){
+  for(const row of db.prepare("SELECT * FROM executions WHERE state IN ('Queued','Preflight','Running','Continuing')").all()){
     if(runnerAlive(row))continue;
     const database=db.prepare('PRAGMA database_list').all().find(d=>d.name==='main');
     const cleanup=database?.file?cleanupInterrupted(row,path.dirname(database.file)):'No process cleanup without a file-backed workspace.';
     const note='Runner process is no longer present. No automatic replay was attempted. '+cleanup;
     for(const r of db.prepare("SELECT * FROM results WHERE run_id=? AND status IN ('Running','Not run')").all(row.run_id))record(db,row.run_id,r.test_id,r.status==='Running'?'Unknown':'Blocked',note,r.evidence);
+    const pending=checkpoint(db,row.run_id);if(pending)saveCheckpoint(db,row.run_id,{...pending,state:'Interrupted',error:note,verification:{status:'Unknown',note}});
     updateExecution(db,row.run_id,'Unknown',note);
   }
 }

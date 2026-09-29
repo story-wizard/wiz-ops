@@ -4,24 +4,25 @@ import {fileURLToPath} from 'node:url';
 import {DatabaseSync} from 'node:sqlite';
 import {createHash} from 'node:crypto';
 import {ROOT,dataDirectory,digest,inside} from './runner/files.mjs';
+import {checkpoint} from './runner/checkpoints.mjs';
 import {execution,activeStates} from './runner/store.mjs';
 
-const files=['plan.json','course.json','report.json','operations.jsonl','media/manifest.json','scope.json','execution-context.json'];
+const files=['plan.json','course.json','report.json','operations.jsonl','media/manifest.json','scope.json','execution-context.json','checkpoint.json'];
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const counts=rows=>rows.reduce((n,r)=>(n[r.status]=(n[r.status]||0)+1,n),{});
 export function retainedRun(db,id){
  const run=db.prepare('SELECT * FROM runs WHERE id=?').get(id);
  if(!run)throw Error('Run not found.');
- return {...run,execution:execution(db,id),results:db.prepare('SELECT * FROM results WHERE run_id=? ORDER BY rowid').all(id).map(r=>({...r,snapshot:JSON.parse(r.snapshot)}))};
+ return {...run,checkpoint:checkpoint(db,id),execution:execution(db,id),results:db.prepare('SELECT * FROM results WHERE run_id=? ORDER BY rowid').all(id).map(r=>({...r,snapshot:JSON.parse(r.snapshot)}))};
 }
 export async function localReport(run,dataDir){
  const e=run.execution;if(!e)throw Error('This report requires an automated course execution.');
- if(activeStates.includes(e.state))throw Error('Wait for the run to finish or be reconciled as interrupted before exporting.');
+ if(activeStates.includes(e.state)&&e.state!=='Waiting for human')throw Error('Wait for the run to finish or be reconciled as interrupted before exporting.');
  const expectedRoot=path.join(path.resolve(dataDir),'runs',run.id);
  if(e.artifact_root!==expectedRoot)throw Error('Run artifact root does not match its identity.');
  const trustedRoot=path.join(await realpath(dataDir),'runs',run.id);
  const gaps=[],buffers={},artifacts=[];
- for(const file of files){
+ for(const file of files.filter(f=>f!=='checkpoint.json'||e.recipe.checkpoint)){
   try{
    const full=await realpath(path.join(expectedRoot,file));
    if(!inside(trustedRoot,full))throw Error('Evidence resolves outside the run directory.');
@@ -65,7 +66,9 @@ export async function localReport(run,dataDir){
   else originals=JSON.parse(bytes).rows;
  }
  const sourceRows=(scope?.sourceRows||[]).map(r=>({...r,criteria:originals.find(o=>o.id===r.id)?.criteria||'',results:cases.filter(c=>r.checkIds.includes(c.id)).map(c=>({id:c.id,status:c.status}))}));
- const report={format:'wizard-smoke-local-report/v1',runId:run.id,asOf:e.updated_at,createdAt:run.created_at,operator:run.operator,title:run.name,
+ const human=run.checkpoint||null;if(e.recipe.checkpoint&&!human)gaps.push('Human checkpoint has no retained state.');
+ if(human&&(!buffers['checkpoint.json']||digest(json('checkpoint.json'))!==digest(human)))gaps.push('Checkpoint artifact differs from its durable record.');
+ const report={checkpoint:human,format:'wizard-smoke-local-report/v1',runId:run.id,asOf:e.updated_at,createdAt:run.created_at,operator:run.operator,title:run.name,
   execution:{state:e.state,message:e.message,target:e.recipe.target,courseId:e.recipe.id,courseRevision:e.recipe.revision,context},
   identities:{app:e.package.app,version:e.package.version,packageHash:e.package.packageHash,planHash:e.plan_hash,runnerHash:e.package.runnerHash,courseHash:e.package.courseHash,fixtureHash:e.package.fixtureHash,speechModel:e.package.speechModel,runtime:e.package.runtime||null},
   acceptance:{recordedOutcome:e.state,evidenceStatus:gaps.length?'Gaps found':'Ready for review',gaps:[...new Set(gaps)],scopeAcceptance:'Not assessed',explanation:'Checks retain their original outcomes. Evidence presence and consistency do not prove the assertions are sufficient or approve V1. Human, desktop, CI and publication acceptance are separate.'},
@@ -81,7 +84,7 @@ export function renderReport(r){
  '<small>WIZARD · LOCAL SMOKE REPORT</small><h1>'+escape(r.title)+'</h1><p>'+escape(r.execution.target)+' · '+escape(r.identities.version)+'<br>Run '+escape(r.runId)+' · '+escape(r.operator)+' · snapshot '+escape(r.asOf)+'</p>'+
  '<nav><a href="#checks">Checks</a><a href="#acceptance">Acceptance</a><a href="#coverage">Coverage</a><a href="#fixtures">Fixtures</a><a href="#evidence">Evidence</a><a href="report.json">Report JSON</a></nav>'+
  '<h2>What this run establishes</h2><div class="cards"><div class="card"><small>Recorded execution</small><b>'+escape(r.execution.state)+'</b></div><div class="card"><small>Evidence inventory</small><b>'+escape(r.acceptance.evidenceStatus)+'</b></div><div class="card"><small>V1 acceptance</small><b>Not assessed</b></div></div><p>'+escape(r.acceptance.explanation)+'</p><p>'+escape(Object.entries(r.counts).map(([k,v])=>v+' '+k).join(' · '))+'</p>'+
- selection+'<section id="checks"><h2>Checks and observations</h2>'+table(['Check / category','Outcome','Expected → observed','Ops / receipts'],r.cases.map(c=>[escape(c.id)+'<br><strong>'+escape(c.title)+'</strong><small>'+escape(c.area)+'</small>',escape(c.status),'<strong>'+escape(c.expected)+'</strong><p>'+escape(c.observation)+'</p>',escape(c.operations.join(', '))+'<small>'+c.receiptCount+' receipts · '+c.operationDurationMs+' ms summed operation time</small>']))+'</section>'+
+ (r.checkpoint?'<section><h2>Human checkpoint</h2><p>'+escape(r.checkpoint.definition.title)+' · '+escape(r.checkpoint.state)+'</p><p>Human observations and automated verification are separate. A passing structural check cannot clear a human failure.</p>'+table(['Tester / recording method','Outcome','Observation','Hands-on time'],r.checkpoint.observations.map(o=>[escape(o.operator)+'<small>'+escape(o.recordedVia)+'</small>',escape(o.outcome),escape(o.note),escape(o.handsOnSeconds)+' seconds']))+'<details><summary>Instructions, diagnostics and continuation</summary>'+text(r.checkpoint)+'</details></section>':'')+selection+'<section id="checks"><h2>Checks and observations</h2>'+table(['Check / category','Outcome','Expected → observed','Ops / receipts'],r.cases.map(c=>[escape(c.id)+'<br><strong>'+escape(c.title)+'</strong><small>'+escape(c.area)+'</small>',escape(c.status),'<strong>'+escape(c.expected)+'</strong><p>'+escape(c.observation)+'</p>',escape(c.operations.join(', '))+'<small>'+c.receiptCount+' receipts · '+c.operationDurationMs+' ms summed operation time</small>']))+'</section>'+
  '<section id="acceptance"><h2>Acceptance evidence</h2><p>Readiness proves prerequisites before launch. A passing check records the assertion result for this build. Acceptance additionally requires review of the intended behavior, its independent oracle, representative variants, and defect-sensitive tests. This report does not grant that approval.</p><ul>'+r.acceptance.gaps.map(x=>'<li>'+escape(x)+'</li>').join('')+'</ul><details><summary>Build, course, fixture and environment identities</summary>'+text(r.identities)+text(r.execution.context||'Environment context was not retained by this older runner.')+'</details></section>'+
  '<section id="coverage"><h2>Coverage of Logan’s checklist</h2><p>'+escape(r.scope.status)+' · '+escape(r.scope.basis)+'. A passing counterpart does not pass the whole source row or all project variants.</p>'+table(['Source / area','Disposition','This run','Remaining behavior'],r.scope.sourceRows.map(s=>[escape(s.id)+'<small>'+escape(s.area)+'</small><p>'+escape(s.criteria)+'</p>',escape(s.disposition),s.results.length?s.results.map(x=>escape(x.id+': '+x.status)).join('<br>'):'Not exercised here',escape(s.remaining)+'<small>'+escape(s.representativeVariantAcceptance)+'</small>']))+'</section>'+
  '<section id="fixtures"><h2>Reproducible fixture inputs</h2><p>Media hashes identify the exact prepared bytes; generation on another OS/tool version is not assumed byte-identical. Fresh, Story-user and Large variants require their own agreed recipes and expected states.</p>'+table(['Fixture','Expected media','SHA-256'],(r.fixtures?.files||[]).map(f=>[escape(f.id)+'<small>'+escape(f.file)+'</small>',text(f.expected),text(f.sha256)]))+'</section>'+

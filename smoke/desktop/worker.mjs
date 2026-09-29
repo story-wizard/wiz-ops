@@ -1,4 +1,5 @@
 import path from 'node:path';
+import {captureDesktop} from './diagnostics.mjs';
 import {readFile,writeFile,unlink,mkdir,cp,open} from 'node:fs/promises';
 import {getJob,sourceRun} from './hub.mjs';
 import {prepareDesktop,launchDesktop,desktopCall,nativeCall,stopDesktop,verifyDesktopPaths,verifyDesktopOwner} from './adapter.mjs';
@@ -7,15 +8,11 @@ import {assert,pause,command} from '../runner/engine.mjs';
 const data=dataDirectory(),id=process.argv[2];let job=getJob(data,id),live,sessionFile,stop=false;
 process.on('SIGTERM',()=>{stop=true;});process.on('SIGINT',()=>{stop=true;});
 const update=async(fields)=>{job={...job,...fields,updatedAt:new Date().toISOString()};await writeJSON(path.join(job.root,'job.json'),job);};
-async function tail(file){try{const f=await open(file,'r');try{const size=(await f.stat()).size,buf=Buffer.alloc(Math.min(size,32768));await f.read(buf,0,buf.length,Math.max(0,size-buf.length));return buf.toString('utf8').replace(/((?:api[_-]?key|authorization|token|secret)\s*[:=]\s*)([^\s,]+)/gi,'$1[REDACTED]');}finally{await f.close();}}catch(e){return `Not collected: ${e.message}`;}}
 async function capture(label){
- const s=await readJSON(sessionFile),dir=path.join(job.root,'captures',label);await mkdir(dir,{recursive:true});
- const ui=await nativeCall(sessionFile,'inspect'),timeline=await desktopCall(sessionFile,'timeline.inspect',{timeline_id:s.main.id});
- await writeJSON(path.join(dir,'state.json'),{at:new Date().toISOString(),pid:s.pid,bundle:s.bundle,timeline,ui});
- for(const stream of ['stdout','stderr'])await writeFile(path.join(dir,stream+'.log'),await tail(path.join(s.root,`gui-${s.generation}.${stream}.log`)));
- const main=ui.widgets.find(w=>w.class==='MainWindow');if(main){const shot=await nativeCall(sessionFile,'screenshot',{target:main.id});assert(shot.path.startsWith(s.native+path.sep),'Unexpected screenshot path');await cp(shot.path,path.join(dir,'window.png'));}
+ const timeline=await captureDesktop(sessionFile,path.join(job.root,'captures',label));
  await update({lastCapture:label,captures:[...(job.captures||[]),label]});return timeline;
 }
+
 try{
  const origin=sourceRun(data,job.sourceRun),s=origin.session;verifyDesktopPaths(s);assert(origin.reportHash===job.sourceReportHash,'Original report changed');
  assert((await fingerprint(s.app,{packageTree:true})).sha256===s.guiHash,'Frozen source GUI changed');assert(await sha(s.desktopCli)===s.desktopCliHash,'Frozen paired CLI changed');assert(s.qtCocoa&&await sha(s.qtCocoa.loadedPath)===s.qtCocoa.sha256,'Frozen smoke Qt plugin changed');

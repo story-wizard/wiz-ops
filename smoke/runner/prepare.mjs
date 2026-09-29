@@ -27,7 +27,7 @@ export async function checkPrepared(dataDir=dataDirectory(),frozenPlan){
   validateRecipe(course);
   if(digest(course)!==plan.courseHash)throw new Error('Course changed since preparation.');
   const fixtures=await validateFixtures(plan.fixtureRoot);if(fixtures.sha256!==plan.fixtureHash)throw new Error('Fixtures changed since preparation.');
-  if(requirementsFor(course.cases.map(c=>c.id)).speechModel&&(!plan.speechModel||(await speechModelIdentity(plan.speechModel.directory)).sha256!==plan.speechModel.sha256))throw new Error('Cached speech model changed or is missing. Prepare again; downloads are disabled.');
+  if(requirementsFor(course.cases.map(c=>c.id),course.checkpoint).speechModel&&(!plan.speechModel||(await speechModelIdentity(plan.speechModel.directory)).sha256!==plan.speechModel.sha256))throw new Error('Cached speech model changed or is missing. Prepare again; downloads are disabled.');
   const pkg=await fingerprint(plan.app,{packageTree:true});if(pkg.sha256!==plan.packageHash)throw new Error('Wizard package changed since preparation. Prepare against the intended package again.');
   await access(ingestPython(plan.app),constants.X_OK);
   validateIngestProfile(plan.app);
@@ -41,7 +41,7 @@ export async function prepare({app='/Applications/Wizard.app',dataDir=dataDirect
   await mkdir(dataDir,{recursive:true});app=await realpath(app);
   const course=selection?selectedRecipe(selection):await readJSON(path.join(ROOT,'runner/course.json'));
   validateRecipe(course);
-  const requirements=requirementsFor(course.cases.map(c=>c.id));
+  const requirements=requirementsFor(course.cases.map(c=>c.id),course.checkpoint);
   const desktopRuntime=requirements.targets.some(t=>t!=='packaged')?await runtimeIdentity(runtime,dataDir):null;
   await access(ingestPython(app),constants.X_OK);
   validateIngestProfile(app);

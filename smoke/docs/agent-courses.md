@@ -1,6 +1,6 @@
 # Agent-friendly courses
 
-Saved custom courses and one-off selections now span packaged engine, instrumented desktop and background service checks through the same local API. Human handoff remains a separate workflow.
+Saved custom courses and one-off selections span packaged engine, instrumented desktop and background service checks through the same local API. A course can also end with a prepared human checkpoint and explicit automated continuation.
 
 ## What you can do
 
@@ -87,9 +87,9 @@ All commands return a `wizard-smoke-cli/v1` JSON envelope.
 | 1 | Completed execution contains a failed check |
 | 2 | Completed execution is blocked, interrupted, unknown or otherwise incomplete |
 | 3 | Invalid request, unavailable service or unsuccessful command; inspect its error and request ID |
-| 4 | Run admitted/still active, wait expired, or cancellation requested |
+| 4 | Run admitted/still active, waiting for a human, wait expired, or cancellation requested |
 
-Check the command and `result.complete` as well as the exit code. `run --wait` and `wait` attach the local report on completion. Report delivery errors are separate from the test verdict. `status` only observes the run; it does not generate another report.
+Check the command, `result.complete` and `result.needsHuman` as well as the exit code. `run --wait` and `wait` return and attach a local report on completion or a human pause. A pause is not a passing completed course. Report delivery errors are separate from the test verdict. `status` only observes the run; it does not generate another report.
 
 A wait timeout does not cancel execution. Start is never automatically retried. Reusing the same request ID with identical plan/operator returns the existing run; using it with different inputs is rejected. The CLI includes the request ID in an ambiguous start error for later lookup.
 

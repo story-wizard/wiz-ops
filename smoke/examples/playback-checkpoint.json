@@ -1,0 +1,8 @@
+{
+  "id": "playback-checkpoint",
+  "revision": 0,
+  "title": "Connection, human playback and desktop persistence",
+  "project": "fresh",
+  "groups": [{"id": "connection", "title": "Packaged connection", "checks": ["A-CLI-01"]}],
+  "checkpoint": "playback-persistence-v1"
+}

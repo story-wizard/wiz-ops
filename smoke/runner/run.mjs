@@ -7,6 +7,7 @@ import {checkPrepared} from './prepare.mjs';
 import {PackagedEngine,OutcomeError} from './engine.mjs';
 import {CaseContext,cases} from './cases.mjs';
 import {snapshotSource} from '../kits.mjs';
+import {prepareCheckpoint} from '../desktop/checkpoint.mjs';
 import {executeStages} from './stages.mjs';
 import {targetFor} from './catalog.mjs';
 import {connect,execution,updateExecution,record} from './store.mjs';
@@ -46,6 +47,7 @@ async function run(dataDir,runId){
     if(results.some(r=>r.status==='Unknown'))throw new OutcomeError('Uncertain packaged outcome; later stages were not started.','Unknown');
     if(results.some(r=>r.id==='A-CLI-01'&&r.status!=='Pass'))throw new OutcomeError('Connection prerequisite did not pass.','Blocked');
     if(course.cases.some(c=>targetFor(c.id)!=='packaged'))results.push(...await executeStages({plan,course,root,dataDir,onResult,isCancelled:()=>cancelled,signal:controller.signal,onStage:(target,count)=>updateExecution(db,runId,'Running',`Running ${target} stage: ${count} selected checks.`,process.pid)}));
+    if(course.checkpoint&&!cancelled){await prepareCheckpoint(db,runId,dataDir);return;}
     const state=results.some(r=>r.status==='Unknown')?'Unknown':results.some(r=>r.status==='Fail')?'Failed':results.some(r=>r.status==='Blocked')?'Blocked':'Passed';
     const note=`${results.filter(r=>r.status==='Pass').length}/${course.cases.length} selected checks passed. ${Object.keys(course.deferred).length} candidates remain outside this course. Scope: ${course.target}.`;
     await writeJSON(path.join(root,'report.json'),{runId,state,scope:course.scope,planHash:plan.planHash,packageHash:plan.packageHash,fixtureHash:plan.fixtureHash,courseRevision:course.revision,results,deferred:course.deferred,completedAt:new Date().toISOString()});

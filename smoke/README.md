@@ -45,6 +45,8 @@ Planning fingerprints the selected package, fixture recipe, generated media and 
 
 See [agent-friendly courses](docs/agent-courses.md) for explicit IDs, categories, groups, cancellation and recovery by request ID.
 
+For a course that prepares a desktop project, pauses for a tester, and resumes with Save/reopen verification, see [human checkpoints](docs/human-checkpoints.md). Its human observation is separate from the automated check counts below.
+
 ## What is included
 
 | Execution target | Definitions | Boundary |

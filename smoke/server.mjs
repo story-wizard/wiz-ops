@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {checkpoint as getCheckpoint,waitingCheckpoints,checkpointRequest,saveCheckpoint} from './runner/checkpoints.mjs';
 import {towerSnapshot} from './tower.mjs';
 import {towerLive} from './tower-live.mjs';
 import {createExplainer} from './explainer/model.mjs';
@@ -49,14 +50,14 @@ let preparing=false;
 const catalog=()=>db.prepare('SELECT definition FROM tests ORDER BY rowid').all().map(r=>JSON.parse(r.definition));
 const getRun=(id)=>{
   const run=db.prepare('SELECT * FROM runs WHERE id=?').get(id); if(!run)return null;
-  return {...run,execution:execution(db,id),results:db.prepare('SELECT * FROM results WHERE run_id=? ORDER BY rowid').all(id).map(r=>({...r,snapshot:JSON.parse(r.snapshot)}))};
+  return {...run,checkpoint:getCheckpoint(db,id),execution:execution(db,id),results:db.prepare('SELECT * FROM results WHERE run_id=? ORDER BY rowid').all(id).map(r=>({...r,snapshot:JSON.parse(r.snapshot)}))};
 };
 function desktopExport(){const state=desktopState(dataDir);return {...state,jobs:state.jobs.map(j=>jobDetails(dataDir,j.id))};}
 async function runnerStatus(){
   recoverInterrupted(db);
   let plan,preflight;try{plan=await readJSON(path.join(dataDir,'prepared.json'));preflight=await readJSON(path.join(dataDir,'preflight.json'));}catch{}
   const sourceMatches=plan?await sourceIdentity()===plan.runnerHash:false;
-  const current=db.prepare("SELECT run_id FROM executions WHERE state IN ('Queued','Preflight','Running') ORDER BY updated_at DESC LIMIT 1").get();
+  const current=db.prepare("SELECT run_id FROM executions WHERE state IN ('Queued','Preflight','Running','Waiting for human','Continuing') ORDER BY updated_at DESC LIMIT 1").get();
   return {course,plan,preflight,prepared:Boolean(plan&&preflight?.ok&&preflight.planHash===plan.planHash&&sourceMatches),sourceMatches,active:current?execution(db,current.run_id):null};
 }
 async function catalogPayload(){
@@ -112,6 +113,20 @@ const server=http.createServer(async(req,res)=>{
       }
       if(parts[1]==='desktop'&&parts[2]==='jobs'&&parts.length===5&&req.method==='POST'){
         try{return send(200,requestJob(dataDir,parts[3],parts[4],body));}catch(e){fail(409,e.message);}
+      }
+      if(req.method==='GET'&&url.pathname==='/api/checkpoints'){recoverInterrupted(db);return send(200,{checkpoints:waitingCheckpoints(db)});}
+      if(parts[1]==='runs'&&parts[3]==='checkpoint'){
+        recoverInterrupted(db);const id=parts[2];
+        if(req.method==='GET'&&parts.length===4){const c=getCheckpoint(db,id);if(!c)fail(404,'Checkpoint not found.');return send(200,c);}
+        if(req.method==='POST'&&parts.length===5){
+          let result;try{result=checkpointRequest(db,id,parts[4],body);}catch(e){fail(409,e.message);}
+          if(!result.reused&&parts[4]!=='observe'){
+            const job=execution(db,id),log=openSync(path.join(job.artifact_root,'checkpoint-worker.log'),'a');
+            const failed=e=>{const c=getCheckpoint(db,id);saveCheckpoint(db,id,{...c,state:'Interrupted',error:e.message,verification:{status:'Unknown',note:e.message}});updateExecution(db,id,'Unknown',e.message);};
+            try{const worker=spawn(process.execPath,[path.join(root,'runner/checkpoint-worker.mjs'),'--run-id',id],{cwd:root,env:{...process.env,SMOKE_DATA_DIR:dataDir},detached:true,stdio:['ignore',log,log]});if(worker.pid)db.prepare('UPDATE executions SET pid=? WHERE run_id=?').run(worker.pid,id);worker.on('error',failed);worker.unref();}catch(e){failed(e);throw e;}finally{closeSync(log);}
+          }
+          return send(200,result);
+        }
       }
       if(req.method==='GET'&&url.pathname==='/api/catalog')return send(200,await catalogPayload());
       if(req.method==='GET'&&url.pathname==='/api/checks')return send(200,{format:'wizard-smoke-checks/v1',target:'all',checks:checkRegistry()});
