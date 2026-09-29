@@ -1,6 +1,6 @@
 # Human checkpoints
 
-A course can end with `playback-persistence-v1`: prepare a small synthetic project, leave the editor ready for a tester, retain their observation, then verify that desktop Save and process restart preserves the prepared timelines. This is the first WIZ-511 continuation slice, with local reporting for WIZ-512 and agent context for WIZ-510/515.
+A course can end with `playback-persistence-v1`: prepare a small synthetic project, leave the editor ready for a tester, retain their observation, then verify that desktop Save, native Quit and reopen preserve the prepared timelines. This is the first WIZ-511 continuation slice, with local reporting for WIZ-512 and agent context for WIZ-510/515.
 
 ## Run it
 
@@ -60,7 +60,7 @@ node scripts/smoke.mjs wait --run RUN_ID
 node scripts/smoke.mjs report --run RUN_ID
 ```
 
-Continue only after the tester has finished: it transfers control, pauses playback, checks both timelines against their baseline, saves and quits, reopens the same project in a new process, checks again, captures evidence and stops the owned app. It never replays the completed automated course. The adapter invokes the native Save action, waits for the saved revision, then stops the owned process with SIGTERM. This does not exercise the File → Quit menu or an unsaved-changes dialog; those need separate checks.
+Continue only after the tester has finished: it transfers control, pauses playback, checks both timelines against their baseline, saves and quits, reopens the same project in a new process, checks again, captures evidence and stops the owned app. It never replays the completed automated course. The adapter invokes native Save, waits for the saved revision, then invokes the app’s Command-Q menu item. It requires both the matching Qt aboutToQuit event and actual process exit before reopening. There is no forced-termination fallback that can pass this verification. Unsaved-changes dialogs remain a separate check; cleanup and cancellation still use the bounded process-stop path.
 
 The same request shape supports `open`, `capture` and `cancel`. Open focuses the owned project or reopens its saved state if its process exited. Capture collects a bounded snapshot. Cancel saves/stops a verified owned session and ends the checkpoint without claiming verification. A changed project/process binding blocks action rather than targeting another editor. An interrupted action is never replayed automatically; inspect its evidence before ending the checkpoint or starting a fresh run.
 

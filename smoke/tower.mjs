@@ -15,7 +15,7 @@ export function towerSnapshot({runner, desktop, runs, guide, details}) {
   });
   const history=[...runs.map(r=>({id:r.id,title:r.name,kind:r.execution?(r.execution.package?.runtime?'composed':'packaged'):'manual',at:r.created_at,
     target:r.execution?.recipe?.target||'Manual record',build:r.build,state:r.execution?.state||'Manual',
-    context:r.execution?.message||'',revision:r.execution?.recipe?.revision||0,
+    checkpoint:r.checkpoint?{state:r.checkpoint.state,url:'/#run/'+r.id}:null,context:r.execution?.message||'',revision:r.execution?.recipe?.revision||0,
     results:results(r.results,r.execution?.recipe?.cases||[]).map(r=>({...r,canPrepare:false}))})),
     ...desktop.runs.map(r=>({id:r.id,title:r.course?.title||'Desktop course',kind:r.inputMode==='service'?'service':'desktop',at:r.startedAt,
       target:r.scope||r.course?.target||'Local GUI',build:`GUI ${(r.guiHash||'unknown').slice(0,12)} · CLI ${(r.cliHash||'unknown').slice(0,12)}`,

@@ -67,11 +67,11 @@ export async function continueCheckpoint(db,id,data){
    const directory=path.join(path.dirname(file),'checkpoint-captures',action+'-'+c.inFlight.requestId);await captureDesktop(file,directory);c.captures.push(directory);c.state='Waiting';
   }else{
    verifying=true;await desktopCall(file,'playback.pause');same(await projectState(file),c.baseline,'Human playback must preserve the prepared timelines');
-   const before=await readJSON(file);await captureDesktop(file,path.join(before.root,'checkpoint-captures/before-reopen'));await stopDesktop(file);if(live)await live.closed;
+   const before=await readJSON(file);await captureDesktop(file,path.join(before.root,'checkpoint-captures/before-reopen'));await stopDesktop(file,{quit:true});if(live)await live.closed;
    live=await launchDesktop(await readJSON(file));const after=await boundSession(file,data);assert(after.pid!==before.pid&&after.generation===before.generation+1,'Verification must use a fresh desktop process');
    same(await projectState(file),c.baseline,'Desktop save and reopen preserve the prepared timelines');
    await captureDesktop(file,path.join(after.root,'checkpoint-captures/after-reopen'));await stopDesktop(file);await live.closed;
-   c.state='Completed';c.verification={status:'Pass',previousPid:before.pid,pid:after.pid,completedAt:new Date().toISOString(),scope:'Timeline state persisted through native Save, owned-process SIGTERM and fresh-process Reopen; the Quit menu and human playback judgment remain separate.'};
+   c.state='Completed';c.verification={status:'Pass',previousPid:before.pid,pid:after.pid,completedAt:new Date().toISOString(),quit:(await readJSON(file)).lastQuit,scope:'Timeline state persisted through native Save, the Command-Q menu action and fresh-process Reopen; human playback judgment remains separate.'};
   }
   delete c.error;
  }catch(e){c.state='Interrupted';c.error=e.message;c.verification={status:e.status||(verifying?'Fail':'Blocked'),note:e.message};}

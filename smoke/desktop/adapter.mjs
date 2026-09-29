@@ -151,14 +151,27 @@ export async function nativeCall(file,op,params={}){
   }finally{await held.close();await unlink(lock);}
 }
 
-export async function stopDesktop(file){
+export function assertQuitEvidence(receipt,observed,ready){
+  assert(receipt?.dispatch==='native-menu'&&receipt.shortcut==='Command-Q','Native Quit menu dispatch was not acknowledged.');
+  assert(observed?.event==='aboutToQuit'&&observed.pid===ready.pid&&observed.generation===ready.generation,'Quit evidence does not match the owned GUI generation.');
+}
+export async function stopDesktop(file,{quit=false}={}){
   const session=await readJSON(file);verifyDesktopOwner(session);
+  assert(!quit||session.inputMode==='desktop','Native Quit requires a foreground desktop session.');
   // Keep the owned test project's evidence and clear Wizard's unsaved-change dialog.
   if(session.inputMode==='service')await desktopCall(file,'project.checkpoint');
   else{const ui=await nativeCall(file,'inspect'),save=ui.actions.filter(a=>a.text==='Save'&&a.enabled);assert(save.length===1,'Cannot resolve the owned GUI Save action before shutdown.');await nativeCall(file,'action',{target:save[0].id});}
   let saved=false;
   for(let i=0;i<50;i++){const readRef=ref=>execFileSync('/usr/bin/git',['-C',session.bundle,'rev-parse',`refs/heads/${ref}`],{encoding:'utf8'}).trim();if(readRef('main')===readRef('autosave')){saved=true;break;}await pause(100);}
-  assert(saved,'GUI save did not settle before shutdown.');process.kill(session.pid,'SIGTERM');
-  for(let i=0;i<100;i++){try{process.kill(session.pid,0);}catch(e){if(e.code==='ESRCH'){session.state='Stopped';await writeJSON(file,session);return;}throw e;}await pause(100);}
+  assert(saved,'GUI save did not settle before shutdown.');let receipt,ready;
+  if(quit){
+    const ui=await nativeCall(file,'inspect'),main=ui.widgets.filter(w=>w.class==='MainWindow'&&w.title.startsWith(path.basename(session.bundle)+' — Wizard'));
+    assert(main.length===1,'Quit must target the prepared project.');ready=await readJSON(path.join(session.native,'ready.json'));
+    receipt=await nativeCall(file,'quit',{target:main[0].id});
+  }else process.kill(session.pid,'SIGTERM');
+  for(let i=0;i<100;i++){try{process.kill(session.pid,0);}catch(e){if(e.code==='ESRCH'){
+    if(quit){const observed=await readJSON(path.join(session.native,'quit-observed.json'));assertQuitEvidence(receipt,observed,ready);session.lastQuit={receipt,observed,at:new Date().toISOString()};}
+    session.state='Stopped';await writeJSON(file,session);return;
+  }throw e;}await pause(100);}
   throw new OutcomeError('Owned GUI did not stop within ten seconds; inspect it before proceeding.','Unknown');
 }

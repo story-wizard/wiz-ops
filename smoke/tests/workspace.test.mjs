@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
@@ -22,6 +22,10 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
   const request=async(route,method='GET',body,extra={})=>{const r=await fetch(base+'/api'+route,{method,headers:{'Content-Type':'application/json',...extra},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json()};};
   try{
     await start();
+    assert.equal((await fetch(base+'/history')).status,404);
+    writeFileSync(path.join(dir,'history.html'),'<h1>Retained history fixture</h1>');
+    const history=await fetch(base+'/history');assert.equal(history.status,200);assert.match(history.headers.get('Content-Security-Policy'),/sandbox/);
+    assert.match(await history.text(),/Retained history fixture/);assert.equal((await fetch(base+'/history',{method:'POST'})).status,405);
     const {data:catalog}=await request('/catalog');
     assert.equal(catalog.tests.length,275);
     assert.equal(catalog.checkpoint.rows.length,137);
@@ -34,6 +38,7 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     const tower = await request('/tower');
     assert.equal(tower.status,200);
     assert.equal(tower.data.format,'wizard-smoke-tower/v1');
+    assert.equal(tower.data.historyUrl,'/history');
     assert.equal(tower.data.checks.length,143);
     assert.deepEqual(tower.data.runs,[]);
     assert.equal(tower.data.runner.prepared,false);
@@ -114,6 +119,8 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
       await stop();await start();
       const waiting=(await request(`/runs/${id}`)).data;
       assert.equal(waiting.execution.state,'Waiting for human');assert.equal(waiting.checkpoint.observations.length,1);
+      const projected=(await request('/tower')).data.runs.find(r=>r.id===id);
+      assert.equal(projected.state,'Waiting for human');assert.deepEqual(projected.checkpoint,{state:'Waiting',url:'/#run/'+id});
       assert.equal((await request(`/runs/${id}/checkpoint/observe`,'POST',finding)).data.reused,true);
       assert.equal((await request(`/runs/${id}/checkpoint/resume`,'POST',{revision:waiting.checkpoint.revision,requestId:'blocked-human'})).status,409);
       assert.equal((await request(`/runs/${id}/checkpoint/observe`,'POST',{...finding,requestId:'stale-revision'})).status,409);

@@ -4,7 +4,7 @@ import {towerSnapshot} from './tower.mjs';
 import {towerLive} from './tower-live.mjs';
 import {createExplainer} from './explainer/model.mjs';
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -21,6 +21,7 @@ import {exportLocalReport} from './reports.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = dataDirectory();
+const historyUrl=()=>existsSync(path.join(dataDir,'history.html'))?'/history':null;
 mkdirSync(dataDir,{recursive:true});
 const explainer=createExplainer(root,dataDir);
 const db = new DatabaseSync(path.join(dataDir,'smoke.sqlite'));
@@ -63,7 +64,7 @@ async function runnerStatus(){
 async function catalogPayload(){
   const runner=await runnerStatus(),gp=structuredClone(seed.gp);gp.prepared=runner.prepared;
   if(runner.prepared){gp.status='Media prepared; project built during run';gp.components=gp.components.map(c=>c.id==='gp-media'?{...c,name:'Eight synthetic local fixtures',status:'Available',spec:'Eight generated files: pattern_24.mov (1080p24 ProRes + stereo, 12 s); motion_25.mp4 (1080p25 H.264, 8 s); tone.wav (48 kHz stereo, 8 s); still.png; sample.mxf (1080p25, 6 s); mask.png; comet_report.wav; comet_report.mov (matching synthetic speech audio/video). All have verified hashes and probe results.'}:c.id==='gp-speech'?{...c,status:'Available',spec:'Synthetic Samantha speech with known words and time ranges. Offline ASR uses a pinned cached Parakeet CoreML model. Transcript search uses the matching video asset; this package excludes audio-only assets from its search index.'}:c.id==='gp-project'||c.id==='gp-timelines'?{...c,status:'Built during run',spec:c.id==='gp-project'?'Fresh GP created through the packaged project operations for each independent test; no hand-authored .wiz files.':'Main at 24 fps and Secondary at 25 fps, with known source windows and exact whole-second clip positions. Additional tracks are created only by checks that need them.'}:c.id==='gp-graph'?{...c,name:'Small render graph',status:'Built during run',spec:'Insert a Gaussian blur into a clip graph, edit its radius, bypass it, then remove it. Verify topology and independently measured pixel changes.'}:c.id==='gp-mask'?{...c,status:'Available'}:{...c,status:'Deferred'});}
-  return {...seed,gp,tests:catalog(),runner,checkpoint:{source:checkpoint.source,sha256:checkpoint.sha256,build:checkpoint.sourceBuild,comparison:checkpoint.comparison,rows:checklistCoverage(checkpoint,{cases:[...course.cases,...[desktopCourse,serviceCourse].flatMap(d=>d.cases.map(c=>({...c,scope:d.target+'; '+c.expected})))]})}};
+  return {...seed,gp,historyUrl:historyUrl(),tests:catalog(),runner,checkpoint:{source:checkpoint.source,sha256:checkpoint.sha256,build:checkpoint.sourceBuild,comparison:checkpoint.comparison,rows:checklistCoverage(checkpoint,{cases:[...course.cases,...[desktopCourse,serviceCourse].flatMap(d=>d.cases.map(c=>({...c,scope:d.target+'; '+c.expected})))]})}};
 }
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const str=(value,label,max=6000)=>{if(typeof value!=='string'||value.length>max)fail(400,`Invalid ${label}.`);return value.trim();};
@@ -93,7 +94,7 @@ const server=http.createServer(async(req,res)=>{
         if(!body||typeof body!=='object'||Array.isArray(body))fail(400,'An object is required.');
       }
       if(url.pathname==='/api/tower/live'&&req.method==='GET')return send(200,towerLive({db,dataDir,selected:url.searchParams.get('run'),definitions:[...desktopCourse.cases,...serviceCourse.cases]}));
-      if(url.pathname==='/api/tower'&&req.method==='GET')return send(200,towerSnapshot({runner:await runnerStatus(),desktop:desktopState(dataDir),runs:db.prepare('SELECT id FROM runs ORDER BY created_at DESC').all().map(r=>getRun(r.id)),guide:explainer.build(),details:id=>jobDetails(dataDir,id)}));
+      if(url.pathname==='/api/tower'&&req.method==='GET')return send(200,{...towerSnapshot({runner:await runnerStatus(),desktop:desktopState(dataDir),runs:db.prepare('SELECT id FROM runs ORDER BY created_at DESC').all().map(r=>getRun(r.id)),guide:explainer.build(),details:id=>jobDetails(dataDir,id)}),historyUrl:historyUrl()});
       if(url.pathname==='/api/explainer'&&req.method==='GET')return send(200,explainer.build());
       if(parts[1]==='explainer'&&parts[2]==='files'&&parts.length===4&&req.method==='GET'){
         if(!/^[a-f0-9]{32}$/.test(parts[3]))fail(404,'Evidence file not found.');
@@ -242,7 +243,12 @@ const server=http.createServer(async(req,res)=>{
       return send(404,{error:'Endpoint not found.'});
     }
     if(req.method!=='GET'&&req.method!=='HEAD')return send(405,{error:'Method not allowed.'});
-    if(parts[0]==='exports'&&/^smoke-report-[a-f0-9-]{36}-[a-f0-9]{12}$/.test(parts[1]||'')&&((parts.length===3&&['index.html','report.json'].includes(parts[2]))||(parts.length===4&&parts[2]==='evidence'&&['plan.json','course.json','report.json','operations.jsonl','media-manifest.json','scope.json','execution-context.json'].includes(parts[3])))){
+    if(url.pathname==='/history'){
+      if(!historyUrl())fail(404,'No earlier history archive is installed.');
+      const content=readFileSync(path.join(dataDir,'history.html'));
+      res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'self'; sandbox"});return res.end(req.method==='HEAD'?undefined:content);
+    }
+    if(parts[0]==='exports'&&/^smoke-report-[a-f0-9-]{36}-[a-f0-9]{12}$/.test(parts[1]||'')&&((parts.length===3&&['index.html','report.json'].includes(parts[2]))||(parts.length===4&&parts[2]==='evidence'&&['plan.json','course.json','report.json','operations.jsonl','media-manifest.json','scope.json','execution-context.json','checkpoint.json'].includes(parts[3])))){
       let content;try{content=readFileSync(path.join(dataDir,...parts));}catch{fail(404,'Report file not found.');}
       const html=parts.at(-1)==='index.html';res.writeHead(200,{'Content-Type':html?'text/html; charset=utf-8':'text/plain; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'self'; sandbox allow-same-origin"});return res.end(req.method==='HEAD'?undefined:content);
     }

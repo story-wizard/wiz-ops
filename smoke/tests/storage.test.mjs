@@ -6,9 +6,18 @@ import path from 'node:path';
 import {spawnSync,spawn} from 'node:child_process';
 import {once} from 'node:events';
 import {ROOT,dataDirectory,externalPath} from '../runner/files.mjs';
-import {verifyDesktopPaths,assertLocalPreviewGraph} from '../desktop/adapter.mjs';
+import {verifyDesktopPaths,assertLocalPreviewGraph,assertQuitEvidence} from '../desktop/adapter.mjs';
 import {cleanupInterrupted} from '../runner/store.mjs';
 import {retainProcess} from '../runner/engine.mjs';
+
+test('normal Quit requires menu dispatch and the owned generation shutdown event',()=>{
+ const ready={pid:42,generation:'current'},receipt={dispatch:'native-menu',shortcut:'Command-Q'},observed={...ready,event:'aboutToQuit'};
+ assertQuitEvidence(receipt,observed,ready);
+ assert.throws(()=>assertQuitEvidence({dispatch:'SIGTERM'},observed,ready),/menu dispatch/);
+ assert.throws(()=>assertQuitEvidence(receipt,{...observed,pid:43},ready),/owned GUI/);
+ assert.throws(()=>assertQuitEvidence(receipt,{...observed,generation:'previous'},ready),/owned GUI/);
+ assert.throws(()=>assertQuitEvidence(receipt,null,ready),/owned GUI/);
+});
 
 test('interruption cleanup stops registered engines and ingest groups but rejects changed process identity',{timeout:5000},async()=>{
  const workspace=dataDirectory(mkdtempSync(path.join(tmpdir(),'smoke-processes-'))),id='22222222-2222-4222-8222-222222222222',root=path.join(workspace,'runs',id),children=[];

@@ -25,6 +25,14 @@ class SmokeBridge : public QObject {
         previousClipboard.reset();ownedClipboardHash.clear();return owned;
     }
     int sequence=0;
+    static NSArray<NSMenuItem*>* quitItems(NSMenu* menu){
+        NSMutableArray<NSMenuItem*>* found=[NSMutableArray array];
+        for(NSMenuItem* item in menu.itemArray){
+            if(item.submenu)[found addObjectsFromArray:quitItems(item.submenu)];
+            else if([item.keyEquivalent isEqualToString:@"q"]&&item.keyEquivalentModifierMask==NSEventModifierFlagCommand&&!item.hidden)[found addObject:item];
+        }
+        return found;
+    }
     static void click(QWidget* widget,QPoint point){
         const QPoint global=widget->mapToGlobal(point);QPointer<QWidget> original(widget);
         QTest::mousePress(widget,Qt::LeftButton,Qt::NoModifier,point);
@@ -102,6 +110,13 @@ class SmokeBridge : public QObject {
         const auto op=request["op"].toString(),key=request["target"].toString();
         QObject* target=objects.value(key);auto* widget=qobject_cast<QWidget*>(target);
         if(op=="inspect")return inspect();
+        if(op=="quit"){
+            if(!widget||!widget->isWindow()||!widget->isVisible()||QString(widget->metaObject()->className())!="MainWindow"||QApplication::activeModalWidget())throw QString("Quit requires the observed main window with no modal dialog");
+            NSArray<NSMenuItem*>* items=quitItems(NSApp.mainMenu);if(items.count!=1||!items.firstObject.enabled||!items.firstObject.action)throw QString("Unique enabled Command-Q menu action unavailable");
+            NSMenuItem* item=items.firstObject;const QString title=QString::fromNSString(item.title);
+            QTimer::singleShot(0,this,[item]{[item.menu performActionForItemAtIndex:[item.menu indexOfItem:item]];});
+            return {{"dispatch","native-menu"},{"title",title},{"shortcut","Command-Q"}};
+        }
         if(op=="clipboard-save"){
             if(previousClipboard)throw QString("Clipboard already preserved");
             auto copy=std::make_unique<QMimeData>();qint64 bytes=0;const auto* mime=QGuiApplication::clipboard()->mimeData();
@@ -190,7 +205,7 @@ class SmokeBridge : public QObject {
 public:
     explicit SmokeBridge(QString directory):QObject(qApp),root(std::move(directory)){
         QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs); // Only this disposable smoke process.
-        connect(qApp,&QCoreApplication::aboutToQuit,this,[this]{restoreClipboard();});
+        connect(qApp,&QCoreApplication::aboutToQuit,this,[this]{restoreClipboard();save("quit-observed.json",{{"pid",qint64(QCoreApplication::applicationPid())},{"generation",generation},{"event","aboutToQuit"}});});
         save("ready.json",{{"cocoaImage",QString::fromUtf8(class_getImageName(objc_getClass("QMacAccessibilityElement")))},{"pid",qint64(QCoreApplication::applicationPid())},{"generation",generation},{"harness",qEnvironmentVariable("WIZ_HARNESS_RUN_ID")}});
         auto* timer=new QTimer(this);timer->setInterval(100);
         connect(timer,&QTimer::timeout,this,[this]{

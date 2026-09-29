@@ -1,6 +1,6 @@
 {
   "id": "playback-persistence-v1",
-  "revision": 1,
+  "revision": 2,
   "title": "Playback observation and desktop persistence",
   "sourceIds": ["PB-01", "LP-02"],
   "scope": "Fresh synthetic project in the explicitly selected instrumented desktop runtime. Human playback judgment and automated persistence are separate observations.",
@@ -8,9 +8,9 @@
     "Confirm the prepared Golden project and Main timeline are open. Keep the project structure unchanged.",
     "Play the first four seconds: observe the visible test pattern and listen for the synthetic tone. Pause and scrub if helpful. Record visible playback problems, missing audio or apparent synchronization issues; this is not a calibrated latency measurement.",
     "Stop playback. Record Pass, Fail or Blocked with what you actually observed and your hands-on time. An agent may transcribe your finding but must not invent a human signoff.",
-    "Choose Continue only when you are finished using the project. Automation will verify the timeline, save, stop the owned process, reopen the same project in a fresh process, and verify its contents again."
+    "Choose Continue only when you are finished using the project. Automation will verify the timeline, save, quit through the normal app menu, reopen the same project in a fresh process, and verify its contents again."
   ],
-  "postcondition": "Main and Secondary retain their prepared clip identities, source ranges, timing and track structure through desktop Save, controlled process exit and Reopen.",
+  "postcondition": "Main and Secondary retain their prepared clip identities, source ranges, timing and track structure through desktop Save, native Quit and Reopen.",
   "diagnostics": ["Before/after timeline and visible-control snapshots", "Owned app stdout/stderr logs", "Explicit bounded diagnostic capture"],
   "notCaptured": ["Continuous polling during human control", "CPU/GPU profiling", "Provider traffic"]
 }
