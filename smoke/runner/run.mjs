@@ -1,3 +1,4 @@
+import {fileURLToPath} from 'node:url';
 import {mkdir,cp,realpath} from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -59,7 +60,7 @@ async function run(dataDir,runId){
   }
   finally{if(engine)await engine.stop();process.off('SIGTERM',stop);process.off('SIGINT',stop);db.close();}
 }
-if(process.argv[1]===new URL(import.meta.url).pathname){
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const arg=name=>{const i=process.argv.indexOf(name);return i<0?undefined:process.argv[i+1];};
   if(!process.argv.includes('--execute')||!arg('--run-id')){console.error('Use the dashboard to create and explicitly start a frozen course. This command requires --execute --run-id ID.');process.exitCode=2;}
   else await run(dataDirectory(arg('--data-dir')),arg('--run-id'));

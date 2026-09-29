@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,writeFile,readFile,rm} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {parseEnvelope,OutcomeError,bounds,same,snapshotState,PackagedEngine,command} from '../runner/engine.mjs';
@@ -135,4 +135,17 @@ test('shared search helper rejects incomplete or unavailable evidence even with 
   const {search}=await import('../runner/interactions.mjs');const result={completion:'complete',truncated:false,matches:[{item_id:'known'}],source_runs:[{source:'name',state:'ready',exhaustive:true,error:null}]};
   const c={async call(){return structuredClone(result);}};assert.equal((await search(c,'known')).matches[0].item_id,'known');
   result.completion='partial';await assert.rejects(()=>search(c,'known'),/incomplete/);result.completion='complete';result.source_runs[0].exhaustive=false;await assert.rejects(()=>search(c,'known'),/ready and exhaustive/);
+});
+
+
+test('relocated CLI entry points execute from paths with spaces and URL characters',async()=>{
+ const {spawnSync}=await import('node:child_process'),{snapshotSource}=await import('../kits.mjs');
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),'smoke entry # %-')));
+ try{
+  const source=path.join(root,'workspace');await snapshotSource(source);
+  const run=spawnSync(process.execPath,[path.join(source,'runner/run.mjs')],{encoding:'utf8',timeout:15000});
+  const prepare=spawnSync(process.execPath,[path.join(source,'runner/prepare.mjs'),'--check','--data-dir',path.join(root,'no-plan')],{encoding:'utf8',timeout:15000});
+  assert.deepEqual([run.status,prepare.status],[2,1],'Both commands must execute their admission/preflight checks, not exit silently');
+  assert.match(run.stderr,/requires --execute --run-id/);assert.match(prepare.stderr,/prepared.json/);
+ }finally{await rm(root,{recursive:true,force:true});}
 });

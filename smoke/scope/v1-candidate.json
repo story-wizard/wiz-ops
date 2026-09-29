@@ -1013,7 +1013,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "A bound local image and blur graph establish a real canvas thumbnail. Inspector edits must change native radius and displayed pixels; Undo must restore both. Explicit rerender is diagnostic only. Runtime passing evidence and representative project variants remain separate."
+      "remaining": "Inspector edits and Undo have native-state observations. The combined preview criterion remains blocked pending a supported node and defined update interaction. Internal blur render thumbnails do not establish live-preview behavior; representative project variants remain separate."
     },
     {
       "id": "SB-05",

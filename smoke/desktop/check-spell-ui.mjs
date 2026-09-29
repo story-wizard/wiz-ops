@@ -1,5 +1,5 @@
 import path from 'node:path';
-import {checks,widgetPixelDifference} from './check-support.mjs';
+import {checks} from './check-support.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
 import {assert,same,pause,OutcomeError} from '../runner/engine.mjs';
 const verify=process.argv[3]==='verify';
@@ -25,33 +25,16 @@ await check('D-SB-INSPECTOR-PREVIEW',async()=>{
  const dialog=await until(async()=>(await ui()).widgets.find(w=>w.class==='QFileDialog')),file=(await ui()).widgets.find(w=>w.window===dialog.id&&w.name==='fileNameEdit');assert(file,'Qt file chooser missing');
  await n('text',{target:file.id,text:path.join(s.root,'media/still.png')});await key(file,'Return');await until(async()=>!(await ui()).widgets.some(w=>w.class==='QFileDialog'));
  let v=await canvas();const fit=(await ui()).widgets.find(w=>w.window===v.window&&w.tooltip==='Fit all');assert(fit,'Fit all missing');await n('click',{target:fit.id});await pause(250);v=await canvas();const node=v.sceneItems.find(x=>x.labels.includes('Radius'));assert(node,'Blur node missing');await n('click',{target:v.viewport,x:node.x+node.width/2,y:node.y+8});
- const panel=(await ui()).widgets.find(w=>w.class==='DetachedGraphPanel'&&w.window===v.window);assert(panel,'Spellbook panel missing');
- await n('spellbook-run-local',{target:panel.id,documentId:target.document_id});
- const capture=async()=>n('snapshot-node-preview',{target:(await canvas()).id,label:'Radius'});
- const before=await until(async()=>{try{return await capture();}catch(e){if(e.message.includes('Expected one rendered node preview'))return null;throw e;}});
- const rgb=Buffer.from(before.sampleRgb,'base64');assert(Math.max(...rgb)-Math.min(...rgb)>80,'Preview fixture must contain visible detail');
  await action('Inspector');const slider=await until(async()=>{const sliders=(await ui()).widgets.filter(w=>w.name==='InspectorSliderControl');assert(sliders.length<=1,'Inspector slider is ambiguous');return sliders[0];});await activate(slider);
  const radius=async()=>(await inspect(target.document_id,'node',receipt.aliases.blur)).nodes[0].controls.radius.effective,initial=await radius();
- let changed,after,restored,lastObserved,explicitRender,failure;
+ let changed;
  try{
   await n('drag',{target:slider.id,x:slider.handle[0],y:slider.handle[1],toX:Math.round(slider.width*.8),toY:slider.handle[1]});changed=await until(async()=>{const value=await radius();return value!==initial?{value}:null;});
-  // No rerender command here: the criterion requires the Inspector edit to update the canvas itself.
-  after=await until(async()=>{const image=await capture();lastObserved=image;await writeJSON(path.join(s.root,'spell-preview-after.json'),image);return widgetPixelDifference(before,image)>.2?image:null;});
- }catch(e){
-  failure=e;
-  if(changed&&!after){
-   // Diagnostic only: an explicit rerender cannot turn the failed live-update assertion into a pass.
-   try{await n('spellbook-run-local',{target:panel.id,documentId:target.document_id});explicitRender=await until(async()=>{const image=await capture();return widgetPixelDifference(before,image)>.2?image:null;});}
-   catch(error){explicitRender={error:error.message};}
-  }
  }finally{
   if(await radius()!==initial){await key(await canvas(),'Ctrl+Z');await until(async()=>await radius()===initial);}
-  try{restored=await capture();}catch(e){restored={error:e.message};}
-  await writeJSON(path.join(s.root,'spell-inspector-observed.json'),{document:target.document_id,initial,changed:changed?.value,before,after,lastObserved,explicitRender,restored,previewVerified:Boolean(after),livePixelDifference:lastObserved?widgetPixelDifference(before,lastObserved):null,explicitRenderDifference:explicitRender?.sampleRgb?widgetPixelDifference(before,explicitRender):null});
  }
- if(failure)throw Error(changed&&!after?'Inspector radius changed, but the canvas preview did not update within the observation window. Explicit rerender diagnostics are retained separately.':failure.message);
- restored=await until(async()=>{const image=await capture();return widgetPixelDifference(before,image)<.2?image:null;});
- return {document:target.document_id,initial,changed:changed.value,meanPixelChange:widgetPixelDifference(before,after),undoPixelDifference:widgetPixelDifference(before,restored),before:before.path,after:after.path,restored:restored.path,scope:'App-rendered canvas thumbnail changes after Inspector drag and restores after Undo; no provider request or calibrated-colour claim'};
+ await writeJSON(path.join(s.root,'spell-inspector-observed.json'),{document:target.document_id,initial,changed:changed.value,undoRestored:true,previewVerified:false,scope:'Inspector state and Undo only. Internal explicit-render thumbnails do not establish a supported live-preview contract for blur.'});
+ throw new OutcomeError('Inspector edit and Undo verified. The canvas-preview criterion needs a supported node and defined update interaction; blur has no established live-preview contract. Internal render thumbnails cannot satisfy this criterion.','Blocked');
 });
 await action('Save');
 finish();}

@@ -1,3 +1,4 @@
+import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {mkdir,realpath,access} from 'node:fs/promises';
 import {constants} from 'node:fs';
@@ -61,7 +62,7 @@ export async function prepare({app='/Applications/Wizard.app',dataDir=dataDirect
   await writeJSON(path.join(dataDir,'preflight.json'),{ok:true,checkedAt:new Date().toISOString(),planHash:plan.planHash,checks:['Runner and course fingerprinted','Packaged CLI schema mapped',fixtures.files.length+' real media fixtures probed and hashed; required model pinned','Package content fingerprinted'],wizardLaunched:false});}
   console.log(JSON.stringify({readyForFirstPilot:true,cases:plan.cases.length,deferred:plan.deferred.length,version,packageHash:pkg.sha256,appLaunched:false}));return plan;
 }
-if(process.argv[1]===new URL(import.meta.url).pathname){
+if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
   const arg=name=>{const i=process.argv.indexOf(name);return i<0?undefined:process.argv[i+1];};
   try{if(process.argv.includes('--check')){const result=await checkPrepared(arg('--data-dir'));console.log(JSON.stringify({readyForFirstPilot:true,planHash:result.plan.planHash,wizardLaunched:false}));}else await prepare({app:arg('--app'),dataDir:arg('--data-dir'),ffmpeg:arg('--ffmpeg'),ffprobe:arg('--ffprobe')});}
   catch(error){console.error(error.message);process.exitCode=1;}

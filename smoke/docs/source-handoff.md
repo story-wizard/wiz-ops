@@ -33,6 +33,25 @@ The normalized checklist still contains team criteria and issue references. The 
 
 The CLI and portable-kit helpers are in [agent-courses.md](agent-courses.md) and [build-evidence-local-reports.md](build-evidence-local-reports.md). These helpers do not establish that a second-machine pilot has happened. Do not copy a developer's absolute runtime paths and assume they identify the intended build.
 
+## Run a retained workstation kit
+
+Export a terminal run from the local service:
+
+```sh
+node scripts/smoke.mjs kit --run RUN_ID
+```
+
+Copy the returned kit directory to an external location on the target Mac. From that directory:
+
+```sh
+node workspace/scripts/kit.mjs check
+node workspace/scripts/kit.mjs run --operator "Tester name"
+```
+
+`check` verifies retained files and listed local dependencies without launching Wizard. `run` prepares the retained package and media, starts its own loopback service, and creates a new run in the external `SMOKE_DATA_DIR` workspace. It preserves the original report under `report/index.html`. Paths containing spaces, such as macOS Application Support, are supported. Node is still required; desktop and speech selections have additional declared runtime inputs.
+
+A successful relocated-kit run on one Mac proves that path relocation works for that selected course. Second-machine acceptance still requires running it on another Mac. Keep the resulting report and any failed attempt; do not replace an uncertain outcome with a rerun's pass.
+
 ## Source archive
 
 From the repository root, after committing:
