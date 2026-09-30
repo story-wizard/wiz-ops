@@ -4,7 +4,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {baseCourse,initializeCourses,saveCourse,getCourse,resolveSelection,selectedRecipe,validateRecipe,requirementsFor,checkRegistry} from '../runner/catalog.mjs';
+import {baseCourse,initializeCourses,saveCourse,getCourse,resolveSelection,selectedRecipe,validateRecipe,requirementsFor,checkRegistry,courseList} from '../runner/catalog.mjs';
 import {digest} from '../runner/files.mjs';
 import {resultSummary,waitForRun} from '../scripts/smoke.mjs';
 import {executeCourse} from '../runner/run.mjs';
@@ -92,6 +92,12 @@ test('every accepted definition resolves and every desktop/service check has an 
   const accepted=acceptance();assert.equal(accepted.checks.length,137);
   for(const c of accepted.checks){const s=resolveSelection(db,{checkIds:[c.id]},accepted);validateRecipe(selectedRecipe(s),accepted);if(c.target!=='packaged')assert.ok(bound.has(c.id),'Unbound check '+c.id);}
   const all=resolveSelection(db,{checkIds:accepted.checks.map(c=>c.id)},accepted);assert.equal(all.effectiveIds.length,137);assert.equal(all.notSelected.length,6);
+  const maintained=resolveSelection(db,{courseIds:['automated-full']},accepted);
+  assert.deepEqual(new Set(maintained.effectiveIds),new Set(all.effectiveIds));
+  assert.equal(maintained.checkpoint,undefined);assert.equal(maintained.requirements.foreground,true);
+  assert.equal(courseList(db)[0].id,'automated-full');
+  assert.throws(()=>saveCourse(db,{...draft,id:'automated-full'},accepted),/reserved/);
+  validateRecipe(selectedRecipe(maintained),accepted);
   assert.equal(rawChecks.length,143);
  }finally{db.close();}
 });

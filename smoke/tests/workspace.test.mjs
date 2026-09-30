@@ -22,6 +22,12 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
   const request=async(route,method='GET',body,extra={})=>{const r=await fetch(base+'/api'+route,{method,headers:{'Content-Type':'application/json',...extra},body:body?JSON.stringify(body):undefined});return {status:r.status,data:await r.json()};};
   try{
     await start();
+    const setup=(await request('/run-setup')).data;
+    assert.equal(setup.courses[0].id,'automated-full');assert.equal(setup.courses[0].checkCount,137);
+    assert.deepEqual(setup.courses[0].targets,{packaged:57,desktop:73,service:7});
+    assert.ok(setup.courses.every(c=>!c.checkpoint));assert.deepEqual(setup.runtimes,[]);
+    assert.equal((await fetch(base+'/run-setup.js')).status,200);assert.equal((await fetch(base+'/wizard-tokens.css')).status,200);
+    assert.deepEqual((await request('/runs')).data,[],'Opening run setup must not launch tests');
     assert.equal((await fetch(base+'/history')).status,404);
     writeFileSync(path.join(dir,'history.html'),'<h1>Retained history fixture</h1>');
     const history=await fetch(base+'/history');assert.equal(history.status,200);assert.match(history.headers.get('Content-Security-Policy'),/sandbox/);

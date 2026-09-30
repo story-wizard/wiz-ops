@@ -34,9 +34,10 @@ export function initializeCourses(db){
  db.exec('CREATE TABLE IF NOT EXISTS user_courses(id TEXT NOT NULL,revision INTEGER NOT NULL,definition TEXT NOT NULL,PRIMARY KEY(id,revision)); CREATE TABLE IF NOT EXISTS execution_requests(request_id TEXT PRIMARY KEY,run_id TEXT NOT NULL REFERENCES runs(id),plan_hash TEXT NOT NULL,operator TEXT NOT NULL);');
 }
 export const builtinCourse=()=>({id:'packaged-full',revision:baseCourse.revision,title:'Packaged engine — full course',project:'fresh',kind:'maintained',groups:[{id:'packaged',title:'Packaged engine',checks:baseCourse.cases.map(c=>c.id)}]});
-export function courseList(db){return [builtinCourse(),...db.prepare('SELECT definition FROM user_courses c WHERE revision=(SELECT MAX(revision) FROM user_courses WHERE id=c.id) ORDER BY id').all().map(r=>JSON.parse(r.definition))];}
+export const allAutomatedCourse=()=>({id:'automated-full',revision:1,title:'All automated checks',project:'fresh',kind:'maintained',groups:['packaged','service','desktop'].map(target=>({id:target,title:({packaged:'Build engine',service:'Background services',desktop:'Desktop editor'})[target],checks:checkRegistry().filter(c=>c.accepted&&c.target===target).map(c=>c.id)})).filter(g=>g.checks.length)});
+export function courseList(db){return [allAutomatedCourse(),builtinCourse(),...db.prepare('SELECT definition FROM user_courses c WHERE revision=(SELECT MAX(revision) FROM user_courses WHERE id=c.id) ORDER BY id').all().map(r=>JSON.parse(r.definition))];}
 export function getCourse(db,id,revision){
- if(id==='packaged-full'){const c=builtinCourse();if(revision!==undefined&&revision!==c.revision)throw Error('Maintained course revision is unavailable.');return c;}
+ if(['packaged-full','automated-full'].includes(id)){const c=id==='packaged-full'?builtinCourse():allAutomatedCourse();if(revision!==undefined&&revision!==c.revision)throw Error('Maintained course revision is unavailable.');return c;}
  const r=revision===undefined?db.prepare('SELECT definition FROM user_courses WHERE id=? ORDER BY revision DESC LIMIT 1').get(id):db.prepare('SELECT definition FROM user_courses WHERE id=? AND revision=?').get(id,revision);
  if(!r)throw Error('Course not found: '+id);return JSON.parse(r.definition);
 }
@@ -54,7 +55,7 @@ function groups(input,registry,maxID=80){
 }
 export function saveCourse(db,input,review=acceptance()){
  if(!input||Object.keys(input).some(k=>!['id','revision','title','project','groups','checkpoint'].includes(k)))throw Error('Courses contain references and groups only; test definitions and acceptance cannot be changed here.');
- const id=text(input.id,'course ID',80);if(!/^[a-z][a-z0-9-]*$/.test(id)||['packaged-full','smoke-full'].includes(id))throw Error('Invalid or reserved course ID.');
+ const id=text(input.id,'course ID',80);if(!/^[a-z][a-z0-9-]*$/.test(id)||['packaged-full','automated-full','smoke-full'].includes(id))throw Error('Invalid or reserved course ID.');
  if(input.project!=='fresh')throw Error('Project variant unavailable: '+input.project);
  if(!Number.isInteger(input.revision)||input.revision<0)throw Error('Supply revision 0 to create, or the current revision to edit.');
  const definition={id,revision:input.revision+1,title:text(input.title,'course title'),project:'fresh',kind:'user',groups:groups(input.groups,checkRegistry(review)),...(checkpointID(input.checkpoint)?{checkpoint:input.checkpoint}:{})};

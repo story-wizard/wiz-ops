@@ -1,0 +1,30 @@
+/* Wizard src/app/theme.h: shared palette for the workspace, guide and reports. */
+:root {
+  color-scheme: dark;
+  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --bg-deep: #121212;
+  --bg-base: #1a1a1a;
+  --panel: #202020;
+  --surface: #2c2c2c;
+  --header: #383838;
+  --outline: #444;
+  --line: #383838;
+  --border: #000;
+  --text: #d4d4d4;
+  --secondary: #aaa;
+  --quiet: #888;
+  --muted: #aaa;
+  --dark: #d4d4d4;
+  --selection: #447ab0;
+  --link: #5b9dd9;
+  --control-accent: #c84040;
+  --control-hover: #d85555;
+  --success: #5ec26a;
+  --danger: #ff5555;
+  --warning: #e0b050;
+  --blue: #447ab0;
+  --radius: 3px;
+  color: var(--text);
+  background: var(--bg-base);
+}
+::selection { background: var(--selection); color: white; }

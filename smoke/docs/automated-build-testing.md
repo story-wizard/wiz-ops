@@ -2,6 +2,16 @@
 
 Select a Wizard build, prepare its checks, run them, and open the report. The maintained `packaged-full` course has 57 checks against that package's headless engine, shipped CLI and ingest runtime. It creates disposable projects and runs without Tower, a visible Wizard editor, computer use or human sign-off.
 
+## Use the dashboard
+
+Start the service as described below and open <http://127.0.0.1:4317>. In **Run tests**, choose the build, choose the course, optionally name the run, then select **Start checks**. Preparation and validation happen automatically before execution. Progress and outcomes appear in **Results**; open the report after the run finishes.
+
+The default **All automated checks** course selects all 137 accepted definitions: 57 packaged-engine, 73 desktop and 7 background-service checks. It does not add a human checkpoint or accept the six remaining candidate definitions. Existing failures and unavailable capabilities remain Fail or Blocked in the results.
+
+The engine checks use the selected package. The other 80 checks require the separately identified instrumented test helper. Import the helper's configuration JSON once under **Set up desktop helper**; its files are validated and remembered in the workspace. Manual path entry remains available there. Choose **Build engine checks** for a 57-check run without that helper. A missing helper never silently reduces the all-checks course.
+
+**More** holds fixture, coverage and catalog-maintenance tools. They are not required to launch a run. If a start response is lost, the form retains its request ID and offers **Check start status** rather than starting another run.
+
 ## Prerequisites
 
 - An arm64 Mac with Node.js 24 LTS. Node 24.19.0 is the verified runtime.

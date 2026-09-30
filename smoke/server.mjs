@@ -8,7 +8,7 @@ import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync, existsSync
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import {spawn} from 'node:child_process';
+import {spawn,execFileSync} from 'node:child_process';
 import {initializeAutomation,course,execution,createExecution,updateExecution,record,recoverInterrupted,runnerAlive} from './runner/store.mjs';
 import {readJSON,writeJSON,digest,dataDirectory} from './runner/files.mjs';
 import {checklistCoverage} from './coverage.mjs';
@@ -54,6 +54,20 @@ const getRun=(id)=>{
   return {...run,checkpoint:getCheckpoint(db,id),execution:execution(db,id),results:db.prepare('SELECT * FROM results WHERE run_id=? ORDER BY rowid').all(id).map(r=>({...r,snapshot:JSON.parse(r.snapshot)}))};
 };
 function desktopExport(){const state=desktopState(dataDir);return {...state,jobs:state.jobs.map(j=>jobDetails(dataDir,j.id))};}
+async function runSetup(){
+ const previous=db.prepare('SELECT package_json FROM executions ORDER BY updated_at DESC LIMIT 20').all().map(r=>JSON.parse(r.package_json)),builds=[],runtimes=await runtimeList(dataDir);
+ for(const p of previous){
+  if(typeof p.app==='string'&&!builds.some(b=>b.app===p.app))builds.push({app:p.app,label:p.version||path.basename(p.app),available:existsSync(p.app)});
+  if(p.runtime&&!runtimes.some(r=>r.id===digest(p.runtime)))runtimes.push({id:digest(p.runtime),label:'Configured desktop helper',runtime:p.runtime});
+ }
+ if(!builds.some(b=>b.app==='/Applications/Wizard.app')&&existsSync('/Applications/Wizard.app')){
+  let label='Installed Wizard';try{label+=' ('+execFileSync('/usr/bin/plutil',['-extract','CFBundleShortVersionString','raw','-o','-','/Applications/Wizard.app/Contents/Info.plist'],{encoding:'utf8',timeout:1000}).trim()+')';}catch{}
+  builds.push({app:'/Applications/Wizard.app',label,available:true});
+ }
+ for(const r of runtimes)r.label ||= path.basename(r.runtime.app);
+ const registry=checkRegistry(),courses=courseList(db).filter(c=>!c.checkpoint).map(c=>{try{const s=resolveSelection(db,{courseIds:[c.id]});return {...c,checkCount:s.effectiveIds.length,requirements:s.requirements,targets:Object.fromEntries(['packaged','desktop','service'].map(t=>[t,s.effectiveIds.filter(id=>registry.find(c=>c.id===id)?.target===t).length]))};}catch(e){return {...c,error:e.message};}});
+ return {builds,courses,runtimes,project:'fresh'};
+}
 async function runnerStatus(){
   recoverInterrupted(db);
   let plan,preflight;try{plan=await readJSON(path.join(dataDir,'prepared.json'));preflight=await readJSON(path.join(dataDir,'preflight.json'));}catch{}
@@ -133,6 +147,7 @@ const server=http.createServer(async(req,res)=>{
       if(req.method==='GET'&&url.pathname==='/api/checks')return send(200,{format:'wizard-smoke-checks/v1',target:'all',checks:checkRegistry()});
       if(req.method==='GET'&&url.pathname==='/api/runtimes')return send(200,{format:'wizard-smoke-runtimes/v1',runtimes:await runtimeList(dataDir)});
       if(req.method==='POST'&&url.pathname==='/api/runtimes'){try{return send(201,await saveRuntime(dataDir,body));}catch(e){fail(409,e.message);}}
+      if(req.method==='GET'&&url.pathname==='/api/run-setup')return send(200,await runSetup());
       if(req.method==='GET'&&url.pathname==='/api/courses')return send(200,courseList(db));
       if(req.method==='GET'&&parts[1]==='courses'&&parts.length===3){try{return send(200,getCourse(db,parts[2],url.searchParams.has('revision')?Number(url.searchParams.get('revision')):undefined));}catch(e){fail(404,e.message);}}
       if(req.method==='POST'&&url.pathname==='/api/courses'){try{return send(201,saveCourse(db,body));}catch(e){fail(409,e.message);}}
@@ -256,7 +271,7 @@ const server=http.createServer(async(req,res)=>{
       let content;try{content=readFileSync(path.join(dataDir,'exports',parts[1]));}catch{fail(404,'Export not found.');}
       res.writeHead(200,{'Content-Type':parts[1].endsWith('.csv')?'text/csv; charset=utf-8':'application/json','Content-Disposition':`attachment; filename="${parts[1]}"`,'X-Content-Type-Options':'nosniff'});return res.end(content);
     }
-    const assets={'/explainer':['explainer.html','text/html'],'/explainer.js':['explainer.js','text/javascript'],'/explainer.css':['explainer.css','text/css'],'/':['index.html','text/html'],'/desktop.js':['desktop.js','text/javascript'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css'],'/wizard-theme.css':['wizard-theme.css','text/css'],'/favicon.svg':['favicon.svg','image/svg+xml']};
+    const assets={'/explainer':['explainer.html','text/html'],'/explainer.js':['explainer.js','text/javascript'],'/explainer.css':['explainer.css','text/css'],'/':['index.html','text/html'],'/desktop.js':['desktop.js','text/javascript'],'/run-setup.js':['run-setup.js','text/javascript'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css'],'/wizard-theme.css':['wizard-theme.css','text/css'],'/wizard-tokens.css':['wizard-tokens.css','text/css'],'/favicon.svg':['favicon.svg','image/svg+xml']};
     if(!assets[url.pathname])return send(404,{error:'File not found.'});
     const [file,type]=assets[url.pathname];const content=readFileSync(path.join(root,'public',file));
     res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'self'"});res.end(req.method==='HEAD'?undefined:content);
