@@ -24,7 +24,10 @@ test('report retains exact outcomes, detects missing or mismatched evidence and 
   await writeJSON(path.join(root,'execution-context.json'),{platform:'test',runnerHash:plan.runnerHash});
   await writeFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:'CHECK',operation:'project.read',durationMs:12})+'\n');
   let {report}=await localReport(run,data);assert.equal(report.acceptance.evidenceStatus,'Ready for review');assert.equal(report.acceptance.scopeAcceptance,'Not assessed');assert.equal(report.scope.sourceRows[0].disposition,'Partial');
+  assert.equal(report.cases[0].target,'packaged');assert.equal(report.targets[0].hash,plan.packageHash);
   const html=renderReport(report);assert.ok(html.includes('&lt;script&gt;'));assert.ok(!html.includes('<script>'));assert.ok(html.includes('Not assessed'));
+  assert.match(html,/Selected package engine/);assert.match(html,new RegExp(plan.packageHash));
+  const mixedHTML=renderReport({...report,targets:[...report.targets,{target:'desktop',build:'Instrumented app',hash:'c'.repeat(64),counts:{Fail:1}}]});assert.match(mixedHTML,/Instrumented desktop/);assert.ok(mixedHTML.includes('c'.repeat(64)));
   const subsetHTML=renderReport({...report,selection:{project:'fresh',requestedIds:['CHECK'],addedPrerequisites:[],notSelected:['OTHER'],groups:[{title:'My <group>',checks:['CHECK']}],courseRevisions:[{id:'custom',revision:2}]}});
   assert.ok(subsetHTML.includes('1 requested checks'));assert.ok(subsetHTML.includes('1 checks not selected'));assert.ok(subsetHTML.includes('My &lt;group&gt;'));assert.ok(subsetHTML.includes('does not claim full Smoke Test acceptance'));
   const first=await exportLocalReport(run,data),second=await exportLocalReport(run,data);assert.equal(first.path,second.path,'Identical report delivery is idempotent');
@@ -43,6 +46,8 @@ test('report retains exact outcomes, detects missing or mismatched evidence and 
   await writeJSON(path.join(root,'course.json'),recipe);await writeJSON(path.join(root,'report.json'),{runId:id,state:'Passed',planHash:plan.planHash,results:[{id:'CHECK',status:'Pass',note:results[0].note}]});
   await writeFile(path.join(root,'operations.jsonl'),'');
   report=(await localReport(run,data)).report;assert.equal(report.acceptance.evidenceStatus,'Gaps found');assert.equal(report.cases[0].status,'Pass','Do not rewrite the original assertion result');assert.ok(report.acceptance.gaps.some(s=>s.includes('no operation receipts')));
+  await writeFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:'CHECK',operation:'check.observation',status:'Pass'})+'\n');
+  report=(await localReport(run,data)).report;assert.ok(report.acceptance.gaps.some(s=>s.includes('no operation receipts')),'A summary receipt cannot stand in for an executed operation');
   await writeJSON(path.join(root,'report.json'),{runId:'other',state:'Passed',planHash:plan.planHash,results:[]});
   report=(await localReport(run,data)).report;assert.ok(report.acceptance.gaps.some(s=>s.includes('identity/state')));
   run.execution.state='Running';await assert.rejects(()=>localReport(run,data),/Wait for the run/);

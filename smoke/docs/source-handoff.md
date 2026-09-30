@@ -4,7 +4,7 @@ The source lives under `wiz-ops/smoke/`. A clone supplies the catalog, web dashb
 
 ## Validate a clean checkout
 
-With Node.js 22.13 or newer (Node 24.19.0 verified), from the repository root:
+Use Node.js 24 LTS (24.19.0 verified). From the repository root:
 
 ```sh
 cd smoke
@@ -24,6 +24,8 @@ Excluded: original spreadsheet binaries, historical dashboard images, SQLite/run
 The normalized checklist still contains team criteria and issue references. The operation contract describes Wizard's application interface. Omitting runtime data does not make this a generic or redacted public test framework.
 
 ## First actual smoke execution on another machine
+
+Use the [automated build guide](automated-build-testing.md) for a small first run and the full 57-check packaged course. Both complete without a human checkpoint.
 
 1. Select a retained package whose operation schema matches the checked contract.
 2. Configure local media tools and only the model prerequisites needed by the chosen checks.

@@ -10,7 +10,7 @@ The lower-level `maestro_*` scripts set up isolated worktrees and Maestro agents
 
 ## Smoke testing
 
-[`smoke/`](smoke/README.md) contains the local Wizard smoke catalog, agent-friendly CLI, runner, adapters and web dashboard. It is an initial development import for WIZ-423. Run its framework checks without Wizard; actual app checks require an explicitly configured compatible runtime. No existing review/build pipeline is changed by this import.
+[`smoke/`](smoke/README.md) tests a selected Wizard build and retains a local report. The maintained packaged-engine course has 57 automated checks. Follow the [automated build guide](smoke/docs/automated-build-testing.md) for setup, execution and reporting. Desktop adapters and human checkpoints are optional extensions; existing review/build pipelines are unchanged.
 
 ## Requirements
 

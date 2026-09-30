@@ -3,7 +3,28 @@ import {writeFileSync} from 'node:fs';
 import {appendFile} from 'node:fs/promises';
 import {desktopCall,nativeCall} from './adapter.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
-import {assert,pause,OutcomeError} from '../runner/engine.mjs';
+import {assert,pause,OutcomeError,clips,bounds} from '../runner/engine.mjs';
+
+export function requirePassed(results,ids){
+ const missing=ids.filter(id=>results.find(r=>r.id===id)?.status!=='Pass');
+ if(missing.length)throw new OutcomeError('Required checks did not pass: '+missing.map(id=>id+' ('+(results.find(r=>r.id===id)?.status||'not executed')+')').join(', '),'Blocked');
+}
+export function requireExactTimingFixture(snapshot){
+ const timed=clips(snapshot).filter(c=>c.source?.timing==='timed');
+ const rejected=timed.filter(c=>c.source.projection_status!=='exact');
+ if(!timed.length||rejected.length)throw new OutcomeError('Source timing fixture is not exact: '+JSON.stringify(rejected.map(c=>({clip:c.clip_id,status:c.source.projection_status,diagnostics:c.source.projection_diagnostics}))),'Blocked');
+}
+export async function gapFixture(c,assets,name){
+ try{
+  const t=await c('timeline.create',{name,video_format:{preset:'hd_1080p_24'},audio:{sample_rate:48000,channels:2}}),track=t.tracks.find(x=>x.kind==='video').track_id;
+  await c('timeline.place_cuts',{id:'gap-'+t.timeline_id,timeline_id:t.timeline_id,cuts:[
+   {id:'plate',source:{asset_id:assets.plate},source_range:{start_seconds:1,end_seconds:5},streams:'video_only',destination:{at:{seconds:0,track}}},
+   {id:'motion',source:{asset_id:assets.motion},source_range:{start_seconds:0,end_seconds:2},streams:'video_only',destination:{at:{seconds:6,track}}}
+  ]});
+  const before=await c('timeline.inspect',{timeline_id:t.timeline_id}),items=clips(before);assert(items.length===2,'Expected two fixture clips');
+  bounds(items[0],0,4,1,5);bounds(items[1],6,8,0,2);assert(items[0].source.asset_id===assets.plate&&items[1].source.asset_id===assets.motion,'Fixture source identities differ');return before;
+ }catch(e){throw new OutcomeError(name+' setup: '+e.message,e.status==='Unknown'?'Unknown':'Blocked');}
+}
 
 export const selectorNamesTimeline=(label,name)=>typeof label==='string'&&label.replace(/ \(\d+\)$/,'')===name;
 export async function beginCheck(file,id){
@@ -23,7 +44,7 @@ export async function checks(file,name){
   const s=await readJSON(file),report={scope:s.scope,inputMode:s.inputMode||'desktop',pid:s.pid,generation:s.generation,results:[]};
   const output=path.join(s.root,name),n=(op,p)=>nativeCall(file,op,p),c=(op,p,e)=>desktopCall(file,op,p,e),ui=()=>n('inspect');
   async function until(fn){for(let i=0;i<50;i++){const v=await fn();if(v)return v;await pause(100);}throw Error('Expected observation did not arrive within five seconds');}
-  async function check(id,fn){if(!await beginCheck(file,id))return;try{report.results.push({id,status:'Pass',evidence:await fn()});}catch(e){report.results.push({id,status:e.status||'Fail',error:e.message});if(e.status==='Unknown'||e.fatal){report.fatal=e.message;await writeJSON(output,report);throw e;}}finally{if(report.results.at(-1)?.id===id)await endCheck(file,report.results.at(-1));}await writeJSON(output,report);}
+  async function check(id,fn,requires=[]){if(!await beginCheck(file,id))return;try{requirePassed(report.results,requires);report.results.push({id,status:'Pass',evidence:await fn()});}catch(e){report.results.push({id,status:e.status||'Fail',error:e.message});if(e.status==='Unknown'||e.fatal){report.fatal=e.message;await writeJSON(output,report);throw e;}}finally{if(report.results.at(-1)?.id===id)await endCheck(file,report.results.at(-1));}await writeJSON(output,report);}
   async function activate(w){for(let i=0;i<10;i++){await n('activate',{target:w.window});await pause(100);if((await ui()).widgets.some(a=>a.id===w.window&&a.active))return;}const e=new OutcomeError('The owned smoke window could not retain keyboard focus; unlock the desktop before retrying','Blocked');e.fatal=true;throw e;}
   async function action(text){const matches=(await ui()).actions.filter(a=>a.text===text&&a.enabled);assert(matches.length===1,`Expected one enabled action: ${text}`);await n('action',{target:matches[0].id});}
   async function mediaItem(name){return until(async()=>(await ui()).widgets.find(w=>w.class==='QTreeView'&&w.model?.some(r=>r[0]===name)));}

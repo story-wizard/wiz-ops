@@ -1,4 +1,8 @@
-# First smoke capability: import status
+# Automated build testing: repository scope
+
+The first release supports selecting a compatible Wizard build, running automated checks, and producing a local report. The maintained `packaged-full` course supplies 57 engine checks. Human handoff, Oz guidance, tester sign-off, external report delivery and build dispatch are outside this release's requirements. Existing optional checkpoint code remains available for separate development.
+
+Follow [automated build testing](automated-build-testing.md) for the operator commands and prerequisites.
 
 Source imported from local checkpoint `b87fe06b836e0a2cb3452da3090847169166c31f` onto Ops base `e0e8066c2efa1e8d796407794cf704524af90cf9`, under `smoke/`. The owner approved wiz-ops as the publication destination.
 
@@ -14,7 +18,7 @@ Original XLSX, screenshots, historical run reports, databases, applications, med
 
 Framework tests exercise startup, source-only catalog integrity, custom selection, external workspace writes, desktop ownership bounds, recovery and report semantics without launching Wizard. Native compilation can be checked independently. Actual packaged/desktop smoke and second-machine acceptance require compatible runtime inputs and fresh retained evidence.
 
-## Before the first team pilot
+## Follow-up qualification
 
 - [ ] Qualify a retained package against the operation schema and record runtime versions.
 - [ ] Run a small packaged course on a second machine and inspect its evidence and interruption handling.
@@ -22,4 +26,4 @@ Framework tests exercise startup, source-only catalog integrity, custom selectio
 - [ ] Supply and qualify the instrumented desktop/CLI/Qt runtime for desktop checks.
 - [ ] Review candidate scope and resolve missing capabilities; mapped rows are not full coverage.
 
-Keep the initial PR open and in draft. Merging, deployment, build dispatch and shared report publication are separate steps.
+These follow-ups qualify use on another machine and broader desktop coverage. Repository publication does not claim that they have passed. Merging, deployment, build dispatch and shared report publication remain separate actions.

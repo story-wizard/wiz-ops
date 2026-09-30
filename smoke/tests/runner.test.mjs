@@ -146,6 +146,6 @@ test('relocated CLI entry points execute from paths with spaces and URL characte
   const run=spawnSync(process.execPath,[path.join(source,'runner/run.mjs')],{encoding:'utf8',timeout:15000});
   const prepare=spawnSync(process.execPath,[path.join(source,'runner/prepare.mjs'),'--check','--data-dir',path.join(root,'no-plan')],{encoding:'utf8',timeout:15000});
   assert.deepEqual([run.status,prepare.status],[2,1],'Both commands must execute their admission/preflight checks, not exit silently');
-  assert.match(run.stderr,/requires --execute --run-id/);assert.match(prepare.stderr,/prepared.json/);
+  assert.match(run.stderr,/requires --execute --run-id/);assert.match(prepare.stderr,/Choose a build and test course/);
  }finally{await rm(root,{recursive:true,force:true});}
 });

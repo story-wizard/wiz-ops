@@ -1,10 +1,10 @@
 import path from 'node:path';
 import {readdir} from 'node:fs/promises';
-import {checks} from './check-support.mjs';
+import {checks,gapFixture} from './check-support.mjs';
 import {createLocalGraphic} from './generated-fixture.mjs';
 import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 import {assert,same,near,clips,snapshotState,pause,OutcomeError} from '../runner/engine.mjs';
-import {readPPM,pixelDifference} from '../runner/pixels.mjs';
+import {readPPM,pixelDifference,visibleImage} from '../runner/pixels.mjs';
 const verify=process.argv[3]==='verify';
 const {s,n,c,ui,until,check,activate,mediaItem,mediaMenu,openTimeline,finish}=await checks(process.argv[2],verify?'desktop-bin-reopen-report.json':'desktop-selection-bin-report.json');
 const inspect=timeline_id=>c('timeline.inspect',{timeline_id});
@@ -60,13 +60,13 @@ if(verify){
     }finally{if(!(await activeOnDisk(t.id,t.video)))await header('video','target');if(!(await activeOnDisk(t.id,t.audio)))await header('audio','target');await linked(original);}
   });
   await check('D-RIPPLE-GAP',async()=>{
-    const t=await c('timeline.duplicate',{source_timeline_id:s.main.id,name:'Ripple gap smoke'}),before=await inspect(t.timeline_id),v=await openTimeline(before.timeline.name);same(clips(before).map(x=>x.timeline_range),[{start_seconds:0,end_seconds:4},{start_seconds:6,end_seconds:8}],'Gap fixture placement');await key(v,'V');await n('click',{target:v.id,x:80,y:v.height-30});await writeJSON(path.join(s.root,'gap-click.json'),await n('snapshot-widget',{target:v.id}));await key(v,'Shift+Del');
-    const after=await until(async()=>{const a=await inspect(t.timeline_id);return clips(a)[1]?.timeline_range.start_seconds===4?a:null;});await undo(v,t.timeline_id,before);const original=clips(before),changed=clips(after);same(changed[0],original[0],'Ripple preserves preceding clip');same(changed[1].source,original[1].source,'Ripple preserves later source');same(changed[1].timeline_range,{start_seconds:4,end_seconds:6},'Two-second gap removal');return {removedSeconds:2,contentEndSeconds:6,timelineDurationSeconds:after.timeline.duration_seconds,undoRestored:true};
+    const before=await gapFixture(c,s.assets,'Ripple gap smoke'),id=before.timeline.timeline_id,v=await openTimeline(before.timeline.name);await writeJSON(path.join(s.root,'gap-baseline.json'),before);await key(v,'V');await n('click',{target:v.id,x:80,y:v.height-30});await writeJSON(path.join(s.root,'gap-click.json'),await n('snapshot-widget',{target:v.id}));await key(v,'Shift+Del');
+    const after=await until(async()=>{const a=await inspect(id);return clips(a)[1]?.timeline_range.start_seconds===4?a:null;});await undo(v,id,before);const original=clips(before),changed=clips(after);same(changed[0],original[0],'Ripple preserves preceding clip');same(changed[1].source,original[1].source,'Ripple preserves later source');same(changed[1].timeline_range,{start_seconds:4,end_seconds:6},'Two-second gap removal');return {removedSeconds:2,contentEndSeconds:6,timelineDurationSeconds:after.timeline.duration_seconds,undoRestored:true};
   });
-  const main=await inspect(s.main.id);await openTimeline(main.timeline.name);
+  const main=await gapFixture(c,s.assets,'Bin render smoke'),binTimeline=main.timeline.timeline_id;await writeJSON(path.join(s.root,'bin-render-baseline.json'),main);await openTimeline(main.timeline.name);
   await check('D-BIN-RENAME',async()=>{
-    const original=await byId(s.assets.plate),name=original.display_name||path.basename(original.local_path),sourceHash=await sha(original.local_path),reference=await frame(s.main.id,'rename-before');
-    try{await rename(name,'Renamed smoke plate');const renamed=await byId(original.asset_id);same({...renamed,display_name:original.display_name},original,'Rename preserves asset identity and path');assert(renamed.display_name==='Renamed smoke plate','Rename missing from asset state');await c('project.checkpoint');assert((await readJSON(path.join(s.bundle,'assets/index.json'))).assets.find(a=>a.asset_id===original.asset_id).display_name==='Renamed smoke plate','Rename missing from saved asset');assert(pixelDifference(reference.image,(await frame(s.main.id,'renamed')).image)<=1,'Rename changed timeline rendering');}
+    const original=await byId(s.assets.plate),name=original.display_name||path.basename(original.local_path),sourceHash=await sha(original.local_path),reference=await frame(binTimeline,'rename-before');visibleImage(reference.image);
+    try{await rename(name,'Renamed smoke plate');const renamed=await byId(original.asset_id);same({...renamed,display_name:original.display_name},original,'Rename preserves asset identity and path');assert(renamed.display_name==='Renamed smoke plate','Rename missing from asset state');await c('project.checkpoint');assert((await readJSON(path.join(s.bundle,'assets/index.json'))).assets.find(a=>a.asset_id===original.asset_id).display_name==='Renamed smoke plate','Rename missing from saved asset');assert(pixelDifference(reference.image,(await frame(binTimeline,'renamed')).image)<=1,'Rename changed timeline rendering');}
     finally{if((await byId(original.asset_id)).display_name!==original.display_name)await rename('Renamed smoke plate',name);}
     same(await byId(original.asset_id),original,'Rename restoration');assert(await sha(original.local_path)===sourceHash,'Rename changed source bytes');retained.cases['D-BIN-RENAME']={assets:[original],sourceHash};return {assetId:original.asset_id,sourceHash,renamedAndRestored:true,renderUnchanged:true};
   });
@@ -74,9 +74,9 @@ if(verify){
     const before=await assets(),source=await byId(s.assets.motion),sourceHash=await sha(source.local_path);await mediaMenu(source.display_name||path.basename(source.local_path),'Duplicate');const after=await until(async()=>{const a=await assets();return a.length===before.length+1?a:null;});const added=after.filter(a=>!before.some(b=>b.asset_id===a.asset_id));assert(added.length===1,'Duplicate did not mint one independent asset');duplicate=added[0];assert(await sha(duplicate.local_path)===sourceHash,'Duplicate refers to different source bytes');await rename(duplicate.display_name||path.basename(duplicate.local_path),'Bin duplicate renamed');duplicate=await byId(duplicate.asset_id);assert(duplicate.display_name==='Bin duplicate renamed','Copy rename absent');same(await byId(source.asset_id),source,'Copy rename preserves original');retained.cases['D-BIN-DUPLICATE']={assets:[source,duplicate],sourceHash};return {original:source.asset_id,copy:duplicate.asset_id,sourceHash,independentName:true};
   });
   await check('D-BIN-DELETE',async()=>{
-    const original=await byId(s.assets.plate),name=original.display_name||path.basename(original.local_path),sourceHash=await sha(original.local_path),before=await inspect(s.main.id),reference=await frame(s.main.id,'delete-before');await mediaMenu(name,'Delete from Bin');
+    const original=await byId(s.assets.plate),name=original.display_name||path.basename(original.local_path),sourceHash=await sha(original.local_path),before=await inspect(binTimeline),reference=await frame(binTimeline,'delete-before');visibleImage(reference.image);await mediaMenu(name,'Delete from Bin');
     await until(async()=>!(await ui()).widgets.some(w=>w.class==='QTreeView'&&w.model?.some(r=>r[0]===name)));let changedPixels;
-    try{same(snapshotState(await inspect(s.main.id)),snapshotState(before),'Bin delete preserves placed clips');assert(await sha(original.local_path)===sourceHash,'Bin delete removed or changed source');changedPixels=pixelDifference(reference.image,(await frame(s.main.id,'deleted')).image);assert(changedPixels<=1,'Bin deletion broke placed rendering');}
+    try{same(snapshotState(await inspect(binTimeline)),snapshotState(before),'Bin delete preserves placed clips');assert(await sha(original.local_path)===sourceHash,'Bin delete removed or changed source');changedPixels=pixelDifference(reference.image,(await frame(binTimeline,'deleted')).image);assert(changedPixels<=1,'Bin deletion broke placed rendering');}
     finally{const mainWindow=(await ui()).widgets.find(w=>w.class==='MainWindow');await activate(mainWindow);await key(mainWindow,'Ctrl+Z');await mediaItem(name);}
     same(await byId(original.asset_id),original,'Delete undo restores original asset');retained.cases['D-BIN-DELETE']={assets:[original],sourceHash};return {assetId:original.asset_id,sourceHash,placedClipsIntact:true,pixelDelta:changedPixels,undoRestored:true};
   });

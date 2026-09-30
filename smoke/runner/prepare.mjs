@@ -19,7 +19,8 @@ import {selectedRecipe,validateRecipe,requirementsFor} from './catalog.mjs';
 export async function sourceIdentity(){return digest([(await fingerprint(path.join(ROOT,'runner'))).sha256,(await fingerprint(path.join(ROOT,'desktop'))).sha256]);}
 export async function checkPrepared(dataDir=dataDirectory(),frozenPlan){
   dataDir=dataDirectory(dataDir);
-  const plan=frozenPlan||await readJSON(path.join(dataDir,'prepared.json'));
+  let plan=frozenPlan;
+  if(!plan)try{plan=await readJSON(path.join(dataDir,'prepared.json'));}catch(e){if(e.code==='ENOENT')throw Error('Choose a build and test course, then prepare them before checking readiness.');throw e;}
   const {planHash,...content}=plan;if(digest(content)!==planHash)throw new Error('Prepared plan is corrupt. Prepare again.');
   if(await sourceIdentity()!==plan.runnerHash)throw new Error('Runner changed since preparation. Prepare again.');
   if(plan.runtime)await verifyRuntime(plan.runtime,dataDir);

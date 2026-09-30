@@ -2,11 +2,11 @@
 
 A local catalog, CLI and runner for repeatable Wizard smoke tests. It creates disposable projects, executes selected checks, verifies state and output independently, and retains evidence. The web dashboard uses the same local service as agents and optional native clients.
 
-This is the first source import for **WIZ-423 — Smoke Test Framework V1**. It remains a development capability pending runtime portability and first team pilot. See [import scope and remaining work](docs/import-status.md).
+The first repository release supports automated testing of a selected Wizard build: prepare a course, run its checks, and retain a local report. Start with the [automated build guide](docs/automated-build-testing.md). This is the WIZ-423 smoke framework; second-machine qualification remains a follow-up, documented in [import status](docs/import-status.md).
 
 ## Start without a Wizard build
 
-Requires Node.js 22.13 or newer; this import was verified with Node 24.19.0. There are no npm dependencies to install.
+Use Node.js 24 LTS; this release was verified with Node 24.19.0. The SQLite API requires at least Node 22.13. There are no npm dependencies to install.
 
 From the `wiz-ops` checkout:
 
@@ -45,7 +45,7 @@ Planning fingerprints the selected package, fixture recipe, generated media and 
 
 See [agent-friendly courses](docs/agent-courses.md) for explicit IDs, categories, groups, cancellation and recovery by request ID.
 
-For a course that prepares a desktop project, pauses for a tester, and resumes with Save/reopen verification, see [human checkpoints](docs/human-checkpoints.md). Its human observation is separate from the automated check counts below.
+The maintained `packaged-full` course contains 57 automated checks and runs without a desktop helper or human checkpoint. Desktop/service courses require a separate instrumented runtime. The existing [human checkpoint extension](docs/human-checkpoints.md) is outside the supported first-release workflow.
 
 ## What is included
 

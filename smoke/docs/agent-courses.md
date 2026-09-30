@@ -1,6 +1,6 @@
 # Agent-friendly courses
 
-Saved custom courses and one-off selections span packaged engine, instrumented desktop and background service checks through the same local API. A course can also end with a prepared human checkpoint and explicit automated continuation.
+Saved custom courses and one-off selections span packaged engine, instrumented desktop and background service checks through the same local API. For the first release, use [automated build testing](automated-build-testing.md). The optional human checkpoint extension is outside that shipping scope.
 
 ## What you can do
 
