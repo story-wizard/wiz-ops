@@ -8,9 +8,15 @@ Start the service as described below and open <http://127.0.0.1:4317>. In **Run 
 
 The default **All automated checks** course selects all 137 accepted definitions: 57 packaged-engine, 73 desktop and 7 background-service checks. It does not add a human checkpoint or accept the six remaining candidate definitions. Existing failures and unavailable capabilities remain Fail or Blocked in the results.
 
-The engine checks use the selected package. The other 80 checks require the separately identified instrumented test helper. Import the helper's configuration JSON once under **Set up desktop helper**; its files are validated and remembered in the workspace. Manual path entry remains available there. Choose **Build engine checks** for a 57-check run without that helper. A missing helper never silently reduces the all-checks course.
+The engine checks use the selected package. The other 80 checks use separately identified desktop test tools, chosen automatically from the testing station’s installed configuration or available retained setups. Testers do not need to select a helper. If those tools are missing, the dashboard explains that the station needs setup and keeps the full course disabled. **Build engine checks** remains available for a 57-check run. Overrides live under **More options → Test tools (advanced)**. Preparation and launch still verify the exact files and supported operations.
 
 **More** holds fixture, coverage and catalog-maintenance tools. They are not required to launch a run. If a start response is lost, the form retains its request ID and offers **Check start status** rather than starting another run.
+
+## Configure a testing station
+
+The setup owner places `desktop-runtime.json` in `SMOKE_DATA_DIR` alongside the installed test tools. It contains `app`, `cli`, `qtPlugin`, `bridge`, and optional `libraries` paths. Absolute paths and paths relative to `SMOKE_DATA_DIR` are supported; an existing `{ "runtime": { ... } }` descriptor also works. The dashboard reads this file automatically. Otherwise, it prefers the most recently used available setup, then saved runtime descriptors. Opening the dashboard checks file presence without launching Wizard or executing a test.
+
+The source repository does not bundle the instrumented app or native tools. They must be supplied with the testing station. The dashboard does not build or download them. Their identity and compatibility are checked during preparation, before a run is admitted.
 
 ## Prerequisites
 

@@ -11,7 +11,7 @@ function launcher({helper=false,lost=false,prepareError}={}){
  runInNewContext(source,context);
  context.configureRunSetup({render(){},toast(){},onStarted:async id=>opened.push(id),api:async(route,method,body)=>{
   calls.push({route,method,body});
-  if(route==='/run-setup')return {builds:[{app:'/Selected.app',label:'Selected build',available:true}],courses,runtimes:helper?[{id:'helper',runtime}]:[]};
+  if(route==='/run-setup')return {builds:[{app:'/Selected.app',label:'Selected build',available:true}],courses,defaultRuntimeId:helper?'helper':'',runtimes:helper?[{id:'missing',available:false,runtime:{app:'/Gone.app'}},{id:'helper',available:true,runtime}]:[]};
   if(route==='/plans'){if(prepareError)throw Error(prepareError);return {app:body.app,planHash:'frozen-plan'};}
   if(route==='/runner/start'){if(lost)throw Error('Response lost');return {runId:'actual-run'};}
   if(route==='/requests/stable-start-id')return {id:'actual-run'};
@@ -20,18 +20,20 @@ function launcher({helper=false,lost=false,prepareError}={}){
  return {context,events,calls,opened};
 }
 const submit=events=>events.submit({target:{id:'suite-setup-form'},preventDefault(){}});
-test('default course exposes all 137 checks and blocks start until its desktop helper exists',async()=>{
+test('default course exposes all 137 checks and blocks start until its test tools are installed',async()=>{
  const {context,events,calls}=launcher();await context.refreshRunSetup();
  const html=context.runSetupView(null);
- assert.match(html,/All automated checks · 137 checks/);assert.match(html,/Desktop helper needed for 80 checks/);
+ assert.match(html,/All automated checks · 137 checks/);assert.match(html,/Desktop test tools aren’t installed on this Mac/);
  assert.match(html,/type="submit" disabled>Start 137 checks/);assert.ok(!html.includes('launch-options" open'));
  await submit(events);assert.deepEqual(calls.map(c=>c.route),['/run-setup']);
  await events.change({target:{id:'suite-course',value:'packaged-full'}});
- assert.match(context.runSetupView(null),/>Start 57 checks/);assert.ok(!context.runSetupView(null).includes('Desktop helper needed'));
+ assert.match(context.runSetupView(null),/>Start 57 checks/);assert.ok(!context.runSetupView(null).includes('Desktop test tools aren’t installed'));
  await submit(events);assert.equal(calls.find(c=>c.route==='/plans').body.runtime,undefined);
 });
 test('one start action prepares the selected build and named course before admitting its exact plan',async()=>{
  const {context,events,calls,opened}=launcher({helper:true});await context.refreshRunSetup();
+ assert.ok(!context.runSetupView(null).includes('Desktop helper'));
+ assert.match(context.runSetupView(null),/type="submit" >Start 137 checks/);
  events.input({target:{id:'suite-name',value:'Friday release',dataset:{}}});await submit(events);
  assert.deepEqual(calls.map(c=>c.route),['/run-setup','/plans','/runner/start']);
  const plan=calls[1].body,start=calls[2].body;

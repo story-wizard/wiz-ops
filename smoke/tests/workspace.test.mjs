@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, rmSync, writeFileSync, realpathSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
@@ -28,6 +28,23 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     assert.ok(setup.courses.every(c=>!c.checkpoint));assert.deepEqual(setup.runtimes,[]);
     assert.equal((await fetch(base+'/run-setup.js')).status,200);assert.equal((await fetch(base+'/wizard-tokens.css')).status,200);
     assert.deepEqual((await request('/runs')).data,[],'Opening run setup must not launch tests');
+    assert.equal(setup.defaultRuntimeId,'');
+    const tools={app:'test-tools/Wizard.app',cli:'test-tools/wiz-cli',qtPlugin:'test-tools/libqcocoa.dylib',bridge:'test-tools/libwizard_smoke.dylib'};
+    mkdirSync(path.join(dir,tools.app,'Contents/MacOS'),{recursive:true});
+    for(const file of [tools.app+'/Contents/MacOS/wizard',tools.cli,tools.qtPlugin,tools.bridge])writeFileSync(path.join(dir,file),'Synthetic file; never executed');
+    writeFileSync(path.join(dir,'desktop-runtime.json'),JSON.stringify(tools));
+    const installed=(await request('/run-setup')).data;
+    assert.equal(installed.runtimes[0].id,installed.defaultRuntimeId);
+    assert.equal(installed.runtimes[0].runtime.app,realpathSync(path.join(dir,tools.app)));
+    assert.equal(installed.runtimes[0].available,true);
+    rmSync(path.join(dir,tools.bridge));
+    assert.equal((await request('/run-setup')).data.defaultRuntimeId,'','Missing native tools must not be selected automatically');
+    writeFileSync(path.join(dir,'desktop-runtime.json'),'invalid JSON');
+    const invalid=(await request('/run-setup')).data;
+    assert.equal(invalid.defaultRuntimeId,'');assert.match(invalid.runtimeSetupError,/configuration could not be read/);
+    rmSync(path.join(dir,'desktop-runtime.json'));
+    assert.deepEqual((await request('/runs')).data,[],'Automatic tool discovery must never start a test');
+
     assert.equal((await fetch(base+'/history')).status,404);
     writeFileSync(path.join(dir,'history.html'),'<h1>Retained history fixture</h1>');
     const history=await fetch(base+'/history');assert.equal(history.status,200);assert.match(history.headers.get('Content-Security-Policy'),/sandbox/);

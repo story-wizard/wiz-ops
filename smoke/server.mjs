@@ -55,18 +55,30 @@ const getRun=(id)=>{
 };
 function desktopExport(){const state=desktopState(dataDir);return {...state,jobs:state.jobs.map(j=>jobDetails(dataDir,j.id))};}
 async function runSetup(){
- const previous=db.prepare('SELECT package_json FROM executions ORDER BY updated_at DESC LIMIT 20').all().map(r=>JSON.parse(r.package_json)),builds=[],runtimes=await runtimeList(dataDir);
+ const previous=db.prepare('SELECT package_json FROM executions ORDER BY updated_at DESC LIMIT 20').all().map(r=>JSON.parse(r.package_json)),builds=[],runtimes=[],stored=await runtimeList(dataDir);
+ let runtimeSetupError='';
+ try{
+  const input=await readJSON(path.join(dataDir,'desktop-runtime.json')),configured=input.runtime||input;
+  const runtime=Object.fromEntries(['app','cli','qtPlugin','libraries','bridge'].filter(k=>configured[k]).map(k=>{if(typeof configured[k]!=='string')throw Error('Invalid installed test-tools configuration.');return [k,path.resolve(dataDir,configured[k])];}));
+  runtimes.push({id:digest(runtime),label:'Installed test tools',runtime});
+ }catch(e){if(e.code!=='ENOENT')runtimeSetupError='The installed test-tools configuration could not be read.';}
  for(const p of previous){
   if(typeof p.app==='string'&&!builds.some(b=>b.app===p.app))builds.push({app:p.app,label:p.version||path.basename(p.app),available:existsSync(p.app)});
-  if(p.runtime&&!runtimes.some(r=>r.id===digest(p.runtime)))runtimes.push({id:digest(p.runtime),label:'Configured desktop helper',runtime:p.runtime});
+  if(p.runtime&&!runtimes.some(r=>r.id===digest(p.runtime)))runtimes.push({id:digest(p.runtime),label:'Previously used test tools',runtime:p.runtime});
  }
  if(!builds.some(b=>b.app==='/Applications/Wizard.app')&&existsSync('/Applications/Wizard.app')){
   let label='Installed Wizard';try{label+=' ('+execFileSync('/usr/bin/plutil',['-extract','CFBundleShortVersionString','raw','-o','-','/Applications/Wizard.app/Contents/Info.plist'],{encoding:'utf8',timeout:1000}).trim()+')';}catch{}
   builds.push({app:'/Applications/Wizard.app',label,available:true});
  }
- for(const r of runtimes)r.label ||= path.basename(r.runtime.app);
+ for(const r of stored)if(!runtimes.some(candidate=>candidate.id===r.id))runtimes.push(r);
+ for(const r of runtimes){
+  r.label ||= path.basename(r.runtime.app);
+  const runtime=r.runtime;
+  r.available=['app','cli','qtPlugin'].every(k=>typeof runtime[k]==='string'&&path.isAbsolute(runtime[k])&&existsSync(runtime[k]))&&existsSync(path.join(runtime.app,'Contents/MacOS/wizard'))&&existsSync(runtime.bridge||path.join(dataDir,'native/styles/libwizard_smoke.dylib'))&&(!runtime.libraries||existsSync(runtime.libraries));
+ }
+ const defaultRuntimeId=runtimes.find(r=>r.available)?.id||'';
  const registry=checkRegistry(),courses=courseList(db).filter(c=>!c.checkpoint).map(c=>{try{const s=resolveSelection(db,{courseIds:[c.id]});return {...c,checkCount:s.effectiveIds.length,requirements:s.requirements,targets:Object.fromEntries(['packaged','desktop','service'].map(t=>[t,s.effectiveIds.filter(id=>registry.find(c=>c.id===id)?.target===t).length]))};}catch(e){return {...c,error:e.message};}});
- return {builds,courses,runtimes,project:'fresh'};
+ return {builds,courses,runtimes,defaultRuntimeId,runtimeSetupError,project:'fresh'};
 }
 async function runnerStatus(){
   recoverInterrupted(db);

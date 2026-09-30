@@ -19,7 +19,7 @@ npm start
 
 Open <http://127.0.0.1:4317>. Use `PORT=4318 npm start` if that port is occupied. The server binds only to loopback. Starting the service does not launch Wizard or run a course.
 
-The dashboard opens at **Run tests**: choose a build, choose a course, optionally name the run, and start. **All automated checks** selects the 137 accepted definitions and needs the configured desktop helper. **Build engine checks** selects 57 checks from the chosen package without that helper. Preparation is automatic; progress and reports live in **Results**.
+The dashboard opens at **Run tests**: choose a build, choose a course, optionally name the run, and start. **All automated checks** selects the 137 accepted definitions and automatically selects the installed desktop test tools. **Build engine checks** selects 57 checks from the chosen package without those tools. Preparation is automatic; progress and reports live in **Results**.
 
 A clean checkout shows the catalog and **no run history**. The versioned checklist contains criteria and coverage only; imported workbook outcomes are excluded. The field guide at `/explainer` describes checks and their operations; local evidence appears only when retained runs exist.
 
