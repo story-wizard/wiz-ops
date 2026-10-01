@@ -20,18 +20,20 @@ export function releaseBuilds(releases,runs=[]){
  }).sort((a,b)=>['Release','Nightly','Tagged'].indexOf(a.channel)-['Release','Nightly','Tagged'].indexOf(b.channel)||b.publishedAt.localeCompare(a.publishedAt));
 }
 export async function localBuilds(dataDir){const root=path.join(dataDir,'builds'),builds=[];let names;try{names=await readdir(root);}catch(e){if(e.code==='ENOENT')return [];throw e;}for(const name of names.filter(n=>!n.startsWith('.'))){try{const b=JSON.parse(await readFile(path.join(root,name,'build.json'),'utf8'));await access(b.app);builds.push({...b,available:true});}catch{}}return builds;}
-async function recentPages(endpoint,key,get=gh){const rows=[];for(let page=1;page<=3;page++){const response=await get(`${endpoint}?per_page=100&page=${page}`),items=key?response[key]:response;rows.push(...items);if(items.length<100)break;}return rows;}
-export async function findBuilds(dataDir,{refresh=false,get:provided}={}){
+async function githubPage(endpoint,key,get=gh,page=1){const response=await get(`${endpoint}?per_page=50&page=${page}`);return key?response[key]:response;}
+
+export async function findBuilds(dataDir,{refresh=false,get:provided,githubPage:providerPage=1}={}){
  const directory=catalogDirectory(dataDir);let catalog=await readBuildCatalog(directory),refreshError=null;
- if(refresh||!catalog||Date.now()-Date.parse(catalog.fetchedAt)>300000){
+ if(refresh||providerPage!==1||!catalog||Date.now()-Date.parse(catalog.fetchedAt)>300000){
   try{catalog=await refreshBuildCatalog(directory,async()=>{
+   catalog=await readBuildCatalog(directory);
    const get=provided||githubCatalogClient(directory);
-   const [releases,runs]=await Promise.allSettled([recentPages(`repos/${repository}/releases`,null,get),recentPages(`repos/${repository}/actions/workflows/build-release.yml/runs`,'workflow_runs',get)]);
+   const [releases,runs]=await Promise.allSettled([githubPage(`repos/${repository}/releases`,null,get,providerPage),githubPage(`repos/${repository}/actions/workflows/build-release.yml/runs`,'workflow_runs',get)]);
    if(releases.status==='rejected')throw releases.reason;
    const builds=await enrichPRAuthors(releaseBuilds(releases.value,runs.status==='fulfilled'?runs.value:[]),get);
-   const result={format:'wizard-build-catalog/v1',repository,limit:300,fetchedAt:new Date().toISOString(),attribution:'Authors of PRs referenced by the build tag and release notes',userLookupError:runs.status==='rejected'?'Workflow requester lookup unavailable.':null,sync:get.stats||null,builds:mergeCatalogBuilds(catalog?.builds||[],builds)};
+   const result={format:'wizard-build-catalog/v1',repository,limit:50,githubPageSize:50,nextGitHubPage:Math.max(catalog?.githubPageSize===50?catalog.nextGitHubPage:catalog?.limit===300?7:2,providerPage+1),hasMoreGitHub:providerPage===1?(catalog?.hasMoreGitHub??releases.value.length===50):releases.value.length===50,fetchedAt:new Date().toISOString(),attribution:'Authors of PRs referenced by the build tag and release notes',userLookupError:runs.status==='rejected'?'Workflow requester lookup unavailable.':null,sync:get.stats||null,builds:mergeCatalogBuilds(catalog?.builds||[],builds)};
    await atomicCatalogJSON(path.join(directory,'catalog.json'),result);return result;
-  });}catch(e){if(!catalog)throw e;refreshError='GitHub refresh failed. Showing the retained build catalog.';}
+  },providerPage);}catch(e){if(!catalog)throw e;refreshError='GitHub refresh failed. Showing the retained build catalog.';}
  }
  let currentUser=null;try{currentUser=(await (provided||gh)('user')).login;}catch{}
  const local=await localBuilds(dataDir);

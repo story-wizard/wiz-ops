@@ -6,9 +6,9 @@ In **Run tests**, choose **Find a build…** beside Build. Picking a build updat
 
 Athanor uses the testing Mac's existing `gh` authentication to read `story-wizard/wizard-release`. Run `gh auth status` if lookup fails. No credentials go into the dashboard or workspace.
 
-The finder reads up to 300 recent GitHub release records and lists their published macOS ZIP assets. It groups them as Releases, Nightlies, then Tagged builds, newest publication first within each group. Version tags, `story-weekly-*` tags and `release-*` tags count as Releases; `nightly-*` tags count as Nightlies; other tags count as Tagged builds. Drafts and Windows packages are excluded. The release flag alone does not distinguish official releases from feature builds.
+The finder fetches GitHub release records in batches of 50 and lists their published macOS ZIP assets. It groups them as Releases, Nightlies, then Tagged builds, newest publication first within each group. Version tags, `story-weekly-*` tags and `release-*` tags count as Releases; `nightly-*` tags count as Nightlies; other tags count as Tagged builds. Drafts and Windows packages are excluded. The release flag alone does not distinguish official releases from feature builds.
 
-Search by build name, tag, branch or a PR number present in those names. Filter by channel, PR author, architecture, download status and publication date. PR author supports several GitHub users; Mine selects the currently authenticated GitHub account. Saved views include that selection. Architecture comes from the asset name; Unspecified means the name provides no architecture. Refresh checks GitHub for changes. Named saved filters and the last view stay in this browser.
+Search the entire retained catalog by build name, tag, branch or recorded PR number. Filters apply before pagination. The table starts at 50 builds per page; Show offers 25, 50, 100, 250 or All cached builds. Load 50 older from GitHub extends the catalog without downloading packages. Filter by channel, PR author, architecture, download status and publication date. PR author supports several GitHub users; Mine selects the currently authenticated GitHub account. Saved views include that selection. Architecture comes from the asset name; Unspecified means the name provides no architecture. Refresh checks GitHub for changes. Named saved filters and the last view stay in this browser.
 
 PR author comes from the PRs referenced by the build tag and recorded release notes. The finder resolves each PR through GitHub and stores its author and link. A build can have several authors across components; selecting any one of them matches the build once. The workflow requester and publishing account remain separate metadata. The CLI returns `prAuthors`, `pullRequests`, `authorStatus`, `requestedBy`, `buildRunId` and `buildEvent` for agent filtering.
 
@@ -35,7 +35,9 @@ Run from `smoke/` with the local service running. Replace URL with its printed l
 
 ```sh
 node scripts/smoke.mjs builds --server URL
-node scripts/smoke.mjs builds --author me --server URL
+node scripts/smoke.mjs builds --author me --page 2 --server URL
+node scripts/smoke.mjs builds --page-size all --server URL
+node scripts/smoke.mjs builds --github-page 2 --server URL
 node scripts/smoke.mjs builds --author charrisIII,gianni-rosato --refresh --server URL
 node scripts/smoke.mjs build --tag nightly-YYYY.MM.DD-SHA --server URL
 node scripts/smoke.mjs build --asset ASSET_ID --server URL
@@ -44,6 +46,6 @@ node scripts/smoke.mjs build --path /absolute/path/to/Wizard.zip --server URL
 node scripts/smoke.mjs build --path /Applications/Wizard.app --server URL
 ```
 
-`builds` returns the ordered catalog with names, tags, asset identities, dates and cached app paths. Agents can filter that JSON themselves. `build` accepts exactly one source and returns the selected absolute app path and import metadata. Pass `result.app` to `plan --app`; importing does not launch Wizard or run a course.
+`builds` returns a filtered page with names, tags, asset identities, dates and cached app paths. Use `--page`, `--page-size` (1–500 or `all`) and `--author` to select records. The response includes `total`, `matching`, `page`, `pageSize`, `pageCount`, author facets, `nextGitHubPage` and `hasMoreGitHub`. `--github-page` loads a provider page into retained history; it is separate from the display page. `build` accepts exactly one source and returns the selected absolute app path and import metadata. Pass `result.app` to `plan --app`; importing does not launch Wizard or run a course.
 
 The HTTP equivalents are `GET /api/builds` (cached) or `GET /api/builds?refresh=1` (refresh), `POST /api/builds/import` with one of `tag`, `assetId`, `url` or `path`, and `POST /api/builds/archive` with an `application/zip` body. One import runs at a time. A lost response needs inspection of setup and the external builds directory before another import; never infer that the subsequent test started.

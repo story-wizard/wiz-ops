@@ -417,3 +417,6 @@ dialog::backdrop { background: #0d141db0; }
 .multi-select select[hidden], .multi-select:not([open]) > .multi-select-options { display:none !important; }
 .build-finder .dialog-top { position:sticky; top:0; z-index:20; display:flex; justify-content:space-between; align-items:center; padding:18px 22px; background:#222a33; border-bottom:1px solid #485768; }
 .build-finder .dialog-top h2 { margin:5px 0 0; }
+
+.build-pagination { display:flex; align-items:center; gap:12px; padding-top:16px; color:#aebbc9; font-size:12px; }
+.build-pagination [data-build="older"] { margin-left:auto; }

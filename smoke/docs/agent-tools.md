@@ -56,3 +56,5 @@ Atomic probes keep their evidence in the owned session directory. They do not cr
 `runner/engine.mjs` exports `PackagedEngine`. `runner/interactions.mjs` exports `ProjectSession` and rendering, ingest and state helpers. `desktop/adapter.mjs` exports session preparation, launch, application calls, native calls and shutdown. They remain ordinary modules, independent of the web UI.
 
 See the [interaction library](interaction-library.md) and the maintained checks for examples. Keep setup, action, independent verification and evidence distinct. Use explicit projects, timelines, assets and widgets rather than a guessed current selection.
+
+Build discovery displays 50 records per page by default. Filters search all retained metadata before pagination. Agents can use `builds --author me --page 2`, `--page-size all` for the cached catalog, and `--github-page N` to load older metadata in batches of 50. Inspect `nextGitHubPage` and `hasMoreGitHub` before requesting the next provider page.

@@ -82,3 +82,5 @@ git archive --format=tar.gz --output="$HOME/Library/Application Support/WizardSm
 ```
 
 This includes committed `smoke/` source only. It does not collect ignored runtime data or upload the archive. Record the Ops commit ID alongside the archive.
+
+Build discovery displays 50 records per page by default. Filters search all retained metadata before pagination. Agents can use `builds --author me --page 2`, `--page-size all` for the cached catalog, and `--github-page N` to load older metadata in batches of 50. Inspect `nextGitHubPage` and `hasMoreGitHub` before requesting the next provider page.

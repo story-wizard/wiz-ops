@@ -11,7 +11,9 @@ export WIZARD_BUILD_CATALOG_DIR="$HOME/Library/Application Support/WizardSmoke/w
 npm run open
 ```
 
-`GET /api/builds` returns the catalog with the viewer's GitHub login and this workstation's available app paths. `GET /api/builds?refresh=1` refreshes it. Agents use `node scripts/smoke.mjs builds --server URL`. `builds --author me` selects the connected user’s PR builds; pass comma-separated logins for several authors. Add `--refresh` to request a conditional refresh. A five-minute warm catalog needs no build/PR downloads; resolving the current viewer still uses GitHub's user endpoint.
+`GET /api/builds` returns a 50-build page of the catalog with the viewer's GitHub login and this workstation's available app paths. `GET /api/builds?refresh=1` refreshes it. Agents use `node scripts/smoke.mjs builds --server URL`. `builds --author me` selects the connected user’s PR builds; pass comma-separated logins for several authors. Add `--refresh` to request a conditional refresh. A five-minute warm catalog needs no build/PR downloads; resolving the current viewer still uses GitHub's user endpoint.
+
+Filters search the whole retained catalog before display pagination. API query parameters are `page` (default 1), `pageSize` (default 50; 1–500 or `all`), repeated `author`/`channel`/`architecture`/`availability`, `search` and `since`. `author=me` uses the authenticated viewer. Within a filter selections are OR; different filters are AND. The response includes `total`, `matching`, `page`, `pageSize`, `pageCount` and `facets.authors`. `githubPage` fetches an older provider page in batches of 50; use `nextGitHubPage`/`hasMoreGitHub` to walk history. All cached builds does not fetch more GitHub pages.
 
 The shared file has format `wizard-build-catalog/v1`, repository, refresh time, sync counts and a `builds` array. Entries are keyed by the GitHub asset ID within the recorded repository.
 
@@ -32,10 +34,10 @@ The PR author filter matches any selected author; a mixed-author build appears o
 
 ## Refresh and sharing
 
-The first refresh reads up to 300 release records and 300 build-workflow records, resolves their PR references, and writes the catalog. Later refreshes merge newly observed assets into retained history; older entries and their annotations stay available.
+The first refresh reads up to 50 release records and 50 build-workflow records, resolves their PR references, and writes the catalog. Load older requests the next 50 release records. Later refreshes merge newly observed assets into retained history; older entries and their annotations stay available.
 
 The `github/` directory holds endpoint, ETag, response body and check time. Conditional requests reuse unchanged responses on HTTP 304. PR author records are reused for a day and revalidated afterward. A failed refresh retains the prior catalog. The response's `sync` counts distinguish changed responses, unchanged responses and reused author records.
 
-Files are published through atomic rename. One Athanor process owns refresh while other tools read its API or shared file. Another tool can add an asset's namespaced annotations using an atomic file update; those annotations survive subsequent refreshes. Coordinate ownership before making Tower a refresh writer. This change defines the consumption contract; it does not modify Tower.
+Files are published through atomic rename. One Athanor process owns refresh while other tools read its API or shared file. A catalog writer can add an asset’s namespaced annotations; those annotations survive subsequent refreshes. Coordinate writer ownership for refresh and annotation updates so concurrent writers do not overwrite each other. This change defines the consumption contract; it does not modify Tower.
 
 The catalog stores no GitHub credentials, authenticated viewer identity, machine-local app paths or smoke results. It contains private repository metadata, so keep it in the team's intended local storage. Package validation and course preparation still happen when a build is selected for testing.

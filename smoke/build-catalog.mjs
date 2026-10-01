@@ -35,10 +35,23 @@ export async function enrichPRAuthors(builds,get){
  return builds.map(build=>{const pullRequests=buildPRReferences(build).map(p=>resolved.get(p.repository+'#'+p.number)),prAuthors=[...new Set(pullRequests.map(p=>p.author).filter(Boolean))].sort();return {...build,pullRequests,prAuthors,authorStatus:pullRequests.length&&pullRequests.every(p=>p.author)?'Complete':prAuthors.length?'Partial':'Unknown'};});
 }
 export async function readBuildCatalog(directory){try{const catalog=JSON.parse(await readFile(path.join(directory,'catalog.json'),'utf8'));if(catalog.format!=='wizard-build-catalog/v1'||catalog.repository!=='story-wizard/wizard-release'||!Array.isArray(catalog.builds)||!Number.isFinite(Date.parse(catalog.fetchedAt))||catalog.builds.some(b=>!Number.isSafeInteger(b.assetId)||typeof b.tag!=='string'||typeof b.label!=='string'||!Array.isArray(b.prAuthors)||b.prAuthors.some(a=>typeof a!=='string')))throw Error('Unsupported build catalog.');return catalog;}catch(e){if(e.code==='ENOENT')return null;throw e;}}
-export function refreshBuildCatalog(directory,refresh){if(!pending.has(directory))pending.set(directory,refresh().finally(()=>pending.delete(directory)));return pending.get(directory);}
+export function refreshBuildCatalog(directory,refresh,page=1){
+ const active=pending.get(directory);if(active)return active.page===page?active.promise:active.promise.catch(()=>{}).then(()=>refreshBuildCatalog(directory,refresh,page));
+ const promise=refresh().finally(()=>pending.delete(directory));pending.set(directory,{page,promise});return promise;
+}
 
 export function mergeCatalogBuilds(previous,incoming){
  const builds=new Map(previous.map(b=>[b.assetId,{...b,listedRecently:false}]));
- for(const b of incoming)builds.set(b.assetId,{...b,listedRecently:true,...(builds.get(b.assetId)?.annotations?{annotations:builds.get(b.assetId).annotations}:{})});
+ for(const b of incoming){const old=builds.get(b.assetId),sameRun=b.buildRunId&&b.buildRunId===old?.buildRunId;builds.set(b.assetId,{...b,listedRecently:true,...(sameRun&&!b.requestedBy?{requestedBy:old.requestedBy,buildEvent:old.buildEvent,buildRunUrl:old.buildRunUrl}:{}),...(old?.annotations?{annotations:old.annotations}:{})});}
  return [...builds.values()].sort((a,b)=>['Release','Nightly','Tagged'].indexOf(a.channel)-['Release','Nightly','Tagged'].indexOf(b.channel)||b.publishedAt.localeCompare(a.publishedAt));
+}
+
+export function buildCatalogPage(catalog,params){
+ const selected=key=>params.getAll(key).filter(Boolean),matches=(value,key)=>!selected(key).length||selected(key).includes(value),query=(params.get('search')||'').toLowerCase(),since=params.get('since')||'';
+ const authors=selected('author').map(a=>a==='me'?catalog.currentUser:a);if(authors.some(a=>!a))throw Error('Authenticate GitHub or choose an explicit PR author.');
+ const filtered=catalog.builds.filter(b=>(!authors.length||(b.prAuthors.length?b.prAuthors:['Unknown']).some(a=>authors.some(w=>w.toLowerCase()===a.toLowerCase())))&&matches(b.channel,'channel')&&matches(b.architecture,'architecture')&&matches(b.app?'Downloaded':'Available to download','availability')&&(!since||b.publishedAt.slice(0,10)>=since)&&(!query||[b.label,b.tag,b.asset,...b.prAuthors,...(b.pullRequests||[]).map(p=>p.repository+'#'+p.number)].join(' ').toLowerCase().includes(query)));
+ const size=params.get('pageSize')||'50';if(size!=='all'&&(!/^\d+$/.test(size)||Number(size)<1||Number(size)>500))throw Error('Choose 1–500 builds per page, or all.');
+ const pageSize=size==='all'?Math.max(1,filtered.length):Number(size),pageCount=Math.max(1,Math.ceil(filtered.length/pageSize)),requested=Number(params.get('page')||1);if(!Number.isSafeInteger(requested)||requested<1||requested>10000)throw Error('Choose a positive build page number.');
+ const page=Math.min(requested,pageCount),facets={authors:[...new Set(catalog.builds.flatMap(b=>b.prAuthors.length?b.prAuthors:['Unknown']))].sort()};
+ return {...catalog,total:catalog.builds.length,matching:filtered.length,page,pageSize,pageCount,facets,builds:filtered.slice((page-1)*pageSize,page*pageSize)};
 }
