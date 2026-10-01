@@ -109,6 +109,7 @@ body::after {
 .report-banner { --scene-size: max(120%, 357px); align-items: center; min-height: 119px; }
 .report-banner .smoke-brand:not(.smoke-wordmark) { font-family: Georgia, 'Times New Roman', serif; font-size: 24px; }
 .header-actions { position:relative; z-index:3; padding:0; gap:14px; background:transparent; }
+.page-header .header-actions { position:absolute; right:calc(50% - 50vw + 16px); bottom:50px; }
 .header-actions > .text-button, .header-actions .workspace-menu > summary {
   color:#b8c5d2;
   padding:5px 3px;
