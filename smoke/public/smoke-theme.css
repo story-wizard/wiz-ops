@@ -420,3 +420,9 @@ dialog::backdrop { background: #0d141db0; }
 
 .build-pagination { display:flex; align-items:center; gap:12px; padding-top:16px; color:#aebbc9; font-size:12px; }
 .build-pagination [data-build="older"] { margin-left:auto; }
+
+/* Results reuse the report drawer, keeping its evidence viewer sandboxed. */
+dialog.result-details { width:min(720px,70vw); padding:0; z-index:30; animation:detail-slide .22s ease-out; }
+.result-details iframe { display:block; width:100%; height:100%; border:0; background:#222a33; }
+@keyframes detail-slide { from { transform:translateX(100%); } to { transform:translateX(0); } }
+@media(prefers-reduced-motion:reduce) { dialog.result-details { animation:none; } }

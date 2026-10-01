@@ -101,3 +101,16 @@ test('explicit build launch binds to reviewed plan and never retries an uncertai
   await assert.rejects(()=>startPrepared({app,planHash:hash,operator:'Tester',base:'https://example.com'}),/loopback/);
  }finally{await new Promise(resolve=>server.close(resolve));await rm(app,{recursive:true,force:true});}
 });
+
+
+test('embedded report details open directly, switch checks in one drawer and close back to Results',async()=>{
+ const source=await readFile(new URL('../reports.mjs',import.meta.url),'utf8'),controls=source.slice(source.indexOf('const detailControls=`')+'const detailControls=`'.length,source.indexOf('`;\nexport const reportScriptHash'));
+ const listeners={},messages=[],panels=[{dataset:{panel:'0'}},{dataset:{panel:'1'}}],buttons=Object.fromEntries(['detail-close','detail-prev','detail-next','detail-position'].map(id=>[id,{addEventListener(event,fn){listeners[id+':'+event]=fn;}}]));
+ let modal=0,shown=0;const dialog={open:false,querySelectorAll:()=>panels,show(){shown++;this.open=true;},showModal(){modal++;this.open=true;},addEventListener(event,fn){listeners['dialog:'+event]=fn;},close(){this.open=false;listeners['dialog:close']();}};
+ const rows=[{dataset:{checkId:'A',order:'0'},hidden:false},{dataset:{checkId:'B',order:'1'},hidden:false}],location={search:'?detail=1',hash:'#check=A'},window={parent:{postMessage:message=>messages.push(message)},addEventListener(event,fn){listeners['window:'+event]=fn;}};
+ const document={body:{classList:{add:name=>assert.equal(name,'detail-only')}},querySelector(selector){return selector==='#test-detail'?dialog:buttons[selector.slice(1)];},addEventListener(event,fn){listeners['document:'+event]=fn;}};
+ runInNewContext(controls,{document,window,location,rows,body:{addEventListener(){}},URLSearchParams});
+ assert.equal(shown,1);assert.equal(modal,0);assert.equal(panels[0].hidden,false);assert.equal(panels[1].hidden,true);
+ location.hash='#check=B';listeners['window:hashchange']();assert.equal(shown,1);assert.equal(panels[0].hidden,true);assert.equal(panels[1].hidden,false);
+ listeners['detail-close:click']();assert.equal(messages[0].type,'athanor-close-details');assert.equal(dialog.open,false);
+});

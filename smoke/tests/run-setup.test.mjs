@@ -23,7 +23,7 @@ const submit=events=>events.submit({target:{id:'suite-setup-form'},preventDefaul
 test('tab navigation refreshes setup before switching and preserves the current view on a failed refresh',async()=>{
  const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8'),calls=[],state={tab:'runs',selectedRun:'existing'};
  const source=app.slice(app.indexOf('async function navigateTab('),app.indexOf('function tag('));
- const context={state,refreshRunSetup:async()=>calls.push('setup'),refreshDesktop:async()=>calls.push('desktop'),render:()=>calls.push('render'),toast:message=>calls.push(message)};
+ const context={$:()=>null,state,refreshRunSetup:async()=>calls.push('setup'),refreshDesktop:async()=>calls.push('desktop'),render:()=>calls.push('render'),toast:message=>calls.push(message)};
  runInNewContext(source,context);await context.navigateTab('setup');
  assert.deepEqual(calls,['setup','render']);assert.equal(state.tab,'setup');assert.equal(state.selectedRun,null);
  context.refreshRunSetup=async()=>{throw Error('Service unavailable');};state.tab='runs';state.selectedRun='existing';calls.length=0;
