@@ -62,8 +62,8 @@ body::after {
 }
 .page-header h1.smoke-brand { font-family: Georgia, 'Times New Roman', serif; font-size: 36px; line-height: 1.1; font-weight: 700; letter-spacing: .01em; }
 .page-header h1.smoke-wordmark, .report-banner .smoke-wordmark {
-  width: 250px;
-  height: 96px;
+  width: 220px;
+  height: 86px;
   margin: 0;
   font-size: 0;
   color: transparent;
@@ -74,8 +74,11 @@ body::after {
 }
 .smoke-wordmark .brand-spark { display: none; }
 .smoke-wordmark::before, .smoke-wordmark::after { display: none; }
-.report-banner .smoke-wordmark { width:200px; height:90px; }
-.wizard-signature { position:fixed; right:16px; bottom:12px; width:82px; height:auto; opacity:.55; filter:invert(1); pointer-events:none; z-index:4; }
+.report-banner .smoke-wordmark { width:180px; height:80px; }
+.top { position:relative; }
+.wizard-signature { position:absolute; right:16px; bottom:8px; width:64px; height:auto; opacity:.55; filter:invert(1); pointer-events:none; z-index:2; }
+.page-header .wizard-signature, .report-banner .wizard-signature { right:calc(50% - 50vw + 16px); }
+.top .wizard-signature { bottom:5px; }
 .smoke-brand::before, .smoke-brand::after {
   content: "";
   position: absolute;
@@ -114,7 +117,7 @@ body::after {
 }
 @media(max-width:600px) {
   .page-header h1.smoke-brand { font-size: 28px; }
-  .page-header h1.smoke-wordmark { width:164px; height:70px; font-size:0; }
+  .page-header h1.smoke-wordmark { width:150px; height:62px; font-size:0; }
   .page-header { min-height: 138px; flex-wrap: wrap; align-content: center; gap: 12px; }
   .header-actions { padding: 5px 7px; }
   .header-actions .text-button, .header-actions summary { font-size: 11px; }
