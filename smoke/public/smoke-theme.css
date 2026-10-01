@@ -5,6 +5,7 @@
   --control-accent: #447ab0;
   --control-hover: #5385b6;
   --brand-smoke: url('/brand-smoke.png');
+  --scene-width: clamp(330px, 34.5vw, 465px);
 }
 body {
   min-height: 100vh;
@@ -35,17 +36,19 @@ body::after {
   animation: smoke-drift 28s ease-in-out infinite alternate;
 }
 .page-header h1, main > header > span, .top > span { color: #c7ddf1; }
-.page-header, .report-banner { position: relative; isolation: isolate; min-height: clamp(220px, 23vw, 310px); }
+.page-header, .report-banner { position: relative; isolation: isolate; min-height: clamp(110px, 11.5vw, 155px); }
 .page-header::before, .report-banner::before {
   content: "";
   position: absolute;
   z-index: -1;
   inset: 0 calc(50% - 50vw);
   border-bottom: 1px solid #789bb338;
-  background-image: linear-gradient(90deg, #10192585, transparent 50%, #10192535), url('/athanor-scene.jpg');
-  background-position: center 24%;
-  background-size: cover;
-  box-shadow: inset 0 -36px 28px -24px #181c22;
+  background-color: #101925;
+  background-image: linear-gradient(90deg, #101925 calc(100% - var(--scene-width)), #10192515 calc(100% - var(--scene-width) + 100px), #10192520), url('/athanor-scene.jpg');
+  background-position: center, right center;
+  background-size: 100% 100%, auto 100%;
+  background-repeat: no-repeat;
+  box-shadow: inset 0 -24px 20px -18px #181c22;
   pointer-events: none;
 }
 .smoke-brand {
@@ -57,17 +60,17 @@ body::after {
   text-shadow: 0 2px 4px #07101e, 0 0 16px #82b5e045;
   animation: brand-float 9s ease-in-out infinite alternate;
 }
-.page-header h1.smoke-brand { font-family: Georgia, 'Times New Roman', serif; font-size: 44px; line-height: 1.1; font-weight: 700; letter-spacing: .01em; }
-.brand-moniker { display: block; padding-left: 38px; margin-top: 8px; font-size: 18px; font-weight: 400; letter-spacing: .03em; color: #c3d5e8; }
+.page-header h1.smoke-brand { font-family: Georgia, 'Times New Roman', serif; font-size: 36px; line-height: 1.1; font-weight: 700; letter-spacing: .01em; }
+.brand-moniker { display: block; padding-left: 32px; margin-top: 4px; font-size: 15px; font-weight: 400; letter-spacing: .03em; color: #c3d5e8; }
 .smoke-brand::before, .smoke-brand::after {
   content: "";
   position: absolute;
   z-index: -1;
   pointer-events: none;
   width: calc(100% + 100px);
-  height: 140px;
+  height: 105px;
   left: -50px;
-  top: -45px;
+  top: -30px;
   background-image: var(--brand-smoke);
   background-size: contain;
   background-repeat: no-repeat;
@@ -80,26 +83,28 @@ body::after {
 }
 .smoke-brand::after {
   opacity: .16;
-  top: -35px;
+  top: -24px;
   animation: brand-cloud 19s -7s ease-in-out infinite alternate-reverse;
 }
 .brand-spark { color: #b8daf6; margin-right: 9px; font-size: .85em; text-shadow: 0 0 12px #80c3f0; }
 .smoke-brand-compact { font-size: 14px; letter-spacing: .01em; }
 .smoke-brand-compact::before, .smoke-brand-compact::after { height: 90px; top: -30px; opacity: .3; }
-.report-banner { align-items: center; min-height: 190px; }
+.report-banner { --scene-width: 285px; align-items: center; min-height: 95px; }
 .report-banner .smoke-brand { font-family: Georgia, 'Times New Roman', serif; font-size: 24px; }
-.header-actions { position: relative; z-index: 1; padding: 7px 11px; background: #111b28b3; border-radius: 6px; }
+.header-actions { position: relative; z-index: 1; margin-right: calc(var(--scene-width) - 24px); padding: 7px 11px; background: #111b28b3; border-radius: 6px; }
 .header-actions .text-button, .header-actions summary { color: #c3d5e8; }
 @keyframes brand-float { from { transform: translateY(1px); } to { transform: translateY(-2px); } }
 @keyframes brand-cloud {
   from { transform: translate(-5px, 3px) scale(.94, .9); }
   to { transform: translate(6px, -6px) scale(1.04, 1.08); }
 }
+@media(max-width:760px) { .header-actions { margin-right: 0; } }
 @media(max-width:600px) {
-  .page-header h1.smoke-brand { font-size: 32px; }
-  .brand-moniker { font-size: 16px; padding-left: 29px; }
-  .page-header { min-height: 220px; flex-wrap: wrap; align-content: center; gap: 22px; }
-  .page-header::before, .report-banner::before { background-position: 58% center; }
+  .page-header h1.smoke-brand { font-size: 28px; }
+  .brand-moniker { font-size: 14px; padding-left: 25px; }
+  .page-header { min-height: 110px; flex-wrap: wrap; align-content: center; gap: 12px; }
+  .header-actions { padding: 5px 7px; }
+  .header-actions .text-button, .header-actions summary { font-size: 11px; }
   .smoke-brand::before, .smoke-brand::after { width: calc(100% + 40px); left: -20px; }
   .smoke-brand-compact { font-size: 12px; }
 }
