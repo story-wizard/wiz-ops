@@ -272,6 +272,31 @@ th button { background:none; border:0; padding:0; color:inherit; }
 .runner-bar, .notice { background:#222a33; border:1px solid #3b4857; border-radius:6px; }
 #content > section > h3 { margin:24px 0 14px; }
 .filterbar, .controls { gap:12px; }
+.filterbar { flex-wrap:wrap; }
+.multi-select-field { display:grid; gap:6px; font-size:12px; color:#aab6c3; }
+.multi-select { position:relative; min-width:140px; font-size:13px; color:#d4dce5; }
+.multi-select > summary { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:36px; padding:7px 10px; list-style:none; cursor:pointer; border:1px solid #485768; border-radius:5px; background:#1d232b; white-space:nowrap; }
+.multi-select > summary::-webkit-details-marker { display:none; }
+.multi-select > summary::after { content:'⌄'; color:#8cbee7; }
+.multi-select[open] { z-index:15; }
+.multi-select-options { position:absolute; top:calc(100% + 5px); left:0; min-width:240px; max-height:340px; overflow:auto; padding:8px; background:#27313d; border:1px solid #52677d; border-radius:6px; box-shadow:0 8px 24px #0006; }
+.multi-select-options label { display:flex; flex-direction:row; align-items:center; gap:9px; padding:8px; margin:0; color:#d4dce5; cursor:pointer; font-size:13px; white-space:nowrap; }
+.multi-select-options label:hover { background:#35465a; border-radius:4px; }
+.multi-select-options input[type=checkbox] { margin:0; min-height:0; accent-color:#8cbee7; }
+.multi-select-options button { display:block; border:0; background:none; color:#8cbee7; padding:7px 8px; font-size:12px; margin-bottom:4px; }
+.multi-select-field > .multi-select { width:100%; }
+.filter-presets { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-basis:100%; padding-top:4px; font-size:12px; }
+.filter-presets select { min-width:160px; max-width:230px; }
+.filter-presets button, .filter-save > summary { min-height:32px; border:1px solid #485768; border-radius:5px; background:#27313d; padding:6px 10px; color:#c7d3df; cursor:pointer; font-size:12px; }
+.filter-save { position:relative; margin:0; padding:0; border:0; }
+.filter-save[open] { z-index:16; }
+.filter-save .filter-save-form { position:absolute; top:calc(100% + 6px); right:0; display:grid; gap:12px; width:260px; padding:14px; background:#27313d; border:1px solid #52677d; border-radius:6px; box-shadow:0 8px 24px #0006; }
+.filter-save label { display:grid; gap:6px; color:#aab6c3; font-size:12px; }
+.filter-save input { width:100%; min-height:36px; }
+.filter-save-status { color:#8cbee7; font-size:12px; }
+.controls .multi-select-field { flex:0 1 auto; }
+.controls label:first-child { flex:1; }
+.more-filters > div .multi-select-options { position:relative; margin-top:6px; max-height:200px; min-width:0; width:100%; }
 .filterbar select { background:#1d232b; border-color:#485768; }
 .controls input, .controls select, .controls button { min-height:36px; }
 .workspace-menu > div { padding:8px; }
@@ -371,3 +396,24 @@ dialog::backdrop { background: #0d141db0; }
   .table, .table-wrap { background: white; box-shadow: none; }
   th { background: #eee; color: #333; }
 }
+
+.multi-select { margin:0; padding:0; border:0; }
+
+.build-finder { width:min(1200px,94vw); max-width:none; padding:0; max-height:88vh; }
+.build-finder-content { padding:22px; }
+.build-source-tabs { display:flex; gap:10px; margin-bottom:22px; }
+.build-finder .table-wrap { max-height:48vh; overflow:auto; }
+.build-finder .filterbar { gap:12px; }
+.build-finder .filterbar label { display:grid; gap:6px; font-size:12px; }
+.build-finder .search-field { flex:1; min-width:230px; }
+.build-finder .filterbar input { padding:9px; }
+.build-finder .filter-presets { margin-bottom:6px; }
+.build-finder .build-path { font-size:12px; overflow-wrap:anywhere; max-width:600px; }
+.build-import-fields { display:grid; gap:16px; }
+.build-import-fields > button { justify-self:start; }
+.build-status { color:#b6d7f1; }
+.field-label > [data-setup="find-build"] { margin-left:auto; }
+
+.multi-select select[hidden], .multi-select:not([open]) > .multi-select-options { display:none !important; }
+.build-finder .dialog-top { position:sticky; top:0; z-index:20; display:flex; justify-content:space-between; align-items:center; padding:18px 22px; background:#222a33; border-bottom:1px solid #485768; }
+.build-finder .dialog-top h2 { margin:5px 0 0; }

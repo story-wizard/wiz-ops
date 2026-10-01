@@ -1,3 +1,5 @@
+import {findBuilds,localBuilds,importBuild,buildStage,receiveArchive} from './builds.mjs';
+import {rm} from 'node:fs/promises';
 import http from 'node:http';
 import {checkpoint as getCheckpoint,waitingCheckpoints,checkpointRequest,saveCheckpoint} from './runner/checkpoints.mjs';
 import {towerSnapshot} from './tower.mjs';
@@ -48,7 +50,7 @@ recoverInterrupted(db);
 const checkpoint=JSON.parse(readFileSync(path.join(root,'catalog/checkpoints/logan-2026-09-25-2.json')));
 const enums={execution:['Automated','Human','Unassigned'],course:['First automated','Local desktop','Local services','Human','Later','Backlog'],readiness:['Needs mapping','Needs capability','In development','Ready for pilot','Ready','Human checklist','Draft'],priority:['P0','P1','P2'],environment:['Local','NAS'],gpScope:['GP v0','Extension','Review']};
 const statuses=['Not run','Running','Pass','Fail','Blocked','N/A','Unknown'];
-let preparing=false;
+let preparing=false,importingBuild=false;
 const catalog=()=>db.prepare('SELECT definition FROM tests ORDER BY rowid').all().map(r=>JSON.parse(r.definition));
 const getRun=(id)=>{
   const run=db.prepare('SELECT * FROM runs WHERE id=?').get(id); if(!run)return null;
@@ -76,6 +78,7 @@ async function runSetup(){
   const runtime=r.runtime;
   r.available=['app','cli','qtPlugin'].every(k=>typeof runtime[k]==='string'&&path.isAbsolute(runtime[k])&&existsSync(runtime[k]))&&existsSync(path.join(runtime.app,'Contents/MacOS/wizard'))&&existsSync(runtime.bridge||path.join(dataDir,'native/styles/libwizard_smoke.dylib'))&&(!runtime.libraries||existsSync(runtime.libraries));
  }
+ for(const b of await localBuilds(dataDir))if(!builds.some(p=>p.app===b.app))builds.push({...b,label:b.label||b.asset||path.basename(b.app)});
  const defaultRuntimeId=runtimes.find(r=>r.available)?.id||'';
  const registry=checkRegistry(),courses=courseList(db).filter(c=>!c.checkpoint).map(c=>{try{const s=resolveSelection(db,{courseIds:[c.id]});return {...c,checkCount:s.effectiveIds.length,requirements:s.requirements,targets:Object.fromEntries(['packaged','desktop','service'].map(t=>[t,s.effectiveIds.filter(id=>registry.find(c=>c.id===id)?.target===t).length]))};}catch(e){return {...c,error:e.message};}});
  return {builds,courses,runtimes,defaultRuntimeId,runtimeSetupError,project:'fresh'};
@@ -116,6 +119,13 @@ const server=http.createServer(async(req,res)=>{
     if(!/^(127\.0\.0\.1|localhost):\d+$/.test(host))return send(403,{error:'Local access only.'});
     const url=new URL(req.url,`http://${host}`), parts=url.pathname.split('/').filter(Boolean);
     if(url.pathname.startsWith('/api/')){
+      if(url.pathname==='/api/builds/archive'&&req.method==='POST'){
+        if(req.headers.origin&&req.headers.origin!==`http://${host}`)return send(403,{error:'Cross-origin writes are not accepted.'});
+        if(req.headers['content-type']!=='application/zip')return send(415,{error:'ZIP is required.'});
+        if(importingBuild)fail(409,'Another build import is active.');importingBuild=true;let stage;
+        try{stage=await buildStage(dataDir);await receiveArchive(req,path.join(stage,'package.zip'));return send(201,await importBuild(dataDir,{path:path.join(stage,'package.zip')},{stage}));}
+        catch(e){fail(400,e.message);}finally{if(stage)await rm(stage,{recursive:true,force:true});importingBuild=false;}
+      }
       let body={};
       if(['POST','PATCH'].includes(req.method)){
         if(req.headers.origin&&req.headers.origin!==`http://${host}`)return send(403,{error:'Cross-origin writes are not accepted.'});
@@ -177,6 +187,11 @@ const server=http.createServer(async(req,res)=>{
       }
       if(req.method==='GET'&&url.pathname==='/api/runtimes')return send(200,{format:'wizard-smoke-runtimes/v1',runtimes:await runtimeList(dataDir)});
       if(req.method==='POST'&&url.pathname==='/api/runtimes'){try{return send(201,await saveRuntime(dataDir,body));}catch(e){fail(409,e.message);}}
+      if(req.method==='GET'&&url.pathname==='/api/builds'){try{return send(200,await findBuilds(dataDir));}catch(e){fail(502,'GitHub builds unavailable. Check gh auth status. '+e.message);}}
+      if(req.method==='POST'&&url.pathname==='/api/builds/import'){
+        if(importingBuild)fail(409,'Another build import is active.');importingBuild=true;
+        try{return send(201,await importBuild(dataDir,body));}catch(e){fail(400,e.message);}finally{importingBuild=false;}
+      }
       if(req.method==='GET'&&url.pathname==='/api/run-setup')return send(200,await runSetup());
       if(req.method==='GET'&&parts[1]==='plans'&&parts.length===3){try{return send(200,await storedPlan(parts[2]));}catch(e){fail(409,e.message);}}
       if(req.method==='GET'&&url.pathname==='/api/courses')return send(200,courseList(db));
@@ -307,7 +322,7 @@ const server=http.createServer(async(req,res)=>{
       let content;try{content=readFileSync(path.join(dataDir,'exports',parts[1]));}catch{fail(404,'Export not found.');}
       res.writeHead(200,{'Content-Type':parts[1].endsWith('.csv')?'text/csv; charset=utf-8':'application/json','Content-Disposition':`attachment; filename="${parts[1]}"`,'X-Content-Type-Options':'nosniff'});return res.end(content);
     }
-    const assets={'/design-preview':['design-preview.html','text/html'],'/design-preview.js':['design-preview.js','text/javascript'],'/explainer':['explainer.html','text/html'],'/explainer.js':['explainer.js','text/javascript'],'/explainer.css':['explainer.css','text/css'],'/':['index.html','text/html'],'/desktop.js':['desktop.js','text/javascript'],'/run-setup.js':['run-setup.js','text/javascript'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css'],'/wizard-theme.css':['wizard-theme.css','text/css'],'/smoke-theme.css':['smoke-theme.css','text/css'],'/run-display.js':['run-display.js','text/javascript'],'/athanor-scene.jpg':['athanor-scene.jpg','image/jpeg'],'/brand-smoke.png':['brand-smoke.png','image/png'],'/athanor-wordmark.png':['athanor-wordmark.png','image/png'],'/wizard-logo.svg':['wizard-logo.svg','image/svg+xml'],'/wizard-tokens.css':['wizard-tokens.css','text/css'],'/favicon.svg':['favicon.svg','image/svg+xml']};
+    const assets={'/filters.js':['filters.js','text/javascript'],'/build-finder.js':['build-finder.js','text/javascript'],'/design-preview':['design-preview.html','text/html'],'/design-preview.js':['design-preview.js','text/javascript'],'/explainer':['explainer.html','text/html'],'/explainer.js':['explainer.js','text/javascript'],'/explainer.css':['explainer.css','text/css'],'/':['index.html','text/html'],'/desktop.js':['desktop.js','text/javascript'],'/run-setup.js':['run-setup.js','text/javascript'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css'],'/wizard-theme.css':['wizard-theme.css','text/css'],'/smoke-theme.css':['smoke-theme.css','text/css'],'/run-display.js':['run-display.js','text/javascript'],'/athanor-scene.jpg':['athanor-scene.jpg','image/jpeg'],'/brand-smoke.png':['brand-smoke.png','image/png'],'/athanor-wordmark.png':['athanor-wordmark.png','image/png'],'/wizard-logo.svg':['wizard-logo.svg','image/svg+xml'],'/wizard-tokens.css':['wizard-tokens.css','text/css'],'/favicon.svg':['favicon.svg','image/svg+xml']};
     if(!assets[url.pathname])return send(404,{error:'File not found.'});
     const [file,type]=assets[url.pathname];const content=readFileSync(path.join(root,'public',file));
     res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'self'"});res.end(req.method==='HEAD'?undefined:content);

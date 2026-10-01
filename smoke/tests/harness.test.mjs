@@ -8,6 +8,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {checkHarnessBundle,installHarness} from '../runner/harness.mjs';
 import {installedRuntime,runtimeIdentity,runtimeEnvironment} from '../runner/runtime.mjs';
 import {ROOT,fingerprint,digest,writeJSON,readJSON,inside} from '../runner/files.mjs';
+import {snapshotSource} from '../kits.mjs';
 import {openDashboard} from '../runner/browser.mjs';
 
 test('source launcher starts a clean workspace without a bundle or browser and shuts down its service',async()=>{
@@ -22,6 +23,11 @@ test('source launcher starts a clean workspace without a bundle or browser and s
   });
   const runs=await (await fetch(url+'api/runs')).json();assert.deepEqual(runs,[]);
   const catalog=await (await fetch(url+'api/catalog')).json();assert.ok(catalog.tests.length>0);
+  for(const file of ['filters.js','build-finder.js'])assert.equal((await fetch(url+file)).status,200);
+  const bad=await fetch(url+'api/builds/archive',{method:'POST',headers:{'Content-Type':'application/zip'},body:'invalid ZIP'});assert.equal(bad.status,400);assert.match((await bad.json()).error,/zip/i);
+  const cross=await fetch(url+'api/builds/archive',{method:'POST',headers:{'Content-Type':'application/zip',Origin:'https://example.com'},body:'invalid ZIP'});assert.equal(cross.status,403);
+  const invalid=await fetch(url+'api/builds/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:'http://example.com/archive.zip'})});assert.equal(invalid.status,400);assert.match((await invalid.json()).error,/HTTPS/);
+
   await assert.rejects(()=>readJSON(path.join(data,'desktop-runtime.json')),e=>e.code==='ENOENT');
   await assert.rejects(()=>readJSON(path.join(data,'browser.json')),e=>e.code==='ENOENT');
   child.kill('SIGTERM');assert.equal(await exited,0);
@@ -100,4 +106,8 @@ test('agents resolve installed tools without a runtime argument and validate the
   await mkdir(path.join(data,'libraries/qml'));
   assert.equal(runtimeEnvironment(actual).QML_IMPORT_PATH,path.join(data,'libraries/qml'),'Relocated QML panels must resolve retained imports without a developer Qt installation');
  }finally{await rm(data,{recursive:true,force:true});}
+});
+
+test('source snapshots include Build finder backend, browser controls and ZIP validation',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'smoke source finder '));try{await snapshotSource(root);for(const file of ['builds.mjs','public/build-finder.js','public/filters.js','scripts/validate-build-zip.py'])assert.ok((await readFile(path.join(root,file))).length);}finally{await rm(root,{recursive:true,force:true});}
 });

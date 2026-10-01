@@ -36,7 +36,16 @@ test('report retains exact outcomes, detects missing or mismatched evidence and 
   const row=(order,title,status,area,text)=>({dataset:{order:String(order),title,result:status,area,target:area==='Project'?'packaged':'desktop'},textContent:title+' '+text,hidden:false});
   const rows=[row(0,'Zebra','Pass','Project','project.read'),row(1,'Alpha','Fail','Timeline','clip.split'),row(2,'Beta','Unknown','Project','project.read')],body={rows,append(r){rows.splice(rows.indexOf(r),1);rows.push(r);}};
   const fields=Object.fromEntries(['search','result','area','target','sort','visible-count','empty','reset'].map(id=>[id,{value:id==='sort'?'course':'',handlers:{},addEventListener(event,fn){this.handlers[event]=fn;}}]));
-  runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],{document:{querySelector(selector){return selector==='#checks tbody'?body:fields[selector.slice(1)];}}});
+  for(const id of ['result','area','target']){
+   const f=fields[id];f.multiple=true;f.options=[...new Set(rows.map(r=>r.dataset[id]))].map(value=>({value,selected:false}));
+   Object.defineProperty(f,'value',{get(){return this.options.find(o=>o.selected)?.value||'';},set(v){for(const o of this.options)o.selected=o.value===v;}});
+   Object.defineProperty(f,'selectedOptions',{get(){return this.options.filter(o=>o.selected);}});
+  }
+  const location={hash:'#check=CHECK',replace(value){this.hash=value;}};
+  runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],{URLSearchParams,location,document:{getElementById(id){return fields[id];},querySelectorAll(){return [];},querySelector(selector){return selector==='#checks tbody'?body:fields[selector.slice(1)];}}});
+  assert.match(location.hash,/check=CHECK/);assert.match(location.hash,/filters=/);
+  fields.result.options.filter(o=>['Pass','Fail'].includes(o.value)).forEach(o=>o.selected=true);fields.result.handlers.change();
+  assert.deepEqual(rows.filter(r=>!r.hidden).map(r=>r.dataset.title),['Zebra','Alpha']);fields.reset.handlers.click();
   assert.equal(fields['visible-count'].textContent,'3 of 3 checks');
   fields.target.value='desktop';fields.target.handlers.change();assert.deepEqual(rows.filter(r=>!r.hidden).map(r=>r.dataset.title),['Alpha']);fields.reset.handlers.click();
   fields.sort.value='result';fields.sort.handlers.change();assert.deepEqual(rows.map(r=>r.dataset.title),['Alpha','Beta','Zebra']);

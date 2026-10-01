@@ -2,7 +2,7 @@
 
 Distribute a harness bundle to testers. It contains the source snapshot, dashboard, agent tools, instrumented desktop app, paired CLI, Cocoa plugin, native adapter and all discovered non-system desktop libraries, including Qt frameworks and the matching QML import modules and plugins. A source clone contains the bundle builder rather than those binaries.
 
-The build under test remains a separate choice. Node.js 24 or newer, the selected package's ingest runtime, FFmpeg/FFprobe and any course-specific offline speech model are still required. This bundle does not install the target Wizard build or download a model.
+The build under test remains a separate choice. Node.js 24 or newer, the selected package's ingest runtime, FFmpeg/FFprobe and any course-specific offline speech model are still required. The Build finder can download and select the target Wizard package using the testing Mac’s GitHub connection; see [Build finder](build-finder.md) for `gh`, Python and macOS tool requirements. The installer does not download a target package or model.
 
 ## Open the source checkout
 

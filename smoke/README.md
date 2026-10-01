@@ -40,6 +40,10 @@ To hand setup to an agent, point it at [AGENTS.md](AGENTS.md) or give it this pr
 
 The dashboard opens at **Run tests**: choose a build, choose a course, optionally name the run, and start. **All automated checks** selects the 137 accepted definitions and automatically selects the installed desktop test tools. **Build engine checks** selects 57 checks from the chosen package without those tools. Preparation is automatic; progress and reports live in **Results**.
 
+**Find a build…** lists recent GitHub packages, grouped Releases, Nightlies and Tagged builds, with search and saved multi-select filters. Add an exact tag, HTTPS URL, ZIP or existing app path. Downloads stay in the external workspace. Agents use `smoke.mjs builds` and `build`; see [Build finder](docs/build-finder.md).
+
+Navigation remains visible below the shared banner. Filters offer checkbox multi-select, named saved views and last-view restoration. Report views retain filters in their page links. Test details show operations, recorded actions and evidence, plus a copyable edit prompt for an agent.
+
 A clean checkout shows the catalog and **no run history**. The versioned checklist contains criteria and coverage only; imported workbook outcomes are excluded. The field guide at `/explainer` describes checks and their operations; local evidence appears only when retained runs exist.
 
 ## Compose and run a course

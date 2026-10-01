@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {runInNewContext} from 'node:vm';
 
-const source=(await readFile(new URL('../public/run-setup.js',import.meta.url),'utf8')).replace(/^export /gm,'');
+const source=(await readFile(new URL('../public/run-setup.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/^export /gm,'');
 const courses=[{id:'automated-full',title:'All automated checks',checkCount:137,targets:{packaged:57,desktop:73,service:7},requirements:{targets:['packaged','desktop','service']}},{id:'packaged-full',title:'Build engine checks',checkCount:57,targets:{packaged:57,desktop:0,service:0},requirements:{targets:['packaged']}}];
 function launcher({helper=false,lost=false,prepareError}={}){
  const events={},calls=[],opened=[],rendered=[],storage=new Map(),runtime={app:'/Test.app',cli:'/paired-cli',qtPlugin:'/libqcocoa.dylib',bridge:'/bridge'};

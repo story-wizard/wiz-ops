@@ -4,7 +4,17 @@ Athanor is the app name. Preserve the existing CLI names, formats and WizardSmok
 
 ## Dashboard design
 
-Design for desktop use on a capable Mac. Check full-screen and normal Mac window layouts first, with readable tables, clear run controls and room for evidence details. Keep narrow-window support as a fallback; do not compromise the desktop layout for mobile.
+Design for desktop use on a capable Mac. Check full-screen and normal Mac window layouts first, with readable tables, clear run controls and room for evidence details. Keep narrow-window support as a fallback; do not compromise the desktop layout for mobile. Preserve the shared alchemical scene, restrained Athanor wordmark and Wizard mark. Steam and the magical leading edge animate only during an active run; keep status colors and reduced-motion support.
+
+## Navigation, filters and evidence
+
+Use the persistent navigation below the shared scene banner: Run tests, Results, Checks, Test guide, and More. More opens Desktop tools, Golden Project, Coverage and Logan's checklist. Direct workspace links are `/#setup`, `/#runs`, `/#catalog`, `/#desktop`, `/#gp`, `/#coverage` and `/#checklist`; the guide is `/explainer`.
+
+Dropdown filters use checkbox multi-select: selected values within a field combine with OR; different fields combine with AND; no selection means all values. Build, course, sort order and evidence-record selectors remain single choices. Save filters stores a named view and the last selections per page in this browser. Workspace presets do not change courses or canonical definitions. Exported report filters and presets live in its URL fragment, which also preserves direct check links; copy the resulting link to retain that view.
+
+Test details show the expected outcome, how it runs, Operations used, observed actions and evidence. Keep technical/source diagnostics behind Troubleshoot. Edit this test provides an agent prompt and context pack; editing a definition still follows accepted-definition review and the framework checks in `docs/test-evidence.md`.
+
+Use Find a build in New run, or the `builds` / `build` agent commands. Read `docs/build-finder.md` for inputs, prerequisites, download validation and external cache paths. GitHub discovery uses existing `gh` authentication. Downloading/selecting a build does not run a course.
 
 ## Start from a checkout
 

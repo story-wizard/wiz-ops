@@ -19,6 +19,14 @@ npm run open -- --no-open
 
 The source launcher works without an installed bundle, chooses an available loopback port, and prints its URL. Keep it running; pass that URL with `--server URL` to every CLI command. Use `npm run open` to choose a browser on first opening and save that choice. No npm dependency installation is needed. Open the printed URL or its `/explainer` page to inspect the catalog. Starting the service does not run Wizard. A fresh workspace must show no runs; source-workbook observations must never become automated results.
 
+## Dashboard and build selection
+
+The shared banner and sticky navigation appear on the workspace and field guide. Run tests selects a build and course; Results holds progress and reports; Checks and Test guide explain definitions and operations. More opens the additional views. Test details offer observed actions, evidence and an agent edit prompt, with source diagnostics available separately.
+
+Filter dropdowns support several choices and named saved views. Browser storage keeps workspace/guide views; exported reports retain filters and presets in their URL fragments.
+
+Find a build lists recent GitHub packages, ordered Releases, Nightlies and Tagged builds. It also accepts a URL, exact tag, ZIP or local app path. Use `builds` and `build` for the same workflow from an agent. See [Build finder](build-finder.md); GitHub access needs existing `gh` authentication, and ZIP import needs Python 3 and macOS `ditto`. Imported packages remain outside Git, and still go through normal preparation before testing.
+
 ## Included and excluded
 
 Included: executable checks, adapters, CLI/API, dashboard, original checklist criteria, accepted-definition hashes, fixture recipes, operation-schema contract and text documentation.

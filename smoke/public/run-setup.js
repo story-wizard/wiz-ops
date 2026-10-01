@@ -1,3 +1,4 @@
+import {openBuildFinder} from './build-finder.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const paths=['app','cli','qtPlugin','libraries','bridge'];
 let saved={};try{saved=JSON.parse(localStorage.getItem('wizard-smoke-launcher')||'{}');}catch{}
@@ -27,7 +28,7 @@ export async function refreshRunSetup(){
 export function runSetupView(active){
  const c=selected(),known=data.builds.some(b=>b.app===draft.app),locked=Boolean(busy||active||draft.request),helper=helperReady();
  return `<section class="launch-workspace"><div class="launch-heading"><h2>New run</h2><p>Choose a build and course.</p></div>
- <form id="suite-setup-form"><fieldset ${locked?'disabled':''}><div class="launch-step"><div><div class="field"><div class="field-label"><label for="suite-build">Build</label>${known?hint('build-help','Build path',draft.app):''}</div><select id="suite-build" required>${data.builds.map(b=>choice(b.app,b.label,known?draft.app:'custom',!b.available)).join('')}${choice('custom','Choose another build…',known?draft.app:'custom')}</select></div>${!known?`<label class="field">Path to Wizard.app<input id="suite-app" placeholder="/path/to/Wizard.app" value="${esc(draft.app)}" required><span class="field-help">Paste the path to the build you downloaded.</span></label>`:''}</div></div>
+ <form id="suite-setup-form"><fieldset ${locked?'disabled':''}><div class="launch-step"><div><div class="field"><div class="field-label"><label for="suite-build">Build</label>${known?hint('build-help','Build path',draft.app):''}<button type="button" class="text-button" data-setup="find-build">Find a build…</button></div><select id="suite-build" required>${data.builds.map(b=>choice(b.app,b.label,known?draft.app:'custom',!b.available)).join('')}${choice('custom','Choose another build…',known?draft.app:'custom')}</select></div>${!known?`<label class="field">Path to Wizard.app<input id="suite-app" placeholder="/path/to/Wizard.app" value="${esc(draft.app)}" required><span class="field-help">Paste the path to the build you downloaded.</span></label>`:''}</div></div>
  <div class="launch-step"><div><div class="field"><div class="field-label"><label for="suite-course">Course</label>${hint('course-help','About course execution',needsRuntime()?'Engine checks use your selected build. Desktop and service checks use separate test tools, selected automatically.':'Tests the engine inside your selected build and runs in the background.')}</div><select id="suite-course">${data.courses.map(c=>choice(c.id,(c.id==='packaged-full'?'Build engine checks':c.title)+(c.error?' · unavailable':` · ${c.checkCount} checks`),draft.courseId,Boolean(c.error))).join('')}</select></div>
  ${c?.targets?`<div class="course-coverage" aria-label="Course coverage">${[['packaged','Engine'],['desktop','Desktop'],['service','Services']].filter(([k])=>c.targets[k]).map(([k,label])=>`<span><strong>${c.targets[k]}</strong>${label}</span>`).join('')}</div>`:''}
  </div></div>
@@ -70,6 +71,7 @@ document.addEventListener('submit',async e=>{
 document.addEventListener('click',async e=>{
  const b=e.target.closest('[data-setup]');if(!b||busy)return;
  try{
+  if(b.dataset.setup==='find-build')return await openBuildFinder({api,local:data.builds,onSelected:async build=>{draft.app=build.app;await refreshRunSetup();if(!data.builds.some(b=>b.app===build.app))data.builds.push(build);remember();render();toast('Build selected.');}});
   if(b.dataset.setup==='active'){const r=await api('/runner');if(r.active)await onStarted(r.active.run_id);}
   if(b.dataset.setup==='recover'){busy='Checking start status…';render();const r=await api('/requests/'+draft.request.requestId);await openRun(r.id);error='';}
  }catch(e){error=e.message;}finally{busy='';render();}

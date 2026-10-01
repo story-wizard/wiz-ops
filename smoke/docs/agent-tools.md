@@ -4,6 +4,12 @@ The CLI, application adapter and native adapter work without the dashboard. They
 
 For a focused explanation and edit prompt, run `node scripts/smoke.mjs context --check D-EDIT-DELETE`. Add `--export` for a curated reference folder, or `--run ID` for the frozen source and result of a previous run. See [test evidence](test-evidence.md) for readable steps, evidence declarations and acceptance after editing. These commands do not execute a test.
 
+## Find the build first
+
+Use `node scripts/smoke.mjs builds --server URL` to read recent Wizard GitHub packages. Import one with `build --tag TAG`, `build --asset ID`, `build --url HTTPS_URL` or `build --path ABSOLUTE_PATH`, always with the same `--server URL`. Use the returned `result.app` in your plan. See [Build finder](build-finder.md) for prerequisites, channel conventions and cache behavior.
+
+The dashboard offers the same choices through Find a build. Its saved filter views are browser preferences, separate from the CLI's frozen course selection. Reports keep their saved views in the report link.
+
 ## Discover and run one check
 
 From the installed bundle's `workspace` directory, with the dashboard service running:
