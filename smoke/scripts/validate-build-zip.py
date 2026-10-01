@@ -7,12 +7,42 @@ import unicodedata
 def key(value):
     return unicodedata.normalize("NFD", value).casefold()
 import zipfile
+import zlib
 
 with zipfile.ZipFile(sys.argv[1]) as archive:
     entries = archive.infolist()
     if len(entries) > 150000 or sum(e.file_size for e in entries) > 20 * 1024**3:
         raise ValueError('Archive exceeds extraction limits')
-    links, seen = {}, set()
+    links, seen, expanded = {}, set(), 0
+    # Inspect the entire compressed stream, independent of the advertised file size.
+    # ZipExtFile may stop at that size and miss a forged trailing payload.
+    for entry in entries:
+        if entry.compress_type not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
+            raise ValueError('Unsupported ZIP compression')
+        with archive.open(entry):
+            offset = archive.fp.tell()  # open validates the local header and overlap
+        inflater = zlib.decompressobj(-15) if entry.compress_type == zipfile.ZIP_DEFLATED else None
+        actual, crc = 0, 0
+        with open(sys.argv[1], 'rb') as raw:
+            raw.seek(offset)
+            remaining = entry.compress_size
+            while remaining:
+                data = raw.read(min(1024**2, remaining))
+                if not data:
+                    raise ValueError('Truncated ZIP payload')
+                remaining -= len(data)
+                while data:
+                    output = inflater.decompress(data, 1024**2) if inflater else data
+                    data = inflater.unconsumed_tail if inflater else b''
+                    actual += len(output)
+                    expanded += len(output)
+                    if expanded > 20 * 1024**3 or actual > entry.file_size:
+                        raise ValueError('Archive exceeds extraction limits or declared size')
+                    crc = zlib.crc32(output, crc)
+                if inflater and inflater.unused_data:
+                    raise ValueError('Trailing compressed ZIP payload')
+        if inflater and not inflater.eof or actual != entry.file_size or crc != entry.CRC:
+            raise ValueError('ZIP payload differs from its declared size or checksum')
     for entry in entries:
         name = entry.filename.rstrip('/')
         if entry.orig_filename != entry.filename or any(ord(c) < 32 for c in name) or not name or name.startswith('/') or '\\' in name or any(v in ('', '.', '..') for v in name.split('/')):

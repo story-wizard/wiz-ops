@@ -43,6 +43,7 @@ export async function executeStages({plan,course,root,dataDir,onResult,isCancell
    }
    if(results.some(r=>r.status==='Unknown'))throw Object.assign(Error('Uncertain stage outcome; later stages were not started.'),{status:'Unknown'});
    if(result.report.cleanupError)throw Object.assign(Error('Owned desktop cleanup requires inspection: '+result.report.cleanupError),{status:'Unknown'});
+   if(result.report.error||result.report.status!=='Pass')throw Object.assign(Error('Stage did not complete: '+(result.report.error||result.report.status)),{status:'Fail'});
   }finally{clearInterval(timer);}
  }
  return results;

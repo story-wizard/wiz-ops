@@ -1,3 +1,4 @@
+import {requireScriptCompletion} from './check-support.mjs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {prepareDesktop,launchDesktop,stopDesktop,retainChild,nativeCall} from './adapter.mjs';
@@ -15,7 +16,7 @@ async function script(name,output,count,args=[]){
  if(!wants(name))return;if(isCancelled())throw Object.assign(Error('Course cancelled'),{status:'Unknown'});
  const receipt=await command(process.execPath,[path.join(here,name),file,...args],{timeout:name==='check-idle.mjs'?660000:300000,signal,processGroup:true,onSpawn:pid=>retainChild(session,pid)});await writeJSON(path.join(session.root,name+args.join('-')+'-execution.json'),receipt);
  const r=await readJSON(path.join(session.root,output));for(const value of r.results){assert(ids.includes(value.id),'Script executed unselected check '+value.id);report.results.push(value);await onResult(value,session.root);}
- assert(!receipt.aborted&&!receipt.timedOut&&[0,1].includes(receipt.code)&&!r.fatal&&!r.results.some(x=>x.status==='Unknown'),`${name} did not complete safely`);
+ requireScriptCompletion(receipt,r,name);
 }
 try{
   live=await launchDesktop(session,{foreground:false});report.bridgeHash=(await readJSON(file)).bridgeHash;

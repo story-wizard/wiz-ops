@@ -3,7 +3,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const paths=['app','cli','qtPlugin','libraries','bridge'];
 let saved={};try{saved=JSON.parse(localStorage.getItem('wizard-smoke-launcher')||'{}');}catch{}
 let draft={app:saved.app||'',courseId:saved.courseId||'automated-full',runtimeId:saved.runtimeOverride||'default',name:'',operator:saved.operator||'Local tester',customRuntime:saved.customRuntime||{},request:saved.request||null};
-let data={builds:[],courses:[],runtimes:[]},busy='',error='';
+let data={builds:[],courses:[],runtimes:[]},busy='',error='',requestMissing=false;
 let api,render,toast,onStarted;
 const remember=()=>localStorage.setItem('wizard-smoke-launcher',JSON.stringify({...draft,name:'',runtimeOverride:draft.runtimeId}));
 const selected=()=>data.courses.find(c=>c.id===draft.courseId);
@@ -37,11 +37,11 @@ export function runSetupView(active){
  <details class="launch-options"><summary>More options</summary><div class="option-content"><label class="field">Recorded by<input id="suite-operator" value="${esc(draft.operator)}" maxlength="120"></label>${needsRuntime()?`<details class="manual-helper"><summary>Test tools (advanced)</summary><p class="field-help">Normally selected automatically. Change this only when configuring the testing station.</p><label class="field">Test tools<select id="suite-runtime">${choice('default','Automatic — installed test tools',draft.runtimeId)}${data.runtimes.map(r=>choice(r.id,r.label||'Configured test tools',draft.runtimeId,r.available===false)).join('')}${choice('custom','Enter custom paths…',draft.runtimeId)}</select></label><label class="field">Import test-tools configuration<input type="file" id="suite-helper-file" accept=".json,application/json"></label>${draft.runtimeId==='custom'?`<div class="setup-fields">${paths.map(k=>`<label class="field">${({app:'Test app',cli:'Paired command-line tool',qtPlugin:'Qt plugin',libraries:'Runtime libraries (optional)',bridge:'Native bridge (optional)'})[k]}<input data-runtime-path="${k}" id="suite-runtime-${k}" value="${esc(draft.customRuntime[k]||'')}"></label>`).join('')}</div>`:''}</details>`:''}</div></details>
  </fieldset>
  ${error?`<div class="launch-error" role="alert"><strong>${draft.request?'Run status unavailable':'Tests haven’t started'}</strong><p>${esc(errorHelp(error))}</p>${errorHelp(error)!==error?`<details><summary>Technical details</summary><p>${esc(error)}</p></details>`:''}</div>`:''}
- ${draft.request&&!busy?`<div class="launch-error" role="status"><strong>Start outcome needs checking</strong><p>The response was lost. Check the existing request before starting another run.</p><button type="button" class="button" data-setup="recover">Check start status</button></div>`:''}
+ ${draft.request&&!busy?`<div class="launch-error" role="status"><strong>Start outcome needs checking</strong><p>The response was lost. Check the existing request before starting another run.</p><button type="button" class="button" data-setup="recover">Check start status</button>${requestMissing?'<button type="button" class="button primary" data-setup="retry">Retry original start</button>':''}</div>`:''}
  <div class="launch-footer">${active?`<p>A run is already ${esc(active.state.toLowerCase())}.</p><button type="button" class="button primary" data-setup="active">View active run</button>`:`${busy?`<p role="status">${esc(busy)}</p>`:''}<button class="button primary launch-start" type="submit" ${locked||!helper||!draft.app?'disabled':''}>${busy?'Please wait…':'Start '+(c?.checkCount||'')+' checks'}</button>`}</div>
  </form></section>`;
 }
-async function openRun(id){await onStarted(id);draft.request=null;remember();}
+async function openRun(id){await onStarted(id);draft.request=null;requestMissing=false;remember();}
 document.addEventListener('input',e=>{
  const key=({'suite-app':'app','suite-name':'name','suite-operator':'operator'})[e.target.id];
  if(key){draft[key]=e.target.value;error='';remember();if(key==='app')render();}
@@ -66,13 +66,14 @@ document.addEventListener('submit',async e=>{
   const plan=await api('/plans','POST',{app:draft.app.trim(),selection:{courseIds:[draft.courseId],...(draft.name.trim()?{title:draft.name.trim()}:{})},...(needsRuntime()?{runtime:descriptor()}:{})});
   draft.app=plan.app;busy='Starting tests…';draft.request={requestId:crypto.randomUUID(),planHash:plan.planHash,operator:draft.operator.trim()};remember();render();
   const r=await api('/runner/start','POST',draft.request);admitted=true;await openRun(r.runId);toast('Tests started.');
- }catch(e){error=e.message;if(!admitted&&draft.request&&e.status>=400&&e.status<500){draft.request=null;remember();}}finally{busy='';render();}
+ }catch(e){error=e.message;if(!admitted&&draft.request&&e.status>=400&&e.status<500){draft.request=null;requestMissing=false;remember();}}finally{busy='';render();}
 });
 document.addEventListener('click',async e=>{
  const b=e.target.closest('[data-setup]');if(!b||busy)return;
  try{
   if(b.dataset.setup==='find-build')return await openBuildFinder({api,local:data.builds,onSelected:async build=>{draft.app=build.app;await refreshRunSetup();if(!data.builds.some(b=>b.app===build.app))data.builds.push(build);remember();render();toast('Build selected.');}});
   if(b.dataset.setup==='active'){const r=await api('/runner');if(r.active)await onStarted(r.active.run_id);}
-  if(b.dataset.setup==='recover'){busy='Checking start status…';render();const r=await api('/requests/'+draft.request.requestId);await openRun(r.id);error='';}
+  if(b.dataset.setup==='recover'&&draft.request){busy='Checking start status…';requestMissing=false;render();try{const r=await api('/requests/'+draft.request.requestId);await openRun(r.id);error='';}catch(e){if(e.status!==404)throw e;requestMissing=true;error='This request has not been admitted. Retry the original start to reconcile it safely.';}}
+  if(b.dataset.setup==='retry'&&draft.request&&requestMissing){busy='Retrying the original start…';requestMissing=false;error='';render();const r=await api('/runner/start','POST',draft.request);await openRun(r.runId);toast('Tests started.');}
  }catch(e){error=e.message;}finally{busy='';render();}
 });

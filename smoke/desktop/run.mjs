@@ -5,7 +5,7 @@ import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 import {command,assert,same,snapshotState} from '../runner/engine.mjs';
 import {saveDiscard} from './check-lifecycle.mjs';
 import {unsetRateExport} from './check-unset-rate.mjs';
-import {beginCheck,endCheck,selectorNamesTimeline} from './check-support.mjs';
+import {beginCheck,endCheck,selectorNamesTimeline,requireScriptCompletion} from './check-support.mjs';
 export async function executeDesktop(prepared,{onResult=async()=>{},isCancelled=()=>false,signal}={}){
 const fullCourse=await readJSON(new URL('./course.json',import.meta.url)),ids=prepared?.ids||fullCourse.cases.map(c=>c.id),course={...fullCourse,cases:fullCourse.cases.filter(c=>ids.includes(c.id))},total=course.cases.length;
 const source=prepared?.runtime.app||process.argv[2],qtCocoaPlugin=prepared?.runtime.qtPlugin||process.argv[3];assert(source?.endsWith('.app'),'Choose an instrumented desktop app.');
@@ -20,7 +20,7 @@ async function script(name,result,expectedCount=0,args=[],merge=false){
  const receipt=await command(process.execPath,[path.join(here,name),file,...args],{timeout:120000,signal,processGroup:true,onSpawn:pid=>retainChild(session,pid)});await writeJSON(path.join(session.root,name+args.join('-')+'.execution.json'),receipt);
  const r=await readJSON(path.join(session.root,result));
  for(const value of r.results){assert(ids.includes(value.id),'Script executed an unselected check: '+value.id);const initial=report.results.find(x=>x.id===value.id);if(initial){initial.reopen=value;if(initial.status==='Pass'&&value.status!=='Pass'){initial.status=value.status;initial.error=value.error;}}else report.results.push(value);await onResult(report.results.find(x=>x.id===value.id),session.root);}
- assert(!receipt.aborted&&!receipt.timedOut&&[0,1].includes(receipt.code)&&!r.fatal&&!r.results.some(x=>x.status==='Unknown'),`${name} failed; inspect its report before continuing.`);
+ requireScriptCompletion(receipt,r,name);
 }
 try{
   live=await launchDesktop(session);report.bridgeHash=(await readJSON(file)).bridgeHash;

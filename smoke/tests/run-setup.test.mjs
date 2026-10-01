@@ -5,7 +5,7 @@ import {runInNewContext} from 'node:vm';
 
 const source=(await readFile(new URL('../public/run-setup.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/^export /gm,'');
 const courses=[{id:'automated-full',title:'All automated checks',checkCount:137,targets:{packaged:57,desktop:73,service:7},requirements:{targets:['packaged','desktop','service']}},{id:'packaged-full',title:'Build engine checks',checkCount:57,targets:{packaged:57,desktop:0,service:0},requirements:{targets:['packaged']}}];
-function launcher({helper=false,lost=false,prepareError}={}){
+function launcher({helper=false,lost=false,missing=false,prepareError}={}){
  const events={},calls=[],opened=[],rendered=[],storage=new Map(),runtime={app:'/Test.app',cli:'/paired-cli',qtPlugin:'/libqcocoa.dylib',bridge:'/bridge'};
  const context={document:{addEventListener(name,fn){events[name]=fn;}},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},crypto:{randomUUID:()=> 'stable-start-id'}};
  runInNewContext(source,context);
@@ -13,8 +13,8 @@ function launcher({helper=false,lost=false,prepareError}={}){
   calls.push({route,method,body});
   if(route==='/run-setup')return {builds:[{app:'/Selected.app',label:'Selected build',available:true}],courses,defaultRuntimeId:helper?'helper':'',runtimes:helper?[{id:'missing',available:false,runtime:{app:'/Gone.app'}},{id:'helper',available:true,runtime}]:[]};
   if(route==='/plans'){if(prepareError)throw Error(prepareError);return {app:body.app,planHash:'frozen-plan'};}
-  if(route==='/runner/start'){if(lost)throw Error('Response lost');return {runId:'actual-run'};}
-  if(route==='/requests/stable-start-id')return {id:'actual-run'};
+  if(route==='/runner/start'){if(lost&&(!missing||calls.filter(c=>c.route==='/runner/start').length===1))throw Error('Response lost');return {runId:'actual-run'};}
+  if(route==='/requests/stable-start-id'){if(missing)throw Object.assign(Error('Request not found'),{status:404});return {id:'actual-run'};}
   throw Error('Unexpected route '+route);
  }});
  return {context,events,calls,opened,rendered};
@@ -87,4 +87,15 @@ test('results expose Stop only for the active run and bind it to that run identi
  assert.match(context.runsView(),/data-action="stop-run" data-stop-id="owned-run"/);
  context.catalog.runner.active={run_id:'different-run'};
  assert.ok(!context.runsView().includes('data-action="stop-run"'));
+});
+
+// A lost request can be absent at admission; the same key safely reconciles a racing POST.
+test('a missing start request offers an explicit retry of the original immutable request',async()=>{
+ const {context,events,calls,opened}=launcher({helper:true,lost:true,missing:true});await context.refreshRunSetup();await submit(events);
+ await events.click({target:{closest:()=>({dataset:{setup:'recover'}})}});
+ assert.match(context.runSetupView(null),/Retry original start/);
+ assert.equal(calls.filter(c=>c.route==='/runner/start').length,1,'Reconciliation must not blindly replay input');
+ await events.click({target:{closest:()=>({dataset:{setup:'retry'}})}});
+ const starts=calls.filter(c=>c.route==='/runner/start');assert.equal(starts.length,2);assert.deepEqual(starts[1].body,starts[0].body,'Retry preserves the original idempotency key and frozen plan');
+ assert.deepEqual(opened,['actual-run']);assert.ok(!context.runSetupView(null).includes('Start outcome needs checking'));
 });

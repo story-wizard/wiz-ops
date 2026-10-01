@@ -5,6 +5,12 @@ import {desktopCall,nativeCall} from './adapter.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
 import {assert,pause,OutcomeError,clips,bounds} from '../runner/engine.mjs';
 
+// Exit 1 is a check verdict only when a terminal non-Pass observation explains it.
+export function requireScriptCompletion(receipt,report,name){
+ const explained=report.results.some(r=>['Fail','Blocked'].includes(r.status));
+ assert(!receipt.aborted&&!receipt.timedOut&&(receipt.code===0||receipt.code===1&&explained)&&!report.fatal&&!report.results.some(r=>r.status==='Unknown'),`${name} did not complete safely (exit ${receipt.code}); inspect its execution receipt and report.`);
+}
+
 export function requirePassed(results,ids){
  const missing=ids.filter(id=>results.find(r=>r.id===id)?.status!=='Pass');
  if(missing.length)throw new OutcomeError('Required checks did not pass: '+missing.map(id=>id+' ('+(results.find(r=>r.id===id)?.status||'not executed')+')').join(', '),'Blocked');

@@ -57,7 +57,7 @@ async function run(dataDir,runId){
     updateExecution(db,runId,state,note);console.log(JSON.stringify({runId,state,note}));if(state!=='Passed')process.exitCode=1;
   }catch(error){
     const pending=db.prepare("SELECT test_id,status FROM results WHERE run_id=? AND status IN ('Running','Not run')").all(runId);
-    const status=error.status==='Unknown'||pending.some(r=>r.status==='Running')?'Unknown':db.prepare("SELECT 1 FROM results WHERE run_id=? AND status='Fail'").get(runId)?'Failed':'Blocked';
+    const status=error.status==='Unknown'||pending.some(r=>r.status==='Running')?'Unknown':error.status==='Fail'||db.prepare("SELECT 1 FROM results WHERE run_id=? AND status='Fail'").get(runId)?'Failed':'Blocked';
     for(const r of pending)record(db,runId,r.test_id,r.status==='Running'?'Unknown':'Blocked',error.message,'');
     updateExecution(db,runId,status,error.message);
     try{await writeJSON(path.join(row.artifact_root,'report.json'),{runId,state:status,error:error.message,planHash:row.plan_hash,package:row.package,course:row.recipe,results:db.prepare('SELECT test_id,status,note FROM results WHERE run_id=?').all(runId),completedAt:new Date().toISOString()});}catch(reportError){console.error(`Could not save failure report: ${reportError.message}`);}

@@ -32,7 +32,7 @@ func emit(_ value: [String: Any]) { if let data = try? JSONSerialization.data(wi
 
 @main struct NativeInput {
     static func main() async {
-        var dispatched = false
+        var dispatched = false, pointerCleanupReleased = false
         do {
             let args = CommandLine.arguments
             try require(args.count == 5 && args[1] == "--executable" && args[3] == "--request", "Use --executable PATH --request JSON_FILE")
@@ -168,7 +168,10 @@ func emit(_ value: [String: Any]) { if let data = try? JSONSerialization.data(wi
                         let dragType: CGEventType=buttonName=="middle" ? .otherMouseDragged : buttonName=="right" ? .rightMouseDragged : .leftMouseDragged
                         let upType: CGEventType=buttonName=="middle" ? .otherMouseUp : buttonName=="right" ? .rightMouseUp : .leftMouseUp
                         var held=false,lastPoint=from
-                        defer { if held,(try? verifyOwner()) != nil,foreground(),let release=CGEvent(mouseEventSource:nil,mouseType:upType,mouseCursorPosition:lastPoint,mouseButton:button) { release.post(tap:.cghidEventTap) } }
+                        // Allocate the balancing event before dispatch. Ownership guards still
+                        // protect every new gesture; losing ownership must not leave our HID button held.
+                        guard let release=CGEvent(mouseEventSource:nil,mouseType:upType,mouseCursorPosition:from,mouseButton:button) else { throw InputError(message:"Unable to create pointer cleanup event") }
+                        defer { if held { release.location=lastPoint; release.setIntegerValueField(.eventSourceUserData,value:42); release.post(tap:.cghidEventTap); held=false; pointerCleanupReleased=true } }
                         func mouse(_ type: CGEventType,_ location: CGPoint) throws {
                             guard let event = CGEvent(mouseEventSource:nil,mouseType:type,mouseCursorPosition:location,mouseButton:button) else { throw InputError(message:"Unable to create mouse event") }
                             event.setIntegerValueField(.mouseEventClickState,value:1)
@@ -197,7 +200,7 @@ func emit(_ value: [String: Any]) { if let data = try? JSONSerialization.data(wi
             }
             try verifyOwner(); emit(result)
         } catch {
-            emit(["status":dispatched ? "Unknown":"Blocked","error":(error as? InputError)?.message ?? String(describing:error),"driver":"macos-verified-pid"]); exit(1)
+            emit(["status":dispatched ? "Unknown":"Blocked","error":(error as? InputError)?.message ?? String(describing:error),"driver":"macos-verified-pid","pointerCleanupReleased":pointerCleanupReleased]); exit(1)
         }
     }
     static func selfRectangle(_ value: CGRect) -> [String:Double] { rectangle(value) }
