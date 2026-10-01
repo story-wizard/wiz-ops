@@ -42,6 +42,6 @@ Use `plan --checks ID` for a focused check, then `run` for an evidence-backed ve
 
 Run only when the user has authorized testing on that machine. Foreground sessions control the desktop. Preserve Fail, Blocked and Unknown, and inspect an uncertain mutation before doing anything else. Never retry a mutation merely because its response was lost.
 
-For source or runtime updates, follow `docs/maintaining-harness.md`. Keep bundles, models, projects and evidence outside Git. Preserve existing run evidence and installed runtime versions.
+For new-build preparation failures or feature changes, read `docs/build-repair.md`. Context packs include a build-repair prompt, mapped contracts and qualification records. Qualify exact reviewed schemas, update affected assertions for behavioral changes, and keep new feature checks behind lead acceptance. For source or runtime updates, follow `docs/maintaining-harness.md`. Keep bundles, models, projects and evidence outside Git. Preserve existing run evidence and installed runtime versions.
 
 Build discovery displays 50 records per page by default. Filters search all retained metadata before pagination. Agents can use `builds --author me --page 2`, `--page-size all` for the cached catalog, and `--github-page N` to load older metadata in batches of 50. Inspect `nextGitHubPage` and `hasMoreGitHub` before requesting the next provider page.

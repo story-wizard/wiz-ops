@@ -28,7 +28,7 @@ See [build, install and update](maintaining-harness.md) for the bundle builder a
 ## Prerequisites
 
 - An arm64 Mac with Node.js 24 LTS. Node 24.19.0 is the verified runtime.
-- A retained `Wizard.app` containing `wiz-cli`, `wizard-headless` and its Python ingest runtime. Preparation checks the package against the captured operation schema and rejects an incompatible build.
+- A retained `Wizard.app` containing `wiz-cli`, `wizard-headless` and its Python ingest runtime. Preparation accepts the captured operation schema or an explicitly reviewed schema qualification and freezes the actual hash. Unreviewed schemas remain blocked. See [schema qualification](maintaining-harness.md#qualify-a-packaged-command-schema).
 - FFmpeg and FFprobe at `/opt/homebrew/bin`. The preparation API also accepts explicit media-tool paths.
 - For the full course, macOS Samantha speech synthesis and the pinned local Parakeet CoreML snapshot at `~/.cache/huggingface/hub/models--FluidInference--parakeet-tdt-0.6b-v2-coreml/snapshots/ee09c569f73759e6d44c9bd16766f477b2b36d39`. It must contain `Encoder.mlmodelc`, `Decoder.mlmodelc`, `Preprocessor.mlmodelc`, `JointDecision.mlmodelc` and `parakeet_vocab.json`. Preparation verifies the model files and does not download them.
 

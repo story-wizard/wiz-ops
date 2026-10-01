@@ -16,6 +16,12 @@ import {ingestPython,validateIngestProfile} from './ingest.mjs';
 import {runtimeIdentity,verifyRuntime} from './runtime.mjs';
 import {selectedRecipe,validateRecipe,requirementsFor} from './catalog.mjs';
 
+export function assertMappedPackagedSchema(schema,captured,qualifications){
+  const hash=digest(schema),baseline=digest(captured);
+  if(hash===baseline)return;
+  if(qualifications?.format==='wizard-smoke-schema-qualifications/v1'&&qualifications.baselineHash===baseline&&qualifications.reviewed.some(r=>r.schemaHash===hash))return;
+  throw new Error('This package has a different command schema from the mapped contract. Review the mapping before preparing it.');
+}
 export async function sourceIdentity(){return digest([(await fingerprint(path.join(ROOT,'runner'))).sha256,(await fingerprint(path.join(ROOT,'desktop'))).sha256,await sha(path.join(ROOT,'test-details.mjs')),await sha(path.join(ROOT,'explainer/notes.mjs'))]);}
 export async function checkPrepared(dataDir=dataDirectory(),frozenPlan){
   dataDir=dataDirectory(dataDir);
@@ -54,7 +60,7 @@ export async function prepare({app='/Applications/Wizard.app',dataDir=dataDirect
   const schema=JSON.parse(execFileSync(path.join(app,'Contents/MacOS/wiz-cli'),['project','create','--schema','--no-spawn'],{timeout:15000,maxBuffer:8*1024*1024,encoding:'utf8'}));
   for(const c of course.cases)for(const op of c.operations)if(!schema.operations[op])throw new Error(`Missing operation ${op} for ${c.id}`);
   const captured=await readJSON(path.join(ROOT,'runner/contracts/installed-schema.json'));
-  if(digest(schema)!==digest(captured))throw new Error('This package has a different command schema from the mapped contract. Review the mapping before preparing it.');
+  assertMappedPackagedSchema(schema,captured,await readJSON(path.join(ROOT,'runner/contracts/packaged-schema-qualifications.json')));
   const speechModel=requirements.speechModel?await speechModelIdentity(speechDirectory):null;
   const content={kitVersion:2,runtime:desktopRuntime,...(selection?{recipe:course}:{}),speechModel,format:'wizard-smoke-prepared/v1',preparedAt:new Date().toISOString(),app,version,packageHash:pkg.sha256,packageFiles:pkg.files,schemaHash:digest(schema),fixtureRoot,fixtureHash:fixtures.sha256,courseHash:digest(course),runnerHash:await sourceIdentity(),courseId:course.id,cases:course.cases.map(c=>c.id),deferred:Object.keys(course.deferred),target:course.target,excludedPackagePaths:['Contents/MacOS/logs','**/__pycache__','**/*.pyc','**/.DS_Store']};
   const plan={...content,planHash:digest(content)};

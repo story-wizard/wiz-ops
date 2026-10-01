@@ -9,3 +9,5 @@ Ask for the build and intended course if I have not supplied them. A source clon
 Return the run ID, selected build and test-tool identities, counts, failures and the local report URL. Preserve Fail, Blocked and Unknown. Inspect a lost start by request ID and never replay an uncertain mutation. Do not create invented results, merge the PR, change Jira, publish reports or message others without my request.
 
 For changes, use context --check ID --export --server URL and docs/test-evidence.md. Edit in the source checkout, preserve frozen runs and use the shared application, Qt and verified macOS input adapters. Declare images, video, audio and JSON evidence with a purpose. Changed accepted definitions need lead review before returning to custom courses.
+
+If a new build cannot prepare or a feature changes an operation, follow docs/build-repair.md. Compare the actual schema without spawning Wizard, qualify reviewed changes or update affected adapters and assertions, then verify preparation and authorized focused checks. Context packs include BUILD-REPAIR-PROMPT.txt and the mapped contract references.

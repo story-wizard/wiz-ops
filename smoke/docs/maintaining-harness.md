@@ -48,3 +48,11 @@ The first opening asks which browser to use: the system default, Safari, or anot
 The installer keeps older version directories and existing runs/reports. A prepared plan keeps its original runtime paths and hashes. Switching the default does not rewrite old evidence. Reinstalling an older retained bundle restores that default; prepare a fresh plan before running its checks.
 
 Do not edit installed source or runtime files in place. Make the change in Ops and publish another bundle. Existing installed versions are frozen so previous run evidence remains explainable.
+
+## Qualify a packaged command schema
+
+The baseline is `runner/contracts/installed-schema.json`. Extra reviewed package schemas are recorded by their exact hashes in `runner/contracts/packaged-schema-qualifications.json`, tied to that baseline hash. Preparation accepts either the baseline or one of those reviewed schemas, then freezes the actual schema hash in the plan. Readiness rechecks that exact identity. The instrumented desktop CLI has its own contract.
+
+To qualify a new schema, read it using `wiz-cli project create --schema --no-spawn`, compare every operation against the baseline, inspect changes against the checks' requests and assertions, and add a qualification with its hash and review basis. Run the regression checks and prepare the actual package. Missing or unreviewed changes stay blocked. Updating the baseline requires reviewing its qualifications again.
+
+The October 1 nightly differs only in `render.set_render_mode`: its mode enum adds `eighth` and the description clarifies preview resolution. The existing values and all other 161-operation contract fields are unchanged. This qualification makes that package usable with the mapped checks; it adds no new assertion for eighth-resolution playback.
