@@ -8,6 +8,8 @@ A local testing harness with an agent CLI and a dashboard/results viewer for rep
 
 The first release supports automated testing of a selected Wizard build and agent-driven spot tests. Desktop test tools can be included in a versioned harness bundle and selected automatically. Start with the [automated build guide](docs/automated-build-testing.md). This is the WIZ-423 smoke framework; second-machine qualification remains a follow-up, documented in [import status](docs/import-status.md).
 
+For a short team walkthrough, use [demo and first run](docs/demo-guide.md). The [agent onboarding prompt](examples/agent-onboarding.txt) hands the checkout to a user’s agent.
+
 ## Install a bundled harness
 
 Double-click `Install Athanor.command` in a supplied bundle. On first opening, choose your browser; Athanor remembers it. Later, use `Open Athanor.command` in the external workspace. For terminal or agent use, from the bundle's `workspace` directory:
@@ -42,7 +44,7 @@ The dashboard opens at **Run tests**: choose a build, choose a course, optionall
 
 **Find a build…** lists recent GitHub packages, grouped Releases, Nightlies and Tagged builds, with search and saved multi-select filters. Add an exact tag, HTTPS URL, ZIP or existing app path. Downloads stay in the external workspace. Agents use `smoke.mjs builds` and `build`; see [Build finder](docs/build-finder.md).
 
-Navigation remains visible below the shared banner. Filters offer checkbox multi-select, named saved views and last-view restoration. Report views retain filters in their page links. Test details show operations, recorded actions and evidence, plus a copyable edit prompt for an agent.
+Navigation remains visible below the shared banner. Filters offer checkbox multi-select, named saved views and last-view restoration. Report views retain filters in their page links. Click a Results row to open its details immediately in the right sidebar. Selecting another row updates the same panel. Details show operations, recorded actions and evidence, plus a copyable edit prompt for an agent.
 
 A clean checkout shows the catalog and **no run history**. The versioned checklist contains criteria and coverage only; imported workbook outcomes are excluded. The field guide at `/explainer` describes checks and their operations; local evidence appears only when retained runs exist.
 

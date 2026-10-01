@@ -2,7 +2,7 @@
 
 The CLI, application adapter and native adapter work without the dashboard. They use the same installed desktop tools, ownership checks and operation receipts as the automated courses.
 
-For a focused explanation and edit prompt, run `node scripts/smoke.mjs context --check D-EDIT-DELETE`. Add `--export` for a curated reference folder, or `--run ID` for the frozen source and result of a previous run. See [test evidence](test-evidence.md) for readable steps, evidence declarations and acceptance after editing. These commands do not execute a test.
+For a focused explanation and edit prompt, run `node scripts/smoke.mjs context --check D-EDIT-DELETE --server URL`. Add `--export` for a curated reference folder, or `--run ID` for the frozen source and result of a previous run. See [test evidence](test-evidence.md) for readable steps, evidence declarations and acceptance after editing. These commands do not execute a test.
 
 ## Find the build first
 
@@ -12,14 +12,15 @@ The dashboard offers the same choices through Find a build. Its saved filter vie
 
 ## Discover and run one check
 
-From the installed bundle's `workspace` directory, with the dashboard service running:
+From `smoke/` in a checkout or the installed bundle’s `workspace`, with the service running, set `ATHANOR_URL` to its printed URL:
 
 ```sh
-node scripts/smoke.mjs setup
-node scripts/smoke.mjs list --target desktop
-node scripts/smoke.mjs plan --app /Applications/Wizard.app --checks D-EDIT-DELETE --out /tmp/track-check-plan.json
-node scripts/smoke.mjs run --plan /tmp/track-check-plan.json --operator "Agent spot test" --request-id track-check-001
-node scripts/smoke.mjs status --request-id track-check-001
+export ATHANOR_URL="http://127.0.0.1:PORT"
+node scripts/smoke.mjs setup --server "$ATHANOR_URL"
+node scripts/smoke.mjs list --target desktop --server "$ATHANOR_URL"
+node scripts/smoke.mjs plan --app /Applications/Wizard.app --checks D-EDIT-DELETE --out /tmp/track-check-plan.json --server "$ATHANOR_URL"
+node scripts/smoke.mjs run --plan /tmp/track-check-plan.json --operator "Agent spot test" --request-id track-check-001 --server "$ATHANOR_URL"
+node scripts/smoke.mjs status --request-id track-check-001 --server "$ATHANOR_URL"
 ```
 
 `setup` returns known builds, courses and the automatic desktop-tool selection. `list` returns accepted and candidate definitions with their operations and requirements. `plan` adds the declared prerequisites and freezes the exact selection; it does not execute the check. `run` executes only that selection and its prerequisites. The resulting verdict and evidence appear in Results. See [agent-friendly courses](agent-courses.md) for wait, cancel, report and request recovery.

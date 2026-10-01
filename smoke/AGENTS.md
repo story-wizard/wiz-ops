@@ -16,6 +16,8 @@ Clicking an automated Results row opens the existing report evidence drawer imme
 
 Use Find a build in New run, or the `builds` / `build` agent commands. Read `docs/build-finder.md` for inputs, prerequisites, download validation and external cache paths. GitHub discovery uses existing `gh` authentication. The PR author filter matches any included PR author; requester and publisher are separate fields. Read `docs/shared-build-catalog.md` for the durable catalog, conditional refresh and consumption by other tools. Downloading/selecting a build does not run a course.
 
+Read `docs/demo-guide.md` for the short team walkthrough and `examples/agent-onboarding.txt` for the complete setup prompt.
+
 ## Start from a checkout
 
 Use Node.js 24 or newer, then run these commands from `smoke/`:

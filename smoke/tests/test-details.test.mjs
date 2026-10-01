@@ -45,7 +45,7 @@ test('an agent pack snapshots its definition, guides and sources outside Git wit
   const physical=agentContext(candidateChecks().find(c=>c.id==='P-RG-WIRE'),{servicePort:51290});assert.match(physical.commands.plan,/--server http:\/\/127\.0\.0\.1:51290$/);assert.doesNotMatch(physical.commands.run,/--server/,'The direct physical probe does not accept a service option');
   for(const port of [0,65536,'51290 --extra'])assert.throws(()=>agentContext(accepted,{servicePort:port}),/valid local service port/);
   for(const item of manifest.inventory){const bytes=await readFile(path.join(first.path,item.file));assert.equal(bytes.length,item.bytes);assert.equal(digest(bytes.toString()),item.sha256);}
-  assert.ok(manifest.inventory.some(x=>x.file==='reference/docs/agent-tools.md'));assert.ok(manifest.inventory.some(x=>x.file==='reference/desktop/check-paths.mjs'));
-  const start=await readFile(path.join(first.path,'START-HERE.md'),'utf8');assert.match(start,/Athanor \/ Smoke/);assert.ok(start.includes(context.commands.run));assert.match(start,/Candidate definitions require lead review/);
+  for(const file of ['docs/agent-tools.md','docs/source-handoff.md','docs/maintaining-harness.md','docs/build-finder.md','docs/shared-build-catalog.md','docs/demo-guide.md','examples/agent-onboarding.txt'])assert.ok(manifest.inventory.some(x=>x.file==='reference/'+file),file);assert.ok(manifest.inventory.some(x=>x.file==='reference/desktop/check-paths.mjs'));
+  const start=await readFile(path.join(first.path,'START-HERE.md'),'utf8');assert.match(start,/Athanor agent context/);assert.ok(start.includes(context.commands.run));assert.match(start,/Candidate definitions require lead review/);
  }finally{await rm(data,{recursive:true,force:true});}
 });

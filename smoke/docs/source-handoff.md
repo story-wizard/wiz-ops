@@ -35,9 +35,11 @@ Excluded: original spreadsheet binaries, historical dashboard images, SQLite/run
 
 The normalized checklist still contains team criteria and issue references. The operation contract describes Wizard's application interface. Omitting runtime data does not make this a generic or redacted public test framework.
 
+For the team walkthrough and first run, use [demo guide](demo-guide.md).
+
 ## Give this checkout to an agent
 
-Start with the repository's `AGENTS.md`, which points to `smoke/AGENTS.md`. The agent can validate the framework, launch the dashboard, discover builds and accepted checks, compose a course, prepare the selected build, run it and return its report. Use the same `SMOKE_DATA_DIR` and printed service URL throughout.
+Give the agent [the onboarding prompt](../examples/agent-onboarding.txt). Start with the repository's `AGENTS.md`, which points to `smoke/AGENTS.md`. The agent can validate the framework, launch the dashboard, discover builds and accepted checks, compose a course, prepare the selected build, run it and return its report. Use the same `SMOKE_DATA_DIR` and printed service URL throughout.
 
 A source clone supplies code and definitions. A testing station still needs the compatible build and media tools listed in the automated build guide. Install a supplied harness bundle for desktop/service checks, or configure a qualified runtime through the agent CLI. Use an engine-only selection while those tools are unavailable.
 
