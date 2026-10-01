@@ -5,13 +5,13 @@ import {runInNewContext} from 'node:vm';
 
 const source=(await readFile(new URL('../public/run-setup.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/^export /gm,'');
 const courses=[{id:'automated-full',title:'All automated checks',checkCount:137,targets:{packaged:57,desktop:73,service:7},requirements:{targets:['packaged','desktop','service']}},{id:'packaged-full',title:'Build engine checks',checkCount:57,targets:{packaged:57,desktop:0,service:0},requirements:{targets:['packaged']}}];
-function launcher({helper=false,lost=false,missing=false,prepareError}={}){
+function launcher({helper=false,lost=false,missing=false,buildAvailable=true,prepareError}={}){
  const events={},calls=[],opened=[],rendered=[],storage=new Map(),runtime={app:'/Test.app',cli:'/paired-cli',qtPlugin:'/libqcocoa.dylib',bridge:'/bridge'};
  const context={document:{addEventListener(name,fn){events[name]=fn;}},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},crypto:{randomUUID:()=> 'stable-start-id'}};
  runInNewContext(source,context);
  context.configureRunSetup({render(){rendered.push(context.runSetupView(null));},toast(){},onStarted:async id=>opened.push(id),api:async(route,method,body)=>{
   calls.push({route,method,body});
-  if(route==='/run-setup')return {builds:[{app:'/Selected.app',label:'Selected build',available:true}],courses,defaultRuntimeId:helper?'helper':'',runtimes:helper?[{id:'missing',available:false,runtime:{app:'/Gone.app'}},{id:'helper',available:true,runtime}]:[]};
+  if(route==='/run-setup')return {builds:[{app:'/Selected.app',label:'Selected build',available:buildAvailable}],courses,defaultRuntimeId:helper?'helper':'',runtimes:helper?[{id:'missing',available:false,runtime:{app:'/Gone.app'}},{id:'helper',available:true,runtime}]:[]};
   if(route==='/plans'){if(prepareError)throw Error(prepareError);return {app:body.app,planHash:'frozen-plan'};}
   if(route==='/runner/start'){if(lost&&(!missing||calls.filter(c=>c.route==='/runner/start').length===1))throw Error('Response lost');return {runId:'actual-run'};}
   if(route==='/requests/stable-start-id'){if(missing)throw Object.assign(Error('Request not found'),{status:404});return {id:'actual-run'};}
@@ -98,4 +98,19 @@ test('a missing start request offers an explicit retry of the original immutable
  await events.click({target:{closest:()=>({dataset:{setup:'retry'}})}});
  const starts=calls.filter(c=>c.route==='/runner/start');assert.equal(starts.length,2);assert.deepEqual(starts[1].body,starts[0].body,'Retry preserves the original idempotency key and frozen plan');
  assert.deepEqual(opened,['actual-run']);assert.ok(!context.runSetupView(null).includes('Start outcome needs checking'));
+});
+
+test('retained run history cannot override a changed downloaded package in setup',async()=>{
+ const server=await readFile(new URL('../server.mjs',import.meta.url),'utf8');
+ const source=server.slice(server.indexOf('async function runSetup()'),server.indexOf('async function storedPlan('));
+ const cached={app:'/Cached.app',label:'Cached nightly',available:false,error:'Cached package changed'};
+ const context={db:{prepare:()=>({all:()=>[{package_json:JSON.stringify({app:cached.app,version:'Historical version'})}]})},dataDir:'/station',runtimeList:async()=>[],installedRuntime:async()=>{throw Object.assign(Error('No tools'),{code:'ENOENT'});},existsSync:p=>p===cached.app,path:{basename:p=>p.split('/').at(-1)},localBuilds:async()=>[cached],checkRegistry:()=>[],courseList:()=>[]};
+ runInNewContext(source,context);const data=await context.runSetup();
+ assert.equal(data.builds.length,1);assert.equal(data.builds[0].available,false);assert.equal(data.builds[0].error,cached.error);
+});
+test('an unavailable cached build cannot be launched even when the test tools are ready',async()=>{
+ const {context,events,calls}=launcher({helper:true,buildAvailable:false});await context.refreshRunSetup();
+ events.input({target:{id:'suite-app',value:'/Selected.app',dataset:{}}});
+ assert.match(context.runSetupView(null),/type="submit" disabled>Start 137 checks/);await submit(events);
+ assert.equal(calls.some(c=>c.route==='/plans'),false);
 });

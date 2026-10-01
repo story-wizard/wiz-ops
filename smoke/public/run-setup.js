@@ -6,6 +6,7 @@ let draft={app:saved.app||'',courseId:saved.courseId||'automated-full',runtimeId
 let data={builds:[],courses:[],runtimes:[]},busy='',error='',requestMissing=false;
 let api,render,toast,onStarted;
 const remember=()=>localStorage.setItem('wizard-smoke-launcher',JSON.stringify({...draft,name:'',runtimeOverride:draft.runtimeId}));
+const buildReady=()=>Boolean(draft.app.trim())&&data.builds.find(b=>b.app===draft.app)?.available!==false;
 const selected=()=>data.courses.find(c=>c.id===draft.courseId);
 const needsRuntime=()=>selected()?.requirements?.targets.some(t=>t!=='packaged');
 const runtimeChoice=()=>data.runtimes.find(r=>r.id===(draft.runtimeId==='default'?data.defaultRuntimeId:draft.runtimeId));
@@ -28,7 +29,7 @@ export async function refreshRunSetup(){
 export function runSetupView(active){
  const c=selected(),known=data.builds.some(b=>b.app===draft.app),locked=Boolean(busy||active||draft.request),helper=helperReady();
  return `<section class="launch-workspace"><div class="launch-heading"><h2>New run</h2><p>Choose a build and course.</p></div>
- <form id="suite-setup-form"><fieldset ${locked?'disabled':''}><div class="launch-step"><div><div class="field"><div class="field-label"><label for="suite-build">Build</label>${known?hint('build-help','Build path',draft.app):''}<button type="button" class="text-button" data-setup="find-build">Find a build…</button></div><select id="suite-build" required>${data.builds.map(b=>choice(b.app,b.label,known?draft.app:'custom',!b.available)).join('')}${choice('custom','Choose another build…',known?draft.app:'custom')}</select></div>${!known?`<label class="field">Path to Wizard.app<input id="suite-app" placeholder="/path/to/Wizard.app" value="${esc(draft.app)}" required><span class="field-help">Paste the path to the build you downloaded.</span></label>`:''}</div></div>
+ <form id="suite-setup-form"><fieldset ${locked?'disabled':''}><div class="launch-step"><div><div class="field"><div class="field-label"><label for="suite-build">Build</label>${known?hint('build-help','Build path',draft.app):''}<button type="button" class="text-button" data-setup="find-build">Find a build…</button></div><select id="suite-build" required>${data.builds.map(b=>choice(b.app,b.label,known?draft.app:'custom',!b.available)).join('')}${choice('custom','Choose another build…',known?draft.app:'custom')}</select>${known&&!buildReady()?`<p class="field-help">${esc(data.builds.find(b=>b.app===draft.app)?.error||'Reimport this build through Find a build before starting.')}</p>`:''}</div>${!known?`<label class="field">Path to Wizard.app<input id="suite-app" placeholder="/path/to/Wizard.app" value="${esc(draft.app)}" required><span class="field-help">Paste the path to the build you downloaded.</span></label>`:''}</div></div>
  <div class="launch-step"><div><div class="field"><div class="field-label"><label for="suite-course">Course</label>${hint('course-help','About course execution',needsRuntime()?'Engine checks use your selected build. Desktop and service checks use separate test tools, selected automatically.':'Tests the engine inside your selected build and runs in the background.')}</div><select id="suite-course">${data.courses.map(c=>choice(c.id,(c.id==='packaged-full'?'Build engine checks':c.title)+(c.error?' · unavailable':` · ${c.checkCount} checks`),draft.courseId,Boolean(c.error))).join('')}</select></div>
  ${c?.targets?`<div class="course-coverage" aria-label="Course coverage">${[['packaged','Engine'],['desktop','Desktop'],['service','Services']].filter(([k])=>c.targets[k]).map(([k,label])=>`<span><strong>${c.targets[k]}</strong>${label}</span>`).join('')}</div>`:''}
  </div></div>
@@ -38,7 +39,7 @@ export function runSetupView(active){
  </fieldset>
  ${error?`<div class="launch-error" role="alert"><strong>${draft.request?'Run status unavailable':'Tests haven’t started'}</strong><p>${esc(errorHelp(error))}</p>${errorHelp(error)!==error?`<details><summary>Technical details</summary><p>${esc(error)}</p></details>`:''}</div>`:''}
  ${draft.request&&!busy?`<div class="launch-error" role="status"><strong>Start outcome needs checking</strong><p>The response was lost. Check the existing request before starting another run.</p><button type="button" class="button" data-setup="recover">Check start status</button>${requestMissing?'<button type="button" class="button primary" data-setup="retry">Retry original start</button>':''}</div>`:''}
- <div class="launch-footer">${active?`<p>A run is already ${esc(active.state.toLowerCase())}.</p><button type="button" class="button primary" data-setup="active">View active run</button>`:`${busy?`<p role="status">${esc(busy)}</p>`:''}<button class="button primary launch-start" type="submit" ${locked||!helper||!draft.app?'disabled':''}>${busy?'Please wait…':'Start '+(c?.checkCount||'')+' checks'}</button>`}</div>
+ <div class="launch-footer">${active?`<p>A run is already ${esc(active.state.toLowerCase())}.</p><button type="button" class="button primary" data-setup="active">View active run</button>`:`${busy?`<p role="status">${esc(busy)}</p>`:''}<button class="button primary launch-start" type="submit" ${locked||!helper||!buildReady()?'disabled':''}>${busy?'Please wait…':'Start '+(c?.checkCount||'')+' checks'}</button>`}</div>
  </form></section>`;
 }
 async function openRun(id){await onStarted(id);draft.request=null;requestMissing=false;remember();}
@@ -60,7 +61,7 @@ document.addEventListener('change',async e=>{
 });
 document.addEventListener('submit',async e=>{
  if(e.target.id!=='suite-setup-form')return;e.preventDefault();if(busy||draft.request||!helperReady())return;
- if(!draft.app.trim())return;if(!draft.operator.trim()){error='Enter who is recording this run in More options.';render();return;}
+ if(!buildReady())return;if(!draft.operator.trim()){error='Enter who is recording this run in More options.';render();return;}
  let admitted=false;error='';busy='Preparing your build and test projects…';render();
  try{
   const plan=await api('/plans','POST',{app:draft.app.trim(),selection:{courseIds:[draft.courseId],...(draft.name.trim()?{title:draft.name.trim()}:{})},...(needsRuntime()?{runtime:descriptor()}:{})});

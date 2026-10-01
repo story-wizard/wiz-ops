@@ -79,7 +79,7 @@ async function runSetup(){
   const runtime=r.runtime;
   r.available=['app','cli','qtPlugin'].every(k=>typeof runtime[k]==='string'&&path.isAbsolute(runtime[k])&&existsSync(runtime[k]))&&existsSync(path.join(runtime.app,'Contents/MacOS/wizard'))&&existsSync(runtime.bridge||path.join(dataDir,'native/styles/libwizard_smoke.dylib'))&&(!runtime.libraries||existsSync(runtime.libraries));
  }
- for(const b of await localBuilds(dataDir))if(!builds.some(p=>p.app===b.app))builds.push({...b,label:b.label||b.asset||path.basename(b.app)});
+ for(const b of await localBuilds(dataDir)){const current=builds.find(p=>p.app===b.app),value={...b,label:b.label||b.asset||path.basename(b.app)};if(current)Object.assign(current,value);else builds.push(value);}
  const defaultRuntimeId=runtimes.find(r=>r.available)?.id||'';
  const registry=checkRegistry(),courses=courseList(db).filter(c=>!c.checkpoint).map(c=>{try{const s=resolveSelection(db,{courseIds:[c.id]});return {...c,checkCount:s.effectiveIds.length,requirements:s.requirements,targets:Object.fromEntries(['packaged','desktop','service'].map(t=>[t,s.effectiveIds.filter(id=>registry.find(c=>c.id===id)?.target===t).length]))};}catch(e){return {...c,error:e.message};}});
  return {builds,courses,runtimes,defaultRuntimeId,runtimeSetupError,project:'fresh'};
