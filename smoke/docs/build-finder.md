@@ -8,7 +8,9 @@ Athanor uses the testing Mac's existing `gh` authentication to read `story-wizar
 
 The finder reads up to 300 recent GitHub release records and lists their published macOS ZIP assets. It groups them as Releases, Nightlies, then Tagged builds, newest publication first within each group. Version tags, `story-weekly-*` tags and `release-*` tags count as Releases; `nightly-*` tags count as Nightlies; other tags count as Tagged builds. Drafts and Windows packages are excluded. The release flag alone does not distinguish official releases from feature builds.
 
-Search by build name, tag, branch or a PR number present in those names. Filter by channel, architecture, download status and publication date. Architecture comes from the asset name; Unspecified means the name provides no architecture. Refresh reads GitHub again. Named saved filters and the last view stay in this browser.
+Search by build name, tag, branch or a PR number present in those names. Filter by channel, Built by, architecture, download status and publication date. Built by supports several GitHub users; Mine selects the currently authenticated GitHub account. Saved views include that selection. Architecture comes from the asset name; Unspecified means the name provides no architecture. Refresh reads GitHub again. Named saved filters and the last view stay in this browser.
+
+Built by uses the requester of the exact build workflow, identified from the release’s recorded run ID. On a rerun, it uses the triggering user. The finder reads up to 300 recent build-workflow runs; older or unlinked builds show Unknown. The publishing bot and commit authors do not supply build ownership. The CLI returns `currentUser`, `requestedBy`, `buildRunId` and `buildEvent` for agent filtering.
 
 **Download & use** downloads the chosen asset, validates its ZIP, extracts one Wizard app into the external workspace, and selects it. **Use build** reuses an existing download. Imported builds also appear under **On this Mac** and in the Build selector.
 
