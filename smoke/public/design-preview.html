@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Progress motion · Athanor</title>
+  <link rel="stylesheet" href="/wizard-tokens.css"><link rel="stylesheet" href="/smoke-theme.css">
+  <style>
+    *{box-sizing:border-box}body{margin:0;font:14px/1.6 var(--font-ui)}main{max-width:1000px;margin:auto;padding:0 24px 36px}
+    .page-header{display:flex;align-items:center;margin-bottom:24px}h1{margin:0}h2{font-size:24px;margin:0 0 8px}h3{font-size:17px;margin:0 0 8px}
+    p{color:#a2b3c5;margin:0 0 20px}a{color:#8cbee7}label{display:inline-flex;gap:10px;align-items:center;padding:10px 14px;border:1px solid #485768;border-radius:6px;cursor:pointer}
+    input{accent-color:#8cbee7}section{margin-top:22px;padding:24px;background:#232b34;border:1px solid #3b4857;border-radius:8px}
+    .run-progress{margin:24px 0 12px}.demo-fill{display:flex;animation:demo-fill 18s ease-in-out infinite;min-width:0}
+    .swirl .run-progress[data-active="true"] .segment::before{animation:preview-swirl 5s ease-in-out infinite alternate}
+    .swirl .run-progress[data-active="true"] .segment.running{animation-duration:5s}
+    body:has(#still:checked) .segment::before{content:none!important;animation:none!important}
+    body:has(#still:checked) .segment,body:has(#still:checked) .demo-fill{animation:none!important}
+    body:has(#still:checked) .demo-fill{width:100%}
+    .caption{font-size:12px;color:#92a4b8;margin:10px 0 0}
+    @keyframes demo-fill{0%,12%{width:12%}85%,100%{width:100%}}
+    @keyframes preview-swirl{from{transform:translate(-8px,3px) scale(1.15,.9);opacity:.25}to{transform:translate(8px,-3px) scale(1.15,1.15);opacity:.55}}
+    @media(prefers-reduced-motion:reduce){.demo-fill{width:100%}}
+    @media(max-width:600px){main{padding:0 16px 24px}section{padding:18px}}
+  </style>
+</head>
+<body><main>
+  <header class="page-header"><h1 class="smoke-brand"><span class="brand-spark" aria-hidden="true">✦</span>Athanor</h1></header>
+  <h2>Progress motion</h2><p>Two animation studies, using the same result colors. The sample bars fill over 18 seconds and repeat.</p>
+  <label><input id="still" type="checkbox">Show finished bars</label>
+  <section>
+    <h3>A · Rolling smoke</h3><p>Smoke flows forward inside the colored fill. This is the current treatment.</p>
+    <div class="run-progress" data-active="true" aria-hidden="true"><div class="demo-fill">
+      <span class="segment pass" style="width:70%"></span><span class="segment fail" style="width:10%"></span><span class="segment blocked" style="width:10%"></span><span class="segment running" style="width:10%"></span>
+    </div></div><p class="caption">Green · Pass &nbsp; Red · Fail &nbsp; Amber · Blocked &nbsp; Blue · Running</p>
+  </section>
+  <section class="swirl">
+    <h3>B · Gentle swirl</h3><p>A slower cloud rolls and breathes within the fill.</p>
+    <div class="run-progress" data-active="true" aria-hidden="true"><div class="demo-fill">
+      <span class="segment pass" style="width:70%"></span><span class="segment fail" style="width:10%"></span><span class="segment blocked" style="width:10%"></span><span class="segment running" style="width:10%"></span>
+    </div></div><p class="caption">Green · Pass &nbsp; Red · Fail &nbsp; Amber · Blocked &nbsp; Blue · Running</p>
+  </section>
+  <p style="margin-top:24px"><a href="/">← Back to Athanor</a></p>
+</main></body></html>

@@ -1,4 +1,5 @@
 const activeStates = new Set(['Queued', 'Preflight', 'Running', 'Waiting for human', 'Continuing']);
+const movingStates = new Set(['Preflight', 'Running', 'Continuing']);
 const completedStates = new Set(['Passed', 'Failed']);
 const outcomes = ['Pass', 'Fail', 'Blocked', 'Running', 'N/A', 'Unknown'];
 
@@ -37,5 +38,5 @@ export function progressBar(results, state) {
   const total = results.length, counts = Object.fromEntries(outcomes.map(s => [s, results.filter(r => r.status === s).length]));
   const completed = total - results.filter(r => ['Not run', 'Running'].includes(r.status)).length;
   const description = outcomes.filter(s => counts[s]).map(s => counts[s] + ' ' + s.toLowerCase()).join(', ') || 'No checks recorded';
-  return `<div class="run-progress" data-active="${activeStates.has(state)}" role="progressbar" aria-label="Check progress" aria-valuemin="0" aria-valuemax="${total || 1}" aria-valuenow="${completed}" aria-valuetext="${description}">${outcomes.map(s => `<span class="segment ${s.toLowerCase().replace(/[^a-z]+/g, '-')}" style="width:${total ? 100 * counts[s] / total : 0}%" title="${s}: ${counts[s]}"></span>`).join('')}</div>`;
+  return `<div class="run-progress" data-active="${movingStates.has(state)}" role="progressbar" aria-label="Check progress" aria-valuemin="0" aria-valuemax="${total || 1}" aria-valuenow="${completed}" aria-valuetext="${description}">${outcomes.map(s => `<span class="segment ${s.toLowerCase().replace(/[^a-z]+/g, '-')}" style="width:${total ? 100 * counts[s] / total : 0}%" title="${s}: ${counts[s]}"></span>`).join('')}</div>`;
 }
