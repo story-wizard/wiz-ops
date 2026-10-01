@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Progress studies · Athanor</title>
+  <link rel="stylesheet" href="/wizard-tokens.css"><link rel="stylesheet" href="/smoke-theme.css">
+  <style>
+    *{box-sizing:border-box}body{margin:0;font:14px/1.6 var(--font-ui)}main{max-width:1000px;margin:auto;padding:0 24px 36px}
+    .page-header{display:flex;align-items:center;margin-bottom:24px}h1{margin:0}h2{font-size:24px;margin:0 0 8px}
+    p{color:#a2b3c5;margin:0 0 20px}a{color:#8cbee7}label{display:inline-flex;gap:10px;align-items:center;padding:10px 14px;border:1px solid #485768;border-radius:6px;cursor:pointer}
+    input{accent-color:#8cbee7}.controls{display:flex;gap:12px;flex-wrap:wrap}section{margin-top:22px;padding:24px;background:#232b34;border:1px solid #3b4857;border-radius:8px}
+    .run-progress{margin:24px 0}.progress-fill{width:var(--preview-progress,42%)!important}
+    body:has(#still:checked) .smoke-head,body:has(#still:checked) .energy-edge{display:none}
+    body:has(#still:checked) .progress-fill{animation:none;width:100%!important}
+    body:has(#still:checked) .color-fill{mask-image:none}
+    body:has(#still:checked) .color-fill::after{animation:none;opacity:.3}
+    .caption{font-size:12px;color:#92a4b8;margin:10px 0 0}
+    @media(max-width:600px){main{padding:0 16px 24px}section{padding:18px}}
+.study-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.study-heading h3{font-size:20px;margin:0 0 5px;font-weight:550;color:#d7e5f3}
+.study-heading h3 span{display:inline-block;margin-right:12px;color:#8cbee7}
+.study-note{font-size:12px;color:#9bb8ca}.palette{display:flex;gap:16px;font-size:12px;color:#9eabb8}
+.palette span::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;background:#6bab89}
+.palette .fail::before{background:#cc7480}.palette .blocked::before{background:#d1aa69}.palette .running::before{background:#80b7dc}
+.controls output{min-width:34px}input[type=range]{width:160px}
+section p{margin-bottom:0}.study-heading+p{font-size:13px}
+/* A uses the production treatment; B and C remain comparison studies. */
+@keyframes current-spark{0%,100%{opacity:.7;transform:translate(-50%,-50%) scale(.7) rotate(-8deg)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.1) rotate(8deg)}}
+.variant-b .smoke-head{width:300px;opacity:.85}
+.variant-b .puff{width:148px;height:20px;background:radial-gradient(ellipse,#e8f4ffa8 8%,#c5dbe680 35%,#9dc6e340 55%,transparent 73%);filter:url(#steam-wisp);animation:breath-flow 4.8s linear infinite}
+.variant-b .energy-edge{width:25px;background:radial-gradient(ellipse,#fff7d9 3%,#f7dda880 19%,#a6dbef38 49%,transparent 75%);animation:breath-pressure 3s ease-in-out infinite}
+.variant-b .energy-edge::before{width:32px;background:linear-gradient(to right,transparent,#d6ecff80,#fff3cb,#d6ecff80,transparent)}
+.variant-b .energy-edge::after{width:4px;height:8px;clip-path:ellipse(40% 50%);box-shadow:0 0 6px #ffe1a5;animation:current-spark 3s ease-in-out infinite}
+@keyframes breath-flow{0%{opacity:0;transform:translate(-35%,-50%) scale(.4,.7)}22%{opacity:.7}55%{opacity:.45}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.15,1) rotate(var(--turn))}}
+@keyframes breath-pressure{0%,100%{opacity:.7;transform:translateX(-50%) scale(.85)}50%{opacity:1;transform:translateX(-50%) scale(1.15)}}
+.variant-c .smoke-head{width:380px;opacity:.75}
+.variant-c .puff{width:260px;height:12px;filter:url(#steam-wisp);background:radial-gradient(ellipse,transparent 36%,#e5f2ff70 50%,#bad3ea28 63%,transparent 76%);animation:veil-flow 8s linear infinite}
+.variant-c .puff:nth-child(2n){height:18px;opacity:.4}
+.variant-c .energy-edge{width:13px;background:radial-gradient(ellipse,#eff8ffc0,#b6ddff30 40%,transparent 72%);animation:steam-pressure 3.8s ease-in-out infinite alternate}
+.variant-c .energy-edge::after{width:2px;height:9px;clip-path:none;border-radius:50%;background:#f3fbff;animation:current-spark 4s ease-in-out infinite}
+.variant-c .energy-edge::before{width:66px;height:1px;filter:blur(.4px);animation:steam-beam 4.4s ease-in-out infinite}
+@keyframes veil-flow{0%{opacity:0;transform:translate(-50%,-50%) scale(.65,.5) rotate(-2deg)}25%{opacity:.65}75%{opacity:.25}100%{opacity:0;transform:translate(calc(-50% + var(--dx) * 1.4),calc(-50% + var(--dy))) scale(1.25,.85) rotate(var(--turn))}}
+@media(prefers-reduced-motion:reduce){[class^=variant-] .smoke-head,[class^=variant-] .energy-edge{display:none}}
+  </style>
+</head>
+<body><main>
+  <header class="page-header"><h1 class="smoke-brand smoke-wordmark">Athanor</h1><img class="wizard-signature" src="/wizard-logo.svg" alt="Wizard" width="64" height="14"></header>
+  <h2>Three ways to fill the furnace</h2><p>Magical steam at the leading edge. The same frame and result colors in every version.</p>
+  <div class="controls"><label>Progress <input id="progress" type="range" min="0" max="100" value="42"><output id="amount">42%</output></label><label><input id="advance" type="checkbox">Advance progress</label><label><input id="still" type="checkbox">Show finished bars</label></div>
+  <div id="progress-preview"></div>
+  <p style="margin-top:24px"><a href="/">Back to Athanor</a></p>
+</main><script type="module" src="/design-preview.js"></script></body></html>

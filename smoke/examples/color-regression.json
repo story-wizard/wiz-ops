@@ -1,0 +1,32 @@
+{
+  "id": "color-regression",
+  "revision": 0,
+  "title": "Color regression",
+  "project": "fresh",
+  "groups": [
+    {
+      "id": "color",
+      "title": "Color",
+      "checks": [
+        "A-CO-07",
+        "A-CO-01",
+        "A-CO-02",
+        "A-CO-04",
+        "UP-03",
+        "A-IN-05",
+        "A-CO-03-R",
+        "A-CO-03-H",
+        "A-CO-04-W",
+        "A-CO-05"
+      ]
+    },
+    {
+      "id": "persistence",
+      "title": "Save, reopen and history",
+      "checks": [
+        "A-LP-02",
+        "UP-01"
+      ]
+    }
+  ]
+}

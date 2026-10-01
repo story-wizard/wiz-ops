@@ -1,0 +1,120 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+import {runInNewContext} from 'node:vm';
+
+const source=(await readFile(new URL('../public/run-setup.js',import.meta.url),'utf8')).replace(/^import .*;\n/gm,'').replace(/^export /gm,'');
+const courses=[{id:'automated-full',title:'All automated checks',checkCount:137,targets:{packaged:57,desktop:73,service:7},requirements:{targets:['packaged','desktop','service']}},{id:'packaged-full',title:'Build engine checks',checkCount:57,targets:{packaged:57,desktop:0,service:0},requirements:{targets:['packaged']}}];
+function launcher({helper=false,lost=false,missing=false,buildAvailable=true,prepareError}={}){
+ const events={},calls=[],opened=[],rendered=[],storage=new Map(),runtime={app:'/Test.app',cli:'/paired-cli',qtPlugin:'/libqcocoa.dylib',bridge:'/bridge'};
+ const context={document:{addEventListener(name,fn){events[name]=fn;}},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},crypto:{randomUUID:()=> 'stable-start-id'},progressBar:()=>''};
+ runInNewContext(source,context);
+ context.configureRunSetup({render(){rendered.push(context.runSetupView(null));},toast(){},onStarted:async id=>opened.push(id),api:async(route,method,body)=>{
+  calls.push({route,method,body});
+  if(route==='/run-setup')return {builds:[{app:'/Selected.app',label:'Selected build',available:buildAvailable}],courses,defaultRuntimeId:helper?'helper':'',runtimes:helper?[{id:'missing',available:false,runtime:{app:'/Gone.app'}},{id:'helper',available:true,runtime}]:[]};
+  if(route==='/preparations'){if(prepareError)throw Error(prepareError);return {id:'prep',state:'Preparing',steps:[]};}
+  if(route==='/preparations/prep')return {id:'prep',state:'Ready',steps:[],planHash:'frozen-plan'};
+  if(route==='/runner/start'){if(lost&&(!missing||calls.filter(c=>c.route==='/runner/start').length===1))throw Error('Response lost');return {runId:'actual-run'};}
+  if(route==='/requests/stable-start-id'){if(missing)throw Object.assign(Error('Request not found'),{status:404});return {id:'actual-run'};}
+  throw Error('Unexpected route '+route);
+ }});
+ return {context,events,calls,opened,rendered};
+}
+const submit=events=>events.submit({target:{id:'suite-setup-form'},preventDefault(){}});
+test('tab navigation refreshes setup before switching and preserves the current view on a failed refresh',async()=>{
+ const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8'),calls=[],state={tab:'runs',selectedRun:'existing'};
+ const source=app.slice(app.indexOf('async function navigateTab('),app.indexOf('function tag('));
+ const context={$:()=>null,state,refreshRunSetup:async()=>calls.push('setup'),refreshDesktop:async()=>calls.push('desktop'),render:()=>calls.push('render'),toast:message=>calls.push(message)};
+ runInNewContext(source,context);await context.navigateTab('setup');
+ assert.deepEqual(calls,['setup','render']);assert.equal(state.tab,'setup');assert.equal(state.selectedRun,null);
+ context.refreshRunSetup=async()=>{throw Error('Service unavailable');};state.tab='runs';state.selectedRun='existing';calls.length=0;
+ await context.navigateTab('setup');assert.deepEqual(calls,['Service unavailable']);assert.equal(state.tab,'runs');assert.equal(state.selectedRun,'existing');
+});
+test('guide links open the requested workspace view and preserve run deep links',async()=>{
+ const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
+ const boot=app.slice(app.indexOf('try{[catalog,runs]='),app.indexOf('setInterval(async()=>'));
+ const run='11111111-1111-4111-8111-111111111111';
+ for(const [hash,expected] of [['#setup','setup'],['#runs','runs'],['#catalog','catalog'],['#gp','gp'],['#coverage','coverage'],['#checklist','checklist'],['#desktop','desktop'],['#run/'+run,'runs'],['#invalid','setup']]){
+  const state={tab:'setup',selectedRun:null},context={state,location:{hash},api:async()=>({}),refreshRunSetup:async()=>{},refreshDesktop:async()=>{},render(){}};
+  await runInNewContext('(async()=>{'+boot+'})()',context);
+  assert.equal(state.tab,expected,hash);assert.equal(state.selectedRun,hash.startsWith('#run/')?run:null);
+ }
+});
+test('default course prepares instrumentation for the selected build before enabling a run',async()=>{
+ const {context,events,calls}=launcher();await context.refreshRunSetup();
+ const html=context.runSetupView(null);
+ assert.match(html,/All automated checks · 137 checks/);assert.match(html,/Prepare automatically sets up the matching adapter/);
+ assert.match(html,/type="submit" >Prepare build/);assert.ok(!html.includes('launch-options" open'));
+ await submit(events);assert.deepEqual(calls.map(c=>c.route),['/run-setup','/preparations','/preparations/prep']);
+ assert.equal(calls.some(c=>c.route==='/runner/start'),false,'Prepare must never start a course');
+ assert.match(context.runSetupView(null),/Start 137 checks/);
+ await events.change({target:{id:'suite-name',value:'Revised run name'}});assert.match(context.runSetupView(null),/Prepare build/);await submit(events);
+ await events.change({target:{id:'suite-course',value:'packaged-full'}});
+ assert.match(context.runSetupView(null),/Prepare build/);await submit(events);
+ assert.equal(calls.find(c=>c.route==='/preparations').body.runtime,undefined,'The launcher cannot substitute a test app');
+});
+test('prepare and start are separate actions bound to the same selected build and frozen plan',async()=>{
+ const {context,events,calls,opened,rendered}=launcher({helper:true});await context.refreshRunSetup();
+ assert.ok(!context.runSetupView(null).includes('Desktop helper'));
+ assert.match(context.runSetupView(null),/type="submit" >Prepare build/);
+ events.input({target:{id:'suite-name',value:'Friday release',dataset:{}}});await submit(events);await submit(events);
+ assert.deepEqual(calls.map(c=>c.route),['/run-setup','/preparations','/preparations/prep','/runner/start']);
+ const plan=calls[1].body,start=calls[3].body;
+ assert.equal(plan.app,'/Selected.app');assert.equal(plan.selection.courseIds[0],'automated-full');assert.equal(plan.selection.title,'Friday release');assert.equal(plan.runtime,undefined);
+ assert.equal(start.planHash,'frozen-plan');assert.equal(start.requestId,'stable-start-id');assert.deepEqual(opened,['actual-run']);
+ assert.ok(rendered.some(html=>html.includes('Starting tests…')),'The pending start should show progress');
+ assert.ok(rendered.every(html=>!html.includes('The response was lost.')),'A healthy start must never flash a lost-response warning');
+});
+test('a lost start response locks the form and recovers the same request without another start',async()=>{
+ const {context,events,calls,opened}=launcher({helper:true,lost:true});await context.refreshRunSetup();await submit(events);await submit(events);
+ assert.match(context.runSetupView(null),/Start outcome needs checking/);await submit(events);
+ assert.equal(calls.filter(c=>c.route==='/runner/start').length,1);
+ await events.click({target:{closest:()=>({dataset:{setup:'recover'}})}});
+ assert.equal(calls.at(-1).route,'/requests/stable-start-id');assert.deepEqual(opened,['actual-run']);
+ assert.equal(calls.filter(c=>c.route==='/runner/start').length,1);
+});
+test('missing prerequisites explain the next action and never admit a run',async()=>{
+ const {context,events,calls}=launcher({helper:true,prepareError:'ENOENT: missing /model/Encoder.mlmodelc'});await context.refreshRunSetup();await submit(events);
+ assert.match(context.runSetupView(null),/offline speech model required by this course is missing/);
+ assert.match(context.runSetupView(null),/Technical details/);assert.equal(calls.some(c=>c.route==='/runner/start'),false);
+ const missingBuild=launcher({helper:true,prepareError:"ENOENT: no such file or directory, realpath '/Applications/Missing.app'"});await missingBuild.context.refreshRunSetup();await submit(missingBuild.events);
+ assert.match(missingBuild.context.runSetupView(null),/That Wizard build could not be found/);
+ assert.equal(missingBuild.calls.some(c=>c.route==='/runner/start'),false);
+});
+
+test('results expose Stop only for the active run and bind it to that run identity',async()=>{
+ const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
+ const view=app.slice(app.indexOf('function runsView()'),app.indexOf('function render()'));
+ const run={id:'owned-run',name:'Friday release',build:'Test build',created_at:'2026-09-30',execution:{state:'Running',message:''},results:[]};
+ const context={runs:[run],state:{selectedRun:run.id},catalog:{runner:{active:{run_id:run.id}}},statuses:[],esc:String,runCounts:()=>({}),tag:String,progress:()=>'',runTimeView:()=>'',checkpointView:()=>'',options:()=>''};
+ runInNewContext(view,context);
+ assert.match(context.runsView(),/data-action="stop-run" data-stop-id="owned-run"/);
+ context.catalog.runner.active={run_id:'different-run'};
+ assert.ok(!context.runsView().includes('data-action="stop-run"'));
+});
+
+// A lost request can be absent at admission; the same key safely reconciles a racing POST.
+test('a missing start request offers an explicit retry of the original immutable request',async()=>{
+ const {context,events,calls,opened}=launcher({helper:true,lost:true,missing:true});await context.refreshRunSetup();await submit(events);await submit(events);
+ await events.click({target:{closest:()=>({dataset:{setup:'recover'}})}});
+ assert.match(context.runSetupView(null),/Retry original start/);
+ assert.equal(calls.filter(c=>c.route==='/runner/start').length,1,'Reconciliation must not blindly replay input');
+ await events.click({target:{closest:()=>({dataset:{setup:'retry'}})}});
+ const starts=calls.filter(c=>c.route==='/runner/start');assert.equal(starts.length,2);assert.deepEqual(starts[1].body,starts[0].body,'Retry preserves the original idempotency key and frozen plan');
+ assert.deepEqual(opened,['actual-run']);assert.ok(!context.runSetupView(null).includes('Start outcome needs checking'));
+});
+
+test('retained run history cannot override a changed downloaded package in setup',async()=>{
+ const server=await readFile(new URL('../server.mjs',import.meta.url),'utf8');
+ const source=server.slice(server.indexOf('async function runSetup()'),server.indexOf('async function storedPlan('));
+ const cached={app:'/Cached.app',label:'Cached nightly',available:false,error:'Cached package changed'};
+ const context={db:{prepare:()=>({all:()=>[{package_json:JSON.stringify({app:cached.app,version:'Historical version'})}]})},dataDir:'/station',runtimeList:async()=>[],installedRuntime:async()=>{throw Object.assign(Error('No tools'),{code:'ENOENT'});},existsSync:p=>p===cached.app,path:{basename:p=>p.split('/').at(-1)},localBuilds:async()=>[cached],checkRegistry:()=>[],courseList:()=>[]};
+ runInNewContext(source,context);const data=await context.runSetup();
+ assert.equal(data.builds.length,1);assert.equal(data.builds[0].available,false);assert.equal(data.builds[0].error,cached.error);
+});
+test('an unavailable cached build cannot be launched even when the test tools are ready',async()=>{
+ const {context,events,calls}=launcher({helper:true,buildAvailable:false});await context.refreshRunSetup();
+ events.input({target:{id:'suite-app',value:'/Selected.app',dataset:{}}});
+ assert.match(context.runSetupView(null),/type="submit" disabled>Prepare build/);await submit(events);
+ assert.equal(calls.some(c=>c.route==='/preparations'),false);
+});

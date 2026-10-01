@@ -1,0 +1,122 @@
+{
+  "check-compounds.mjs": [
+    "D-COMPOUND-CREATE",
+    "D-COMPOUND-EDIT",
+    "D-MGFX-CLIPBOARD",
+    "D-EXPORT-COMPOUND",
+    "D-COMPOUND-DISSOLVE",
+    "D-EXPORT-STILL"
+  ],
+  "check-offline-export.mjs": [
+    "S-EXPORT-PRORES",
+    "S-EXPORT-AV1"
+  ],
+  "check-curves.mjs": [
+    "D-CURVE-RGB-CLIPBOARD",
+    "D-CURVE-HUE-RESET"
+  ],
+  "check-generated.mjs": [
+    "S-MGFX-PERSIST",
+    "S-MGFX-DUPLICATE-DEFAULT",
+    "S-MGFX-DUPLICATE",
+    "S-MGFX-CLIP-COPY",
+    "S-MGFX-UNDO-PUBLISH"
+  ],
+  "check-scopes.mjs": [
+    "D-SCOPES-01"
+  ],
+  "check-selection-bin.mjs": [
+    "D-LINKED-SELECTION",
+    "D-TRACK-LOCK-UI",
+    "D-TRACK-TARGETING",
+    "D-RIPPLE-GAP",
+    "D-BIN-RENAME",
+    "D-BIN-DUPLICATE",
+    "D-BIN-DELETE",
+    "D-BIN-MGFX"
+  ],
+  "check-spell-ui.mjs": [
+    "D-SB-TAB-RENAME",
+    "D-SB-TAB-DUPLICATE",
+    "D-SB-SEARCH-DROP",
+    "D-SB-INSPECTOR-PREVIEW"
+  ],
+  "check-editor.mjs": [
+    "D-EDIT-CLIPBOARD",
+    "D-INSPECTOR-01",
+    "D-EXPORT-01",
+    "D-MGFX-01"
+  ],
+  "check-workspace.mjs": [
+    "D-UI-DEFAULT",
+    "D-UI-PREFERENCES",
+    "D-PREVIEW-FULLSCREEN",
+    "D-SELECT-ALL",
+    "D-CUT-PASTE",
+    "D-CROSSRATE-CLIPBOARD",
+    "D-PLAYBACK-SWITCH",
+    "D-SHORTCUT-REBIND"
+  ],
+  "check-surface.mjs": [
+    "D-DOCUMENT-EDIT",
+    "D-TIMELINE-TABS",
+    "D-NODE-CLIPBOARD-BYPASS"
+  ],
+  "check-spellbook.mjs": [
+    "D-SB-PERSIST",
+    "D-SB-LOGGING",
+    "D-SB-CREATE",
+    "D-SB-QUICK-SEARCH",
+    "D-SB-GRAPH",
+    "D-SB-PARAMS",
+    "D-SB-BYPASS",
+    "D-SB-UNDO",
+    "D-SB-ATOMIC",
+    "D-SB-STALE",
+    "D-SB-INSTANCE"
+  ],
+  "check-paths.mjs": [
+    "D-MEDIA-VIEWS",
+    "D-MEDIA-OPEN",
+    "D-MEDIA-TIMELINE",
+    "D-TRANSPORT-KEYS",
+    "D-TIMELINE-TOOLS",
+    "D-EDIT-SPLIT-REDO",
+    "D-EDIT-DELETE",
+    "D-EDIT-DISABLE",
+    "D-EDIT-NUDGE",
+    "D-EDIT-DRAG",
+    "D-EDIT-TRIM",
+    "D-TRACK-ADD",
+    "D-PROJECT-CANCEL-CLOSE",
+    "D-MEDIA-SEARCH",
+    "D-EXPORT-CANCEL"
+  ],
+  "check-core.mjs": [
+    "D-CLI-01",
+    "D-CLI-02",
+    "D-PB-01",
+    "D-LP-02-SAVE"
+  ],
+  "check-relink.mjs": [
+    "D-MEDIA-RELINK"
+  ],
+  "check-next.mjs": [
+    "D-EDIT-SLIP",
+    "D-LINK-UNLINK-UI",
+    "D-BLADE-NO-SELECTION",
+    "D-FRACTIONAL-CLIPBOARD"
+  ],
+  "check-playback.mjs": [
+    "D-PREVIEW-SCRUB",
+    "D-PLAYBACK-INOUT",
+    "D-PLAYBACK-LOOP",
+    "D-SCRUB-CUTS"
+  ],
+  "check-idle.mjs": [
+    "S-PF-IDLE"
+  ],
+  "check-unset-rate.mjs": [
+    "S-EXPORT-UNSET-RATE"
+  ]
+}

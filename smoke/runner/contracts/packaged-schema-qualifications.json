@@ -1,0 +1,15 @@
+{
+  "format": "wizard-smoke-schema-qualifications/v1",
+  "baselineHash": "0cae08a5ecb316d9b8d1ea0640b410e96a2ff56561fd8c2266e4a6d4d70ca273",
+  "reviewed": [
+    {
+      "schemaHash": "0f16934c7ed782d772930a5c56bed115b92cfce169093fe8e703c2d4ead66f49",
+      "reviewedAt": "2026-10-01",
+      "changes": [
+        "render.set_render_mode.properties.mode.enum adds eighth",
+        "render.set_render_mode.properties.mode.description clarifies preview resolution"
+      ],
+      "basis": "All 161 operation definitions were compared. These are the only differences; the existing mode values and all other operation signatures are unchanged."
+    }
+  ]
+}

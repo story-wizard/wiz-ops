@@ -1,0 +1,1557 @@
+{
+  "format": "wizard-smoke-accepted-checks/v1",
+  "status": "Accepted for stated automated scope",
+  "reviewedBy": "Charles",
+  "reviewedAt": "2026-09-27T17:18:51.589Z",
+  "authorization": "Lets say that all the checks we've made (that are also on the checklist) are accepted.",
+  "scope": "Existing check definitions mapped to Logan checklist rows. Known failures, blockers and coverage limitations remain unchanged. Acceptance does not assert a runtime pass, full source-row coverage, or overall V1 acceptance.",
+  "checklist": {
+    "file": "catalog/checkpoints/logan-2026-09-25-2.json",
+    "sha256": "bc557d1db3f07f1f7b8ed49ed553bdbf641fb46c11b9619d2bdbac731b08cf0b",
+    "rowCount": 137,
+    "originalObservationSha256": "0ebd48e0195c826144a13eb2abc9024c47459f1160e909b0a2d1a5b35fd93622",
+    "note": "Source-only projection: same original IDs and criteria; workbook observations removed from Git. Accepted executable definition hashes are unchanged."
+  },
+  "checks": [
+    {
+      "id": "A-CLI-01",
+      "title": "Packaged engine connection",
+      "target": "packaged",
+      "sourceIds": [
+        "CLI-01"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "58999a3f118cb8638f1c0e4edb93c41c4bd59c730509b4fa6cc8fd380aa52eeb"
+    },
+    {
+      "id": "IN-01",
+      "title": "Mixed-media import and local ingest",
+      "target": "packaged",
+      "sourceIds": [
+        "IN-01"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "91e3470eaa4936548176ed49a4053fca88f6f23c3d5b87f033502427154d406f"
+    },
+    {
+      "id": "IN-03",
+      "title": "Import outside the bundle parent",
+      "target": "packaged",
+      "sourceIds": [
+        "IN-03"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "f6a8ded70c1da15ddea5d350e5a5f1e0a8f963177f28055cd089f0c4218e83bc"
+    },
+    {
+      "id": "A-IN-04-T",
+      "title": "Decode thumbnail frames",
+      "target": "packaged",
+      "sourceIds": [
+        "IN-04"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "9a9f42dc830aa5803c1f4dd2f34d585cd837b200b0f2606475d06d0fb5ef4a0b"
+    },
+    {
+      "id": "A-TL-01",
+      "title": "Insert and overwrite through editor operations",
+      "target": "packaged",
+      "sourceIds": [
+        "TL-01"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "ce4cdf178bbb7681137e3e14bafc90d5d67be6f7a67c35f475e83ca512a40d04"
+    },
+    {
+      "id": "A-TL-02",
+      "title": "Split explicit single and multiple clips",
+      "target": "packaged",
+      "sourceIds": [
+        "TL-02"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "893345f5675566b6fa2d38a8384564b52c9d3068e846fa2f698d2b636d061917"
+    },
+    {
+      "id": "A-TL-03",
+      "title": "Trim, slip and ripple-remove a clip",
+      "target": "packaged",
+      "sourceIds": [
+        "TL-03"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "0656d26475cfeb5a4ad908f11b4f290552d4618164d2d3832a4c8d0dd14ab95e"
+    },
+    {
+      "id": "A-TL-04",
+      "title": "Copy and move across frame rates",
+      "target": "packaged",
+      "sourceIds": [
+        "TL-04"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "80a116a96ec8a4bb545602b1e52f58ac688033c01b3a795aff51f7db3c698cac"
+    },
+    {
+      "id": "A-TL-05",
+      "title": "Linked audio/video edits",
+      "target": "packaged",
+      "sourceIds": [
+        "TL-05"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "c62f51452f6e845c3f83548b2e9fa024b701b17b566f63f0ab2b5eae3d8a3b84"
+    },
+    {
+      "id": "A-TL-06",
+      "title": "Locked track rejects edits",
+      "target": "packaged",
+      "sourceIds": [
+        "TL-06"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "1e186a5cd42f78b0601174b1bab028dfe0aecb38beb8169957951352363f00c8"
+    },
+    {
+      "id": "UP-01",
+      "title": "Twenty edits, undo and redo",
+      "target": "packaged",
+      "sourceIds": [
+        "UP-01"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "1d8557895ebabdd5805549fc9e274f4e1857242461d399ec936874c6afe90087"
+    },
+    {
+      "id": "A-EX-03",
+      "title": "Export stills across clips and an empty interval",
+      "target": "packaged",
+      "sourceIds": [
+        "EX-03"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "6167dbfde295be083d242a49ef0383d642c4de24023dbd338074da015c503276"
+    },
+    {
+      "id": "A-CO-07",
+      "title": "Disable and restore a rendered clip",
+      "target": "packaged",
+      "sourceIds": [
+        "CO-07"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "20a4cd5d304cd2791c0685d7e734067122391a7184dad9bd4c8f01ba0047b449"
+    },
+    {
+      "id": "A-RG-01",
+      "title": "Render graph insertion, edit, bypass and removal",
+      "target": "packaged",
+      "sourceIds": [
+        "RG-01"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "a5bd9f7453a86f92fa18caea3abb18410580754b21e88f954d453ae38e65d180"
+    },
+    {
+      "id": "A-LP-04",
+      "title": "Checkpoint and discard project edits",
+      "target": "packaged",
+      "sourceIds": [
+        "LP-04"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "e011c70785f3ae9219e25d909d9b10798cb728d413371393146fd844d90c2686"
+    },
+    {
+      "id": "A-LP-02",
+      "title": "Packaged engine restart persistence",
+      "target": "packaged",
+      "sourceIds": [
+        "LP-02"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "48806f91f83ea599df51ad409f23c84853acb2a9683ead9bc0721bf3704b420c"
+    },
+    {
+      "id": "IN-06",
+      "title": "Offline speech transcription",
+      "target": "packaged",
+      "sourceIds": [
+        "IN-06"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "b8aff6d564a6959cc2d9eba10dc2963ce11af80f7aaa52bf771dc182faebfb63"
+    },
+    {
+      "id": "SS-01",
+      "title": "Transcript phrase and source-range search",
+      "target": "packaged",
+      "sourceIds": [
+        "SS-01"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "9127bff89450ab5cc69e1a677b16cff37026a569cfffc87d82f9276ab3d99e76"
+    },
+    {
+      "id": "SS-03",
+      "title": "Filename-only search",
+      "target": "packaged",
+      "sourceIds": [
+        "SS-03"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "c26076bafc4a4772c9bab684167c086b53bae2fe88cf6fff7034505ee87b1b2d"
+    },
+    {
+      "id": "SS-04",
+      "title": "No-match filename search",
+      "target": "packaged",
+      "sourceIds": [
+        "SS-04"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "8c618b9f1c7ddf43f9972196fdaf623cea4b15ece7c70171b2b81abe2066abd9"
+    },
+    {
+      "id": "SS-05",
+      "title": "Search becomes available after speech ingest",
+      "target": "packaged",
+      "sourceIds": [
+        "SS-05"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "a43e2649a68976e3b688e28d42627afc4f41101b4371502a0f0485bacf1fff3d"
+    },
+    {
+      "id": "A-SS-07",
+      "title": "Project, asset and bin search scopes",
+      "target": "packaged",
+      "sourceIds": [
+        "SS-07"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "14ee6edfd8a1d55dfb13bf5f78866ace4998774db65a250dd85264373864b32d"
+    },
+    {
+      "id": "A-IN-07-B",
+      "title": "Bin folders and media organization",
+      "target": "packaged",
+      "sourceIds": [
+        "IN-07"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "29806b3f25a2018cd5433119c789e337af499f8a9e874ea163b48469e4c34d2e"
+    },
+    {
+      "id": "A-IN-07-D",
+      "title": "Bin soft-delete and restore",
+      "target": "packaged",
+      "sourceIds": [
+        "IN-07"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "f566e9bbd8ed74532e552b8b5a1e28c46e7441b15c61eb3b2aa49f8f7fb1ab40"
+    },
+    {
+      "id": "A-UI-04",
+      "title": "Markdown document lifecycle",
+      "target": "packaged",
+      "sourceIds": [
+        "UI-04"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "3c2ee58bff0d07f99b25351d274f7c0da1b342c0db78ba8006e73de43b8d3cc2"
+    },
+    {
+      "id": "A-AU-01",
+      "title": "Mixer gain, mute and solo",
+      "target": "packaged",
+      "sourceIds": [
+        "AU-01"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "9568a73dfb367e9b2c579b038ef24d0547a410f71af4038b01e8429fefbaf66a"
+    },
+    {
+      "id": "A-AU-01-C",
+      "title": "Clip audio gain and undo",
+      "target": "packaged",
+      "sourceIds": [
+        "AU-01"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "12b0339f9ba1ffd3dd85032a739176e4273a64a18fb70391ba4f7df17bf1d685"
+    },
+    {
+      "id": "A-AU-01-EQ",
+      "title": "Native audio EQ and bypass",
+      "target": "packaged",
+      "sourceIds": [
+        "AU-01"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "13f73d79ecb5a97be6d763b2aef4412533db1463d991d9d1a12b191b97ac474d"
+    },
+    {
+      "id": "A-AU-03",
+      "title": "Offline loudness analysis",
+      "target": "packaged",
+      "sourceIds": [
+        "AU-03"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "c3872dd6940406eae2c8d7d7171453a821fdaa0ea4ddc3416be27371079bd9f5"
+    },
+    {
+      "id": "A-CO-01",
+      "title": "Primary saturation render, save and reset",
+      "target": "packaged",
+      "sourceIds": [
+        "CO-01",
+        "CO-06"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "4ca7aeb1d67a629189dd83bce9541d56d6a4fa0892d45ab0c0545a22a10d6d60"
+    },
+    {
+      "id": "A-CO-02",
+      "title": "Tone contrast render, save and reset",
+      "target": "packaged",
+      "sourceIds": [
+        "CO-02",
+        "CO-06"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "f672a67b5877d47086ff3a1a3826e90962fb47e9b7c4fa2cb7b10753e8171ccf"
+    },
+    {
+      "id": "A-CO-04",
+      "title": "Balance exposure render, save and reset",
+      "target": "packaged",
+      "sourceIds": [
+        "CO-04",
+        "CO-06"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "58522bdfe679274ad5163d7815373cf5a58123306f352ffbb74008cd8a267f71"
+    },
+    {
+      "id": "UP-03",
+      "title": "Working colour-space change and undo",
+      "target": "packaged",
+      "sourceIds": [
+        "UP-03"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "9dbe4bed39feabbce06a76b7c6d7926fe49e00b01595a9f00e87c702a4f6936e"
+    },
+    {
+      "id": "RG-03",
+      "title": "Procedural matte connection and undo",
+      "target": "packaged",
+      "sourceIds": [
+        "RG-03"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "8ef7639301b41e84fcafcd3f21c7f6aff26385c7528f54d7efac87e06ed33a90"
+    },
+    {
+      "id": "A-RG-04",
+      "title": "Chained effects and independent bypass",
+      "target": "packaged",
+      "sourceIds": [
+        "CO-06",
+        "RG-04"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "692507d5ce780c5ee570944edf213b649aa7419cac4cf6e7fdee882135d16b57"
+    },
+    {
+      "id": "A-TL-04-D",
+      "title": "Independent timeline duplication",
+      "target": "packaged",
+      "sourceIds": [
+        "TL-04"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "98532662acbbc880657d24834fd9d18c8fb60e756750c02b68ffe07fa8f38979"
+    },
+    {
+      "id": "A-TL-03-R",
+      "title": "Clip speed change and undo",
+      "target": "packaged",
+      "sourceIds": [
+        "TL-03"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "0c5533b5d72134ef285a281a22cd777b840f03ff1331e2b4b5a9556a7d26dde4"
+    },
+    {
+      "id": "A-LP-02-S",
+      "title": "Save As and project-copy independence",
+      "target": "packaged",
+      "sourceIds": [
+        "LP-02"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "aa48d315687224d00617c854b16fdbe0cc8056260c4ef4e1ebcc9ad1de012591"
+    },
+    {
+      "id": "A-IN-04-W",
+      "title": "Decode source audio and waveform data",
+      "target": "packaged",
+      "sourceIds": [
+        "IN-04"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "a87299b32fd9a212f571e3a3ec3d2ebd69b2ae7bf7d18a03dee394bc64ec2f2b"
+    },
+    {
+      "id": "A-IN-05",
+      "title": "Detected source colour and ingest transform",
+      "target": "packaged",
+      "sourceIds": [
+        "IN-05"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "9d9181d1b6e0f5b1fc3ce795dadb4405b55558bfe55c847ef71b12d20340ff4e"
+    },
+    {
+      "id": "A-IN-08-R",
+      "title": "Missing local source and recovery",
+      "target": "packaged",
+      "sourceIds": [
+        "IN-08"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "1afdfb14e5e56a6ae4c81c85bb4f6aa5774b8e03827b35b303230e3bc9e737cc"
+    },
+    {
+      "id": "A-CO-03-R",
+      "title": "RGB curve render and persistence",
+      "target": "packaged",
+      "sourceIds": [
+        "CO-03"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "1ee8cd1d2719b4b60860665043dfac3639673f6d7d38160c0dc93024a3ec1e2c"
+    },
+    {
+      "id": "A-CO-03-H",
+      "title": "Hue curve render and persistence",
+      "target": "packaged",
+      "sourceIds": [
+        "CO-03"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "813477e3657dcbe159ef8a8918f183d464d95d75d588c59f007167601d4bab1b"
+    },
+    {
+      "id": "A-CO-04-W",
+      "title": "White balance temperature and tint",
+      "target": "packaged",
+      "sourceIds": [
+        "CO-04"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "9545463d0a5a252ecbacb319914654e3b0173f2230644a494c85501bb422d0ab"
+    },
+    {
+      "id": "A-CO-05",
+      "title": "Copy grade values between independent clips",
+      "target": "packaged",
+      "sourceIds": [
+        "CO-05"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "a4a2f606eea5d3e4b467b2e465bbb0f4f5315681e0dd059bbf0627df69e922b5"
+    },
+    {
+      "id": "A-PF-01",
+      "title": "Render six grades on one clip",
+      "target": "packaged",
+      "sourceIds": [
+        "PF-01"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "5fd200ffab5bd27872f956bc3f292b626256a8837ee4ef3137d4511857847ac2"
+    },
+    {
+      "id": "A-PF-03",
+      "title": "Render six overlapping graded tracks",
+      "target": "packaged",
+      "sourceIds": [
+        "PF-03"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "9d4d8c65a2b20436687d303678bddfa9ebe699a650e288225d8f0cceba98598c"
+    },
+    {
+      "id": "A-PB-11",
+      "title": "Random access across twenty cuts",
+      "target": "packaged",
+      "sourceIds": [
+        "PB-11"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "7cbfa9bdb38ed5da7e2f3a57212e369ae3b6e5eafde2c6392f1392dd1ce86e98"
+    },
+    {
+      "id": "A-PF-15",
+      "title": "Reopen twenty timelines with 500 clips",
+      "target": "packaged",
+      "sourceIds": [
+        "PF-15"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "b212e816c11d2e0fa819d0623c4fabc1c1111c203598c7a7f017dfb074b5441c"
+    },
+    {
+      "id": "A-PF-17",
+      "title": "Fifty-step edit history",
+      "target": "packaged",
+      "sourceIds": [
+        "PF-17"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "567750ec8e7f55667b360c47960f7255e51eeaddd1f1062c41218b88c50a781c"
+    },
+    {
+      "id": "A-PF-19",
+      "title": "Copy one hundred clips across frame rates",
+      "target": "packaged",
+      "sourceIds": [
+        "PF-19"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "0433f44607ebe806c2670b38efcde3294332a96b1b053ec2ca14147e556469e7"
+    },
+    {
+      "id": "A-TL-08-N",
+      "title": "Nested timeline rendering and child edits",
+      "target": "packaged",
+      "sourceIds": [
+        "TL-08",
+        "PB-07"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "a6052be90a50bdf2d0c2523e634a6a5d168df139cf96ac9759e9eaed498fb24d"
+    },
+    {
+      "id": "A-PB-05-R",
+      "title": "Mixed-codec timeline rendering",
+      "target": "packaged",
+      "sourceIds": [
+        "IN-01",
+        "PB-05"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "4fa277a7a9c3160ca463cf66eb51ff3e307458ed1bd5b478e9717dad94c41f8a"
+    },
+    {
+      "id": "A-PB-09-R",
+      "title": "Render media across integer and fractional rates",
+      "target": "packaged",
+      "sourceIds": [
+        "PB-09"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "8b064653b58e67a1413f65cec7ec7df21ca66cfeead4fd1d493346adecc37aef"
+    },
+    {
+      "id": "A-TL-04-F",
+      "title": "Fractional-rate copy, undo and persistence",
+      "target": "packaged",
+      "sourceIds": [
+        "TL-04"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "0ce745916a88bd69fa5528e46ab2bd3c9d188ff2b686a7bb94f86b50c211f4f4"
+    },
+    {
+      "id": "A-PB-03-R",
+      "title": "Linked cut audio and video continuity",
+      "target": "packaged",
+      "sourceIds": [
+        "PB-03"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "0acf901d2d1cc26e8f8d3adbeda09fb2db3f46293f15f2b23c3418aec275d7ad"
+    },
+    {
+      "id": "A-PF-13-I",
+      "title": "Bulk local ingest of 201 video assets",
+      "target": "packaged",
+      "sourceIds": [
+        "PF-13"
+      ],
+      "courseId": "local-core-v0",
+      "courseRevision": 6,
+      "definitionHash": "0dd538df659ef0979a141127088dafaaacb67a7adbef5b05ee5de134378eaf2b"
+    },
+    {
+      "id": "D-CLI-01",
+      "title": "Owned GUI connection",
+      "target": "desktop",
+      "sourceIds": [
+        "CLI-01"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "0f93fcdb837fc443184aadb37375b48ccc015b069180d717d75b3142a326ff0c"
+    },
+    {
+      "id": "D-CLI-02",
+      "title": "CLI edit reaches the editor",
+      "target": "desktop",
+      "sourceIds": [
+        "CLI-02"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "e5bc65e963956c55fdb2751d0ff302a2800f67c573cc31882641c63d1f1ab609"
+    },
+    {
+      "id": "D-PB-01",
+      "title": "Play, pause and seek",
+      "target": "desktop",
+      "sourceIds": [
+        "PB-01"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "03295012be8e28dade498d96bcb92c92c9ecde79020cb3e90d952ed7a973f21f"
+    },
+    {
+      "id": "D-LP-02-SAVE",
+      "title": "Save the project",
+      "target": "desktop",
+      "sourceIds": [
+        "LP-02"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "3dc86515cfccad2c256c1d04e656cbc3a70adc872dca36c0b9a53c3c72e35b51"
+    },
+    {
+      "id": "D-LP-02-RELAUNCH",
+      "title": "Quit and reopen",
+      "target": "desktop",
+      "sourceIds": [
+        "LP-02"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "aaf232ccebb76c45e5ab1aecd7bf1441cc745d1afd4551c9b69c7441d06cf626"
+    },
+    {
+      "id": "D-MEDIA-TIMELINE",
+      "title": "Open timelines from Media",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-09"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "a2c5dd625c3605f5d980c19986c258d6b4dae4b8916fa343dfb068b6ec542091"
+    },
+    {
+      "id": "D-TRANSPORT-KEYS",
+      "title": "Playback shortcuts",
+      "target": "desktop",
+      "sourceIds": [
+        "PB-01"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "4efa368d865592e0e60faeee9f43054f8096b7524fc5f2af511cd9c76717b7b2"
+    },
+    {
+      "id": "D-TIMELINE-TOOLS",
+      "title": "Tools and snapping",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-03"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "15c0bedcf88e80d5cfcb8c7abdd5536bf290a09f51633a7f96c3f8d812a0a025"
+    },
+    {
+      "id": "D-EDIT-SPLIT-REDO",
+      "title": "Split, undo and redo",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-02"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "e7bf4e0223e75f351f9b1e5012a1a55d2efb373e6592b6a305ac74a3251e6f3e"
+    },
+    {
+      "id": "D-EDIT-DELETE",
+      "title": "Delete and undo",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-03"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "6d21d9345c113df199194a8ff2c7ef86b5b0b3438b82f0a799dfc2ad706129c6"
+    },
+    {
+      "id": "D-EDIT-DISABLE",
+      "title": "Disable a clip",
+      "target": "desktop",
+      "sourceIds": [
+        "CO-07"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "3634f896ba668b6a52b12c33fd3fbdd0ce832f7688f59480b68a5eff80a58026"
+    },
+    {
+      "id": "D-EDIT-NUDGE",
+      "title": "Nudge one frame",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-03"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "ea459b0c5ebe085b3af180c9762c085f87792a4dc63e977459b8be629b8c1a54"
+    },
+    {
+      "id": "D-EDIT-DRAG",
+      "title": "Drag a timeline clip",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-01"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "f683e7b36b66428ec41e529106ba72ca8f69c31d23ca36894cf81331c382935f"
+    },
+    {
+      "id": "D-EDIT-TRIM",
+      "title": "Trim and undo",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-03"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "caf63e49a7cda456263a597720f706d3b28c579a53260a15109a27552b802230"
+    },
+    {
+      "id": "D-PROJECT-CANCEL-CLOSE",
+      "title": "Cancel closing an unsaved project",
+      "target": "desktop",
+      "sourceIds": [
+        "LP-04"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "0c03e39f0b3f931849ec4d46a02d1f7cf438994e2c3aca04d60039b604b1266a"
+    },
+    {
+      "id": "D-MEDIA-SEARCH",
+      "title": "Search media",
+      "target": "desktop",
+      "sourceIds": [
+        "SS-03"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "0feb06ea6253c29f7268672b38a9625cb2185a1618802fbd7bffa59b83076d93"
+    },
+    {
+      "id": "D-EXPORT-CANCEL",
+      "title": "Cancel export",
+      "target": "desktop",
+      "sourceIds": [
+        "EX-01"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "95df43fd210ed47ef1405d89d5265cb4fe6c1566b3439a75c7d572dbffe24e81"
+    },
+    {
+      "id": "D-EDIT-CLIPBOARD",
+      "title": "Copy, paste and undo",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-04"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "668ab03617a4384b2ef8833287057c221beb82c43524f8cfe3d978bb2b4670b3"
+    },
+    {
+      "id": "D-INSPECTOR-01",
+      "title": "Inspector edit and reset",
+      "target": "desktop",
+      "sourceIds": [
+        "RG-02"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "4f486c9ad0ab91dbc39ff414d974ba8cf5b618cc0c5cf121d7b8a2f211d250cd"
+    },
+    {
+      "id": "D-EXPORT-01",
+      "title": "H.264 movie export",
+      "target": "desktop",
+      "sourceIds": [
+        "EX-01"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "d3b64bc9b4707f06e6a164d86e962bca489118012fb8a9d961b8961ec14cfd25"
+    },
+    {
+      "id": "D-MGFX-01",
+      "title": "Local motion graphics",
+      "target": "desktop",
+      "sourceIds": [
+        "OZ-12"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "904e81788e084dd1d934fb22152b06e788ae93a1860bd7836bca94ba70737a09"
+    },
+    {
+      "id": "D-UI-DEFAULT",
+      "title": "Fresh default panels",
+      "target": "desktop",
+      "sourceIds": [
+        "LP-01"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "57a7a342438148565f77d44cf4f10637eeb28046c86572cee919013010a25150"
+    },
+    {
+      "id": "D-UI-PREFERENCES",
+      "title": "Application and project preferences",
+      "target": "desktop",
+      "sourceIds": [
+        "UI-05"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "94e23bd1f3829f58184745efc5cf72446f23483d27d86d44432fbf8f7974a213"
+    },
+    {
+      "id": "D-PREVIEW-FULLSCREEN",
+      "title": "Fullscreen playback and exit",
+      "target": "desktop",
+      "sourceIds": [
+        "PB-13"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "179548f2b383ad4b07a44aa4e69184ead2dc2a10783f68aa961efdd44791d8c9"
+    },
+    {
+      "id": "D-SELECT-ALL",
+      "title": "Select all clips",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-07"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "3c164ea446cc2f0f529e385b2090b3ea3c4d6130f7bae32b2fa5e797ab6f2390"
+    },
+    {
+      "id": "D-CUT-PASTE",
+      "title": "Cut, paste and undo",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-04"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "39ae43af310bf5f814dadccd7aebe423a4a7d7fa440c28b4cbafc75b2677e240"
+    },
+    {
+      "id": "D-SHORTCUT-REBIND",
+      "title": "Rebind and reset a shortcut",
+      "target": "desktop",
+      "sourceIds": [
+        "UI-03"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "df90121c63c49a59aa5b0777866cebd33c57cad6cfdca045e34739aa00e94b0e"
+    },
+    {
+      "id": "D-SB-CREATE",
+      "title": "Create spells through the editor",
+      "target": "desktop",
+      "sourceIds": [
+        "SB-01"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "46a453405078d1dcd06dd54f3e88ab31f8ce7210966d1ebbd8df210485c27639"
+    },
+    {
+      "id": "D-SB-GRAPH",
+      "title": "Author and wire a native Spell",
+      "target": "desktop",
+      "sourceIds": [
+        "SB-03"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "43a46edd8017c3cbcdfeb5af7052c1e7a1dcdd65636d86074bb68cb36f9f4d1f"
+    },
+    {
+      "id": "D-SB-PARAMS",
+      "title": "Edit a native Spell parameter",
+      "target": "desktop",
+      "sourceIds": [
+        "SB-04"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "3c2eca49b8fdecf28119e17ba4f36125877b386388d71b1794a31a8a95f68e30"
+    },
+    {
+      "id": "D-SB-BYPASS",
+      "title": "Bypass and restore a Spell node",
+      "target": "desktop",
+      "sourceIds": [
+        "SB-05"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "39339c90818bd12ae6d40215bc4de03d88874e46484e09145da1e3d80e219010"
+    },
+    {
+      "id": "D-SB-UNDO",
+      "title": "Atomic Spell undo and redo",
+      "target": "desktop",
+      "sourceIds": [
+        "SB-11"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "da2ef9639e58c72763beec9605fde2a13647cd3a72f8eade3d6724b05f80d9da"
+    },
+    {
+      "id": "D-SB-INSTANCE",
+      "title": "Independent Spell instance",
+      "target": "desktop",
+      "sourceIds": [
+        "SB-08"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "487cdefae14067f421181d91f2ab221721a3b9029504b6ca4acbb1aa91988ce1"
+    },
+    {
+      "id": "D-SB-PERSIST",
+      "title": "Save and reopen Spellbook",
+      "target": "desktop",
+      "sourceIds": [
+        "SB-12"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "4edd9cfebc2d3fde0f2a6ed1c985d921de698a8d12383f78656870cdd5dc5785"
+    },
+    {
+      "id": "D-SB-QUICK-SEARCH",
+      "title": "Quick-search node insertion",
+      "target": "desktop",
+      "sourceIds": [
+        "SB-02"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "33fdcc46a1fb95fc701dfae24ab12a6c81e89c86e704f0509f1bf77079d57a9a"
+    },
+    {
+      "id": "D-CROSSRATE-CLIPBOARD",
+      "title": "Cross-rate GUI copy and paste",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-04"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "71e07a15bec49f6662df1d0dc191f3ad63a6226298feda94b9f670934a84f12f"
+    },
+    {
+      "id": "D-PLAYBACK-SWITCH",
+      "title": "Play a secondary timeline and switch",
+      "target": "desktop",
+      "sourceIds": [
+        "PB-19"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "820cd0461224b87803bab0d4f5925997d5a4ba616c91af2ca6783a39a4f2cec2"
+    },
+    {
+      "id": "D-SCOPES-01",
+      "title": "Scope plots respond at each tap",
+      "target": "desktop",
+      "sourceIds": [
+        "CO-09"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "fbe976b7c32a5cfbbc80eacd0d8301e6fb56cb0ca5e3db69f23b4183e572f260"
+    },
+    {
+      "id": "D-SB-LOGGING",
+      "title": "Verbose Spellbook console",
+      "target": "desktop",
+      "sourceIds": [
+        "SB-07"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "76b8e9eb035aa28c5b314733fae0b5fcef18ade94eb667cefa32c98fbe89bad3"
+    },
+    {
+      "id": "D-COMPOUND-CREATE",
+      "title": "Convert a clip through the editor",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-08"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "5060cb2bd28319c429205082f1a4c1bb9f929c617e009e17367bbf72aed8c82f"
+    },
+    {
+      "id": "D-COMPOUND-EDIT",
+      "title": "Edit inside a converted timeline and return",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-08"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "c828e0990e21ac9d3c7f8ff481e8fb6856e60be22aa4ab66f1f56f8df7f0e243"
+    },
+    {
+      "id": "D-MGFX-CLIPBOARD",
+      "title": "Keyboard copy and paste of an MGFX clip",
+      "target": "desktop",
+      "sourceIds": [
+        "OZ-07"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "25b9c734a92c1f884bc575ef9f144ea1e0f56308de4288416377f6e3df329095"
+    },
+    {
+      "id": "D-EXPORT-COMPOUND",
+      "title": "Export MGFX and a converted timeline",
+      "target": "desktop",
+      "sourceIds": [
+        "EX-04"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "4bcbc9c6a77c4c71e5db847990b95f0a54fec13b32ab3d5e09b6a3c370d263ba"
+    },
+    {
+      "id": "D-COMPOUND-DISSOLVE",
+      "title": "Dissolve a converted timeline and undo",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-08"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "e325ed4c601a70d781e7f9907860d56604322a651d0f60ec5daa2b6c9e0587ae"
+    },
+    {
+      "id": "D-EXPORT-STILL",
+      "title": "Export Still at Playhead through the dialog",
+      "target": "desktop",
+      "sourceIds": [
+        "EX-03"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "a7ddd34eb56dde21e1358a6a7180c4c49d0d2502657f37d6a44ff954f2f6c6df"
+    },
+    {
+      "id": "D-LINKED-SELECTION",
+      "title": "Linked Selection moves the intended streams",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-05"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "c53b8372e6b6fa99e337db142ba55dd4ede5c155fc69c5f3dd97087f7ef39999"
+    },
+    {
+      "id": "D-TRACK-LOCK-UI",
+      "title": "Track padlock blocks blade and drag",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-06"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "be7c48074d186313c0a23acad016bf2ff00ee90d8f2634918b8dd65a51d100ac"
+    },
+    {
+      "id": "D-TRACK-TARGETING",
+      "title": "V1/A1 targeting controls Select All",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-07"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "943042b811986063a5a32456fa74662b9711d730935598ab14ec9d8898c2d023"
+    },
+    {
+      "id": "D-RIPPLE-GAP",
+      "title": "Ripple-delete a selected gap",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-03"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "b12223c36532fd21f793353ab6f3f505fa33bc12d4c8cbb8211d7a23c5c03fe9"
+    },
+    {
+      "id": "D-BIN-RENAME",
+      "title": "Rename media without breaking placed clips",
+      "target": "desktop",
+      "sourceIds": [
+        "IN-07"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "f896ea11af9fc713053716a2a593b15598a09c665f08da898121629e1b96f64f"
+    },
+    {
+      "id": "D-BIN-DUPLICATE",
+      "title": "Duplicate media with an independent name",
+      "target": "desktop",
+      "sourceIds": [
+        "IN-07"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "5636c3773dee4a132ae98c4a87974674927476db16c3b832bfd9dfaade093853"
+    },
+    {
+      "id": "D-BIN-DELETE",
+      "title": "Delete from bin and undo",
+      "target": "desktop",
+      "sourceIds": [
+        "IN-07"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "eeb1e218a90fc9823b988921533878b02b762a9e6511f6da5790f9cd0e03c7f9"
+    },
+    {
+      "id": "D-BIN-MGFX",
+      "title": "Duplicate MGFX through the bin menu",
+      "target": "desktop",
+      "sourceIds": [
+        "OZ-08"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "76f6d14e4e3ced70e116bd45cd5498bef5a697f8c7bbad7af44eb6b37369a857"
+    },
+    {
+      "id": "D-EDIT-SLIP",
+      "title": "Slip a clip through the editor",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-03"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "1f701f56e1751dffc96eb22dfbdafb0857a91aa4ef3dfd2a363e653c218b59a2"
+    },
+    {
+      "id": "D-LINK-UNLINK-UI",
+      "title": "Link and unlink through the editor",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-05"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "e490b82fdd38fb3eecc08b2268f0a1ceee6d9b90523e1eb8be3afc270029a984"
+    },
+    {
+      "id": "D-BLADE-NO-SELECTION",
+      "title": "Blade with nothing selected",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-02"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "10abfdf7553d61b570683deb1f2b56bb0c36fe545be6439b08eacdc01f1bdac7"
+    },
+    {
+      "id": "D-FRACTIONAL-CLIPBOARD",
+      "title": "Fractional-rate GUI copy and paste",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-04"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "065994de1911248b7365f623fe22bbc678c5408ff421ad37400c67a5c064c714"
+    },
+    {
+      "id": "D-TIMELINE-TABS",
+      "title": "Timeline tab zoom and scroll restoration",
+      "target": "desktop",
+      "sourceIds": [
+        "TL-09"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "027413f007ba82a0f81d6e0fa26482941da97ac908f7dfce64e25483ddeeaa45"
+    },
+    {
+      "id": "D-SAVE-DISCARD",
+      "title": "Clean close and discard unsaved edits",
+      "target": "desktop",
+      "sourceIds": [
+        "LP-04"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "bf7f0f448ccc2ae989f329edfc2ec019e6bda775663f6fcdfbb8cc8c711c6231"
+    },
+    {
+      "id": "D-NODE-CLIPBOARD-BYPASS",
+      "title": "Render-node clipboard and bypass",
+      "target": "desktop",
+      "sourceIds": [
+        "CO-05"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "0bf16743453cf1c5328e29b4cc966c2e95f773dc48460bc5e6673dd68ac710ce"
+    },
+    {
+      "id": "D-DOCUMENT-EDIT",
+      "title": "Document formatting, chip and reopen",
+      "target": "desktop",
+      "sourceIds": [
+        "UI-04"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "95fd467a3fdcf371f7cbc88ffd3d809aa1188d7890835a2e0645a1554397305b"
+    },
+    {
+      "id": "D-PREVIEW-SCRUB",
+      "title": "Scrubber drag and displayed frame",
+      "target": "desktop",
+      "sourceIds": [
+        "PB-01"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "3e2977a9ddbed606f9022d74b291fec2041a84d498e14a6300936e3f590fc503"
+    },
+    {
+      "id": "D-PLAYBACK-INOUT",
+      "title": "Mark, navigate and clear In/Out",
+      "target": "desktop",
+      "sourceIds": [
+        "PB-01"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "efaa6fb147c74f84aa720a7be93ad2edbc58173334dba0eac513b7a04e13584e"
+    },
+    {
+      "id": "D-PLAYBACK-LOOP",
+      "title": "Loop the marked range",
+      "target": "desktop",
+      "sourceIds": [
+        "PB-01"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "42ce6548a951d4ce989593d4658ac86a3d35b4cdfaaabe0128f3d94a42c6447e"
+    },
+    {
+      "id": "D-SCRUB-CUTS",
+      "title": "Scrub across twenty cuts",
+      "target": "desktop",
+      "sourceIds": [
+        "PB-11"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "cbe8614401d05ac5d09e1fa809d45798f791c59e53272553df6c5557a7fb5523"
+    },
+    {
+      "id": "D-SB-TAB-RENAME",
+      "title": "Rename, close and reopen a Spell tab",
+      "target": "desktop",
+      "sourceIds": [
+        "SB-08"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "26a3b797949aa92f93bf2a98051c57c3ddde5b25fa2c9b97b6483383caa2c6b9"
+    },
+    {
+      "id": "D-SB-TAB-DUPLICATE",
+      "title": "Duplicate a Spell tab",
+      "target": "desktop",
+      "sourceIds": [
+        "SB-08"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "0a0ffcf71f6baea9dd4930f508cdb624197c650fe535263a4ef131d48f716a69"
+    },
+    {
+      "id": "D-SB-SEARCH-DROP",
+      "title": "Drop a quick-search result onto the canvas",
+      "target": "desktop",
+      "sourceIds": [
+        "SB-02"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "cd6cad38624c8598d8e7eb0e2a7646f063be5554e4128fe0e871d40941ed283e"
+    },
+    {
+      "id": "D-SB-INSPECTOR-PREVIEW",
+      "title": "Inspector edit, undo and canvas preview",
+      "target": "desktop",
+      "sourceIds": [
+        "SB-04"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "35a77fbc17da03ddad3e4833ec9eea5015fd6958f457427f85a77907b4c5f4a4"
+    },
+    {
+      "id": "D-MEDIA-RELINK",
+      "title": "Relink moved local media",
+      "target": "desktop",
+      "sourceIds": [
+        "IN-08"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "19c81b74704f0446b0f278723e9f3207d54df1f156ee7c3fddb7e86e9318eca6"
+    },
+    {
+      "id": "D-CURVE-RGB-CLIPBOARD",
+      "title": "RGB curve gesture, copy/paste and reset",
+      "target": "desktop",
+      "sourceIds": [
+        "CO-03"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "a256eb8f060175835ca3e9b5843180e6be4f5e6b32617feae3370c973f305e6c"
+    },
+    {
+      "id": "D-CURVE-HUE-RESET",
+      "title": "Hue curve gesture and reset",
+      "target": "desktop",
+      "sourceIds": [
+        "CO-03"
+      ],
+      "courseId": "local-desktop-v1",
+      "courseRevision": 8,
+      "definitionHash": "1868964de51df9ebd94a08075aa8bd0e099eca9cb58ab97ec19002cbd06b277b"
+    },
+    {
+      "id": "S-MGFX-DUPLICATE-DEFAULT",
+      "title": "Duplicate admitted MGFX with default descriptor fields",
+      "target": "service",
+      "sourceIds": [
+        "OZ-08"
+      ],
+      "courseId": "local-services-v1",
+      "courseRevision": 1,
+      "definitionHash": "d21805bacd9fc9b4d99830608aa769862f55083e5f4459f9b18b2cbbf840b2ff"
+    },
+    {
+      "id": "S-MGFX-DUPLICATE",
+      "title": "Independent graphic duplication",
+      "target": "service",
+      "sourceIds": [
+        "OZ-08"
+      ],
+      "courseId": "local-services-v1",
+      "courseRevision": 1,
+      "definitionHash": "2881d153ac163f0df0da320dabaf24c6c5e26c067c97077a551b0e89f78c1f2c"
+    },
+    {
+      "id": "S-MGFX-CLIP-COPY",
+      "title": "Independent generated clip copy",
+      "target": "service",
+      "sourceIds": [
+        "OZ-07"
+      ],
+      "courseId": "local-services-v1",
+      "courseRevision": 1,
+      "definitionHash": "9c3a41a29ec12b2b5ea603cfa433c822eae51be8a25a63a0622bba2941fdaa9b"
+    },
+    {
+      "id": "S-MGFX-UNDO-PUBLISH",
+      "title": "Undo and redo a graphic publication",
+      "target": "service",
+      "sourceIds": [
+        "OZ-13"
+      ],
+      "courseId": "local-services-v1",
+      "courseRevision": 1,
+      "definitionHash": "2fc85efa461acadb163990aed0c8642a6bfc54fccb0b7255ee4bdb15b3d0c42e"
+    },
+    {
+      "id": "S-MGFX-PERSIST",
+      "title": "Persist independently edited graphics",
+      "target": "service",
+      "sourceIds": [
+        "OZ-12"
+      ],
+      "courseId": "local-services-v1",
+      "courseRevision": 1,
+      "definitionHash": "a5459743cc512681f1f8b4325fbf53a6d0dca26164181cdc9d76816ae32fba86"
+    },
+    {
+      "id": "S-EXPORT-PRORES",
+      "title": "Application ProRes export",
+      "target": "service",
+      "sourceIds": [
+        "EX-01"
+      ],
+      "courseId": "local-services-v1",
+      "courseRevision": 1,
+      "definitionHash": "602c0d429206fed0d67cd70db6b1e017f51cafd5eeb9fb45f151aafa8f12bf72"
+    },
+    {
+      "id": "S-EXPORT-AV1",
+      "title": "Application AV1 export",
+      "target": "service",
+      "sourceIds": [
+        "EX-01"
+      ],
+      "courseId": "local-services-v1",
+      "courseRevision": 1,
+      "definitionHash": "970c517a6c02e31768a26f47e79dd13c1b86a14b9db5844b0f3fd00202c4d25d"
+    },
+    {
+      "id": "S-EXPORT-UNSET-RATE",
+      "title": "Export a timeline with an unset rate",
+      "target": "desktop",
+      "sourceIds": [
+        "EX-02"
+      ],
+      "courseId": "local-services-v1",
+      "courseRevision": 1,
+      "definitionHash": "049c5fe03f1d0eeb9ac1970b0f2a78b97f98dac5e5c10f347aebf6a27076a12c"
+    }
+  ],
+  "excluded": [
+    {
+      "id": "D-MEDIA-VIEWS",
+      "title": "Media list and grid",
+      "reason": "No mapping to Logan checklist; outside this acceptance instruction."
+    },
+    {
+      "id": "D-MEDIA-OPEN",
+      "title": "Select and open media",
+      "reason": "No mapping to Logan checklist; outside this acceptance instruction."
+    },
+    {
+      "id": "D-TRACK-ADD",
+      "title": "Add and save tracks",
+      "reason": "No mapping to Logan checklist; outside this acceptance instruction."
+    },
+    {
+      "id": "D-SB-ATOMIC",
+      "title": "Reject a partial Spell edit",
+      "reason": "No mapping to Logan checklist; outside this acceptance instruction."
+    },
+    {
+      "id": "D-SB-STALE",
+      "title": "Reject a stale Spell edit",
+      "reason": "No mapping to Logan checklist; outside this acceptance instruction."
+    }
+  ]
+}

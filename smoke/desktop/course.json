@@ -1,0 +1,499 @@
+{
+  "id": "local-desktop-v1",
+  "revision": 9,
+  "title": "Local desktop smoke",
+  "target": "Instrumented local GUI with isolated Qt runtime",
+  "cases": [
+    {
+      "id": "D-CLI-01",
+      "sourceId": "CLI-01",
+      "title": "Owned GUI connection",
+      "expected": "Owned process, endpoint and Golden Project agree."
+    },
+    {
+      "id": "D-CLI-02",
+      "sourceId": "CLI-02",
+      "title": "CLI edit reaches the editor",
+      "expected": "Renamed timeline appears in selector and Media."
+    },
+    {
+      "id": "D-PB-01",
+      "sourceId": "PB-01",
+      "title": "Play, pause and seek",
+      "expected": "Transport advances, visible timecode follows, pause holds."
+    },
+    {
+      "id": "D-LP-02-SAVE",
+      "sourceId": "LP-02",
+      "title": "Save the project",
+      "expected": "Save updates the persisted project without changing its contents."
+    },
+    {
+      "id": "D-LP-02-RELAUNCH",
+      "sourceId": "LP-02",
+      "title": "Quit and reopen",
+      "expected": "A new process restores the saved timeline and selection."
+    },
+    {
+      "id": "D-MEDIA-VIEWS",
+      "sourceId": null,
+      "title": "Media list and grid",
+      "expected": "Both views retain the same GP media."
+    },
+    {
+      "id": "D-MEDIA-OPEN",
+      "sourceId": null,
+      "title": "Select and open media",
+      "expected": "The selected source opens with the correct duration."
+    },
+    {
+      "id": "D-MEDIA-TIMELINE",
+      "sourceId": "TL-09",
+      "title": "Open timelines from Media",
+      "expected": "Opening each timeline changes the visible selected timeline."
+    },
+    {
+      "id": "D-TRANSPORT-KEYS",
+      "sourceId": "PB-01",
+      "title": "Playback shortcuts",
+      "expected": "Arrow keys step a frame; Space plays and pauses."
+    },
+    {
+      "id": "D-TIMELINE-TOOLS",
+      "sourceId": "TL-03",
+      "title": "Tools and snapping",
+      "expected": "Tool shortcuts select the named tool; snapping toggles and restores."
+    },
+    {
+      "id": "D-EDIT-SPLIT-REDO",
+      "sourceId": "TL-02",
+      "title": "Split, undo and redo",
+      "expected": "Split at two seconds produces contiguous source windows and valid exact timing; undo and redo restore the corresponding states.",
+      "steps": [
+        "The first video clip is selected and the playhead is at 00:00:02:00. Press B once.",
+        "Check that the first clip becomes two adjacent clips at the playhead. Play across the cut and look for a jump or blank frame.",
+        "Press Command+Z, then Command+Shift+Z. Confirm the original clip and then the two pieces return.",
+        "Record whether the visible edit worked. Use Capture diagnostics to retain the underlying timing state; visual success alone cannot clear the metadata finding."
+      ]
+    },
+    {
+      "id": "D-EDIT-DELETE",
+      "sourceId": "TL-03",
+      "title": "Delete and undo",
+      "expected": "Only the selected clip is removed; undo restores all content."
+    },
+    {
+      "id": "D-EDIT-DISABLE",
+      "sourceId": "CO-07",
+      "title": "Disable a clip",
+      "expected": "The selected clip is disabled and undo restores it."
+    },
+    {
+      "id": "D-EDIT-NUDGE",
+      "sourceId": "TL-03",
+      "title": "Nudge one frame",
+      "expected": "Clip moves exactly one frame without changing its source window."
+    },
+    {
+      "id": "D-EDIT-DRAG",
+      "sourceId": "TL-01",
+      "title": "Drag a timeline clip",
+      "expected": "Clip moves on a frame boundary without changing duration or neighbors."
+    },
+    {
+      "id": "D-EDIT-TRIM",
+      "sourceId": "TL-03",
+      "title": "Trim and undo",
+      "expected": "Right-edge trimming changes matching timeline/source durations, preserves the other edge and maintains valid exact timing.",
+      "steps": [
+        "The first video clip is selected. On the timeline, drag its right edge left to shorten it by roughly one second.",
+        "Confirm the left edge and the following clip remain in place. Play the shortened clip and inspect its end.",
+        "Press Command+Z to restore it, then Command+Shift+Z to restore the trim.",
+        "Record the visible result and Capture diagnostics. The automated finding concerns timing metadata as well as the visible edit."
+      ]
+    },
+    {
+      "id": "D-TRACK-ADD",
+      "sourceId": null,
+      "title": "Add and save tracks",
+      "expected": "Clicking + Video or + Audio, followed by Save, adds one empty track of the correct type to persisted project state; undo restores the original tracks.",
+      "steps": [
+        "In the Timeline panel header above the tracks, click + Video once. Look for a new empty video track.",
+        "Capture diagnostics before saving. The earlier automated failure checked persisted state before Save; a visible track can exist while that readback remains unchanged.",
+        "Press Command+S, then Capture diagnostics again. Check whether the added video track now appears in persisted state.",
+        "Press Command+Z, then Command+S. Confirm the original track count returns. Record whether this is a UI defect, persistence defect, or an automation expectation problem."
+      ]
+    },
+    {
+      "id": "D-PROJECT-CANCEL-CLOSE",
+      "sourceId": "LP-04",
+      "title": "Cancel closing an unsaved project",
+      "expected": "Cancel keeps the app open and retains the unsaved edit."
+    },
+    {
+      "id": "D-MEDIA-SEARCH",
+      "sourceId": "SS-03",
+      "title": "Search media",
+      "expected": "Searching for pattern_24 finds the known clip; clearing search restores all items.",
+      "steps": [
+        "In the Media panel, enter pattern_24 in Search and press Return.",
+        "Record the result rows and any status message, including Search unavailable. Do not install models or change personal credentials.",
+        "Clear the query and confirm the original media list returns. Capture diagnostics and record a setup blocker if search is unavailable."
+      ]
+    },
+    {
+      "id": "D-EXPORT-CANCEL",
+      "sourceId": "EX-01",
+      "title": "Cancel export",
+      "expected": "Cancel closes the dialog without producing output or changing the project."
+    },
+    {
+      "id": "D-EDIT-CLIPBOARD",
+      "sourceId": "TL-04",
+      "title": "Copy, paste and undo",
+      "expected": "Paste makes an independent clip with matching source; undo restores the timeline."
+    },
+    {
+      "id": "D-INSPECTOR-01",
+      "sourceId": "RG-02",
+      "title": "Inspector edit and reset",
+      "expected": "Position X changes parameters and rendered pixels; reset restores both."
+    },
+    {
+      "id": "D-EXPORT-01",
+      "sourceId": "EX-01",
+      "title": "H.264 movie export",
+      "expected": "Export produces a decodable two-second 1080p24 movie with 48 frames and AAC audio."
+    },
+    {
+      "id": "D-MGFX-01",
+      "sourceId": "OZ-12",
+      "title": "Local motion graphics",
+      "expected": "Local graphics render, and changing the title changes pixels without a network provider."
+    },
+    {
+      "id": "D-UI-DEFAULT",
+      "sourceId": "LP-01",
+      "title": "Fresh default panels",
+      "expected": "Fresh isolated launch exposes Media, Preview, Timeline and Agent Workspace controls."
+    },
+    {
+      "id": "D-UI-PREFERENCES",
+      "sourceId": "UI-05",
+      "title": "Application and project preferences",
+      "expected": "Application and Current Project pages open; Cancel leaves the project unchanged."
+    },
+    {
+      "id": "D-PREVIEW-FULLSCREEN",
+      "sourceId": "PB-13",
+      "title": "Fullscreen playback and exit",
+      "expected": "Fullscreen controls advance and pause transport; Escape restores the normal preview."
+    },
+    {
+      "id": "D-SELECT-ALL",
+      "sourceId": "TL-07",
+      "title": "Select all clips",
+      "expected": "Select All followed by Delete removes every clip; one undo restores all content. Track targeting is separate."
+    },
+    {
+      "id": "D-CUT-PASTE",
+      "sourceId": "TL-04",
+      "title": "Cut, paste and undo",
+      "expected": "Real clipboard cut/paste retains source and requested placement; two undos restore the timeline."
+    },
+    {
+      "id": "D-SHORTCUT-REBIND",
+      "sourceId": "UI-03",
+      "title": "Rebind and reset a shortcut",
+      "expected": "A temporary play/pause binding works; per-command Reset restores Space and its behavior."
+    },
+    {
+      "id": "D-SB-CREATE",
+      "sourceId": "SB-01",
+      "title": "Create spells through the editor",
+      "expected": "Opening Spellbook, its New Spell shortcut and plus button produce independent visible documents."
+    },
+    {
+      "id": "D-SB-GRAPH",
+      "sourceId": "SB-03",
+      "title": "Author and wire a native Spell",
+      "expected": "Source and two effect nodes connect, disconnect and reconnect through application operations. No rendering or output publication is implied."
+    },
+    {
+      "id": "D-SB-PARAMS",
+      "sourceId": "SB-04",
+      "title": "Edit a native Spell parameter",
+      "expected": "A CLI radius edit is retained in native parameter readback. Inspector gesture and canvas pixels remain separate."
+    },
+    {
+      "id": "D-SB-BYPASS",
+      "sourceId": "SB-05",
+      "title": "Bypass and restore a Spell node",
+      "expected": "Application operations toggle and restore bypass state. The D shortcut remains separate."
+    },
+    {
+      "id": "D-SB-UNDO",
+      "sourceId": "SB-11",
+      "title": "Atomic Spell undo and redo",
+      "expected": "One real keyboard undo reverts a multi-action batch; redo restores the whole change."
+    },
+    {
+      "id": "D-SB-ATOMIC",
+      "sourceId": null,
+      "title": "Reject a partial Spell edit",
+      "expected": "A batch with an invalid edge rejects every action and preserves the complete prior document."
+    },
+    {
+      "id": "D-SB-STALE",
+      "sourceId": null,
+      "title": "Reject a stale Spell edit",
+      "expected": "An outdated document fingerprint cannot overwrite a newer edit."
+    },
+    {
+      "id": "D-SB-INSTANCE",
+      "sourceId": "SB-08",
+      "title": "Independent Spell instance",
+      "expected": "An instance overrides exposed inputs without changing the definition; later edits remain independent. Tab rename/close is separate."
+    },
+    {
+      "id": "D-SB-PERSIST",
+      "sourceId": "SB-12",
+      "title": "Save and reopen Spellbook",
+      "expected": "A new GUI process restores authored graphs, native parameters, public inputs and independent instances."
+    },
+    {
+      "id": "D-SB-QUICK-SEARCH",
+      "sourceId": "SB-02",
+      "title": "Quick-search node insertion",
+      "expected": "Quick Node Search finds Text; double-click creates a Text node in the active graph; undo restores the graph. Drag/drop is separate."
+    },
+    {
+      "id": "D-CROSSRATE-CLIPBOARD",
+      "sourceId": "TL-04",
+      "title": "Cross-rate GUI copy and paste",
+      "expected": "Copy from 24 fps and paste at 25 fps preserves exact source time, independent identity and placement; undo restores the destination."
+    },
+    {
+      "id": "D-PLAYBACK-SWITCH",
+      "sourceId": "PB-19",
+      "title": "Play a secondary timeline and switch",
+      "expected": "A non-entry timeline advances visible transport; switching selects Main and its timecode responds to seek. Seamless output continuity is separate."
+    },
+    {
+      "id": "D-SCOPES-01",
+      "sourceId": "CO-09",
+      "title": "Scope plots respond at each tap",
+      "expected": "Histogram, luma/RGB waveform and RGB parade plots change between a video frame and black gap at each available tap. Numerical calibration and vectorscope are separate."
+    },
+    {
+      "id": "D-SB-LOGGING",
+      "sourceId": "SB-07",
+      "title": "Verbose Spellbook console",
+      "expected": "Enable project-local verbose logging, reconstruct the native graph and observe debug messages in the visible console; restore the previous setting."
+    },
+    {
+      "id": "D-COMPOUND-CREATE",
+      "sourceId": "TL-08",
+      "title": "Convert a clip through the editor",
+      "expected": "Command+G creates a child timeline reference with the same source, placement and rendered pixels."
+    },
+    {
+      "id": "D-COMPOUND-EDIT",
+      "sourceId": "TL-08",
+      "title": "Edit inside a converted timeline and return",
+      "expected": "Opening the child from Media and disabling its clip changes parent pixels; undo restores them."
+    },
+    {
+      "id": "D-MGFX-CLIPBOARD",
+      "sourceId": "OZ-07",
+      "title": "Keyboard copy and paste of an MGFX clip",
+      "expected": "Command+C/V creates an independent generation; parameter edits change only copied values and pixels."
+    },
+    {
+      "id": "D-EXPORT-COMPOUND",
+      "sourceId": "EX-04",
+      "title": "Export MGFX and a converted timeline",
+      "expected": "The application Export dialog publishes 96 decodable frames; graphic and converted-media segments contain their expected imagery."
+    },
+    {
+      "id": "D-COMPOUND-DISSOLVE",
+      "sourceId": "TL-08",
+      "title": "Dissolve a converted timeline and undo",
+      "expected": "Command+Shift+G restores media placements without changing pixels; one undo restores the timeline reference."
+    },
+    {
+      "id": "D-EXPORT-STILL",
+      "sourceId": "EX-03",
+      "title": "Export Still at Playhead through the dialog",
+      "expected": "The JPEG decodes at 1080p and corresponds to the selected one-second playhead frame."
+    },
+    {
+      "id": "D-LINKED-SELECTION",
+      "sourceId": "TL-05",
+      "title": "Linked Selection moves the intended streams",
+      "expected": "With Linked Selection on, nudging selected video moves its linked audio. With it off, only video moves. Undo restores both."
+    },
+    {
+      "id": "D-TRACK-LOCK-UI",
+      "sourceId": "TL-06",
+      "title": "Track padlock blocks blade and drag",
+      "expected": "The visible padlock prevents blade and drag edits; unlocking allows a move, and undo restores the original clip."
+    },
+    {
+      "id": "D-TRACK-TARGETING",
+      "sourceId": "TL-07",
+      "title": "V1/A1 targeting controls Select All",
+      "expected": "Target badges determine which tracks Select All/Delete affects. Untargeted clips remain unchanged and undo restores targeted clips."
+    },
+    {
+      "id": "D-RIPPLE-GAP",
+      "sourceId": "TL-03",
+      "title": "Ripple-delete a selected gap",
+      "expected": "Shift+Delete removes the two-second gap, moves the next clip from six seconds to four without changing its source, and undo restores the gap."
+    },
+    {
+      "id": "D-BIN-RENAME",
+      "sourceId": "IN-07",
+      "title": "Rename media without breaking placed clips",
+      "expected": "Bin Rename changes the saved display name while preserving identity, source bytes and rendered placements; restoration survives reopen."
+    },
+    {
+      "id": "D-BIN-DUPLICATE",
+      "sourceId": "IN-07",
+      "title": "Duplicate media with an independent name",
+      "expected": "Bin Duplicate mints a new asset for the same media. Renaming it preserves the original, and both identities/names survive reopen."
+    },
+    {
+      "id": "D-BIN-DELETE",
+      "sourceId": "IN-07",
+      "title": "Delete from bin and undo",
+      "expected": "Bin deletion hides the asset without removing its source or breaking placed clips. Undo restores its identity, including after reopen."
+    },
+    {
+      "id": "D-BIN-MGFX",
+      "sourceId": "OZ-08",
+      "title": "Duplicate MGFX through the bin menu",
+      "expected": "Bin Duplicate creates independent generation state. Editing copied text changes only copied values/pixels, which survive reopen."
+    },
+    {
+      "id": "D-EDIT-SLIP",
+      "sourceId": "TL-03",
+      "title": "Slip a clip through the editor",
+      "expected": "The Slip gesture changes the source window without changing placement or duration; exact source timing remains valid and undo restores it."
+    },
+    {
+      "id": "D-LINK-UNLINK-UI",
+      "sourceId": "TL-05",
+      "title": "Link and unlink through the editor",
+      "expected": "The link/unlink shortcut changes groups; unlinked video moves alone and relinked streams move together."
+    },
+    {
+      "id": "D-BLADE-NO-SELECTION",
+      "sourceId": "TL-02",
+      "title": "Blade with nothing selected",
+      "expected": "Blade cuts both streams at the playhead with contiguous source windows and valid exact timing; undo restores the original."
+    },
+    {
+      "id": "D-FRACTIONAL-CLIPBOARD",
+      "sourceId": "TL-04",
+      "title": "Fractional-rate GUI copy and paste",
+      "expected": "Copy 24 frames at 24000/1001 to frames 3-33 at 30000/1001 with independent identity, unchanged source time and working undo."
+    },
+    {
+      "id": "D-TIMELINE-TABS",
+      "sourceId": "TL-09",
+      "title": "Timeline tab zoom and scroll restoration",
+      "expected": "Closing and reopening a saved timeline tab restores content, zoom and horizontal scroll."
+    },
+    {
+      "id": "D-SAVE-DISCARD",
+      "sourceId": "LP-04",
+      "title": "Clean close and discard unsaved edits",
+      "expected": "Save allows a clean close without a dirty prompt. Discard removes an unsaved edit, and a fresh process restores the saved project."
+    },
+    {
+      "id": "D-NODE-CLIPBOARD-BYPASS",
+      "sourceId": "CO-05",
+      "title": "Render-node clipboard and bypass",
+      "expected": "Actual Copy/Paste Nodes preserves independent values and pixels. D toggles the selected node and the grade-panel bypass restores expected pixels."
+    },
+    {
+      "id": "D-DOCUMENT-EDIT",
+      "sourceId": "UI-04",
+      "title": "Document formatting, chip and reopen",
+      "expected": "Keyboard bold/link formatting and an @ chip survive save and a fresh process. The current build uses a fixture mention registry; live project-item resolution is separate."
+    },
+    {
+      "id": "D-PREVIEW-SCRUB",
+      "sourceId": "PB-01",
+      "title": "Scrubber drag and displayed frame",
+      "expected": "Actual scrubber drags land within one frame and display pixels matching an independent seek, including a black gap."
+    },
+    {
+      "id": "D-PLAYBACK-INOUT",
+      "sourceId": "PB-01",
+      "title": "Mark, navigate and clear In/Out",
+      "expected": "I/O mark frame boundaries; Shift+I/O navigate to them and Alt+X clears both."
+    },
+    {
+      "id": "D-PLAYBACK-LOOP",
+      "sourceId": "PB-01",
+      "title": "Loop the marked range",
+      "expected": "An application-owned loop control repeatedly plays the marked range. Blocked when this build exposes no loop control."
+    },
+    {
+      "id": "D-SCRUB-CUTS",
+      "sourceId": "PB-11",
+      "title": "Scrub across twenty cuts",
+      "expected": "Back-and-forth jumps across twenty alternating colour/grayscale clips show the correct settled preview, never stale or black content."
+    },
+    {
+      "id": "D-SB-TAB-RENAME",
+      "sourceId": "SB-08",
+      "title": "Rename, close and reopen a Spell tab",
+      "expected": "Actual tab rename and close/reopen retain graph content and name, including across a fresh application process."
+    },
+    {
+      "id": "D-SB-TAB-DUPLICATE",
+      "sourceId": "SB-08",
+      "title": "Duplicate a Spell tab",
+      "expected": "An application-owned duplicate-tab action creates independent state. Instances do not substitute for tab duplication."
+    },
+    {
+      "id": "D-SB-SEARCH-DROP",
+      "sourceId": "SB-02",
+      "title": "Drop a quick-search result onto the canvas",
+      "expected": "Wizard produces the drag payload; its Qt drop handler creates a Text node and one undo restores the graph. Does not claim OS pointer drag coverage."
+    },
+    {
+      "id": "D-SB-INSPECTOR-PREVIEW",
+      "sourceId": "SB-04",
+      "title": "Inspector edit, undo and canvas preview",
+      "expected": "The real Inspector edits native state with one-step undo and updates rendered canvas pixels. Keep blocked until both state and pixel observations are available."
+    },
+    {
+      "id": "D-MEDIA-RELINK",
+      "sourceId": "IN-08",
+      "title": "Relink moved local media",
+      "expected": "Reopen with a moved disposable source, use Locate/Relink, preserve asset and clip identity, restore rendering, and retain the new path after restart. No NAS."
+    },
+    {
+      "id": "D-CURVE-RGB-CLIPBOARD",
+      "sourceId": "CO-03",
+      "title": "RGB curve gesture, copy/paste and reset",
+      "expected": "A curve drag changes pixels; keyboard copy/paste transfers curve points and pixels to a second clip; resetting the copy leaves the original unchanged."
+    },
+    {
+      "id": "D-CURVE-HUE-RESET",
+      "sourceId": "CO-03",
+      "title": "Hue curve gesture and reset",
+      "expected": "A Hue Shift curve drag changes native points and pixels; double-click reset restores neutral rendering."
+    },
+    {
+      "id": "S-EXPORT-UNSET-RATE",
+      "sourceId": "EX-02",
+      "title": "Export a timeline with an unset rate",
+      "expected": "A disposable fixture with stored timeline rate 0/1 resolves to 24/1 and exports 48 decodable H.264 frames; a 1 fps fallback must fail this check."
+    }
+  ]
+}

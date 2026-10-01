@@ -1,0 +1,126 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import {tmpdir} from 'node:os';
+import {spawn} from 'node:child_process';
+import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from 'node:fs/promises';
+import {DatabaseSync} from 'node:sqlite';
+import {checkHarnessBundle,installHarness} from '../runner/harness.mjs';
+import {installedRuntime,runtimeIdentity,runtimeEnvironment} from '../runner/runtime.mjs';
+import {ROOT,fingerprint,digest,writeJSON,readJSON,inside} from '../runner/files.mjs';
+import {snapshotSource} from '../kits.mjs';
+import {openDashboard} from '../runner/browser.mjs';
+
+test('source launcher starts a clean workspace without a bundle or browser and shuts down its service',async()=>{
+ const data=await realpath(await mkdtemp(path.join(tmpdir(),'Athanor first checkout ')));
+ const child=spawn(process.execPath,[path.join(ROOT,'scripts/harness.mjs'),'serve','--data-dir',data,'--port','0','--no-open'],{stdio:['ignore','pipe','pipe']});
+ let output='';child.stderr.on('data',bytes=>output+=bytes);const exited=new Promise(resolve=>child.once('exit',resolve));
+ try{
+  const url=await new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>reject(Error('Source launch timed out: '+output)),15000);
+   child.stdout.on('data',bytes=>{output+=bytes;const match=output.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0]);}});
+   child.once('exit',code=>{clearTimeout(timer);reject(Error('Source launch exited '+code+': '+output));});
+  });
+  const runs=await (await fetch(url+'api/runs')).json();assert.deepEqual(runs,[]);
+  const catalog=await (await fetch(url+'api/catalog')).json();assert.ok(catalog.tests.length>0);
+  for(const file of ['filters.js','build-finder.js'])assert.equal((await fetch(url+file)).status,200);
+  const bad=await fetch(url+'api/builds/archive',{method:'POST',headers:{'Content-Type':'application/zip'},body:'invalid ZIP'});assert.equal(bad.status,400);assert.match((await bad.json()).error,/zip/i);
+  const cross=await fetch(url+'api/builds/archive',{method:'POST',headers:{'Content-Type':'application/zip',Origin:'https://example.com'},body:'invalid ZIP'});assert.equal(cross.status,403);
+  const invalid=await fetch(url+'api/builds/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:'http://example.com/archive.zip'})});assert.equal(invalid.status,400);assert.match((await invalid.json()).error,/HTTPS/);
+
+  await assert.rejects(()=>readJSON(path.join(data,'desktop-runtime.json')),e=>e.code==='ENOENT');
+  await assert.rejects(()=>readJSON(path.join(data,'browser.json')),e=>e.code==='ENOENT');
+  child.kill('SIGTERM');assert.equal(await exited,0);
+  await assert.rejects(()=>fetch(url+'api/runs'));
+ }finally{child.kill('SIGTERM');await exited;await rm(data,{recursive:true,force:true});}
+});
+
+async function fixtureBundle(directory,version){
+ await mkdir(path.join(directory,'workspace'),{recursive:true});await mkdir(path.join(directory,'tools'));
+ await writeFile(path.join(directory,'workspace','server.mjs'),version);
+ await mkdir(path.join(directory,'tools/Desktop.app/Contents/MacOS'),{recursive:true});await mkdir(path.join(directory,'tools/libraries'));
+ await writeFile(path.join(directory,'tools/Desktop.app/Contents/MacOS/wizard'),version);
+ await writeFile(path.join(directory,'tools/wiz-cli'),version);await writeFile(path.join(directory,'tools/libqcocoa.dylib'),version);
+ await writeFile(path.join(directory,'tools','adapter'),version);
+ const inventory=(await fingerprint(directory)).entries,content={format:'wizard-smoke-harness/v1',platform:process.platform,architecture:process.arch,node:'>=24',runtime:{app:'tools/Desktop.app',cli:'tools/wiz-cli',qtPlugin:'tools/libqcocoa.dylib',bridge:'tools/adapter',libraries:'tools/libraries'},sourceHash:(await fingerprint(path.join(directory,'workspace'))).sha256,inventory,inventoryHash:digest(inventory)};
+ const manifest={...content,id:digest(content)};await writeJSON(path.join(directory,'harness.json'),manifest);return manifest;
+}
+test('bundled runtime installation survives relocation, retains older versions, and refuses an update during a test',async()=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),'smoke harness # ')));
+ try{
+  const a=path.join(root,'bundle one'),b=path.join(root,'bundle two'),data=path.join(root,'station');
+  const first=await fixtureBundle(a,'first'),second=await fixtureBundle(b,'second');
+  const installed=await installHarness(a,data);
+  assert.equal(installed.id,first.id);assert.ok(inside(data,installed.runtime.bridge));
+  assert.equal(await readFile(installed.runtime.bridge,'utf8'),'first');
+  assert.ok((await readFile(installed.launcher,'utf8')).includes('--port 0'));
+  const updated=await installHarness(b,data);assert.equal(updated.id,second.id);
+  assert.equal(await readFile(installed.runtime.bridge,'utf8'),'first','An update must preserve the old runtime');
+  assert.equal((await installedRuntime(data)).bridge,updated.runtime.bridge);
+  assert.equal((await installHarness(b,data)).id,updated.id,'Reinstalling the same version is safe');
+  const db=new DatabaseSync(path.join(data,'smoke.sqlite'));db.exec("CREATE TABLE executions(state TEXT); INSERT INTO executions VALUES('Running');");db.close();
+  await assert.rejects(()=>installHarness(a,data),/test run is active/);
+  assert.equal((await readJSON(path.join(data,'desktop-runtime.json'))).harness.id,second.id);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+test('first browser choice is remembered only after opening; cancellation and errors preserve it',async()=>{
+ const data=await mkdtemp(path.join(tmpdir(),'smoke browser ')),url='http://127.0.0.1:4321/';
+ const calls=[],launch=async(command,args)=>calls.push({command,args});
+ try{
+  assert.deepEqual(await openDashboard(url,data,{prompt:async()=>'',launch}),{opened:false,cancelled:true});
+  await assert.rejects(()=>readJSON(path.join(data,'browser.json')),e=>e.code==='ENOENT');
+  await openDashboard(url,data,{prompt:async()=>'default',launch});
+  await openDashboard(url,data,{prompt:async()=>{throw Error('Must not prompt twice');},launch});
+  assert.equal(calls.length,2);assert.deepEqual(calls[0],{command:'/usr/bin/open',args:[url]});
+  const app=path.join(data,"Browser's Name.app");await mkdir(app);
+  await openDashboard(url,data,{browser:app,launch});assert.deepEqual(calls.at(-1).args,['-a',app,url]);
+  await assert.rejects(()=>openDashboard(url,data,{browser:'default',launch:async()=>{throw Error('open failed');}}),/open failed/);
+  assert.equal((await readJSON(path.join(data,'browser.json'))).browser,app);
+  await assert.rejects(()=>openDashboard('https://example.com/',data,{browser:'default',launch}),/local dashboard/);
+  await assert.rejects(()=>openDashboard(url,data,{browser:'Safari; touch /tmp/no',launch}),/installed browser/);
+ }finally{await rm(data,{recursive:true,force:true});}
+});
+test('selected-build tool bundles relocate without a replacement app and reject changed adapter bytes',async()=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),'athanor attachment bundle '))),base=path.join(root,'bundle'),tools=path.join(base,'workspace/attachment-tools/matching/tools');
+ try{
+  await mkdir(tools,{recursive:true});await writeFile(path.join(base,'workspace/server.mjs'),'source');await writeFile(path.join(tools,'adapter'),'qualified tool');
+  await writeJSON(path.join(path.dirname(tools),'tools.json'),{kind:'selected-build-attachment',directory:'tools',architecture:process.arch,qtVersion:'6.11.2',sourceHash:'source',sha256:(await fingerprint(tools)).sha256});
+  const inventory=(await fingerprint(base)).entries,content={format:'wizard-smoke-harness/v2',platform:process.platform,architecture:process.arch,sourceHash:(await fingerprint(path.join(base,'workspace'))).sha256,attachmentTools:'workspace/attachment-tools/matching',inventory,inventoryHash:digest(inventory)};
+  await writeJSON(path.join(base,'harness.json'),{...content,id:digest(content)});
+  const installed=await installHarness(base,path.join(root,'station'));assert.equal(installed.runtime,null);assert.equal((await checkHarnessBundle(path.dirname(installed.workspace))).manifest.format,'wizard-smoke-harness/v2');
+  assert.equal((await readJSON(path.join(root,'station/desktop-runtime.json'))).runtime,null);
+  await assert.rejects(()=>installedRuntime(path.join(root,'station')),e=>e.code==='ENOENT');
+  await writeFile(path.join(tools,'adapter'),'changed');await assert.rejects(()=>checkHarnessBundle(base),/files changed/);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+test('bundle verification rejects changed bytes, extra files and runtime paths outside the bundle',async()=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),'smoke bundle checks ')));
+ try{
+  const base=path.join(root,'bundle');await fixtureBundle(base,'original');
+  assert.equal((await checkHarnessBundle(base)).manifest.format,'wizard-smoke-harness/v1');
+  await writeFile(path.join(base,'tools/adapter'),'changed');await assert.rejects(()=>checkHarnessBundle(base),/files changed/);
+  await writeFile(path.join(base,'tools/adapter'),'original');await writeFile(path.join(base,'unexpected'),'extra');await assert.rejects(()=>checkHarnessBundle(base),/files changed/);await rm(path.join(base,'unexpected'));
+  const {id,...content}=await readJSON(path.join(base,'harness.json'));content.runtime.bridge='../outside';await writeJSON(path.join(base,'harness.json'),{...content,id:digest(content)});
+  await assert.rejects(()=>checkHarnessBundle(base),/runtime path escapes/);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+test('agents resolve installed tools without a runtime argument and validate the paired CLI without spawning an app',async()=>{
+ const data=await realpath(await mkdtemp(path.join(tmpdir(),'smoke default tools ')));
+ try{
+  const runtime={app:'Desktop.app',cli:'wiz-cli',qtPlugin:'libqcocoa.dylib',bridge:'bridge.dylib',libraries:'libraries'};
+  await mkdir(path.join(data,'Desktop.app/Contents/MacOS'),{recursive:true});await mkdir(path.join(data,'libraries'));
+  await writeFile(path.join(data,'Desktop.app/Contents/MacOS/wizard'),'WIZ_HARNESS_RUN_ID WIZ_AUTOMATION_PROJECT',{mode:0o700});
+  await writeFile(path.join(data,runtime.cli),`#!${process.execPath}\nconst fs=require('node:fs');if(!process.argv.includes('--no-spawn'))process.exit(1);fs.writeFileSync(${JSON.stringify(path.join(data,'schema-only-receipt'))},'no-spawn');console.log(fs.readFileSync(${JSON.stringify(path.join(ROOT,'runner/contracts/desktop-schema.json'))},'utf8'));`,{mode:0o700});
+  for(const k of ['qtPlugin','bridge'])await writeFile(path.join(data,runtime[k]),'synthetic metadata fixture');
+  await writeJSON(path.join(data,'desktop-runtime.json'),{runtime});
+  const actual=await runtimeIdentity(undefined,data);assert.equal(actual.app,path.join(data,'Desktop.app'));
+  assert.equal(await readFile(path.join(data,'schema-only-receipt'),'utf8'),'no-spawn');
+  assert.deepEqual(runtimeEnvironment(actual),{DYLD_LIBRARY_PATH:path.join(data,'libraries'),DYLD_FRAMEWORK_PATH:path.join(data,'libraries')});
+  await mkdir(path.join(data,'libraries/qml'));
+  assert.equal(runtimeEnvironment(actual).QML_IMPORT_PATH,path.join(data,'libraries/qml'),'Relocated QML panels must resolve retained imports without a developer Qt installation');
+ }finally{await rm(data,{recursive:true,force:true});}
+});
+
+test('source snapshots include Build finder backend, browser controls and ZIP validation',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'smoke source finder '));try{await snapshotSource(root);for(const file of ['builds.mjs','build-catalog.mjs','public/build-finder.js','public/filters.js','scripts/validate-build-zip.py'])assert.ok((await readFile(path.join(root,file))).length);}finally{await rm(root,{recursive:true,force:true});}
+});

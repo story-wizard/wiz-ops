@@ -8,6 +8,12 @@ This repo collects convenience scripts that support day-to-day development workf
 
 The lower-level `maestro_*` scripts set up isolated worktrees and Maestro agents on demand. The `wiz_pr_*` scripts build a fully automated, Slack-triggered PR-review pipeline on top of them (see [Slack-triggered PR review pipeline](#slack-triggered-pr-review-pipeline)).
 
+## Smoke testing
+
+[`smoke/`](smoke/README.md) contains **Athanor**, the local Wizard testing app and agent CLI. From a checkout, run `cd smoke` and `npm run open` with Node.js 24 or newer. The first opening asks which browser to use. Agents should start with [smoke/AGENTS.md](smoke/AGENTS.md).
+
+Choose a compatible Wizard build and a course. The engine course has 57 checks; the full automated course selects 137 accepted checks and also needs installed desktop test tools. Setup, custom courses, execution and reports are covered in the [source handoff](smoke/docs/source-handoff.md).
+
 ## Requirements
 
 - [`gh`](https://cli.github.com/) — GitHub CLI, authenticated
