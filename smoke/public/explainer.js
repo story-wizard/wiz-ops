@@ -55,7 +55,7 @@ dialog.addEventListener('click',async e=>{
 });
 dialog.addEventListener('close',()=>{document.body.classList.remove('panel-open');selected=null;history.replaceState(null,'',location.pathname);render();const id=returnFocus?.dataset?.open;const replacement=id?document.querySelector(`[data-open="${CSS.escape(id)}"]`):null;(replacement||$('#search')).focus();});
 $('#close').onclick=closeDetail;
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&dialog.open){e.preventDefault();closeDetail();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(dialog.open){e.preventDefault();closeDetail();}else{const menu=document.querySelector('.workspace-menu[open]');if(menu){menu.open=false;menu.querySelector('summary').focus();}}}});
 $('#previous').onclick=()=>openDetail(visible[visible.findIndex(r=>r.id===selected)-1]?.id);
 $('#next').onclick=()=>openDetail(visible[visible.findIndex(r=>r.id===selected)+1]?.id);
 $('#copy').onclick=async()=>{try{await navigator.clipboard.writeText(location.origin+location.pathname+'#'+encodeURIComponent(selected));$('#copy').textContent='Copied';setTimeout(()=>$('#copy').textContent='Copy link',1500);}catch{$('#copy').textContent='Use address bar';}};

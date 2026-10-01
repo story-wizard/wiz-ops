@@ -29,6 +29,16 @@ test('tab navigation refreshes setup before switching and preserves the current 
  context.refreshRunSetup=async()=>{throw Error('Service unavailable');};state.tab='runs';state.selectedRun='existing';calls.length=0;
  await context.navigateTab('setup');assert.deepEqual(calls,['Service unavailable']);assert.equal(state.tab,'runs');assert.equal(state.selectedRun,'existing');
 });
+test('guide links open the requested workspace view and preserve run deep links',async()=>{
+ const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
+ const boot=app.slice(app.indexOf('try{[catalog,runs]='),app.indexOf('setInterval(async()=>'));
+ const run='11111111-1111-4111-8111-111111111111';
+ for(const [hash,expected] of [['#setup','setup'],['#runs','runs'],['#catalog','catalog'],['#gp','gp'],['#coverage','coverage'],['#checklist','checklist'],['#desktop','desktop'],['#run/'+run,'runs'],['#invalid','setup']]){
+  const state={tab:'setup',selectedRun:null},context={state,location:{hash},api:async()=>({}),refreshRunSetup:async()=>{},refreshDesktop:async()=>{},render(){}};
+  await runInNewContext('(async()=>{'+boot+'})()',context);
+  assert.equal(state.tab,expected,hash);assert.equal(state.selectedRun,hash.startsWith('#run/')?run:null);
+ }
+});
 test('default course exposes all 137 checks and blocks start until its test tools are installed',async()=>{
  const {context,events,calls}=launcher();await context.refreshRunSetup();
  const html=context.runSetupView(null);
