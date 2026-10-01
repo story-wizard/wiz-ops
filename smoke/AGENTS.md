@@ -2,6 +2,10 @@
 
 Athanor is the app name. Preserve the existing CLI names, formats and WizardSmoke workspace paths.
 
+## Dashboard design
+
+Design for desktop use on a capable Mac. Check full-screen and normal Mac window layouts first, with readable tables, clear run controls and room for evidence details. Keep narrow-window support as a fallback; do not compromise the desktop layout for mobile.
+
 ## Start from a checkout
 
 Use Node.js 24 or newer, then run these commands from `smoke/`:
