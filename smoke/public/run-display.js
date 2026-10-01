@@ -19,7 +19,7 @@ export function runTiming(run, history = [], now = Date.now()) {
     const p = r.execution?.package;
     if (!p?.packageHash || !p.courseHash || !p.runnerHash || !p.fixtureHash) return null;
     return JSON.stringify([p.packageHash, p.courseHash, p.runnerHash, p.fixtureHash, p.speechModel?.sha256 || null,
-      ...['appHash', 'cliHash', 'qtPluginHash', 'bridgeHash', 'librariesHash'].map(k => p.runtime?.[k] || null)]);
+      ...['appHash', 'cliHash', 'qtHash', 'bridgeHash', 'librariesHash'].map(k => p.runtime?.[k] || null)]);
   };
   const signature = identity(run);
   if (active && signature && !execution.recipe?.checkpoint) {

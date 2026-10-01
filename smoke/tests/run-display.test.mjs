@@ -4,15 +4,16 @@ import {formatDuration,runTiming,progressBar} from '../public/run-display.js';
 
 test('run clocks freeze at completion and estimate only comparable completed executions',()=>{
   const start='2026-09-30T20:00:00Z',now=Date.parse(start)+600_000;
-  const packageIdentity={packageHash:'build',courseHash:'course',runnerHash:'assertions',fixtureHash:'media',runtime:{appHash:'desktop'}};
+  const packageIdentity={packageHash:'build',courseHash:'course',runnerHash:'assertions',fixtureHash:'media',runtime:{appHash:'desktop',qtHash:'plugin'}};
   const run={id:'current',created_at:start,execution:{state:'Running',updated_at:start,package:packageIdentity,recipe:{cases:[{id:'A'},{id:'B'}]}},results:[{status:'Pass'},{status:'Running'}]};
   const history=seconds=>({...run,id:'history-'+seconds,execution:{...run.execution,state:'Failed',updated_at:new Date(Date.parse(start)+seconds*1000).toISOString()},results:[{status:'Pass'},{status:'Fail'}]});
   const otherBuild=history(900);otherBuild.execution.package={...packageIdentity,packageHash:'other-build'};
   const otherRunner=history(800);otherRunner.execution.package={...packageIdentity,runnerHash:'different-assertions'};
+  const otherPlugin=history(1000);otherPlugin.execution.package={...packageIdentity,runtime:{...packageIdentity.runtime,qtHash:'other-plugin'}};
   const incomplete=history(700);incomplete.results=[{status:'Pass'},{status:'Unknown'}];
   const missing=history(600);delete missing.results;
   const waiting=history(500);waiting.execution.recipe={...run.execution.recipe,checkpoint:{id:'human'}};
-  const timing=runTiming(run,[history(70),history(90),otherBuild,otherRunner,incomplete,missing,waiting],now);
+  const timing=runTiming(run,[history(70),history(90),otherBuild,otherRunner,otherPlugin,incomplete,missing,waiting],now);
   assert.equal(timing.elapsedMs,600_000);assert.equal(timing.totalMs,null);
   assert.equal(timing.estimatedTotalMs,80_000);assert.equal(timing.samples,2);
   const done=history(70);assert.equal(runTiming(done,[],now).totalMs,70_000);assert.equal(runTiming(done,[],now+999_000).elapsedMs,70_000);
