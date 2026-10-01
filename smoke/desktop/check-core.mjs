@@ -34,4 +34,4 @@ await check('D-LP-02-SAVE',async()=>{
   const saved=await desktopCall(file,'timeline.inspect',{timeline_id:s.main.id});same(snapshotState(saved),expected,'Saved timeline');await writeJSON(path.join(s.root,'gui-saved-timeline.json'),saved);
   return {mainTip:tip,name:saved.timeline.name,scope:'Real Save QAction; relaunch verified separately'};
 });
-console.log(JSON.stringify(report,null,2));if(report.results.some(r=>r.status!=='Pass'))process.exitCode=1;
+report.completed=true;await writeJSON(path.join(s.root,'desktop-core-report.json'),report);console.log(JSON.stringify(report,null,2));if(report.results.some(r=>r.status!=='Pass'))process.exitCode=1;

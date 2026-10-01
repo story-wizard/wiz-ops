@@ -5,10 +5,11 @@ import {desktopCall,nativeCall} from './adapter.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
 import {assert,pause,OutcomeError,clips,bounds} from '../runner/engine.mjs';
 
-// Exit 1 is a check verdict only when a terminal non-Pass observation explains it.
+// A normal finish is required: a prior Fail cannot explain a later script crash.
+// Exit 1 with that receipt retains ordinary non-Pass verdicts and permits independent checks.
 export function requireScriptCompletion(receipt,report,name){
  const explained=report.results.some(r=>['Fail','Blocked'].includes(r.status));
- assert(!receipt.aborted&&!receipt.timedOut&&(receipt.code===0||receipt.code===1&&explained)&&!report.fatal&&!report.results.some(r=>r.status==='Unknown'),`${name} did not complete safely (exit ${receipt.code}); inspect its execution receipt and report.`);
+ assert(report.completed===true&&!receipt.aborted&&!receipt.timedOut&&(receipt.code===0||receipt.code===1&&explained)&&!report.fatal&&!report.results.some(r=>r.status==='Unknown'),`${name} did not complete safely (exit ${receipt.code}); inspect its execution receipt and report.`);
 }
 
 export function requirePassed(results,ids){
@@ -77,6 +78,6 @@ export async function checks(file,name){
     await n('click',{target:menu.id,x:a.x+Math.floor(a.width/2),y:a.y+Math.floor(a.height/2)});await until(async()=>!(await ui()).widgets.some(w=>w.id===menu.id));
   }
   async function openTimeline(name){const view=await mediaItem(name);await activate(view);await n('item-click',{target:view.id,text:name,double:true});await until(async()=>(await ui()).widgets.some(w=>w.name==='panelSubtabSelector'&&selectorNamesTimeline(w.text,name)));const v=(await ui()).widgets.filter(w=>w.class==='TimelineWidget').sort((a,b)=>a.y-b.y)[0];assert(v,'Timeline is unavailable');await activate(v);return v;}
-  function finish(){writeFileSync(output,JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(report.results.some(r=>r.status!=='Pass'))process.exitCode=1;}
+  function finish(){report.completed=true;writeFileSync(output,JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(report.results.some(r=>r.status!=='Pass'))process.exitCode=1;}
   return {s,report,n,c,ui,until,check,step:(definition,fn)=>recordStep(file,definition,fn),activate,action,mediaItem,mediaMenu,openTimeline,finish};
 }

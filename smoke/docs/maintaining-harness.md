@@ -61,6 +61,6 @@ The October 1 nightly differs only in `render.set_render_mode`: its mode enum ad
 
 The `Athanor framework checks` GitHub workflow runs the framework suite and scope integrity check on macOS with Node.js 24 when smoke source changes. It exercises fixtures and local servers without a Wizard package or desktop permissions. Application courses run separately on the testing Mac.
 
-Script completion and individual test observations are separate. An unexplained nonzero exit or failed stage finalization prevents a successful run, preserves completed observations, and stops later stages. Pointer cleanup balances a synthetic press even if the verified application loses focus; new gestures still require current process and window ownership.
+Ordinary failed assertions remain recorded and the run continues through independent checks and stages. Script completion and individual test observations are separate. An unexplained nonzero exit or failed stage finalization prevents a successful run, preserves completed observations, and stops later stages. Pointer cleanup balances a synthetic press even if the verified application loses focus; new gestures still require current process and window ownership.
 
 If Start loses its response, use **Check start status**. If no admission is found, **Retry original start** resubmits the same immutable request ID and plan. Do not generate a new request ID to recover a lost response. The server reconciles a racing or duplicate admission under that original ID.
