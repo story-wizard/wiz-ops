@@ -18,7 +18,7 @@ A new workspace starts with the test catalog and no run history. The bundle regi
 ## Walk through the app
 
 1. In Run tests, open Find a build. Show Releases, Nightlies and Tagged builds, then use Mine to find builds containing your PRs. Builds can include several PR authors. Filters search all retained metadata. The list starts at 50 per page, with larger pages, All cached builds and Load older available.
-2. Choose a compatible build and course. Color regression is a short 13-check example; Build engine checks selects 57 checks. All automated checks selects 137 accepted definitions and needs desktop tools and the course's media/model prerequisites. Add a run name if useful.
+2. Choose a compatible build and course. For the short demo, have your agent save `examples/color-regression.json` once through `smoke.mjs course save --file examples/color-regression.json --server URL`. Color regression then appears as a 13-check course; Build engine checks selects 57 checks. All automated checks selects 137 accepted definitions and needs desktop tools and the course's media/model prerequisites. Add a run name if useful.
 3. Start the course. Athanor prepares a disposable project, checks the selected build and tools, and records progress in Results.
 4. Click a completed test row. Its details open immediately in the right sidebar. Show the expected result, how the check works, Operations used, recorded actions and evidence. Clicking another row updates that sidebar. Close or Escape returns to the table.
 5. Open the report to view the saved run independently. Show its filters, evidence and Edit this test prompt. The report stays on this Mac until someone deliberately shares it.
