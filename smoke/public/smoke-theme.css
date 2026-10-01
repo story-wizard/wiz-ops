@@ -4,6 +4,7 @@
   --smoke-blue: #8cbee7;
   --control-accent: #447ab0;
   --control-hover: #5385b6;
+  --brand-smoke: url('/brand-smoke.png');
 }
 body {
   min-height: 100vh;
@@ -34,16 +35,17 @@ body::after {
   animation: smoke-drift 28s ease-in-out infinite alternate;
 }
 .page-header h1, main > header > span, .top > span { color: #c7ddf1; }
-.page-header { position: relative; isolation: isolate; min-height: 108px; }
-.page-header::before {
+.page-header, .report-banner { position: relative; isolation: isolate; min-height: clamp(220px, 23vw, 310px); }
+.page-header::before, .report-banner::before {
   content: "";
   position: absolute;
   z-index: -1;
-  inset: 24px -12px 20px;
-  border-radius: 8px;
-  border-bottom: 1px solid #789bb326;
-  background: linear-gradient(90deg, #35485c38, #28374712 65%, transparent);
-  box-shadow: 0 10px 18px -16px #000b;
+  inset: 0 calc(50% - 50vw);
+  border-bottom: 1px solid #789bb338;
+  background-image: linear-gradient(90deg, #10192585, transparent 50%, #10192535), url('/athanor-scene.jpg');
+  background-position: center 24%;
+  background-size: cover;
+  box-shadow: inset 0 -36px 28px -24px #181c22;
   pointer-events: none;
 }
 .smoke-brand {
@@ -55,47 +57,50 @@ body::after {
   text-shadow: 0 2px 4px #07101e, 0 0 16px #82b5e045;
   animation: brand-float 9s ease-in-out infinite alternate;
 }
-.page-header h1.smoke-brand { font-size: 26px; font-weight: 600; letter-spacing: .01em; }
+.page-header h1.smoke-brand { font-family: Georgia, 'Times New Roman', serif; font-size: 44px; line-height: 1.1; font-weight: 700; letter-spacing: .01em; }
+.brand-moniker { display: block; padding-left: 38px; margin-top: 8px; font-size: 18px; font-weight: 400; letter-spacing: .03em; color: #c3d5e8; }
 .smoke-brand::before, .smoke-brand::after {
   content: "";
   position: absolute;
   z-index: -1;
   pointer-events: none;
-  width: calc(100% + 70px);
-  height: 94px;
-  left: -35px;
-  top: -34px;
-  filter: blur(5px);
+  width: calc(100% + 100px);
+  height: 140px;
+  left: -50px;
+  top: -45px;
+  background-image: var(--brand-smoke);
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 7px 8px #06122270);
 }
 .smoke-brand::before {
-  background:
-    radial-gradient(ellipse 54px 18px at 18% 68%, #b9daf268 10%, transparent 90%),
-    radial-gradient(ellipse 70px 24px at 42% 50%, #91c4ef70 10%, transparent 90%),
-    radial-gradient(ellipse 58px 19px at 64% 70%, #a9cfe364 10%, transparent 90%),
-    radial-gradient(ellipse 42px 19px at 83% 40%, #a59fdd48 10%, transparent 90%);
+  opacity: .5;
   animation: brand-cloud 13s ease-in-out infinite alternate;
 }
 .smoke-brand::after {
-  background:
-    radial-gradient(ellipse 52px 9px at 25% 40%, #d2e7f64a, transparent 85%),
-    radial-gradient(ellipse 44px 13px at 55% 22%, #a0c7e356, transparent 85%),
-    radial-gradient(ellipse 58px 11px at 77% 54%, #bdd5ee4b, transparent 85%);
+  opacity: .16;
+  top: -35px;
   animation: brand-cloud 19s -7s ease-in-out infinite alternate-reverse;
 }
 .brand-spark { color: #b8daf6; margin-right: 9px; font-size: .85em; text-shadow: 0 0 12px #80c3f0; }
 .smoke-brand-compact { font-size: 14px; letter-spacing: .01em; }
-.smoke-brand-compact::before, .smoke-brand-compact::after { height: 70px; top: -25px; }
-main > header:not(.page-header):has(.smoke-brand) { align-items: center; min-height: 62px; }
-.header-actions { position: relative; z-index: 1; }
+.smoke-brand-compact::before, .smoke-brand-compact::after { height: 90px; top: -30px; opacity: .3; }
+.report-banner { align-items: center; min-height: 190px; }
+.report-banner .smoke-brand { font-family: Georgia, 'Times New Roman', serif; font-size: 24px; }
+.header-actions { position: relative; z-index: 1; padding: 7px 11px; background: #111b28b3; border-radius: 6px; }
+.header-actions .text-button, .header-actions summary { color: #c3d5e8; }
 @keyframes brand-float { from { transform: translateY(1px); } to { transform: translateY(-2px); } }
 @keyframes brand-cloud {
-  from { transform: translate(-5px, 3px) scale(.94, .9); opacity: .65; }
-  to { transform: translate(6px, -6px) scale(1.04, 1.08); opacity: 1; }
+  from { transform: translate(-5px, 3px) scale(.94, .9); }
+  to { transform: translate(6px, -6px) scale(1.04, 1.08); }
 }
 @media(max-width:600px) {
-  .page-header h1.smoke-brand { font-size: 21px; }
-  .page-header { min-height: 100px; flex-wrap: wrap; }
-  .smoke-brand::before, .smoke-brand::after { width: calc(100% + 32px); left: -16px; }
+  .page-header h1.smoke-brand { font-size: 32px; }
+  .brand-moniker { font-size: 16px; padding-left: 29px; }
+  .page-header { min-height: 220px; flex-wrap: wrap; align-content: center; gap: 22px; }
+  .page-header::before, .report-banner::before { background-position: 58% center; }
+  .smoke-brand::before, .smoke-brand::after { width: calc(100% + 40px); left: -20px; }
   .smoke-brand-compact { font-size: 12px; }
 }
 .tabs { border-bottom-color: var(--smoke-edge); }
@@ -190,15 +195,36 @@ th { background: #2b3541; color: #afc1d3; }
 tr[data-test]:hover, tr[data-run]:hover, tr[data-result]:hover,
 #checks tbody tr:hover { background: #304052; }
 .run-progress {
+  display: flex;
   position: relative;
-  height: 12px;
-  padding: 2px;
+  height: 22px;
+  padding: 4px;
   gap: 0;
-  border-radius: 8px;
+  border-radius: 14px;
   background: #131a22;
-  box-shadow: 0 0 0 1px #415166, 0 1px 4px #0007 inset;
+  overflow: visible;
+  margin: 12px 0;
+  box-shadow: 0 0 0 1px #415166, 0 2px 8px #0009 inset, 0 5px 16px #637d9320;
 }
-.run-progress .segment { border-radius: 3px; box-shadow: 0 1px 0 #ffffff25 inset; }
+.run-progress .segment { position: relative; border-radius: 8px; box-shadow: 0 1px 0 #ffffff35 inset; }
+.run-progress .segment[style="width:0%"] { display: none; }
+.run-progress .segment::before {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  left: 0;
+  right: 0;
+  top: -19px;
+  height: 42px;
+  background-image: var(--brand-smoke);
+  background-size: auto 38px;
+  background-position: center;
+  background-repeat: repeat-x;
+  filter: brightness(.8) saturate(.3);
+  opacity: .45;
+  border-radius: inherit;
+}
+.run-progress[data-active="true"] .segment::before { animation: progress-wisp 8s -3s ease-in-out infinite alternate; }
 .run-progress .segment.pass { background: linear-gradient(180deg, #80c69c, #4d9570); }
 .run-progress .segment.fail { background: linear-gradient(180deg, #e89191, #b65c67); }
 .run-progress .segment.blocked { background: linear-gradient(180deg, #e6c284, #bb8e4f); }
@@ -207,8 +233,13 @@ tr[data-test]:hover, tr[data-run]:hover, tr[data-result]:hover,
 .run-progress .segment.running {
   background: linear-gradient(110deg, #487cad 15%, #a4d5f2 45%, #568cbd 75%);
   background-size: 220% 100%;
-  animation: progress-flow 3s linear infinite;
 }
+.run-progress[data-active="true"] .segment.running { animation: progress-flow 3s linear infinite; }
+.run-timing { display: flex; gap: 30px; align-items: baseline; margin: 14px 0 18px; }
+.run-timing > div { display: grid; gap: 3px; }
+.run-timing span, .run-time-compact small { color: #a2b3c5; font-size: 12px; }
+.run-timing strong { font-size: 25px; font-weight: 500; color: #d7e8f6; font-variant-numeric: tabular-nums; }
+.run-time-compact { display: grid; gap: 3px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 dialog {
   background: #222a33;
   border-color: #52677d;
@@ -224,13 +255,15 @@ dialog::backdrop { background: #0d141db0; }
   to { transform: translate3d(3%, -5%, 0); opacity: .95; }
 }
 @keyframes progress-flow { from { background-position: 100% 0; } to { background-position: -120% 0; } }
+@keyframes progress-wisp { from { transform: translate(0, 2px) scaleY(.8); opacity: .35; } to { transform: translate(4px, -3px) scaleY(1.2); opacity: .65; } }
 @keyframes smoke-reveal { from { opacity: .5; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 @media print {
   body::before, body::after { display: none; }
-  .smoke-brand::before, .smoke-brand::after, .page-header::before { display: none; }
+  .smoke-brand::before, .smoke-brand::after, .page-header::before, .report-banner::before { display: none; }
+  .page-header, .report-banner { min-height: 0; }
   .smoke-brand { animation: none; color: #111; text-shadow: none; }
   body { background: white; color: #111; }
   .table, .table-wrap { background: white; box-shadow: none; }

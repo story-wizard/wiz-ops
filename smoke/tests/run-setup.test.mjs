@@ -60,7 +60,7 @@ test('results expose Stop only for the active run and bind it to that run identi
  const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
  const view=app.slice(app.indexOf('function runsView()'),app.indexOf('function render()'));
  const run={id:'owned-run',name:'Friday release',build:'Test build',created_at:'2026-09-30',execution:{state:'Running',message:''},results:[]};
- const context={runs:[run],state:{selectedRun:run.id},catalog:{runner:{active:{run_id:run.id}}},statuses:[],esc:String,runCounts:()=>({}),tag:String,progress:()=>'',checkpointView:()=>'',options:()=>''};
+ const context={runs:[run],state:{selectedRun:run.id},catalog:{runner:{active:{run_id:run.id}}},statuses:[],esc:String,runCounts:()=>({}),tag:String,progress:()=>'',runTimeView:()=>'',checkpointView:()=>'',options:()=>''};
  runInNewContext(view,context);
  assert.match(context.runsView(),/data-action="stop-run" data-stop-id="owned-run"/);
  context.catalog.runner.active={run_id:'different-run'};

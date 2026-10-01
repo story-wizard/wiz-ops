@@ -28,6 +28,8 @@ test('report retains exact outcomes, detects missing or mismatched evidence and 
   assert.equal(report.cases[0].target,'packaged');assert.equal(report.targets[0].hash,plan.packageHash);
   const html=renderReport(report);assert.ok(html.includes('&lt;script&gt;'));assert.ok(!html.includes('<script>bad()'));assert.ok(html.includes('Observed expected state'));assert.ok(html.includes('project.read'));assert.ok(html.includes('<details><summary>Technical details</summary>'));
   assert.ok(html.includes('How the test works'));assert.ok(html.includes('Recorded actions'));assert.ok(html.includes('Copy edit prompt'));assert.ok(html.includes('Agent edit prompt'));
+  assert.equal(report.timing.totalMs,86400000);assert.match(html,/Total time/);assert.match(html,/24:00:00/);
+  assert.match(html,/data:image\/jpeg;base64,/);assert.match(html,/data:image\/png;base64,/);assert.ok(!html.includes("url('/athanor-scene.jpg')")&&!html.includes("url('/brand-smoke.png')"),'Report artwork travels with the exported HTML');
   const patchedHTML=renderReport({...report,computerUse:{state:'Partial',createdAt:'2026-09-30',cases:[{id:'UI',title:'Project UI',target:'computer-use-patched',area:'Release UI pilot',status:'Pass',observation:'Visible editor',expected:'Created project',operations:['Mouse and accessibility']}]}});
   assert.match(patchedHTML,/Smoke copy · patched Cocoa plugin/);assert.match(patchedHTML,/data-target="computer-use-patched"/);
   // Execute the exported page's controls against a small DOM, with no runner or network.
