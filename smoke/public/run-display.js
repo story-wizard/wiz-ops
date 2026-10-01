@@ -3,6 +3,10 @@ const movingStates = new Set(['Preflight', 'Running', 'Continuing']);
 const completedStates = new Set(['Passed', 'Failed']);
 const outcomes = ['Pass', 'Fail', 'Blocked', 'Running', 'N/A', 'Unknown'];
 export const progressEffects = `<svg class="progress-effects" aria-hidden="true" focusable="false"><defs>
+ <filter id="steam-wisp" x="-20%" y="-50%" width="140%" height="200%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency=".012 .075" numOctaves="2" seed="12" result="flow"/>
+  <feDisplacementMap in="SourceGraphic" in2="flow" scale="12" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation=".35"/>
+ </filter>
  <filter id="steam-grain" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
   <feTurbulence type="fractalNoise" baseFrequency=".045 .09" numOctaves="3" seed="8" result="grain"/>
   <feColorMatrix in="grain" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  2.8 2.8 2.8 0 -3.5" result="density"/>

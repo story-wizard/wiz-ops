@@ -4,7 +4,7 @@ Athanor is the app name. Preserve the existing CLI names, formats and WizardSmok
 
 ## Dashboard design
 
-Design for desktop use on a capable Mac. Check full-screen and normal Mac window layouts first, with readable tables, clear run controls and room for evidence details. Keep narrow-window support as a fallback; do not compromise the desktop layout for mobile. Preserve the shared alchemical scene, restrained Athanor wordmark and Wizard mark. Steam and the magical leading edge animate only during an active run; keep status colors and reduced-motion support.
+Design for desktop use on a capable Mac. Check full-screen and normal Mac window layouts first, with readable tables, clear run controls and room for evidence details. Keep narrow-window support as a fallback; do not compromise the desktop layout for mobile. Preserve the shared alchemical scene, restrained Athanor wordmark and Wizard mark. Use the Arcane current progress treatment: taper the steam behind a clear leading spark. Steam and the magical leading edge animate only during an active run; a faint stationary origin wisp remains on finished bars. Keep status colors and reduced-motion support.
 
 ## Navigation, filters and evidence
 
