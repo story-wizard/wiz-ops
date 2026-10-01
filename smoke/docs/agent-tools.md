@@ -25,7 +25,7 @@ node scripts/smoke.mjs status --request-id track-check-001 --server "$ATHANOR_UR
 
 `setup` returns known builds, courses and the automatic desktop-tool selection. `list` returns accepted and candidate definitions with their operations and requirements. `plan` adds the declared prerequisites and freezes the exact selection; it does not execute the check. `run` executes only that selection and its prerequisites. The resulting verdict and evidence appear in Results. See [agent-friendly courses](agent-courses.md) for wait, cancel, report and request recovery.
 
-Desktop/service plans use the installed bundle when `--runtime` is omitted. An explicit runtime file remains available for qualifying a replacement. Packaged-only plans do not need the desktop tools.
+Desktop/service plans automatically prepare an external adapter for the selected package and its shipped CLI. They never substitute a separate test app. Use `prepare` and poll `preparation --id ID` for step progress and a repair prompt; see [desktop setup](desktop-tools-setup.md). Packaged-only plans do not need the desktop adapter.
 
 ## Use atomic operations
 
@@ -36,7 +36,7 @@ node desktop/session.mjs schema
 node desktop/session.mjs start --plan /tmp/track-check-plan.json
 ```
 
-Keep the start command running. It prints the owned session file, PID and project identity, then waits for that app to exit. It prepares a disposable baseline project and opens the instrumented editor. It does not run the selected checks. An unattended session is limited to 30 minutes.
+Keep the start command running. It prints the owned session file, PID and project identity, then waits for that app to exit. It prepares a disposable baseline project and opens the selected package with external instrumentation. It does not run the selected checks. An unattended session is limited to 30 minutes.
 
 In another terminal, replace `SESSION.json` with the returned path:
 

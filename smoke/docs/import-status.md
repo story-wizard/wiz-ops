@@ -23,7 +23,7 @@ Framework tests exercise startup, source-only catalog integrity, custom selectio
 - [ ] Qualify a retained package against the operation schema and record runtime versions.
 - [ ] Run a small packaged course on a second machine and inspect its evidence and interruption handling.
 - [ ] Document Homebrew media/Qt tools and speech-model prerequisites.
-- [ ] Supply and qualify the instrumented desktop/CLI/Qt runtime for desktop checks.
+- [ ] Supply and qualify the external adapter attached to each selected packaged build for desktop checks.
 - [ ] Review candidate scope and resolve missing capabilities; mapped rows are not full coverage.
 
 These follow-ups qualify use on another machine and broader desktop coverage. Repository publication does not claim that they have passed. Merging, deployment, build dispatch and shared report publication remain separate actions.

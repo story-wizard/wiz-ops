@@ -7,12 +7,12 @@ import {openDashboard} from '../runner/browser.mjs';
 
 export async function main(args){
  const action=args.shift(),flags={};
- for(let i=0;i<args.length;i++){const key=args[i];if(key==='--no-open'&&!flags[key]){flags[key]=true;continue;}if(!['--runtime','--out','--bundle','--data-dir','--port','--browser'].includes(key)||flags[key]||!args[i+1]||args[i+1].startsWith('--'))throw Error('Invalid option: '+key);flags[key]=args[++i];}
+ for(let i=0;i<args.length;i++){const key=args[i];if(key==='--no-open'&&!flags[key]){flags[key]=true;continue;}if(!['--app','--runtime','--out','--bundle','--data-dir','--port','--browser'].includes(key)||flags[key]||!args[i+1]||args[i+1].startsWith('--'))throw Error('Invalid option: '+key);flags[key]=args[++i];}
  const launchFlags=['--data-dir','--port','--browser','--no-open'];
- const allowed={bundle:['--runtime','--out'],check:['--bundle'],install:['--bundle','--data-dir'],start:launchFlags,serve:launchFlags};
+ const allowed={bundle:['--app','--runtime','--out','--data-dir'],check:['--bundle'],install:['--bundle','--data-dir'],start:launchFlags,serve:launchFlags};
  if(!allowed[action]||Object.keys(flags).some(k=>!allowed[action].includes(k))||(flags['--no-open']&&flags['--browser']))throw Error('Usage: harness bundle --runtime FILE --out DIR | check --bundle DIR | install --bundle DIR [--data-dir DIR] | start|serve [--data-dir DIR] [--port PORT] [--browser default|choose|/path/Browser.app | --no-open]');
  const required=k=>{if(!flags[k])throw Error('Required option: '+k);return flags[k];};
- if(action==='bundle'){const input=await readJSON(required('--runtime'));return bundleHarness({runtime:input.runtime||input,destination:required('--out')});}
+ if(action==='bundle'){if(Boolean(flags['--app'])===Boolean(flags['--runtime']))throw Error('Choose --app for a selected-build adapter bundle, or --runtime for a legacy bundle.');const input=flags['--runtime']?await readJSON(flags['--runtime']):null;return bundleHarness({runtime:input?.runtime||input,app:flags['--app'],dataDir:flags['--data-dir'],destination:required('--out')});}
  if(action==='check'){const {base,manifest}=await checkHarnessBundle(required('--bundle'));return {path:base,id:manifest.id,verified:true,wizardLaunched:false};}
  if(action==='install')return installHarness(required('--bundle'),flags['--data-dir']);
  const data=dataDirectory(flags['--data-dir']);let workspace=ROOT;

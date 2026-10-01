@@ -80,6 +80,19 @@ test('first browser choice is remembered only after opening; cancellation and er
   await assert.rejects(()=>openDashboard(url,data,{browser:'Safari; touch /tmp/no',launch}),/installed browser/);
  }finally{await rm(data,{recursive:true,force:true});}
 });
+test('selected-build tool bundles relocate without a replacement app and reject changed adapter bytes',async()=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),'athanor attachment bundle '))),base=path.join(root,'bundle'),tools=path.join(base,'workspace/attachment-tools/matching/tools');
+ try{
+  await mkdir(tools,{recursive:true});await writeFile(path.join(base,'workspace/server.mjs'),'source');await writeFile(path.join(tools,'adapter'),'qualified tool');
+  await writeJSON(path.join(path.dirname(tools),'tools.json'),{kind:'selected-build-attachment',directory:'tools',architecture:process.arch,qtVersion:'6.11.2',sourceHash:'source',sha256:(await fingerprint(tools)).sha256});
+  const inventory=(await fingerprint(base)).entries,content={format:'wizard-smoke-harness/v2',platform:process.platform,architecture:process.arch,sourceHash:(await fingerprint(path.join(base,'workspace'))).sha256,attachmentTools:'workspace/attachment-tools/matching',inventory,inventoryHash:digest(inventory)};
+  await writeJSON(path.join(base,'harness.json'),{...content,id:digest(content)});
+  const installed=await installHarness(base,path.join(root,'station'));assert.equal(installed.runtime,null);assert.equal((await checkHarnessBundle(path.dirname(installed.workspace))).manifest.format,'wizard-smoke-harness/v2');
+  assert.equal((await readJSON(path.join(root,'station/desktop-runtime.json'))).runtime,null);
+  await assert.rejects(()=>installedRuntime(path.join(root,'station')),e=>e.code==='ENOENT');
+  await writeFile(path.join(tools,'adapter'),'changed');await assert.rejects(()=>checkHarnessBundle(base),/files changed/);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
 test('bundle verification rejects changed bytes, extra files and runtime paths outside the bundle',async()=>{
  const root=await realpath(await mkdtemp(path.join(tmpdir(),'smoke bundle checks ')));
  try{

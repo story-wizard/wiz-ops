@@ -13,13 +13,13 @@ npm run open
 
 Choose your browser on first opening and keep the terminal running. No npm packages are needed. If using a supplied bundle, extract it and double-click `Install Athanor.command`; later use the installed `Open Athanor.command`.
 
-A new workspace starts with the test catalog and no run history. The bundle registers its desktop tools. A source checkout can register an existing qualified configuration under More options, or with `smoke.mjs runtime --file FILE --server URL`.
+A new workspace starts with the test catalog and no run history. Preparation automatically builds and caches the matching external desktop adapter; see [desktop setup](desktop-tools-setup.md) for SDK requirements and agent repair instructions.
 
 ## Walk through the app
 
 1. In Run tests, open Find a build. Show Releases, Nightlies and Tagged builds, then use Mine to find builds containing your PRs. Builds can include several PR authors. Filters search all retained metadata. The list starts at 50 per page, with larger pages, All cached builds and Load older available.
 2. Choose a compatible build and course. For the short demo, have your agent save `examples/color-regression.json` once through `smoke.mjs course save --file examples/color-regression.json --server URL`. Color regression then appears as a 13-check course; Build engine checks selects 57 checks. All automated checks selects 137 accepted definitions and needs desktop tools and the course's media/model prerequisites. Add a run name if useful.
-3. Start the course. Athanor prepares a disposable project, checks the selected build and tools, and records progress in Results.
+3. Press Prepare build. Follow the preparation steps until Build ready, then press Start checks. Athanor records course progress in Results.
 4. Click a completed test row. Its details open immediately in the right sidebar. Show the expected result, how the check works, Operations used, recorded actions and evidence. Clicking another row updates that sidebar. Close or Escape returns to the table.
 5. Open the report to view the saved run independently. Show its filters, evidence and Edit this test prompt. The report stays on this Mac until someone deliberately shares it.
 6. In Checks or Test guide, show how an agent can inspect a check and get a context pack for a focused run or edit. Custom courses can combine accepted tests; adding or changing accepted definitions requires lead review.
@@ -45,6 +45,6 @@ Mapped checks can cover part of an original path. The coverage view records that
 
 ## Before the demo
 
-Open Athanor on the intended Mac and verify that the build and course are selectable. For a full run, the desktop tools must be registered and the desktop unlocked. Check media tools and any required speech model. Keep a completed report handy to show details while another course runs.
+Open Athanor on the intended Mac and prepare the selected build and course. For a full run, keep the desktop unlocked. Check media tools and any required speech model. Keep a completed report handy to show details while another course runs.
 
 For a new testing Mac, follow [source handoff](source-handoff.md) and [installation](maintaining-harness.md). Local installation checks are recorded separately from a first smoke run on that Mac.

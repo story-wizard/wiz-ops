@@ -211,7 +211,7 @@ public:
     explicit SmokeBridge(QString directory):QObject(qApp),root(std::move(directory)){
         QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs); // Only this disposable smoke process.
         connect(qApp,&QCoreApplication::aboutToQuit,this,[this]{restoreClipboard();save("quit-observed.json",{{"pid",qint64(QCoreApplication::applicationPid())},{"generation",generation},{"event","aboutToQuit"}});});
-        save("ready.json",{{"cocoaImage",QString::fromUtf8(class_getImageName(objc_getClass("QMacAccessibilityElement")))},{"pid",qint64(QCoreApplication::applicationPid())},{"generation",generation},{"harness",qEnvironmentVariable("WIZ_HARNESS_RUN_ID")}});
+        save("ready.json",{{"cocoaImage",QString::fromUtf8(class_getImageName(objc_getClass("QMacAccessibilityElement")))},{"pid",qint64(QCoreApplication::applicationPid())},{"generation",generation},{"harness",qEnvironmentVariable("WIZ_HARNESS_RUN_ID")},{"settingsFile",QSettings().fileName()},{"settingsFormat",int(QSettings().format())}});
         auto* timer=new QTimer(this);timer->setInterval(100);
         connect(timer,&QTimer::timeout,this,[this]{
             QFile input(root+"/request.json");if(!input.open(QIODevice::ReadOnly))return;
@@ -234,6 +234,15 @@ public:
         if(key.compare("Basic",Qt::CaseInsensitive)!=0)return nullptr;
         const auto root=qEnvironmentVariable("WIZ_SMOKE_CONTROL_DIR");
         if(root.isEmpty()||qEnvironmentVariable("WIZ_HARNESS_RUN_ID").isEmpty()||!QFileInfo(root).isDir())return nullptr;
+        const auto settings=qEnvironmentVariable("WIZ_SMOKE_SETTINGS_DIR");
+        if(!settings.isEmpty()){
+            if(!QDir::isAbsolutePath(settings)||!QFileInfo(settings).isDir())return nullptr;
+            // This owned process uses external INI settings, before MainWindow loads them.
+            QSettings::setDefaultFormat(QSettings::IniFormat);
+            QSettings::setPath(QSettings::IniFormat,QSettings::UserScope,settings);
+            QSettings::setPath(QSettings::IniFormat,QSettings::SystemScope,settings);
+            QStandardPaths::setTestModeEnabled(true);
+        }
         QTimer::singleShot(0,qApp,[root]{new SmokeBridge(root);});
         return QStyleFactory::create("Fusion");
     }

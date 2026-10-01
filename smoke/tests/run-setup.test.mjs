@@ -7,12 +7,13 @@ const source=(await readFile(new URL('../public/run-setup.js',import.meta.url),'
 const courses=[{id:'automated-full',title:'All automated checks',checkCount:137,targets:{packaged:57,desktop:73,service:7},requirements:{targets:['packaged','desktop','service']}},{id:'packaged-full',title:'Build engine checks',checkCount:57,targets:{packaged:57,desktop:0,service:0},requirements:{targets:['packaged']}}];
 function launcher({helper=false,lost=false,missing=false,buildAvailable=true,prepareError}={}){
  const events={},calls=[],opened=[],rendered=[],storage=new Map(),runtime={app:'/Test.app',cli:'/paired-cli',qtPlugin:'/libqcocoa.dylib',bridge:'/bridge'};
- const context={document:{addEventListener(name,fn){events[name]=fn;}},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},crypto:{randomUUID:()=> 'stable-start-id'}};
+ const context={document:{addEventListener(name,fn){events[name]=fn;}},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},crypto:{randomUUID:()=> 'stable-start-id'},progressBar:()=>''};
  runInNewContext(source,context);
  context.configureRunSetup({render(){rendered.push(context.runSetupView(null));},toast(){},onStarted:async id=>opened.push(id),api:async(route,method,body)=>{
   calls.push({route,method,body});
   if(route==='/run-setup')return {builds:[{app:'/Selected.app',label:'Selected build',available:buildAvailable}],courses,defaultRuntimeId:helper?'helper':'',runtimes:helper?[{id:'missing',available:false,runtime:{app:'/Gone.app'}},{id:'helper',available:true,runtime}]:[]};
-  if(route==='/plans'){if(prepareError)throw Error(prepareError);return {app:body.app,planHash:'frozen-plan'};}
+  if(route==='/preparations'){if(prepareError)throw Error(prepareError);return {id:'prep',state:'Preparing',steps:[]};}
+  if(route==='/preparations/prep')return {id:'prep',state:'Ready',steps:[],planHash:'frozen-plan'};
   if(route==='/runner/start'){if(lost&&(!missing||calls.filter(c=>c.route==='/runner/start').length===1))throw Error('Response lost');return {runId:'actual-run'};}
   if(route==='/requests/stable-start-id'){if(missing)throw Object.assign(Error('Request not found'),{status:404});return {id:'actual-run'};}
   throw Error('Unexpected route '+route);
@@ -39,30 +40,33 @@ test('guide links open the requested workspace view and preserve run deep links'
   assert.equal(state.tab,expected,hash);assert.equal(state.selectedRun,hash.startsWith('#run/')?run:null);
  }
 });
-test('default course exposes all 137 checks and blocks start until its test tools are installed',async()=>{
+test('default course prepares instrumentation for the selected build before enabling a run',async()=>{
  const {context,events,calls}=launcher();await context.refreshRunSetup();
  const html=context.runSetupView(null);
- assert.match(html,/All automated checks · 137 checks/);assert.match(html,/Desktop test tools aren’t configured for this workspace/);
- assert.match(html,/type="submit" disabled>Start 137 checks/);assert.ok(!html.includes('launch-options" open'));
- await submit(events);assert.deepEqual(calls.map(c=>c.route),['/run-setup']);
+ assert.match(html,/All automated checks · 137 checks/);assert.match(html,/Prepare automatically sets up the matching adapter/);
+ assert.match(html,/type="submit" >Prepare build/);assert.ok(!html.includes('launch-options" open'));
+ await submit(events);assert.deepEqual(calls.map(c=>c.route),['/run-setup','/preparations','/preparations/prep']);
+ assert.equal(calls.some(c=>c.route==='/runner/start'),false,'Prepare must never start a course');
+ assert.match(context.runSetupView(null),/Start 137 checks/);
+ await events.change({target:{id:'suite-name',value:'Revised run name'}});assert.match(context.runSetupView(null),/Prepare build/);await submit(events);
  await events.change({target:{id:'suite-course',value:'packaged-full'}});
- assert.match(context.runSetupView(null),/>Start 57 checks/);assert.ok(!context.runSetupView(null).includes('Desktop test tools aren’t configured'));
- await submit(events);assert.equal(calls.find(c=>c.route==='/plans').body.runtime,undefined);
+ assert.match(context.runSetupView(null),/Prepare build/);await submit(events);
+ assert.equal(calls.find(c=>c.route==='/preparations').body.runtime,undefined,'The launcher cannot substitute a test app');
 });
-test('one start action prepares the selected build and named course before admitting its exact plan',async()=>{
+test('prepare and start are separate actions bound to the same selected build and frozen plan',async()=>{
  const {context,events,calls,opened,rendered}=launcher({helper:true});await context.refreshRunSetup();
  assert.ok(!context.runSetupView(null).includes('Desktop helper'));
- assert.match(context.runSetupView(null),/type="submit" >Start 137 checks/);
- events.input({target:{id:'suite-name',value:'Friday release',dataset:{}}});await submit(events);
- assert.deepEqual(calls.map(c=>c.route),['/run-setup','/plans','/runner/start']);
- const plan=calls[1].body,start=calls[2].body;
- assert.equal(plan.app,'/Selected.app');assert.equal(plan.selection.courseIds[0],'automated-full');assert.equal(plan.selection.title,'Friday release');assert.equal(plan.runtime.app,'/Test.app');
+ assert.match(context.runSetupView(null),/type="submit" >Prepare build/);
+ events.input({target:{id:'suite-name',value:'Friday release',dataset:{}}});await submit(events);await submit(events);
+ assert.deepEqual(calls.map(c=>c.route),['/run-setup','/preparations','/preparations/prep','/runner/start']);
+ const plan=calls[1].body,start=calls[3].body;
+ assert.equal(plan.app,'/Selected.app');assert.equal(plan.selection.courseIds[0],'automated-full');assert.equal(plan.selection.title,'Friday release');assert.equal(plan.runtime,undefined);
  assert.equal(start.planHash,'frozen-plan');assert.equal(start.requestId,'stable-start-id');assert.deepEqual(opened,['actual-run']);
  assert.ok(rendered.some(html=>html.includes('Starting tests…')),'The pending start should show progress');
  assert.ok(rendered.every(html=>!html.includes('The response was lost.')),'A healthy start must never flash a lost-response warning');
 });
 test('a lost start response locks the form and recovers the same request without another start',async()=>{
- const {context,events,calls,opened}=launcher({helper:true,lost:true});await context.refreshRunSetup();await submit(events);
+ const {context,events,calls,opened}=launcher({helper:true,lost:true});await context.refreshRunSetup();await submit(events);await submit(events);
  assert.match(context.runSetupView(null),/Start outcome needs checking/);await submit(events);
  assert.equal(calls.filter(c=>c.route==='/runner/start').length,1);
  await events.click({target:{closest:()=>({dataset:{setup:'recover'}})}});
@@ -91,7 +95,7 @@ test('results expose Stop only for the active run and bind it to that run identi
 
 // A lost request can be absent at admission; the same key safely reconciles a racing POST.
 test('a missing start request offers an explicit retry of the original immutable request',async()=>{
- const {context,events,calls,opened}=launcher({helper:true,lost:true,missing:true});await context.refreshRunSetup();await submit(events);
+ const {context,events,calls,opened}=launcher({helper:true,lost:true,missing:true});await context.refreshRunSetup();await submit(events);await submit(events);
  await events.click({target:{closest:()=>({dataset:{setup:'recover'}})}});
  assert.match(context.runSetupView(null),/Retry original start/);
  assert.equal(calls.filter(c=>c.route==='/runner/start').length,1,'Reconciliation must not blindly replay input');
@@ -111,6 +115,6 @@ test('retained run history cannot override a changed downloaded package in setup
 test('an unavailable cached build cannot be launched even when the test tools are ready',async()=>{
  const {context,events,calls}=launcher({helper:true,buildAvailable:false});await context.refreshRunSetup();
  events.input({target:{id:'suite-app',value:'/Selected.app',dataset:{}}});
- assert.match(context.runSetupView(null),/type="submit" disabled>Start 137 checks/);await submit(events);
- assert.equal(calls.some(c=>c.route==='/plans'),false);
+ assert.match(context.runSetupView(null),/type="submit" disabled>Prepare build/);await submit(events);
+ assert.equal(calls.some(c=>c.route==='/preparations'),false);
 });

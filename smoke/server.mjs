@@ -22,6 +22,7 @@ import {runtimeList,saveRuntime,installedRuntime} from './runner/runtime.mjs';
 import {exportRunKit} from './kits.mjs';
 import {exportLocalReport,reportScriptHash} from './reports.mjs';
 import {agentContext,exportAgentContext,candidateChecks} from './test-details.mjs';
+import {startPreparation,readPreparation} from './runner/preparations.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = dataDirectory();
@@ -198,6 +199,14 @@ const server=http.createServer(async(req,res)=>{
         try{return send(201,await importBuild(dataDir,body));}catch(e){fail(400,e.message);}finally{importingBuild=false;}
       }
       if(req.method==='GET'&&url.pathname==='/api/run-setup')return send(200,await runSetup());
+      if(req.method==='GET'&&parts[1]==='preparations'&&parts.length===3){try{return send(200,await readPreparation(dataDir,parts[2]));}catch(e){fail(404,e.message);}}
+      if(req.method==='POST'&&url.pathname==='/api/preparations'){
+        if(preparing||(await runnerStatus()).active||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'A course, desktop setup or preparation is active.');
+        if(typeof body.app!=='string'||!path.isAbsolute(body.app))fail(400,'Choose an explicit absolute app path.');
+        let selection;try{selection=resolveSelection(db,body.selection);}catch(e){fail(409,e.message);}
+        if(preparing)fail(409,'Another preparation became active.');preparing=true;
+        try{const {job}=await startPreparation({app:body.app,dataDir,selection},{onFinished:()=>{preparing=false;}});return send(202,job);}catch(e){preparing=false;fail(409,e.message);}
+      }
       if(req.method==='GET'&&parts[1]==='plans'&&parts.length===3){try{return send(200,await storedPlan(parts[2]));}catch(e){fail(409,e.message);}}
       if(req.method==='GET'&&url.pathname==='/api/courses')return send(200,courseList(db));
       if(req.method==='GET'&&parts[1]==='courses'&&parts.length===3){try{return send(200,getCourse(db,parts[2],url.searchParams.has('revision')?Number(url.searchParams.get('revision')):undefined));}catch(e){fail(404,e.message);}}

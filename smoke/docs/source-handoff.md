@@ -4,7 +4,7 @@ The source lives under `wiz-ops/smoke/`. A clone supplies the catalog, web dashb
 
 ## Install a bundled harness
 
-See [build, install and update](maintaining-harness.md). The bundle contains the instrumented app, paired CLI, native adapter, Qt dependencies, dashboard, agent entry points, docs and framework tests. Installation preserves older versions and registers the desktop tools automatically. The selected build and course-specific media/model inputs remain separate.
+See [build, install and update](maintaining-harness.md). The bundle contains the external adapter, matching QtTest framework, dashboard, agent entry points, docs and framework tests. It contains no replacement Wizard app. Installation preserves older versions and registers the desktop tools automatically. The selected build and course-specific media/model inputs remain separate.
 
 ## Validate a clean checkout
 
@@ -25,7 +25,7 @@ The shared banner and sticky navigation appear on the workspace and field guide.
 
 Filter dropdowns support several choices and named saved views. Browser storage keeps workspace/guide views; exported reports retain filters and presets in their URL fragments.
 
-Find a build lists recent GitHub packages, ordered Releases, Nightlies and Tagged builds. It also accepts a URL, exact tag, ZIP or local app path. Use `builds` and `build` for the same workflow from an agent. See [Build finder](build-finder.md); GitHub access needs existing `gh` authentication, and ZIP import needs Python 3 and macOS `ditto`. Imported packages remain outside Git, and still go through normal preparation before testing. [Shared build metadata](shared-build-catalog.md) persists PR authors and links independently of local app paths. Each workspace needs a desktop-tools configuration, even when another workspace already has the tools installed. Import that qualified configuration through More options or the `runtime` agent command.
+Find a build lists recent GitHub packages, ordered Releases, Nightlies and Tagged builds. It also accepts a URL, exact tag, ZIP or local app path. Use `builds` and `build` for the same workflow from an agent. See [Build finder](build-finder.md); GitHub access needs existing `gh` authentication, and ZIP import needs Python 3 and macOS `ditto`. Imported packages remain outside Git, and still go through normal preparation before testing. [Shared build metadata](shared-build-catalog.md) persists PR authors and links independently of local app paths. Desktop preparation automatically builds or reuses a matching external adapter and verifies attachment to the selected build. Read [desktop setup](desktop-tools-setup.md). The UI exposes Prepare and Start as separate actions and shows a repair prompt when setup fails.
 
 ## Included and excluded
 
@@ -41,7 +41,7 @@ For the team walkthrough and first run, use [demo guide](demo-guide.md).
 
 Give the agent [the onboarding prompt](../examples/agent-onboarding.txt). Start with the repository's `AGENTS.md`, which points to `smoke/AGENTS.md`. The agent can validate the framework, launch the dashboard, discover builds and accepted checks, compose a course, prepare the selected build, run it and return its report. Use the same `SMOKE_DATA_DIR` and printed service URL throughout.
 
-A source clone supplies code and definitions. A testing station still needs the compatible build and media tools listed in the automated build guide. Install a supplied harness bundle for desktop/service checks, or configure a qualified runtime through the agent CLI. Use an engine-only selection while those tools are unavailable.
+A source clone supplies code and definitions. A testing station still needs the compatible build and media tools listed in the automated build guide. For desktop/service checks, use the matching SDK bootstrap described in [desktop setup](desktop-tools-setup.md). Do not substitute a legacy instrumented app for the selected package. Use an engine-only selection while the desktop prerequisites are unavailable.
 
 ## First actual smoke execution on another machine
 
@@ -51,7 +51,7 @@ Use the [automated build guide](automated-build-testing.md) for a small first ru
 2. Configure local media tools and only the model prerequisites needed by the chosen checks.
 3. Prepare a small packaged-only course and review the package/fixture identities and added prerequisites.
 4. Run it, inspect the retained evidence and test one failure/interruption path.
-5. Configure and qualify the instrumented desktop runtime separately before using desktop/service checks.
+5. Prepare a desktop selection to qualify attachment to the same package before running desktop/service checks.
 
 The CLI and portable-kit helpers are in [agent-courses.md](agent-courses.md) and [build-evidence-local-reports.md](build-evidence-local-reports.md). These helpers do not establish that a second-machine pilot has happened. Do not copy a developer's absolute runtime paths and assume they identify the intended build.
 

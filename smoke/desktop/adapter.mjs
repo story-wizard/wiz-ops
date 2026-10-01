@@ -2,18 +2,20 @@ import path from 'node:path';
 import {spawn,execFileSync} from 'node:child_process';
 import {mkdir,readFile,open,cp,mkdtemp,unlink,appendFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
-import {realpathSync,appendFileSync} from 'node:fs';
+import {realpathSync,appendFileSync,constants} from 'node:fs';
 import {PackagedEngine,assert,pause,OutcomeError} from '../runner/engine.mjs';
 import {ProjectSession} from '../runner/interactions.mjs';
 import {checkPrepared} from '../runner/prepare.mjs';
 import {ROOT,dataDirectory,externalPath,readJSON,writeJSON,fingerprint,inside,sha} from '../runner/files.mjs';
 import {runtimeEnvironment} from '../runner/runtime.mjs';
+import {attachSelectedBuild} from './attach.mjs';
 
 export function verifyDesktopPaths(session,configuredDataDir){
   const base=realpathSync(dataDirectory(configuredDataDir));
   assert(session.dataDir===base&&inside(base,session.root),'Desktop session must be in the configured external workspace');
   assert(inside(base,session.root)&&realpathSync(session.root)===session.root&&inside(session.root,realpathSync(session.bundle)),'Desktop session is outside the owned workspace.');
-  assert(session.executable===path.join(session.root,'Wizard Smoke.app/Contents/MacOS/wizard'),'Unexpected desktop executable.');
+  const name=session.executableName||'wizard';
+  assert(['wizard','wizard-bin'].includes(name)&&session.executable===path.join(session.root,'Wizard Smoke.app/Contents/MacOS',name),'Unexpected desktop executable.');
 }
 
 export function verifyDesktopOwner(session,configuredDataDir){
@@ -36,29 +38,54 @@ export async function pairDesktopCli(session,pairedCli){
   const cli=path.join(directory,'wiz-cli');await cp(source,cli);
   session.desktopCli=cli;session.desktopCliHash=await sha(cli);
   session.schema=JSON.parse(execFileSync(cli,['project','create','--schema','--no-spawn'],{encoding:'utf8',timeout:10000,maxBuffer:8*1024*1024,env:{...process.env,...runtimeEnvironment(session.plan.runtime)}}));
-  session.scope='Instrumented local GUI build and paired CLI; selected package supplies fixture preparation, media tools and the search worker; separate from release smoke';
+  session.scope=session.plan.runtime?.kind==='selected-build-attachment'?'Selected packaged GUI and its shipped CLI with an external test plugin':'Instrumented local GUI build and paired CLI; separate from release smoke';
   await writeJSON(path.join(session.root,'session.json'),session);
 }
 
 export async function prepareDesktop(sourceApp,qtCocoaPlugin,pairedCli,prepared){
   const {plan,fixtures,schema}=await checkPrepared(prepared?.dataDir,prepared?.plan);
-  const binary=await readFile(path.join(sourceApp,'Contents/MacOS/wizard'));
-  for(const marker of ['WIZ_HARNESS_RUN_ID','WIZ_AUTOMATION_PROJECT'])assert(binary.includes(Buffer.from(marker)),`The desktop build lacks ${marker}; refusing to use personal settings.`);
+  if(plan.runtime?.kind==='selected-build-attachment'){sourceApp=plan.app;pairedCli=plan.runtime.cli;qtCocoaPlugin=null;}
+  else throw new OutcomeError('Desktop tests require attachment to the selected build. Prepare a new selected-build plan.','Blocked');
   const dataDir=dataDirectory(prepared?.dataDir);assert(dataDir===dataDirectory(),'Configure SMOKE_DATA_DIR to match desktop preparation.');
   const directory=externalPath(prepared?.directory||path.join(dataDir,'desktop-runs'));assert(inside(dataDir,directory),'Desktop destination must be inside the configured workspace.');await mkdir(directory,{recursive:true});const root=await mkdtemp(path.join(directory,'desktop-'));
-  const app=path.join(root,'Wizard Smoke.app');await cp(sourceApp,app,{recursive:true});
+  const app=path.join(root,'Wizard Smoke.app');await cp(sourceApp,app,{recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE});
   const identity=await fingerprint(app,{packageTree:true});await cp(plan.fixtureRoot,path.join(root,'media'),{recursive:true});
   const engine=new PackagedEngine(plan,root,path.basename(root),schema),c=new ProjectSession(engine,path.basename(root),fixtures);
   try{await engine.start();await c.setup();await c.call('project.checkpoint');}finally{await engine.stop();}
-  const session={format:'wizard-smoke-desktop/v1',scope:'Instrumented local GUI build with installed packaged CLI; separate from release smoke',dataDir,root,app,sourceApp,executable:path.join(app,'Contents/MacOS/wizard'),guiHash:identity.sha256,cliApp:plan.app,cliPackageHash:plan.packageHash,fixtureHash:plan.fixtureHash,bundle:c.bundle,main:c.main,alternate:c.alternate,clip:c.a,assets:c.assets,harnessId:path.basename(root),generation:0,counter:engine.counter,schema,plan};
+  const session={format:'wizard-smoke-desktop/v1',scope:'Selected packaged build with external test tools',dataDir,root,app,sourceApp,executable:path.join(app,'Contents/MacOS/wizard'),guiHash:identity.sha256,cliApp:plan.app,cliPackageHash:plan.packageHash,fixtureHash:plan.fixtureHash,bundle:c.bundle,main:c.main,alternate:c.alternate,clip:c.a,assets:c.assets,harnessId:path.basename(root),generation:0,counter:engine.counter,schema,plan};
   if(qtCocoaPlugin){const source=realpathSync(qtCocoaPlugin);assert(path.basename(source)==='libqcocoa.dylib','Choose the local Cocoa plugin explicitly.');session.qtCocoa={source,sha256:await sha(source)};}
   await pairDesktopCli(session,pairedCli);return session;
+}
+
+async function openAttachedProject(file,bundle){
+  const session=await readJSON(file);assert(inside(session.root,bundle),'Startup must open the owned fixture project.');
+  const observed=await nativeCall(file,'inspect'),startup=observed.widgets.filter(w=>w.name==='startupOpenButton'&&w.enabled);
+  if(startup.length===1)await nativeCall(file,'click',{target:startup[0].id});
+  else{const actions=observed.actions.filter(a=>a.text==='Open...'&&a.enabled);assert(actions.length===1,'No unique Open Project action.');await nativeCall(file,'action',{target:actions[0].id});}
+  let field;
+  for(let i=0;i<50;i++){const ui=await nativeCall(file,'inspect');field=ui.widgets.find(w=>w.name==='fileNameEdit'&&w.class==='QLineEdit'&&w.enabled);if(field)break;await pause(100);}
+  assert(field,'Selected build did not expose the project file selector.');
+  await nativeCall(file,'text',{target:field.id,text:bundle});await nativeCall(file,'key',{target:field.id,key:'Return'});
+  for(let i=0;i<100;i++){const ui=await nativeCall(file,'inspect');if(ui.widgets.some(w=>w.class==='MainWindow'&&w.title.startsWith(path.basename(bundle)+' — Wizard'))&&ui.widgets.some(w=>w.name==='panelSubtabSelector'))return;await pause(100);}
+  throw new OutcomeError('The selected build did not open the prepared project.','Blocked');
 }
 
 export async function launchDesktop(session,{foreground=true}={}){
   verifyDesktopPaths(session);
   if(session.pid){let alive=true;try{process.kill(session.pid,0);}catch(e){if(e.code!=='ESRCH')throw e;alive=false;}assert(!alive,'Recorded desktop PID is still alive; stop or inspect it before relaunch.');}
   assert((await fingerprint(session.app,{packageTree:true})).sha256===session.guiHash,'Desktop build changed since preparation.');
+  if(session.plan.runtime?.kind==='selected-build-attachment'){
+    const live=await attachSelectedBuild({app:session.plan.app,dataDir:session.dataDir,preparedSession:session});
+    Object.assign(session,live.session);const file=path.join(session.root,'session.json');await writeJSON(file,session);
+    try{
+      const deadline=Date.now()+30000;let endpoint;
+      while(Date.now()<deadline){try{endpoint=await readJSON(path.join(session.env.WIZSERVER_RUNTIME_DIR,'gui.json'));break;}catch(e){if(e.code!=='ENOENT')throw e;}await pause(100);}
+      assert(endpoint?.pid===session.pid&&endpoint.kind==='gui','Selected GUI endpoint did not match the owned process.');session.endpoint=endpoint;session.url='http://127.0.0.1:'+endpoint.port;await writeJSON(file,session);
+      await openAttachedProject(file,session.bundle);
+      if(foreground){const ui=await nativeCall(file,'inspect'),main=ui.widgets.filter(w=>w.class==='MainWindow');assert(main.length===1,'Selected build has no unique main window.');await nativeCall(file,'activate',{target:main[0].id});}
+      session.inputMode=foreground?'desktop':'service';session.state='Running';await writeJSON(file,session);return live;
+    }catch(e){live.child.kill('SIGTERM');const force=setTimeout(()=>live.child.kill('SIGKILL'),3000);await live.closed;clearTimeout(force);throw e;}
+  }
   const generation=++session.generation,runtime=path.join(session.root,`gui-runtime-${generation}`),settings=path.join(session.root,'desktop-settings'),temp=path.join(session.root,'tmp');
   const native=path.join(session.root,`native-${generation}`),plugins=path.join(session.root,`plugins-${generation}`);
   for(const dir of [runtime,settings,temp,native])await mkdir(dir,{recursive:true,mode:0o700});
@@ -115,6 +142,7 @@ export async function desktopCall(file,operation,params={},expectedError){
   const lock=path.join(session.root,'call.lock');const held=await open(lock,'wx');
   try{
     session=await readJSON(file);verifyDesktopOwner(session);
+    if(session.plan.runtime?.kind==='selected-build-attachment'&&!session.schema.operations[operation])throw new OutcomeError('The selected build does not expose '+operation+'. This check needs a supported UI path.','Blocked');
     const engine=new PackagedEngine(session.plan,session.root,session.harnessId,session.schema);
     if(session.desktopCli){assert(await sha(session.desktopCli)===session.desktopCliHash,'Paired CLI changed.');engine.macos=path.dirname(session.desktopCli);}
     engine.child={pid:session.pid,exitCode:null,signalCode:null};engine.url=session.url;engine.env=session.env;engine.counter=session.counter;engine.caseId=session.currentCheck||'desktop-agent';engine.stepId=session.currentStep||null;

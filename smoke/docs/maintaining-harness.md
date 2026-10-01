@@ -1,53 +1,40 @@
 # Build, install and update the harness
 
-Distribute a harness bundle to testers. It contains the source snapshot, dashboard, agent tools, instrumented desktop app, paired CLI, Cocoa plugin, native adapter and all discovered non-system desktop libraries, including Qt frameworks and the matching QML import modules and plugins. A source clone contains the bundle builder rather than those binaries.
-
-The build under test remains a separate choice. Node.js 24 or newer, the selected package's ingest runtime, FFmpeg/FFprobe and any course-specific offline speech model are still required. The Build finder can download and select the target Wizard package using the testing Mac’s GitHub connection; see [Build finder](build-finder.md) for `gh`, Python and macOS tool requirements. The installer does not download a target package or model.
+Distribute a selected-build adapter bundle to testers. It contains the source, dashboard, agent tools, external Qt adapter and matching QtTest framework. It contains no Wizard application, historical runs or personal projects. Testers choose their Wizard build separately.
 
 ## Open the source checkout
 
-From `smoke/`, run `npm run open`. This uses the current checkout, selects an available port and opens your chosen browser. Use `npm run open -- --no-open` for agents, and pass its printed URL to CLI commands with `--server URL`. It needs Node.js and no installed bundle. The selected Wizard build and execution prerequisites are still separate inputs.
-
-`harness start` continues to launch the verified installed bundle. `harness serve` launches the current source; `npm run open` is its shortcut.
+From `smoke/`, run `npm run open`. The launcher chooses a local port and asks which browser to use on first opening. Agents use `npm run open -- --no-open` and pass its printed URL to CLI commands. No npm packages are needed.
 
 ## Make a bundle
 
-From `smoke/`, supply the already qualified desktop runtime descriptor. Its paths identify the retained app, CLI, Cocoa plugin, adapter and optional existing libraries:
+On a Mac with a matching Qt SDK, select a package to establish the adapter version:
 
 ```sh
-node scripts/harness.mjs bundle --runtime /path/to/runtime.json --out /path/outside/git/WizardSmokeHarness-VERSION
-node scripts/harness.mjs check --bundle /path/outside/git/WizardSmokeHarness-VERSION
+node scripts/harness.mjs bundle --app /path/to/Wizard.app --data-dir /external/build-workspace --out /external/Athanor-VERSION
+node scripts/harness.mjs check --bundle /external/Athanor-VERSION
 ```
 
-Bundling reads the paired CLI schema with `--no-spawn`, copies the source and runtime, collects library dependencies, and verifies the copied identities. It does not compile the app or launch a smoke test. The destination must be new and outside Git. The manifest records the source hash, runtime hashes and complete file inventory; it is finalized before the directory is published.
+Bundling compiles or reuses the adapter, copies it beside the source, and verifies the complete inventory. It does not launch Wizard. The destination must be new and outside Git. The bundle can be relocated. Its manifest records source and tool hashes; it is an integrity check for a trusted bundle.
 
-The bundle contains no historical runs, personal projects or cached models. It includes the framework tests and documentation. Preserve the bundle directory structure when copying it to another Mac. The inventory detects missing, changed or extra files; it is an integrity check for a trusted bundle, not a signature establishing its publisher.
+## Install and open
 
-## Install and open it
-
-On the receiving Mac, double-click `Install Athanor.command` in the extracted bundle. It installs the harness and opens the dashboard on an available local port. For agent or terminal use, from the bundle's `workspace` directory:
+Double-click `Install Athanor.command`, or from the bundle's `workspace` directory:
 
 ```sh
 node scripts/harness.mjs install --bundle ..
-node scripts/harness.mjs start
+node scripts/harness.mjs start --port 0
 ```
 
-Installation verifies the bundle, copies it into a versioned directory under the external workspace, and atomically writes the default desktop-tool configuration. The default workspace is `~/Library/Application Support/WizardSmoke`. Set `SMOKE_DATA_DIR` or pass `--data-dir DIR` for another location. The installer returns the installed source directory for direct agent commands.
+Installation keeps a versioned copy under the external WizardSmoke workspace and creates `Open Athanor.command`. It preserves old versions and reports, and refuses installation during active tests. Agents use `start --no-open`; `start --browser choose` changes the remembered browser.
 
-The first opening asks which browser to use: the system default, Safari, or another browser application. The choice is saved in `browser.json` under the external workspace. `start --browser choose` changes it; `--browser default` selects the current system default. Agents can use `start --no-open` to print the address without opening a browser or prompting.
+Choose a build and course, press Prepare build, then Start checks after Ready. A bundle with matching tools needs no Qt SDK on the testing Mac. A different Qt version requires a matching adapter bundle or SDK compilation; preparation returns a repair prompt. Node.js 24+, local media tools and any course-specific model remain required. See [desktop setup](desktop-tools-setup.md).
 
-`start` verifies the installed bundle and starts its loopback service at port 4317. Use `--port 4318` for a specific port, or `--port 0` for an available port. The browser opens after the service is ready. Testers choose their build and course; the installed test tools are selected automatically. Installation also creates `Open Athanor.command` in the external workspace for subsequent launches.
+## Update
 
-## Update source or runtime
+Change source in Wiz Ops, run `npm test` and `npm run scope:check`, and retain focused runtime evidence. Make a new bundle in a new directory, let active tests finish, then install it. Prepare new plans after an update. Do not edit installed source or adapter bytes in place.
 
-1. Change the source in Ops, or select a newly qualified instrumented runtime. Keep packaged and desktop operation contracts separate.
-2. Run `npm test` and `npm run scope:check`. For changed assertions or runtime behavior, perform the authorized focused application checks and retain their evidence. Qualify `D-CLI-01` against each new bundle: the owned editor and its panels must load using the retained libraries and QML imports. Definition acceptance and passing runtime results remain separate decisions.
-3. Commit the source, then build a new bundle into a new version directory. Record the Ops commit alongside its source hash and runtime identities.
-4. Let active tests finish and stop the old dashboard. Install the new bundle and start its dashboard. Installation refuses active run/session records.
-
-The installer keeps older version directories and existing runs/reports. A prepared plan keeps its original runtime paths and hashes. Switching the default does not rewrite old evidence. Reinstalling an older retained bundle restores that default; prepare a fresh plan before running its checks.
-
-Do not edit installed source or runtime files in place. Make the change in Ops and publish another bundle. Existing installed versions are frozen so previous run evidence remains explainable.
+Legacy v1 bundles and `bundle --runtime FILE` remain available for historical tooling. They contain a separate instrumented app, which is not a valid substitute for the package selected in a new course.
 
 ## Qualify a packaged command schema
 

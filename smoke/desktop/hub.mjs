@@ -13,9 +13,9 @@ export function runDirectory(data,id){if(!/^desktop-[A-Za-z0-9]+$/.test(id))thro
 export function sourceRun(data,id,expectedHash){const root=runDirectory(data,id),report=read(path.join(root,'desktop-course-report.json')),session=read(path.join(root,'session.json'));const reportHash=digest(path.join(root,'desktop-course-report.json'));if(expectedHash&&expectedHash!==reportHash)throw Error('Original report changed; review the run setup again');return {root,report,session,reportHash};}
 function live(job){try{return Boolean(job.pid)&&execFileSync('/bin/ps',['-p',String(job.pid),'-o','command='],{encoding:'utf8'}).includes(path.join(ROOT,'desktop/worker.mjs')+' '+job.id);}catch{return false;}}
 export function ownedDesktopSessions(data){
- const directories=[path.join(data,'desktop-runs')],runs=path.join(data,'runs'),sessions=[];
+ const directories=[path.join(data,'desktop-runs'),path.join(data,'attachments')],runs=path.join(data,'runs'),sessions=[];
  if(existsSync(runs))for(const id of readdirSync(runs).filter(id=>/^[a-f0-9-]{36}$/.test(id)))for(const target of ['service','desktop'])directories.push(path.join(runs,id,'stages',target));
- for(const directory of directories){if(!existsSync(directory))continue;for(const id of readdirSync(directory).filter(id=>/^desktop-[A-Za-z0-9]+$/.test(id))){const file=path.join(directory,id,'session.json');if(!existsSync(file))continue;try{const s=read(file);if(s.state==='Running'){verifyDesktopOwner(s,data);sessions.push({file,pid:s.pid,root:s.root});}}catch{}}}
+ for(const directory of directories){if(!existsSync(directory))continue;for(const id of readdirSync(directory).filter(id=>/^(desktop|attach)-[A-Za-z0-9]+$/.test(id))){const file=path.join(directory,id,'session.json');if(!existsSync(file))continue;try{const s=read(file);if(['Attached','Running'].includes(s.state)){verifyDesktopOwner(s,data);sessions.push({file,pid:s.pid,root:s.root});}}catch{}}}
  return sessions;
 }
 export function desktopState(data){

@@ -1,4 +1,13 @@
 // Human explanations of the actual check paths; assertions remain in linked source.
+const gradeProcedure=[
+ 'Create a disposable project and timeline with the synthetic image fixture. Render a nonblank baseline.',
+ 'Insert the grade at its neutral value and require its rendered pixels to match the baseline.',
+ 'Change the grade parameter and independently read its value from the clip graph.',
+ 'Render the edit and require its pixels to differ from the baseline.',
+ 'Save and reopen the project. Render again and require the edited pixels to persist.',
+ 'Reset the parameter to neutral and require the baseline pixels to return. Retain the baseline, neutral, edited, reopened and reset captures.'
+];
+export const procedures=Object.fromEntries(['A-CO-01','A-CO-02','A-CO-04'].map(id=>[id,gradeProcedure.map((step,index)=>index===3?step+(id==='A-CO-01'?' Reduced saturation must reduce channel separation.':id==='A-CO-04'?' Positive exposure must brighten the image.':''):step)]));
 export const methods={
 'P-TL-BIN-DROP':'Create an empty timeline and locate the synthetic motion clip in Media. Drag that observed row onto V1 and choose Keep Timeline Settings if prompted. Read the resulting source, start and eight-second duration, capture the app and Undo the placement.',
 'P-TL-BIN-OVERWRITE':'Create a timeline with one clip at the start and another at twenty seconds. Drag the synthetic motion clip onto the first placement. Read the replacement and require the later clip to stay unchanged. Capture any app rejection; a successful replacement must restore with one Undo.',

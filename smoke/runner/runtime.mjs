@@ -3,9 +3,19 @@ import {readFile,realpath,access,mkdir,readdir} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 import {constants,existsSync} from 'node:fs';
 import {dataDirectory,fingerprint,sha,digest,readJSON,writeJSON} from './files.mjs';
+import {setupAttachmentTools,verifyAttachmentTools} from '../desktop/attachment-tools.mjs';
+
+export async function selectedBuildRuntime(app,dataDir){
+ const tools=await setupAttachmentTools(app,dataDir),cli=path.join(app,'Contents/MacOS/wiz-cli');
+ return {kind:'selected-build-attachment',app,cli,tools,appHash:(await fingerprint(app,{packageTree:true})).sha256,cliHash:await sha(cli),bridge:path.join(tools.directory,'styles/libwizard_smoke.dylib'),bridgeHash:await sha(path.join(tools.directory,'styles/libwizard_smoke.dylib')),scope:'Selected packaged app and shipped CLI with an external test plugin'};
+}
+export function assertSelectedRuntime(runtime,app,packageHash){
+ if(runtime.kind!=='selected-build-attachment'||runtime.app!==app||runtime.appHash!==packageHash||runtime.cli!==path.join(app,'Contents/MacOS/wiz-cli'))throw Error('Desktop tools must attach to the selected build and its shipped CLI. Prepare a new plan.');
+}
 
 export async function installedRuntime(configuredDataDir){
  const directory=dataDirectory(configuredDataDir),input=await readJSON(path.join(directory,'desktop-runtime.json')),configured=input.runtime||input;
+ if(input.runtime===null)throw Object.assign(Error('This bundle attaches tools to the selected build during preparation.'),{code:'ENOENT'});
  return Object.fromEntries(['app','cli','qtPlugin','libraries','bridge'].filter(k=>configured[k]).map(k=>{if(typeof configured[k]!=='string')throw Error('Invalid installed test-tools configuration.');return [k,path.resolve(directory,configured[k])];}));
 }
 export const runtimeEnvironment=runtime=>runtime?.libraries?{DYLD_LIBRARY_PATH:runtime.libraries,DYLD_FRAMEWORK_PATH:runtime.libraries,...(existsSync(path.join(runtime.libraries,'qml'))?{QML_IMPORT_PATH:path.join(runtime.libraries,'qml')}:{})}:{};
@@ -30,6 +40,11 @@ export async function runtimeIdentity(input,configuredDataDir){
  return {...paths,bridge,appHash:(await fingerprint(paths.app,{packageTree:true})).sha256,cliHash:await sha(paths.cli),qtHash:await sha(paths.qtPlugin),bridgeHash:await sha(bridge),schemaHash:digest(schema),scope:'Instrumented desktop/service app; packaged preparation identity is recorded separately'};
 }
 export async function verifyRuntime(runtime,configuredDataDir){
+ if(runtime.kind==='selected-build-attachment'){
+  await verifyAttachmentTools(runtime.tools);
+  if((await fingerprint(runtime.app,{packageTree:true})).sha256!==runtime.appHash||await sha(runtime.cli)!==runtime.cliHash)throw Error('Selected desktop build changed since preparation.');
+  return runtime;
+ }
  const actual=await runtimeIdentity({app:runtime.app,cli:runtime.cli,qtPlugin:runtime.qtPlugin,bridge:runtime.bridge,...(runtime.libraries?{libraries:runtime.libraries}:{})},configuredDataDir);
  if(digest(actual)!==digest(runtime))throw Error('Desktop runtime changed since preparation. Prepare again.');
  return actual;

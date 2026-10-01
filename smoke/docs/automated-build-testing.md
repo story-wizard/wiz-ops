@@ -4,11 +4,11 @@ Select a Wizard build, prepare its checks, run them, and open the report. The ma
 
 ## Use the dashboard
 
-Start the service as described below and open <http://127.0.0.1:4317>. In **Run tests**, choose the build, choose the course, optionally name the run, then select **Start checks**. Preparation and validation happen automatically before execution. Progress and outcomes appear in **Results**; open the report after the run finishes.
+Start the service as described below and open <http://127.0.0.1:4317>. In **Run tests**, choose the build, choose the course, optionally name the run, then select **Prepare build**. Follow the setup steps until Ready, then select **Start checks**. Progress and outcomes appear in **Results**; open the report after the run finishes.
 
 The default **All automated checks** course selects all 137 accepted definitions: 57 packaged-engine, 73 desktop and 7 background-service checks. It does not add a human checkpoint or accept the six remaining candidate definitions. Existing failures and unavailable capabilities remain Fail or Blocked in the results.
 
-The engine checks use the selected package. The other 80 checks use separately identified desktop test tools, chosen automatically from the testing station’s installed configuration or available retained setups. Testers do not need to select a helper. If those tools are missing, the dashboard explains that the station needs setup and keeps the full course disabled. **Build engine checks** remains available for a 57-check run. Overrides live under **More options → Test tools (advanced)**. Preparation and launch still verify the exact files and supported operations.
+All checks use the selected package and its shipped CLI. Desktop and service selections automatically prepare a matching external adapter and verify attachment to a disposable package copy. Missing prerequisites produce a repair prompt for the user's agent. Engine-only selections need no desktop adapter. See [desktop setup](desktop-tools-setup.md).
 
 **More** holds fixture, coverage and catalog-maintenance tools. They are not required to launch a run. If a start response is lost, the form retains its request ID and offers **Check start status** rather than starting another run.
 
@@ -21,9 +21,7 @@ node scripts/harness.mjs install --bundle /path/to/WizardSmokeHarness
 node scripts/harness.mjs start
 ```
 
-The installer includes the desktop app, paired CLI, Cocoa plugin, native adapter and Qt dependencies, then registers them as the default. No helper picker is required. Both dashboard and agent plans use that configuration. Opening the dashboard checks file presence without launching Wizard or executing a test.
-
-See [build, install and update](maintaining-harness.md) for the bundle builder and maintenance steps. An explicit `desktop-runtime.json` in `SMOKE_DATA_DIR` remains supported for development; it accepts absolute paths or paths relative to the workspace.
+The installer retains source and matching external adapter tools. Preparation attaches them to the selected build; it never replaces that build with a separate instrumented app. See [build, install and update](maintaining-harness.md). Source-only clones compile the adapter using a matching local SDK.
 
 ## Prerequisites
 
@@ -96,4 +94,4 @@ Save the example once per workspace. If it is already saved, reuse `color-regres
 
 The report records the exact package, course, runner and fixture identities. It preserves every outcome and flags missing evidence. A passing count applies to the selected automated behavior on that build. The packaged course does not establish UI gestures, audible playback, computer-use reliability or every assertion in Logan's checklist.
 
-Desktop and service selections are optional and identify their instrumented runtime separately from the selected package. Human checkpoints and external publication are outside this release workflow.
+Desktop and service selections identify the selected package and external adapter separately. Human checkpoints and external publication are outside this release workflow.

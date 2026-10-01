@@ -19,7 +19,7 @@ node scripts/harness.mjs install --bundle ..
 node scripts/harness.mjs start
 ```
 
-The bundle includes the desktop app, CLI, native adapter and Qt dependencies. Use `start --browser choose` to change browsers or `start --no-open` for agent use. Installation does not launch a test. See [build, install and update](docs/maintaining-harness.md) for packaging and maintenance, and [agent tools](docs/agent-tools.md) for single-check and atomic testing.
+The bundle includes the external adapter and matching QtTest dependency, alongside source and guidance. It attaches to the selected Wizard package; it contains no replacement test app. Use `start --browser choose` to change browsers or `start --no-open` for agent use. Installation does not launch a test. See [build, install and update](docs/maintaining-harness.md) for packaging and maintenance, and [agent tools](docs/agent-tools.md) for single-check and atomic testing.
 
 ## Start from source without a Wizard build
 
@@ -40,7 +40,7 @@ To hand setup to an agent, point it at [AGENTS.md](AGENTS.md) or give it this pr
 
 > Set up Athanor from this checkout. Read AGENTS.md, run the framework checks, start the local service, and inspect setup and the accepted catalog. Help me select a compatible build and course, then run my selection and return the report with any failures or missing prerequisites.
 
-The dashboard opens at **Run tests**: choose a build, choose a course, optionally name the run, and start. **All automated checks** selects the 137 accepted definitions and automatically selects the installed desktop test tools. **Build engine checks** selects 57 checks from the chosen package without those tools. Preparation is automatic; progress and reports live in **Results**.
+The dashboard opens at **Run tests**: choose a build, choose a course, optionally name the run, and start. **All automated checks** selects the 137 accepted definitions. Preparation sets up and verifies an external adapter on the selected build. **Build engine checks** selects 57 checks from the chosen package without those tools. Press Prepare build to see its setup steps, then Start checks when it is ready. Setup failures include a copyable agent repair prompt. Run progress and reports live in **Results**.
 
 **Find a build…** lists recent GitHub packages, grouped Releases, Nightlies and Tagged builds, with search and saved multi-select filters. Add an exact tag, HTTPS URL, ZIP or existing app path. Downloads stay in the external workspace. Agents use `smoke.mjs builds` and `build`; see [Build finder](docs/build-finder.md).
 
@@ -73,15 +73,15 @@ Planning fingerprints the selected package, fixture recipe, generated media and 
 
 See [agent-friendly courses](docs/agent-courses.md) for explicit IDs, categories, groups, cancellation and recovery by request ID.
 
-The maintained `packaged-full` course contains 57 automated checks and runs without a desktop helper or human checkpoint. Desktop/service courses require a separate instrumented runtime. The existing [human checkpoint extension](docs/human-checkpoints.md) is outside the supported first-release workflow.
+The maintained `packaged-full` course contains 57 automated checks and runs without a desktop helper or human checkpoint. Desktop/service courses attach to the selected build. See [desktop setup](docs/desktop-tools-setup.md) for automatic adapter preparation and SDK prerequisites. The existing [human checkpoint extension](docs/human-checkpoints.md) is outside the supported first-release workflow.
 
 ## What is included
 
 | Execution target | Definitions | Boundary |
 | --- | ---: | --- |
 | Packaged engine | 57 | Uses the selected package's headless engine, shipped CLI and local ingest tools |
-| Foreground desktop | 78 | Uses an explicitly retained instrumented app, paired CLI and Qt test adapter |
-| Background app services | 8 | Uses the instrumented runtime and export worker with UI input disabled; includes the provisional idle CPU candidate |
+| Foreground desktop | 78 | Uses the selected packaged app, its shipped CLI and an external Qt test adapter |
+| Background app services | 8 | Uses the selected package and export worker with UI input disabled during checks; includes the provisional idle CPU candidate |
 | **Total** | **143** | Definition count, not passing coverage |
 
 **137 definitions are accepted for custom-course selection.** Five unlinked team checks and the new idle CPU candidate remain outside that registry. The 137 original checklist rows are a different count: 77 have mapped counterparts, 32 have none, 24 NAS rows are deferred and four are placeholders. A mapped row can still lack part of its original behavior.
@@ -99,9 +99,9 @@ The framework checks and catalog work without Wizard. Actual smoke execution cur
 - A compatible retained `Wizard.app` with shipped CLI/headless engine, ingest runtime and media tools. The exact operation-schema check rejects unreviewed packages.
 - Local FFmpeg/FFprobe for synthetic media. The fixture builder defaults to Homebrew paths; preparation accepts overrides.
 - For speech checks, the pinned cached Parakeet CoreML model and local macOS speech synthesis. Preparation does not download a model.
-- For desktop/service checks, the installed harness bundle or an explicitly supplied instrumented GUI, paired CLI, compatible native adapter/Qt workaround and retained library dependencies. Foreground tests need an unlocked desktop.
+- For desktop/service checks, a matching bundled adapter, or a matching Qt SDK and local compiler for automatic adapter setup. Foreground tests need an unlocked desktop. Read [desktop setup](docs/desktop-tools-setup.md) for the exact prerequisites.
 
-Native adapter compilation currently assumes Homebrew Qt at `/opt/homebrew`; see `desktop/native/build.sh`. The bundle builder retains those components and their non-system dependencies for test stations. A source clone still needs a qualified runtime before producing a bundle. An arbitrary release build is not assumed compatible.
+Native adapter compilation currently assumes Homebrew Qt at `/opt/homebrew`; see `desktop/native/build.sh`. The bundle builder retains the matching external tools for test stations; those stations do not need a Qt SDK for that version. A source clone compiles tools when no matching bundle is available. An arbitrary release build is not assumed compatible.
 
 Fresh starts as an empty project and receives synthetic media/state as needed. Story-user, Large and NAS remain deferred. Full desktop OS interaction and human judgments are separate from CLI or Qt action assertions.
 
