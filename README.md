@@ -10,7 +10,9 @@ The lower-level `maestro_*` scripts set up isolated worktrees and Maestro agents
 
 ## Smoke testing
 
-[`smoke/`](smoke/README.md) tests a selected Wizard build and retains a local report. The maintained packaged-engine course has 57 automated checks. Follow the [automated build guide](smoke/docs/automated-build-testing.md) for setup, execution and reporting. Desktop adapters and human checkpoints are optional extensions; existing review/build pipelines are unchanged.
+[`smoke/`](smoke/README.md) contains **Athanor**, the local Wizard testing app and agent CLI. From a checkout, run `cd smoke` and `npm run open` with Node.js 24 or newer. The first opening asks which browser to use. Agents should start with [smoke/AGENTS.md](smoke/AGENTS.md).
+
+Choose a compatible Wizard build and a course. The engine course has 57 checks; the full automated course selects 137 accepted checks and also needs installed desktop test tools. Setup, custom courses, execution and reports are covered in the [source handoff](smoke/docs/source-handoff.md).
 
 ## Requirements
 

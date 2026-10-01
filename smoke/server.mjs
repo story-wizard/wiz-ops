@@ -307,14 +307,14 @@ const server=http.createServer(async(req,res)=>{
       let content;try{content=readFileSync(path.join(dataDir,'exports',parts[1]));}catch{fail(404,'Export not found.');}
       res.writeHead(200,{'Content-Type':parts[1].endsWith('.csv')?'text/csv; charset=utf-8':'application/json','Content-Disposition':`attachment; filename="${parts[1]}"`,'X-Content-Type-Options':'nosniff'});return res.end(content);
     }
-    const assets={'/design-preview':['design-preview.html','text/html'],'/explainer':['explainer.html','text/html'],'/explainer.js':['explainer.js','text/javascript'],'/explainer.css':['explainer.css','text/css'],'/':['index.html','text/html'],'/desktop.js':['desktop.js','text/javascript'],'/run-setup.js':['run-setup.js','text/javascript'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css'],'/wizard-theme.css':['wizard-theme.css','text/css'],'/smoke-theme.css':['smoke-theme.css','text/css'],'/run-display.js':['run-display.js','text/javascript'],'/athanor-scene.jpg':['athanor-scene.jpg','image/jpeg'],'/brand-smoke.png':['brand-smoke.png','image/png'],'/wizard-tokens.css':['wizard-tokens.css','text/css'],'/favicon.svg':['favicon.svg','image/svg+xml']};
+    const assets={'/design-preview':['design-preview.html','text/html'],'/design-preview.js':['design-preview.js','text/javascript'],'/explainer':['explainer.html','text/html'],'/explainer.js':['explainer.js','text/javascript'],'/explainer.css':['explainer.css','text/css'],'/':['index.html','text/html'],'/desktop.js':['desktop.js','text/javascript'],'/run-setup.js':['run-setup.js','text/javascript'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css'],'/wizard-theme.css':['wizard-theme.css','text/css'],'/smoke-theme.css':['smoke-theme.css','text/css'],'/run-display.js':['run-display.js','text/javascript'],'/athanor-scene.jpg':['athanor-scene.jpg','image/jpeg'],'/brand-smoke.png':['brand-smoke.png','image/png'],'/athanor-wordmark.png':['athanor-wordmark.png','image/png'],'/wizard-logo.svg':['wizard-logo.svg','image/svg+xml'],'/wizard-tokens.css':['wizard-tokens.css','text/css'],'/favicon.svg':['favicon.svg','image/svg+xml']};
     if(!assets[url.pathname])return send(404,{error:'File not found.'});
     const [file,type]=assets[url.pathname];const content=readFileSync(path.join(root,'public',file));
     res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'self'"});res.end(req.method==='HEAD'?undefined:content);
   }catch(error){send(error.status||500,{error:error.status?error.message:'Unable to save or load workspace data. Check the local server.'});if(!error.status)console.error(error);}
 });
 server.listen(Number(process.env.PORT||4317),'127.0.0.1',()=>{
- const url=`http://127.0.0.1:${server.address().port}/`;console.log('Athanor (Smoke): '+url);
+ const url=`http://127.0.0.1:${server.address().port}/`;console.log('Athanor: '+url);
  if(process.send)process.send({type:'listening',url});
 });
 for(const signal of ['SIGTERM','SIGINT'])process.on(signal,()=>server.close(()=>{db.close();process.exit(0);}));

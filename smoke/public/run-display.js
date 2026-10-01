@@ -2,6 +2,18 @@ const activeStates = new Set(['Queued', 'Preflight', 'Running', 'Waiting for hum
 const movingStates = new Set(['Preflight', 'Running', 'Continuing']);
 const completedStates = new Set(['Passed', 'Failed']);
 const outcomes = ['Pass', 'Fail', 'Blocked', 'Running', 'N/A', 'Unknown'];
+export const progressEffects = `<svg class="progress-effects" aria-hidden="true" focusable="false"><defs>
+ <filter id="steam-grain" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency=".045 .09" numOctaves="3" seed="8" result="grain"/>
+  <feColorMatrix in="grain" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  2.8 2.8 2.8 0 -3.5" result="density"/>
+  <feComposite in="SourceGraphic" in2="density" operator="in" result="cloud"/>
+  <feDisplacementMap in="cloud" in2="grain" scale="9" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation=".4"/>
+ </filter>
+ <filter id="steam-energy" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB">
+  <feTurbulence type="fractalNoise" baseFrequency=".06 .12" numOctaves="2" seed="4" result="grain"/>
+  <feDisplacementMap in="SourceGraphic" in2="grain" scale="5" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation=".45"/>
+ </filter>
+</defs></svg>`;
 
 export function formatDuration(ms) {
   if (!Number.isFinite(ms) || ms < 0) return '—';
@@ -38,5 +50,6 @@ export function progressBar(results, state) {
   const total = results.length, counts = Object.fromEntries(outcomes.map(s => [s, results.filter(r => r.status === s).length]));
   const completed = total - results.filter(r => ['Not run', 'Running'].includes(r.status)).length;
   const description = outcomes.filter(s => counts[s]).map(s => counts[s] + ' ' + s.toLowerCase()).join(', ') || 'No checks recorded';
-  return `<div class="run-progress" data-active="${movingStates.has(state)}" role="progressbar" aria-label="Check progress" aria-valuemin="0" aria-valuemax="${total || 1}" aria-valuenow="${completed}" aria-valuetext="${description}">${outcomes.map(s => `<span class="segment ${s.toLowerCase().replace(/[^a-z]+/g, '-')}" style="width:${total ? 100 * counts[s] / total : 0}%" title="${s}: ${counts[s]}"></span>`).join('')}</div>`;
+  const occupied = Object.values(counts).reduce((a,b) => a+b,0), moving = movingStates.has(state) && occupied > 0;
+  return `<div class="run-progress" data-active="${moving}" role="progressbar" aria-label="Check progress" aria-valuemin="0" aria-valuemax="${total || 1}" aria-valuenow="${completed}" aria-valuetext="${description}"><div class="steam-channel"><div class="progress-fill" style="width:${total ? 100 * occupied / total : 0}%"><div class="color-fill">${outcomes.map(s => `<span class="segment ${s.toLowerCase().replace(/[^a-z]+/g, '-')}" style="width:${occupied ? 100 * counts[s] / occupied : 0}%" title="${s}: ${counts[s]}"></span>`).join('')}</div>${moving?'<div class="smoke-head" aria-hidden="true"><i class="puff"></i><i class="puff"></i><i class="puff"></i><i class="puff"></i><i class="puff"></i></div><div class="energy-edge" aria-hidden="true"></div>':''}</div></div></div>`;
 }

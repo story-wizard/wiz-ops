@@ -4,6 +4,12 @@ Distribute a harness bundle to testers. It contains the source snapshot, dashboa
 
 The build under test remains a separate choice. Node.js 24 or newer, the selected package's ingest runtime, FFmpeg/FFprobe and any course-specific offline speech model are still required. This bundle does not install the target Wizard build or download a model.
 
+## Open the source checkout
+
+From `smoke/`, run `npm run open`. This uses the current checkout, selects an available port and opens your chosen browser. Use `npm run open -- --no-open` for agents, and pass its printed URL to CLI commands with `--server URL`. It needs Node.js and no installed bundle. The selected Wizard build and execution prerequisites are still separate inputs.
+
+`harness start` continues to launch the verified installed bundle. `harness serve` launches the current source; `npm run open` is its shortcut.
+
 ## Make a bundle
 
 From `smoke/`, supply the already qualified desktop runtime descriptor. Its paths identify the retained app, CLI, Cocoa plugin, adapter and optional existing libraries:

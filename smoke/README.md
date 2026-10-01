@@ -1,6 +1,6 @@
-# Athanor · Smoke
+# Athanor
 
-**Athanor** is the app’s name; **Smoke** is its everyday moniker. Charles chose the name on September 30, 2026, after the alchemical furnace that maintains even, controlled heat for sustained transmutation. That image guides future smoke-themed design: a steady environment in which tests run, observations accumulate and defects become understandable.
+**Athanor** takes its name from the alchemical furnace that maintains controlled heat for sustained transmutation. It runs repeatable Wizard tests and keeps their observations and evidence together.
 
 The current UI keeps Wizard’s dark style. Existing CLI names, data formats and the `WizardSmoke` workspace path remain compatible.
 
@@ -10,7 +10,7 @@ The first release supports automated testing of a selected Wizard build and agen
 
 ## Install a bundled harness
 
-Double-click `Install Athanor.command` in a supplied bundle. On first opening, choose your browser; Smoke remembers it. Later, use `Open Athanor.command` in the external workspace. For terminal or agent use, from the bundle's `workspace` directory:
+Double-click `Install Athanor.command` in a supplied bundle. On first opening, choose your browser; Athanor remembers it. Later, use `Open Athanor.command` in the external workspace. For terminal or agent use, from the bundle's `workspace` directory:
 
 ```sh
 node scripts/harness.mjs install --bundle ..
@@ -29,10 +29,14 @@ From the `wiz-ops` checkout:
 cd smoke
 npm test
 npm run scope:check
-npm start
+npm run open
 ```
 
-Open <http://127.0.0.1:4317>. Use `PORT=4318 npm start` if that port is occupied. The server binds only to loopback. Starting the service does not launch Wizard or run a course.
+The launcher chooses an available local port, asks which browser to use on first opening, and remembers your choice. Keep the terminal running. Use `npm run open -- --no-open` for agent use, then pass the printed URL with `--server URL` to CLI commands. `npm start` remains available at port 4317. The server binds only to loopback; starting it does not launch a course.
+
+To hand setup to an agent, point it at [AGENTS.md](AGENTS.md) or give it this prompt:
+
+> Set up Athanor from this checkout. Read AGENTS.md, run the framework checks, start the local service, and inspect setup and the accepted catalog. Help me select a compatible build and course, then run my selection and return the report with any failures or missing prerequisites.
 
 The dashboard opens at **Run tests**: choose a build, choose a course, optionally name the run, and start. **All automated checks** selects the 137 accepted definitions and automatically selects the installed desktop test tools. **Build engine checks** selects 57 checks from the chosen package without those tools. Preparation is automatic; progress and reports live in **Results**.
 
@@ -40,22 +44,23 @@ A clean checkout shows the catalog and **no run history**. The versioned checkli
 
 ## Compose and run a course
 
-Start the service above, then use the CLI in another terminal:
+Start the service above, then use the CLI in another terminal. Set `ATHANOR_URL` to the URL printed by the launcher, replacing `PORT` below:
 
 ```sh
-node scripts/smoke.mjs list --category color
-node scripts/smoke.mjs courses
-node scripts/smoke.mjs course save --file examples/color-regression.json
-node scripts/smoke.mjs course show --id color-regression
+export ATHANOR_URL="http://127.0.0.1:PORT"
+node scripts/smoke.mjs list --category color --server "$ATHANOR_URL"
+node scripts/smoke.mjs courses --server "$ATHANOR_URL"
+node scripts/smoke.mjs course save --file examples/color-regression.json --server "$ATHANOR_URL"
+node scripts/smoke.mjs course show --id color-regression --server "$ATHANOR_URL"
 ```
 
 With a compatible local Wizard package and the prerequisites below:
 
 ```sh
-node scripts/smoke.mjs plan --app /Applications/Wizard.app --course color-regression --out /tmp/color-plan.json
-node scripts/smoke.mjs run --plan /tmp/color-plan.json --operator "Developer name" --request-id color-change-001 --wait
-node scripts/smoke.mjs status --request-id color-change-001
-node scripts/smoke.mjs report --run RUN_ID
+node scripts/smoke.mjs plan --app /Applications/Wizard.app --course color-regression --out /tmp/color-plan.json --server "$ATHANOR_URL"
+node scripts/smoke.mjs run --plan /tmp/color-plan.json --operator "Developer name" --request-id color-change-001 --wait --server "$ATHANOR_URL"
+node scripts/smoke.mjs status --request-id color-change-001 --server "$ATHANOR_URL"
+node scripts/smoke.mjs report --run RUN_ID --server "$ATHANOR_URL"
 ```
 
 Planning fingerprints the selected package, fixture recipe, generated media and runner. Running rechecks those identities. Selection adds declared prerequisites, deduplicates overlapping checks and freezes the effective course. An uncertain mutation is not silently replayed.

@@ -2,12 +2,32 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
+import {spawn} from 'node:child_process';
 import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from 'node:fs/promises';
 import {DatabaseSync} from 'node:sqlite';
 import {checkHarnessBundle,installHarness} from '../runner/harness.mjs';
 import {installedRuntime,runtimeIdentity,runtimeEnvironment} from '../runner/runtime.mjs';
 import {ROOT,fingerprint,digest,writeJSON,readJSON,inside} from '../runner/files.mjs';
 import {openDashboard} from '../runner/browser.mjs';
+
+test('source launcher starts a clean workspace without a bundle or browser and shuts down its service',async()=>{
+ const data=await realpath(await mkdtemp(path.join(tmpdir(),'Athanor first checkout ')));
+ const child=spawn(process.execPath,[path.join(ROOT,'scripts/harness.mjs'),'serve','--data-dir',data,'--port','0','--no-open'],{stdio:['ignore','pipe','pipe']});
+ let output='';child.stderr.on('data',bytes=>output+=bytes);const exited=new Promise(resolve=>child.once('exit',resolve));
+ try{
+  const url=await new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>reject(Error('Source launch timed out: '+output)),15000);
+   child.stdout.on('data',bytes=>{output+=bytes;const match=output.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0]);}});
+   child.once('exit',code=>{clearTimeout(timer);reject(Error('Source launch exited '+code+': '+output));});
+  });
+  const runs=await (await fetch(url+'api/runs')).json();assert.deepEqual(runs,[]);
+  const catalog=await (await fetch(url+'api/catalog')).json();assert.ok(catalog.tests.length>0);
+  await assert.rejects(()=>readJSON(path.join(data,'desktop-runtime.json')),e=>e.code==='ENOENT');
+  await assert.rejects(()=>readJSON(path.join(data,'browser.json')),e=>e.code==='ENOENT');
+  child.kill('SIGTERM');assert.equal(await exited,0);
+  await assert.rejects(()=>fetch(url+'api/runs'));
+ }finally{child.kill('SIGTERM');await exited;await rm(data,{recursive:true,force:true});}
+});
 
 async function fixtureBundle(directory,version){
  await mkdir(path.join(directory,'workspace'),{recursive:true});await mkdir(path.join(directory,'tools'));

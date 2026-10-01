@@ -20,6 +20,15 @@ function launcher({helper=false,lost=false,prepareError}={}){
  return {context,events,calls,opened,rendered};
 }
 const submit=events=>events.submit({target:{id:'suite-setup-form'},preventDefault(){}});
+test('tab navigation refreshes setup before switching and preserves the current view on a failed refresh',async()=>{
+ const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8'),calls=[],state={tab:'runs',selectedRun:'existing'};
+ const source=app.slice(app.indexOf('async function navigateTab('),app.indexOf('function tag('));
+ const context={state,refreshRunSetup:async()=>calls.push('setup'),refreshDesktop:async()=>calls.push('desktop'),render:()=>calls.push('render'),toast:message=>calls.push(message)};
+ runInNewContext(source,context);await context.navigateTab('setup');
+ assert.deepEqual(calls,['setup','render']);assert.equal(state.tab,'setup');assert.equal(state.selectedRun,null);
+ context.refreshRunSetup=async()=>{throw Error('Service unavailable');};state.tab='runs';state.selectedRun='existing';calls.length=0;
+ await context.navigateTab('setup');assert.deepEqual(calls,['Service unavailable']);assert.equal(state.tab,'runs');assert.equal(state.selectedRun,'existing');
+});
 test('default course exposes all 137 checks and blocks start until its test tools are installed',async()=>{
  const {context,events,calls}=launcher();await context.refreshRunSetup();
  const html=context.runSetupView(null);
@@ -54,6 +63,9 @@ test('missing prerequisites explain the next action and never admit a run',async
  const {context,events,calls}=launcher({helper:true,prepareError:'ENOENT: missing /model/Encoder.mlmodelc'});await context.refreshRunSetup();await submit(events);
  assert.match(context.runSetupView(null),/offline speech model required by this course is missing/);
  assert.match(context.runSetupView(null),/Technical details/);assert.equal(calls.some(c=>c.route==='/runner/start'),false);
+ const missingBuild=launcher({helper:true,prepareError:"ENOENT: no such file or directory, realpath '/Applications/Missing.app'"});await missingBuild.context.refreshRunSetup();await submit(missingBuild.events);
+ assert.match(missingBuild.context.runSetupView(null),/That Wizard build could not be found/);
+ assert.equal(missingBuild.calls.some(c=>c.route==='/runner/start'),false);
 });
 
 test('results expose Stop only for the active run and bind it to that run identity',async()=>{

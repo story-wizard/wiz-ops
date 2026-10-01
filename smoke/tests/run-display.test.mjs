@@ -30,4 +30,9 @@ test('smoke progress reports completed checks separately from success and keeps 
   assert.match(html,/data-active="true"/);assert.match(progressBar([{status:'Fail'}],'Failed'),/data-active="false"/);
   assert.match(progressBar([{status:'Pass'}],'Waiting for human'),/data-active="false"/);assert.match(progressBar([{status:'Not run'}],'Queued'),/data-active="false"/);
   const empty=progressBar([],'Queued');assert.ok(!empty.includes('NaN'));assert.match(empty,/aria-valuemax="1" aria-valuenow="0"/);
+  assert.match(html,/class="progress-fill" style="width:80%"/);
+  assert.match(html,/class="segment pass" style="width:25%"/);
+  assert.match(html,/class="energy-edge" aria-hidden="true"/);
+  for(const state of ['Queued','Waiting for human','Passed','Failed','Unknown'])assert.ok(!progressBar([{status:'Pass'}],state).includes('class="energy-edge"'));
+  assert.ok(!progressBar([{status:'Not run'}],'Preflight').includes('class="energy-edge"'));
 });

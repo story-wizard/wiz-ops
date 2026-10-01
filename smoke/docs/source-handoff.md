@@ -14,10 +14,10 @@ Use Node.js 24 LTS (24.19.0 verified). From the repository root:
 cd smoke
 npm test
 npm run scope:check
-PORT=4318 npm start
+npm run open -- --no-open
 ```
 
-No npm dependency installation is needed. The service binds to loopback. Open <http://127.0.0.1:4318/explainer> to inspect the catalog. Starting the service does not run Wizard. A fresh workspace must show no runs; source-workbook observations must never become automated results.
+The source launcher works without an installed bundle, chooses an available loopback port, and prints its URL. Keep it running; pass that URL with `--server URL` to every CLI command. Use `npm run open` to choose a browser on first opening and save that choice. No npm dependency installation is needed. Open the printed URL or its `/explainer` page to inspect the catalog. Starting the service does not run Wizard. A fresh workspace must show no runs; source-workbook observations must never become automated results.
 
 ## Included and excluded
 
@@ -26,6 +26,12 @@ Included: executable checks, adapters, CLI/API, dashboard, original checklist cr
 Excluded: original spreadsheet binaries, historical dashboard images, SQLite/run data, prepared plans, generated media, model caches, copied apps, native binaries, captures, local environment files and prior Git history. Historical run-report documents and workbook outcomes are also excluded.
 
 The normalized checklist still contains team criteria and issue references. The operation contract describes Wizard's application interface. Omitting runtime data does not make this a generic or redacted public test framework.
+
+## Give this checkout to an agent
+
+Start with the repository's `AGENTS.md`, which points to `smoke/AGENTS.md`. The agent can validate the framework, launch the dashboard, discover builds and accepted checks, compose a course, prepare the selected build, run it and return its report. Use the same `SMOKE_DATA_DIR` and printed service URL throughout.
+
+A source clone supplies code and definitions. A testing station still needs the compatible build and media tools listed in the automated build guide. Install a supplied harness bundle for desktop/service checks, or configure a qualified runtime through the agent CLI. Use an engine-only selection while those tools are unavailable.
 
 ## First actual smoke execution on another machine
 
@@ -44,7 +50,7 @@ The CLI and portable-kit helpers are in [agent-courses.md](agent-courses.md) and
 Export a terminal run from the local service:
 
 ```sh
-node scripts/smoke.mjs kit --run RUN_ID
+node scripts/smoke.mjs kit --run RUN_ID --server URL
 ```
 
 Copy the returned kit directory to an external location on the target Mac. From that directory:
