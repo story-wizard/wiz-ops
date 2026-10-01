@@ -1,14 +1,14 @@
 import path from 'node:path';
 import {readFile,realpath,access,mkdir,readdir} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
-import {constants} from 'node:fs';
+import {constants,existsSync} from 'node:fs';
 import {dataDirectory,fingerprint,sha,digest,readJSON,writeJSON} from './files.mjs';
 
 export async function installedRuntime(configuredDataDir){
  const directory=dataDirectory(configuredDataDir),input=await readJSON(path.join(directory,'desktop-runtime.json')),configured=input.runtime||input;
  return Object.fromEntries(['app','cli','qtPlugin','libraries','bridge'].filter(k=>configured[k]).map(k=>{if(typeof configured[k]!=='string')throw Error('Invalid installed test-tools configuration.');return [k,path.resolve(directory,configured[k])];}));
 }
-export const runtimeEnvironment=runtime=>runtime?.libraries?{DYLD_LIBRARY_PATH:runtime.libraries,DYLD_FRAMEWORK_PATH:runtime.libraries}:{};
+export const runtimeEnvironment=runtime=>runtime?.libraries?{DYLD_LIBRARY_PATH:runtime.libraries,DYLD_FRAMEWORK_PATH:runtime.libraries,...(existsSync(path.join(runtime.libraries,'qml'))?{QML_IMPORT_PATH:path.join(runtime.libraries,'qml')}:{})}:{};
 export async function runtimeIdentity(input,configuredDataDir){
  if(!input)try{input=await installedRuntime(configuredDataDir);}catch(e){if(e.code==='ENOENT')throw Error('Desktop test tools are not installed. Install a harness bundle, or supply an explicit runtime.');throw e;}
  if(!input||Object.keys(input).some(k=>!['app','cli','qtPlugin','libraries','bridge'].includes(k)))throw Error('Desktop runtime requires app, cli and qtPlugin paths, with optional libraries and bridge.');

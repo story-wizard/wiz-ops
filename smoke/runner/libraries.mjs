@@ -1,8 +1,8 @@
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {existsSync} from 'node:fs';
-import {realpath,mkdir,cp} from 'node:fs/promises';
-import {externalPath,sha,writeJSON} from './files.mjs';
+import {realpath,mkdir,cp,readdir} from 'node:fs/promises';
+import {externalPath,sha,writeJSON,readJSON,fingerprint} from './files.mjs';
 
 // Retain byte-identical non-system libraries; do not rewrite or resign the tested app.
 export async function retainLibraries(runtime,directory,{includeExternal=false}={}){
@@ -31,6 +31,32 @@ export async function retainLibraries(runtime,directory,{includeExternal=false}=
  }
  for(const file of roots)await visit(file,file);
  await mkdir(directory,{recursive:true});
+ let qml;
+ const qtQml=[...found.values()].find(item=>item.aliases.includes('QtQml'));
+ if(includeExternal&&qtQml){
+  let source=runtime.libraries&&path.join(runtime.libraries,'qml');
+  if(!source||!existsSync(source)){
+   let origin=qtQml.source;
+   if(!origin.includes('/lib/QtQml.framework/')&&runtime.libraries){
+    const previous=await readJSON(path.join(runtime.libraries,'manifest.json'));
+    origin=previous.vendored.find(item=>item.aliases.includes('QtQml'))?.source||origin;
+    if(await sha(origin)!==qtQml.sha256)throw Error('QML origin differs from the qualified QtQml runtime.');
+   }
+   const prefix=origin.match(/^(.*)\/lib\/QtQml\.framework\//)?.[1];
+   source=prefix&&[path.join(prefix,'qml'),path.join(prefix,'share/qt/qml')].find(p=>existsSync(p));
+  }
+  if(!source||!existsSync(path.join(source,'QtQuick/Controls/qmldir')))throw Error('Qualified Qt QML imports are missing; retain the matching QtQuick.Controls module before bundling.');
+  source=await realpath(source);const before=(await fingerprint(source)).sha256,plugins=[];
+  // ponytail: retain the matching Qt declarative import tree; prune with an import scan if bundle size matters.
+  async function imports(dir){for(const entry of await readdir(dir,{withFileTypes:true})){
+   const file=path.join(dir,entry.name);
+   if(entry.isDirectory())await imports(file);
+   else if(entry.name.endsWith('.dylib')){plugins.push(path.relative(source,file));await visit(file,roots[0]);}
+  }}
+  await imports(source);await cp(source,path.join(directory,'qml'),{recursive:true,verbatimSymlinks:true});
+  if((await fingerprint(source)).sha256!==before||(await fingerprint(path.join(directory,'qml'))).sha256!==before)throw Error('QML imports changed while copying.');
+  qml={source,sha256:before,plugins};
+ }
  const files=new Map();
  for(const item of found.values())if(!item.external){
   if(item.framework)await cp(item.framework,path.join(directory,path.basename(item.framework)),{recursive:true,verbatimSymlinks:true});
@@ -40,6 +66,6 @@ export async function retainLibraries(runtime,directory,{includeExternal=false}=
    if(await sha(output)!==item.sha256)throw Error('Runtime library changed while copying: '+alias);
   }
  }
- const manifest={format:'wizard-smoke-libraries/v1',vendored:[...found.values()].filter(x=>!x.external),external:[...found.values()].filter(x=>x.external).map(x=>({path:x.source,sha256:x.sha256}))};
+ const manifest={format:'wizard-smoke-libraries/v1',vendored:[...found.values()].filter(x=>!x.external),external:[...found.values()].filter(x=>x.external).map(x=>({path:x.source,sha256:x.sha256})),...(qml?{qml}:{})};
  await writeJSON(path.join(directory,'manifest.json'),manifest);return manifest;
 }

@@ -9,7 +9,7 @@ async function check(id,fn){if(!await beginCheck(file,id))return;try{const evide
 async function until(fn){for(let i=0;i<50;i++){const value=await fn();if(value)return value;await pause(100);}throw new Error('GUI observation did not arrive within five seconds.');}
 const ui=()=>nativeCall(file,'inspect');
 const tc=state=>state.widgets.find(w=>w.name==='previewCurrentTimecode')?.text;
-await check('D-CLI-01',async()=>{const state=await ui();assert(state.widgets.some(w=>w.class==='MainWindow'&&/^Golden\.wiz — Wizard(?: [•*])?$/.test(w.title)),'Owned project window is absent.');assert(!state.widgets.some(w=>w.text?.includes('failed to load')),'A visible panel failed to load.');return {endpoint:s.endpoint,window:state.widgets.find(w=>w.class==='MainWindow')};});
+await check('D-CLI-01',async()=>{const state=await ui();assert(state.widgets.some(w=>w.class==='MainWindow'&&/^Golden\.wiz — Wizard(?: [•*])?$/.test(w.title)),'Owned project window is absent.');const failed=state.widgets.filter(w=>w.text?.includes('failed to load'));assert(!failed.length,'Panel startup failed: '+failed.map(w=>w.text).join('; '));return {endpoint:s.endpoint,window:state.widgets.find(w=>w.class==='MainWindow')};});
 await check('D-CLI-02',async()=>{
   const name=`Smoke GUI ${s.harnessId} ${Date.now()}`;await desktopCall(file,'timeline.update',{id:'gui-rename',timeline_id:s.main.id,changes:{name}});
   const observed=await until(async()=>{const state=await ui();return state.widgets.some(w=>w.name==='panelSubtabSelector'&&w.text.startsWith(name))&&state.widgets.some(w=>w.class==='QTreeView'&&w.model?.some(r=>r[0]===name))?state:null;});

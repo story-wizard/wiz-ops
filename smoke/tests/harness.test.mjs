@@ -77,5 +77,7 @@ test('agents resolve installed tools without a runtime argument and validate the
   const actual=await runtimeIdentity(undefined,data);assert.equal(actual.app,path.join(data,'Desktop.app'));
   assert.equal(await readFile(path.join(data,'schema-only-receipt'),'utf8'),'no-spawn');
   assert.deepEqual(runtimeEnvironment(actual),{DYLD_LIBRARY_PATH:path.join(data,'libraries'),DYLD_FRAMEWORK_PATH:path.join(data,'libraries')});
+  await mkdir(path.join(data,'libraries/qml'));
+  assert.equal(runtimeEnvironment(actual).QML_IMPORT_PATH,path.join(data,'libraries/qml'),'Relocated QML panels must resolve retained imports without a developer Qt installation');
  }finally{await rm(data,{recursive:true,force:true});}
 });

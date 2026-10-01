@@ -1,6 +1,6 @@
 # Build, install and update the harness
 
-Distribute a harness bundle to testers. It contains the source snapshot, dashboard, agent tools, instrumented desktop app, paired CLI, Cocoa plugin, native adapter and all discovered non-system desktop libraries, including Qt frameworks. A source clone contains the bundle builder rather than those binaries.
+Distribute a harness bundle to testers. It contains the source snapshot, dashboard, agent tools, instrumented desktop app, paired CLI, Cocoa plugin, native adapter and all discovered non-system desktop libraries, including Qt frameworks and the matching QML import modules and plugins. A source clone contains the bundle builder rather than those binaries.
 
 The build under test remains a separate choice. Node.js 24 or newer, the selected package's ingest runtime, FFmpeg/FFprobe and any course-specific offline speech model are still required. This bundle does not install the target Wizard build or download a model.
 
@@ -35,7 +35,7 @@ The first opening asks which browser to use: the system default, Safari, or anot
 ## Update source or runtime
 
 1. Change the source in Ops, or select a newly qualified instrumented runtime. Keep packaged and desktop operation contracts separate.
-2. Run `npm test` and `npm run scope:check`. For changed assertions or runtime behavior, perform the authorized focused application checks and retain their evidence. Definition acceptance and passing runtime results remain separate decisions.
+2. Run `npm test` and `npm run scope:check`. For changed assertions or runtime behavior, perform the authorized focused application checks and retain their evidence. Qualify `D-CLI-01` against each new bundle: the owned editor and its panels must load using the retained libraries and QML imports. Definition acceptance and passing runtime results remain separate decisions.
 3. Commit the source, then build a new bundle into a new version directory. Record the Ops commit alongside its source hash and runtime identities.
 4. Let active tests finish and stop the old dashboard. Install the new bundle and start its dashboard. Installation refuses active run/session records.
 
