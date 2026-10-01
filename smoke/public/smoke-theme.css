@@ -62,18 +62,19 @@ body::after {
 }
 .page-header h1.smoke-brand { font-family: Georgia, 'Times New Roman', serif; font-size: 36px; line-height: 1.1; font-weight: 700; letter-spacing: .01em; }
 .page-header h1.smoke-wordmark, .report-banner .smoke-wordmark {
-  width: 280px;
+  width: 250px;
   height: 96px;
   margin: 0;
   font-size: 0;
   color: transparent;
   text-shadow: none;
   background: url('/athanor-wordmark.png') center / contain no-repeat;
-  filter: drop-shadow(0 2px 4px #07101e);
+  opacity: .92;
+  filter: saturate(.6) brightness(.96) drop-shadow(0 1px 2px #07101e);
 }
 .smoke-wordmark .brand-spark { display: none; }
 .smoke-wordmark::before, .smoke-wordmark::after { display: none; }
-.report-banner .smoke-wordmark { width:220px; height:90px; }
+.report-banner .smoke-wordmark { width:200px; height:90px; }
 .wizard-signature { position:fixed; right:16px; bottom:12px; width:82px; height:auto; opacity:.55; filter:invert(1); pointer-events:none; z-index:4; }
 .smoke-brand::before, .smoke-brand::after {
   content: "";
@@ -113,7 +114,7 @@ body::after {
 }
 @media(max-width:600px) {
   .page-header h1.smoke-brand { font-size: 28px; }
-  .page-header h1.smoke-wordmark { width:180px; height:70px; font-size:0; }
+  .page-header h1.smoke-wordmark { width:164px; height:70px; font-size:0; }
   .page-header { min-height: 138px; flex-wrap: wrap; align-content: center; gap: 12px; }
   .header-actions { padding: 5px 7px; }
   .header-actions .text-button, .header-actions summary { font-size: 11px; }
