@@ -14,9 +14,16 @@ The engine checks use the selected package. The other 80 checks use separately i
 
 ## Configure a testing station
 
-The setup owner places `desktop-runtime.json` in `SMOKE_DATA_DIR` alongside the installed test tools. It contains `app`, `cli`, `qtPlugin`, `bridge`, and optional `libraries` paths. Absolute paths and paths relative to `SMOKE_DATA_DIR` are supported; an existing `{ "runtime": { ... } }` descriptor also works. The dashboard reads this file automatically. Otherwise, it prefers the most recently used available setup, then saved runtime descriptors. Opening the dashboard checks file presence without launching Wizard or executing a test.
+Install a supplied harness bundle and start its dashboard:
 
-The source repository does not bundle the instrumented app or native tools. They must be supplied with the testing station. The dashboard does not build or download them. Their identity and compatibility are checked during preparation, before a run is admitted.
+```sh
+node scripts/harness.mjs install --bundle /path/to/WizardSmokeHarness
+node scripts/harness.mjs start
+```
+
+The installer includes the desktop app, paired CLI, Cocoa plugin, native adapter and Qt dependencies, then registers them as the default. No helper picker is required. Both dashboard and agent plans use that configuration. Opening the dashboard checks file presence without launching Wizard or executing a test.
+
+See [build, install and update](maintaining-harness.md) for the bundle builder and maintenance steps. An explicit `desktop-runtime.json` in `SMOKE_DATA_DIR` remains supported for development; it accepts absolute paths or paths relative to the workspace.
 
 ## Prerequisites
 

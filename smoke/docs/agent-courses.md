@@ -2,6 +2,8 @@
 
 Saved custom courses and one-off selections span packaged engine, instrumented desktop and background service checks through the same local API. For the first release, use [automated build testing](automated-build-testing.md). The optional human checkpoint extension is outside that shipping scope.
 
+For atomic calls and exploratory sessions, see [agent tools](agent-tools.md).
+
 ## What you can do
 
 - Discover all checks, their execution targets, categories and acceptance eligibility.
@@ -95,7 +97,7 @@ A wait timeout does not cancel execution. Start is never automatically retried. 
 
 ## Fixtures and current limits
 
-For desktop/service selections, pass `--runtime runtime.json`. Use explicit retained files:
+For desktop/service selections, the installed harness bundle is the default. For an explicit override, pass `--runtime runtime.json` with retained files:
 
 ```json
 {
@@ -118,7 +120,7 @@ Fresh is the available empty starting project. A check's setup populates it as r
 
 Color-only plans use the six-file synthetic core pack and no speech model. Speech checks require the eight-file pack and pinned speech model; mixed-media import requires the eight files but does not require transcription. Core media and the ingest environment remain a shared preparation baseline in this first implementation, even for checks that use fewer assets.
 
-Current package compatibility remains conservative: the selected package must match the mapped operation schema. A local run kit retains the exact runtime inputs and lists required external libraries. It does not automatically qualify arbitrary new schemas or promise a self-contained installer.
+Current package compatibility remains conservative: the selected package must match the mapped operation schema. A local run kit retains the exact runtime inputs and lists required external libraries. It does not automatically qualify arbitrary new schemas. The separate [harness bundle](maintaining-harness.md) includes desktop libraries and an installation/update path.
 
 The canonical full Smoke Test course and V1 scope remain distinct from a custom course. The maintained `packaged-full` selection represents all 57 packaged checks, not all 143 automated definitions or every behavior in Logan's checklist.
 

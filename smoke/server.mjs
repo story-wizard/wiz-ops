@@ -15,7 +15,7 @@ import {checklistCoverage} from './coverage.mjs';
 import {desktopState,desktopCourse,serviceCourse,startDesktopJob,requestJob,jobDetails,initializeDesktopCatalog,ownedDesktopSessions} from './desktop/hub.mjs';
 import {checkPrepared,sourceIdentity,prepare} from './runner/prepare.mjs';
 import {checkRegistry,courseList,getCourse,saveCourse,resolveSelection} from './runner/catalog.mjs';
-import {runtimeList,saveRuntime} from './runner/runtime.mjs';
+import {runtimeList,saveRuntime,installedRuntime} from './runner/runtime.mjs';
 import {exportRunKit} from './kits.mjs';
 import {exportLocalReport} from './reports.mjs';
 
@@ -58,8 +58,7 @@ async function runSetup(){
  const previous=db.prepare('SELECT package_json FROM executions ORDER BY updated_at DESC LIMIT 20').all().map(r=>JSON.parse(r.package_json)),builds=[],runtimes=[],stored=await runtimeList(dataDir);
  let runtimeSetupError='';
  try{
-  const input=await readJSON(path.join(dataDir,'desktop-runtime.json')),configured=input.runtime||input;
-  const runtime=Object.fromEntries(['app','cli','qtPlugin','libraries','bridge'].filter(k=>configured[k]).map(k=>{if(typeof configured[k]!=='string')throw Error('Invalid installed test-tools configuration.');return [k,path.resolve(dataDir,configured[k])];}));
+  const runtime=await installedRuntime(dataDir);
   runtimes.push({id:digest(runtime),label:'Installed test tools',runtime});
  }catch(e){if(e.code!=='ENOENT')runtimeSetupError='The installed test-tools configuration could not be read.';}
  for(const p of previous){

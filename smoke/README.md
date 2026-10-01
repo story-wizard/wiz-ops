@@ -1,10 +1,21 @@
-# Wizard smoke framework
+# Wizard smoke harness
 
-A local catalog, CLI and runner for repeatable Wizard smoke tests. It creates disposable projects, executes selected checks, verifies state and output independently, and retains evidence. The web dashboard uses the same local service as agents and optional native clients.
+A local testing harness with an agent CLI and a dashboard/results viewer for repeatable Wizard smoke tests. It creates disposable projects, executes selected checks, verifies state and output independently, and retains evidence. The web dashboard uses the same local service as agents and optional native clients.
 
-The first repository release supports automated testing of a selected Wizard build: prepare a course, run its checks, and retain a local report. Start with the [automated build guide](docs/automated-build-testing.md). This is the WIZ-423 smoke framework; second-machine qualification remains a follow-up, documented in [import status](docs/import-status.md).
+The first release supports automated testing of a selected Wizard build and agent-driven spot tests. Desktop test tools can be included in a versioned harness bundle and selected automatically. Start with the [automated build guide](docs/automated-build-testing.md). This is the WIZ-423 smoke framework; second-machine qualification remains a follow-up, documented in [import status](docs/import-status.md).
 
-## Start without a Wizard build
+## Install a bundled harness
+
+From a supplied bundle's `workspace` directory:
+
+```sh
+node scripts/harness.mjs install --bundle ..
+node scripts/harness.mjs start
+```
+
+The bundle includes the desktop app, CLI, native adapter and Qt dependencies. Installation does not launch a test. See [build, install and update](docs/maintaining-harness.md) for packaging and maintenance, and [agent tools](docs/agent-tools.md) for single-check and atomic testing.
+
+## Start from source without a Wizard build
 
 Use Node.js 24 LTS; this release was verified with Node 24.19.0. The SQLite API requires at least Node 22.13. There are no npm dependencies to install.
 
@@ -73,9 +84,9 @@ The framework checks and catalog work without Wizard. Actual smoke execution cur
 - A compatible retained `Wizard.app` with shipped CLI/headless engine, ingest runtime and media tools. The exact operation-schema check rejects unreviewed packages.
 - Local FFmpeg/FFprobe for synthetic media. The fixture builder defaults to Homebrew paths; preparation accepts overrides.
 - For speech checks, the pinned cached Parakeet CoreML model and local macOS speech synthesis. Preparation does not download a model.
-- For desktop/service checks, an explicitly supplied instrumented GUI, paired CLI, compatible native adapter/Qt workaround and retained library dependencies. Foreground tests need an unlocked desktop.
+- For desktop/service checks, the installed harness bundle or an explicitly supplied instrumented GUI, paired CLI, compatible native adapter/Qt workaround and retained library dependencies. Foreground tests need an unlocked desktop.
 
-Native adapter compilation currently assumes Homebrew Qt at `/opt/homebrew`; see `desktop/native/build.sh`. This import does not bundle those runtime components or establish that an arbitrary release build is compatible.
+Native adapter compilation currently assumes Homebrew Qt at `/opt/homebrew`; see `desktop/native/build.sh`. The bundle builder retains those components and their non-system dependencies for test stations. A source clone still needs a qualified runtime before producing a bundle. An arbitrary release build is not assumed compatible.
 
 Fresh starts as an empty project and receives synthetic media/state as needed. Story-user, Large and NAS remain deferred. Full desktop OS interaction and human judgments are separate from CLI or Qt action assertions.
 

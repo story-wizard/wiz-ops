@@ -9,6 +9,7 @@ import {ROOT,fingerprint} from '../runner/files.mjs';
 import {connect,createExecution,execution,record,updateExecution} from '../runner/store.mjs';
 import {saveCheckpoint} from '../runner/checkpoints.mjs';
 import {humanCheckpoint} from '../runner/catalog.mjs';
+import {main as smokeCommand} from '../scripts/smoke.mjs';
 
 test('catalog integrity, frozen run definitions, durable edits and honest result recording',async()=>{
   const sourceBefore=(await fingerprint(ROOT)).sha256;
@@ -34,6 +35,7 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     for(const file of [tools.app+'/Contents/MacOS/wizard',tools.cli,tools.qtPlugin,tools.bridge])writeFileSync(path.join(dir,file),'Synthetic file; never executed');
     writeFileSync(path.join(dir,'desktop-runtime.json'),JSON.stringify(tools));
     const installed=(await request('/run-setup')).data;
+    const agentSetup=await smokeCommand(['setup','--server',base]);assert.equal(agentSetup.result.defaultRuntimeId,installed.defaultRuntimeId);
     assert.equal(installed.runtimes[0].id,installed.defaultRuntimeId);
     assert.equal(installed.runtimes[0].runtime.app,realpathSync(path.join(dir,tools.app)));
     assert.equal(installed.runtimes[0].available,true);

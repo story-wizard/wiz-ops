@@ -35,7 +35,7 @@ await evidence(c, {before, after});
 1. Add a focused function that composes the shared helpers and verifies a user-visible effect or persisted state. A successful command response alone is not a pass.
 2. Add a `runner/course.json` entry: stable ID, source checklist ID, scope, expected outcome, stage and required operations. Use a linked counterpart when only part of a manual path is covered.
 3. Increment the course revision. Prepare again with `npm run smoke:prepare`; this pins the package, schema, fixtures, cached model, course and runner contents. Run `npm test` for runner/dashboard contracts.
-4. Restart the local dashboard after changing runner code. Use **Check readiness → Run local course** to retain a frozen dashboard run with immutable automated results.
+4. Restart the local dashboard after changing runner code. Use **Run tests** to choose the build and course and retain a frozen dashboard run with immutable automated results.
 5. Inspect failures and their retained projects. Recipe fixes get a new run; old evidence stays unchanged.
 
 Every course check gets its own project. Helpers use explicit identities, never a guessed current selection. A command timeout or ambiguous mutation records Unknown and stops dependent execution; mutations are not retried automatically. Run cancellation terminates only owned processes.
@@ -52,6 +52,8 @@ Two details discovered in this package:
 - Connecting a newly added rectangle to a newly added Apply Matte node in the same batch is rejected. Creating both nodes, reading their durable IDs, then wiring them in one batch works. The smoke check measures the actual masked pixels and undo. This shim stays in the recipe; it does not change Wizard.
 
 Recursive bin search is rejected by the installed endpoint. The course tests nested folder storage and direct child/parent scopes without claiming recursive search works. Visual/semantic search, Oz tool selection, Spellbook delivery and native plugin windows still need additional integration or fixtures. GUI reload and movie export have separate instrumented desktop evidence; this does not change headless coverage.
+
+For installed defaults and atomic session commands, see [agent tools](agent-tools.md).
 
 ## Diagnostic selection
 

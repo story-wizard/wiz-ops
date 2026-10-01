@@ -12,7 +12,8 @@
     "smoke:run": "node scripts/run-packaged.mjs",
     "smoke:report": "node reports.mjs",
     "smoke": "node scripts/smoke.mjs",
-    "scope:check": "node scripts/check-scope.mjs"
+    "scope:check": "node scripts/check-scope.mjs",
+    "harness": "node scripts/harness.mjs"
   },
   "engines": {
     "node": ">=22.13"

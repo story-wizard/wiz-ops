@@ -1,6 +1,10 @@
 # Source handoff
 
-The source lives under `wiz-ops/smoke/`. A clone supplies the catalog, web dashboard, agent CLI, course definitions, interaction library, native adapter source and framework tests. It does not supply the complete Wizard runtime or historical run evidence.
+The source lives under `wiz-ops/smoke/`. A clone supplies the catalog, web dashboard, agent CLI, course definitions, interaction library, native adapter source and framework tests. It supplies the [harness bundle builder](maintaining-harness.md). Distribute its versioned source/runtime bundle to testing stations; historical run evidence stays separate.
+
+## Install a bundled harness
+
+See [build, install and update](maintaining-harness.md). The bundle contains the instrumented app, paired CLI, native adapter, Qt dependencies, dashboard, agent entry points, docs and framework tests. Installation preserves older versions and registers the desktop tools automatically. The selected build and course-specific media/model inputs remain separate.
 
 ## Validate a clean checkout
 
