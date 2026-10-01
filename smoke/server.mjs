@@ -187,7 +187,7 @@ const server=http.createServer(async(req,res)=>{
       }
       if(req.method==='GET'&&url.pathname==='/api/runtimes')return send(200,{format:'wizard-smoke-runtimes/v1',runtimes:await runtimeList(dataDir)});
       if(req.method==='POST'&&url.pathname==='/api/runtimes'){try{return send(201,await saveRuntime(dataDir,body));}catch(e){fail(409,e.message);}}
-      if(req.method==='GET'&&url.pathname==='/api/builds'){try{return send(200,await findBuilds(dataDir));}catch(e){fail(502,'GitHub builds unavailable. Check gh auth status. '+e.message);}}
+      if(req.method==='GET'&&url.pathname==='/api/builds'){try{return send(200,await findBuilds(dataDir,{refresh:url.searchParams.get('refresh')==='1'}));}catch(e){fail(502,'GitHub builds unavailable. Check gh auth status. '+e.message);}}
       if(req.method==='POST'&&url.pathname==='/api/builds/import'){
         if(importingBuild)fail(409,'Another build import is active.');importingBuild=true;
         try{return send(201,await importBuild(dataDir,body));}catch(e){fail(400,e.message);}finally{importingBuild=false;}

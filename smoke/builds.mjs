@@ -1,3 +1,4 @@
+import {mergeCatalogBuilds,catalogDirectory,githubCatalogClient,enrichPRAuthors,readBuildCatalog,atomicCatalogJSON,refreshBuildCatalog} from './build-catalog.mjs';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {promisify} from 'node:util';
@@ -15,16 +16,26 @@ export function releaseBuilds(releases,runs=[]){
  return releases.filter(r=>!r.draft&&r.published_at).flatMap(r=>{
   const runId=r.body?.match(/<!--\s*wizard-build:\s*[a-f0-9]+\s+run:(\d+)\s*-->/i)?.[1]||r.tag_name.match(/-r(\d+)$/)?.[1]||null,run=workflows.get(runId);
   const requestedBy=run?.triggering_actor?.login||run?.actor?.login||null;
-  return (r.assets||[]).filter(a=>/mac(os)?[^/]*\.zip$/i.test(a.name)).map(a=>({tag:r.tag_name,label:r.name||r.tag_name,publishedAt:r.published_at,channel:buildChannel(r.tag_name),requestedBy,buildRunId:runId,buildEvent:run?.event||null,buildRunUrl:run?.html_url||null,publisher:r.author?.login||null,assetId:a.id,asset:a.name,bytes:a.size,expectedDigest:a.digest||null,url:a.browser_download_url,architecture:/arm64|aarch64/i.test(a.name)?'Apple Silicon':/x64|x86_64|intel/i.test(a.name)?'Intel':/universal/i.test(a.name)?'Universal':'Unspecified'}));
+  return (r.assets||[]).filter(a=>/mac(os)?[^/]*\.zip$/i.test(a.name)).map(a=>({tag:r.tag_name,label:r.name||r.tag_name,publishedAt:r.published_at,channel:buildChannel(r.tag_name),releaseNotes:r.body||'',requestedBy,buildRunId:runId,buildEvent:run?.event||null,buildRunUrl:run?.html_url||null,publisher:r.author?.login||null,assetId:a.id,asset:a.name,bytes:a.size,expectedDigest:a.digest||null,url:a.browser_download_url,architecture:/arm64|aarch64/i.test(a.name)?'Apple Silicon':/x64|x86_64|intel/i.test(a.name)?'Intel':/universal/i.test(a.name)?'Universal':'Unspecified'}));
  }).sort((a,b)=>['Release','Nightly','Tagged'].indexOf(a.channel)-['Release','Nightly','Tagged'].indexOf(b.channel)||b.publishedAt.localeCompare(a.publishedAt));
 }
 export async function localBuilds(dataDir){const root=path.join(dataDir,'builds'),builds=[];let names;try{names=await readdir(root);}catch(e){if(e.code==='ENOENT')return [];throw e;}for(const name of names.filter(n=>!n.startsWith('.'))){try{const b=JSON.parse(await readFile(path.join(root,name,'build.json'),'utf8'));await access(b.app);builds.push({...b,available:true});}catch{}}return builds;}
-async function recentPages(endpoint,key){const rows=[];for(let page=1;page<=3;page++){const response=await gh(`${endpoint}?per_page=100&page=${page}`),items=key?response[key]:response;rows.push(...items);if(items.length<100)break;}return rows;}
-export async function findBuilds(dataDir){
- const [releases,runs,user]=await Promise.allSettled([recentPages(`repos/${repository}/releases`),recentPages(`repos/${repository}/actions/workflows/build-release.yml/runs`,'workflow_runs'),gh('user')]);
- if(releases.status==='rejected')throw releases.reason;
+async function recentPages(endpoint,key,get=gh){const rows=[];for(let page=1;page<=3;page++){const response=await get(`${endpoint}?per_page=100&page=${page}`),items=key?response[key]:response;rows.push(...items);if(items.length<100)break;}return rows;}
+export async function findBuilds(dataDir,{refresh=false,get:provided}={}){
+ const directory=catalogDirectory(dataDir);let catalog=await readBuildCatalog(directory),refreshError=null;
+ if(refresh||!catalog||Date.now()-Date.parse(catalog.fetchedAt)>300000){
+  try{catalog=await refreshBuildCatalog(directory,async()=>{
+   const get=provided||githubCatalogClient(directory);
+   const [releases,runs]=await Promise.allSettled([recentPages(`repos/${repository}/releases`,null,get),recentPages(`repos/${repository}/actions/workflows/build-release.yml/runs`,'workflow_runs',get)]);
+   if(releases.status==='rejected')throw releases.reason;
+   const builds=await enrichPRAuthors(releaseBuilds(releases.value,runs.status==='fulfilled'?runs.value:[]),get);
+   const result={format:'wizard-build-catalog/v1',repository,limit:300,fetchedAt:new Date().toISOString(),attribution:'Authors of PRs referenced by the build tag and release notes',userLookupError:runs.status==='rejected'?'Workflow requester lookup unavailable.':null,sync:get.stats||null,builds:mergeCatalogBuilds(catalog?.builds||[],builds)};
+   await atomicCatalogJSON(path.join(directory,'catalog.json'),result);return result;
+  });}catch(e){if(!catalog)throw e;refreshError='GitHub refresh failed. Showing the retained build catalog.';}
+ }
+ let currentUser=null;try{currentUser=(await (provided||gh)('user')).login;}catch{}
  const local=await localBuilds(dataDir);
- return {repository,limit:300,fetchedAt:new Date().toISOString(),currentUser:user.status==='fulfilled'?user.value.login:null,userLookupError:runs.status==='rejected'||user.status==='rejected'?'Build user lookup unavailable. Refresh to try again.':null,builds:releaseBuilds(releases.value,runs.status==='fulfilled'?runs.value:[]).map(b=>({...b,app:local.find(l=>l.assetId===b.assetId)?.app||null}))};
+ return {...catalog,catalogPath:path.join(directory,'catalog.json'),currentUser,refreshError,builds:catalog.builds.map(b=>({...b,app:local.find(l=>l.assetId===b.assetId)?.app||null}))};
 }
 export async function validateApp(input){if(typeof input!=='string'||!path.isAbsolute(input)||!input.endsWith('.app'))throw Error('Choose an absolute path to a Wizard .app.');const app=await realpath(input);if(!(await stat(app)).isDirectory())throw Error('App bundle is not a directory.');const plist=path.join(app,'Contents/Info.plist');const {stdout}=await exec('/usr/bin/plutil',['-extract','CFBundleExecutable','raw','-o','-',plist],{timeout:5000});const binary=stdout.trim();if(!/^wizard(-bin)?$/i.test(binary))throw Error('This bundle does not identify a Wizard executable.');await access(path.join(app,'Contents/MacOS',binary),constants.X_OK);return app;}
 async function appIn(root){const apps=[];async function walk(dir,depth=0){if(depth>5)return;for(const item of await readdir(dir,{withFileTypes:true})){if(!item.isDirectory()||item.name==='__MACOSX')continue;const full=path.join(dir,item.name);if(item.name.endsWith('.app'))apps.push(full);else await walk(full,depth+1);}}await walk(root);if(apps.length!==1)throw Error('The ZIP must contain exactly one Wizard app.');return validateApp(apps[0]);}

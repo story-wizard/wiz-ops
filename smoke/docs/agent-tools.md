@@ -6,7 +6,7 @@ For a focused explanation and edit prompt, run `node scripts/smoke.mjs context -
 
 ## Find the build first
 
-Use `node scripts/smoke.mjs builds --server URL` to read recent Wizard GitHub packages. Import one with `build --tag TAG`, `build --asset ID`, `build --url HTTPS_URL` or `build --path ABSOLUTE_PATH`, always with the same `--server URL`. Use the returned `result.app` in your plan. See [Build finder](build-finder.md) for prerequisites, channel conventions and cache behavior.
+Use `node scripts/smoke.mjs builds --server URL` to read recent Wizard GitHub packages. Import one with `build --tag TAG`, `build --asset ID`, `build --url HTTPS_URL` or `build --path ABSOLUTE_PATH`, always with the same `--server URL`. Use the returned `result.app` in your plan. See [Build finder](build-finder.md) for prerequisites, channel conventions and cache behavior. Build JSON includes PR authors and links, separate from the workflow requester; selecting an author matches mixed-author builds. Read [shared build catalog](shared-build-catalog.md) for durable metadata and incremental refresh.
 
 The dashboard offers the same choices through Find a build. Its saved filter views are browser preferences, separate from the CLI's frozen course selection. Reports keep their saved views in the report link.
 

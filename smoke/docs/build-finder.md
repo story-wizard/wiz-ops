@@ -8,9 +8,11 @@ Athanor uses the testing Mac's existing `gh` authentication to read `story-wizar
 
 The finder reads up to 300 recent GitHub release records and lists their published macOS ZIP assets. It groups them as Releases, Nightlies, then Tagged builds, newest publication first within each group. Version tags, `story-weekly-*` tags and `release-*` tags count as Releases; `nightly-*` tags count as Nightlies; other tags count as Tagged builds. Drafts and Windows packages are excluded. The release flag alone does not distinguish official releases from feature builds.
 
-Search by build name, tag, branch or a PR number present in those names. Filter by channel, Built by, architecture, download status and publication date. Built by supports several GitHub users; Mine selects the currently authenticated GitHub account. Saved views include that selection. Architecture comes from the asset name; Unspecified means the name provides no architecture. Refresh reads GitHub again. Named saved filters and the last view stay in this browser.
+Search by build name, tag, branch or a PR number present in those names. Filter by channel, PR author, architecture, download status and publication date. PR author supports several GitHub users; Mine selects the currently authenticated GitHub account. Saved views include that selection. Architecture comes from the asset name; Unspecified means the name provides no architecture. Refresh checks GitHub for changes. Named saved filters and the last view stay in this browser.
 
-Built by uses the requester of the exact build workflow, identified from the release’s recorded run ID. On a rerun, it uses the triggering user. The finder reads up to 300 recent build-workflow runs; older or unlinked builds show Unknown. The publishing bot and commit authors do not supply build ownership. The CLI returns `currentUser`, `requestedBy`, `buildRunId` and `buildEvent` for agent filtering.
+PR author comes from the PRs referenced by the build tag and recorded release notes. The finder resolves each PR through GitHub and stores its author and link. A build can have several authors across components; selecting any one of them matches the build once. The workflow requester and publishing account remain separate metadata. The CLI returns `prAuthors`, `pullRequests`, `authorStatus`, `requestedBy`, `buildRunId` and `buildEvent` for agent filtering.
+
+Build metadata is retained outside Git. Opening the finder reuses the catalog for five minutes; Refresh sends conditional GitHub requests and retrieves only changed responses. PR authors are reused for a day. Historical builds and consumer annotations survive refresh, and cached metadata remains available if GitHub is unavailable. See [shared build catalog](shared-build-catalog.md) for Tower/tool consumption and cache paths.
 
 **Download & use** downloads the chosen asset, validates its ZIP, extracts one Wizard app into the external workspace, and selects it. **Use build** reuses an existing download. Imported builds also appear under **On this Mac** and in the Build selector.
 
@@ -33,6 +35,8 @@ Run from `smoke/` with the local service running. Replace URL with its printed l
 
 ```sh
 node scripts/smoke.mjs builds --server URL
+node scripts/smoke.mjs builds --author me --server URL
+node scripts/smoke.mjs builds --author charrisIII,gianni-rosato --refresh --server URL
 node scripts/smoke.mjs build --tag nightly-YYYY.MM.DD-SHA --server URL
 node scripts/smoke.mjs build --asset ASSET_ID --server URL
 node scripts/smoke.mjs build --url https://example.com/Wizard-macOS.zip --server URL
@@ -42,4 +46,4 @@ node scripts/smoke.mjs build --path /Applications/Wizard.app --server URL
 
 `builds` returns the ordered catalog with names, tags, asset identities, dates and cached app paths. Agents can filter that JSON themselves. `build` accepts exactly one source and returns the selected absolute app path and import metadata. Pass `result.app` to `plan --app`; importing does not launch Wizard or run a course.
 
-The HTTP equivalents are `GET /api/builds`, `POST /api/builds/import` with one of `tag`, `assetId`, `url` or `path`, and `POST /api/builds/archive` with an `application/zip` body. One import runs at a time. A lost response needs inspection of setup and the external builds directory before another import; never infer that the subsequent test started.
+The HTTP equivalents are `GET /api/builds` (cached) or `GET /api/builds?refresh=1` (refresh), `POST /api/builds/import` with one of `tag`, `assetId`, `url` or `path`, and `POST /api/builds/archive` with an `application/zip` body. One import runs at a time. A lost response needs inspection of setup and the external builds directory before another import; never infer that the subsequent test started.

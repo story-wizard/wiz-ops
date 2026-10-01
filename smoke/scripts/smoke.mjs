@@ -13,7 +13,7 @@ export function resultSummary(run){
 export function client(base='http://127.0.0.1:4317'){
  const url=new URL(base);if(url.protocol!=='http:'||!['127.0.0.1','localhost'].includes(url.hostname)||url.username||url.password||url.pathname!=='/'||url.search||url.hash)throw Error('Use a local loopback smoke service.');
  return async(route,body)=>{
-  let response;try{response=await fetch(new URL(route,url),{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(route==='/api/builds/import'?900000:route==='/api/builds'?120000:route==='/api/plans'||route.endsWith('/kit')?300000:20000)});}
+  let response;try{response=await fetch(new URL(route,url),{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(route==='/api/builds/import'?900000:route.startsWith('/api/builds')?300000:route==='/api/plans'||route.endsWith('/kit')?300000:20000)});}
   catch(e){throw Error(body?'Response lost; inspect the request or saved records before retrying. No automatic retry was made.':'Local smoke service unavailable. Start it with npm start. '+e.message);}
   let value;try{value=await response.json();}catch{throw Error(body?'Response unreadable; outcome unknown. Inspect saved records before retrying.':'Unreadable service response.');}
   if(!response.ok)throw Error(value.error||'Request failed');return value;
@@ -26,14 +26,17 @@ export async function waitForRun(call,id,{timeout=300,pollMs=1000}={}){
 }
 export async function main(args){
  const command=args.shift(),sub=command==='course'?args.shift():null,flags={};
- const boolean=new Set(['--wait','--json','--export']);
+ const boolean=new Set(['--wait','--json','--export','--refresh']);
  for(let i=0;i<args.length;i++){const key=args[i];if(!key.startsWith('--')||Object.hasOwn(flags,key))throw Error('Invalid or duplicate option: '+key);if(boolean.has(key))flags[key]=true;else{const value=args[++i];if(!value||value.startsWith('--'))throw Error('Missing value for '+key);flags[key]=value;}}
- const options={context:['--check','--run','--export'],setup:[],builds:[],build:['--path','--url','--tag','--asset'],list:['--category','--target'],checkpoints:[],checkpoint:['--run','--action','--file'],runtimes:[],runtime:['--file'],courses:[],course:sub==='save'?['--file']:['--id','--revision'],plan:['--app','--course','--checks','--category','--project','--file','--out','--title','--runtime','--target','--checkpoint'],run:['--plan-hash','--plan','--operator','--request-id','--wait','--timeout'],status:['--run','--request-id'],wait:['--run','--timeout'],cancel:['--run'],report:['--run'],kit:['--run']};
+ const options={context:['--check','--run','--export'],setup:[],builds:['--author','--refresh'],build:['--path','--url','--tag','--asset'],list:['--category','--target'],checkpoints:[],checkpoint:['--run','--action','--file'],runtimes:[],runtime:['--file'],courses:[],course:sub==='save'?['--file']:['--id','--revision'],plan:['--app','--course','--checks','--category','--project','--file','--out','--title','--runtime','--target','--checkpoint'],run:['--plan-hash','--plan','--operator','--request-id','--wait','--timeout'],status:['--run','--request-id'],wait:['--run','--timeout'],cancel:['--run'],report:['--run'],kit:['--run']};
  if(!options[command]||Object.keys(flags).some(k=>!['--server','--json',...options[command]].includes(k)))throw Error('Usage: smoke setup | builds | build | list | context | courses | course show/save | plan | run | status | wait | cancel | report | kit | runtimes | runtime | checkpoints | checkpoint. See docs/agent-courses.md.');
  const call=client(flags['--server']),required=key=>{if(!flags[key])throw Error('Required option: '+key);return flags[key];},split=k=>(flags[k]||'').split(',').map(s=>s.trim()).filter(Boolean),runID=()=>required('--run');
  let result;
  if(command==='context'){const route='/api/checks/'+encodeURIComponent(required('--check'))+'/context';result=flags['--export']?await call(route,{runId:flags['--run']||null}):await call(route+(flags['--run']?'?run='+encodeURIComponent(flags['--run']):''));}
- if(command==='builds')result=await call('/api/builds');
+ if(command==='builds'){
+  result=await call('/api/builds'+(flags['--refresh']?'?refresh=1':''));
+  if(flags['--author']){const authors=split('--author').map(a=>a==='me'?result.currentUser:a);if(!authors.length||authors.some(a=>!a))throw Error('Choose a PR author, or authenticate GitHub to use me.');result.builds=result.builds.filter(b=>b.prAuthors?.some(a=>authors.some(w=>w.toLowerCase()===a.toLowerCase())));}
+ }
  if(command==='build'){const keys=['--path','--url','--tag','--asset'].filter(k=>flags[k]);if(keys.length!==1)throw Error('Choose exactly one of --path, --url, --tag or --asset.');const key=keys[0].slice(2);result=await call('/api/builds/import',{[key==='asset'?'assetId':key]:key==='asset'?Number(flags['--asset']):flags['--'+key]});}
  if(command==='setup')result=await call('/api/run-setup');
  if(command==='list'){result=await call('/api/checks');if(flags['--category']){const cat=flags['--category'].toLowerCase().replace(/^color$/,'colour');result.checks=result.checks.filter(c=>c.categories.some(s=>s.toLowerCase()===cat));}}
@@ -41,7 +44,7 @@ export async function main(args){
  if(command==='checkpoints')result=await call('/api/checkpoints');
  if(command==='checkpoint'){const route='/api/runs/'+encodeURIComponent(runID())+'/checkpoint';if(flags['--action'])result=await call(route+'/'+flags['--action'],JSON.parse(await readFile(required('--file'),'utf8')));else result=await call(route);}
  if(command==='runtimes')result=await call('/api/runtimes');
- if(command==='runtime')result=await call('/api/runtimes',JSON.parse(await readFile(required('--file'),'utf8')));
+ if(command==='runtime'){const input=JSON.parse(await readFile(required('--file'),'utf8'));result=await call('/api/runtimes',input.runtime||input);}
  if(command==='courses')result=await call('/api/courses');
  if(command==='course'){
   if(sub==='save')result=await call('/api/courses',JSON.parse(await readFile(required('--file'),'utf8')));

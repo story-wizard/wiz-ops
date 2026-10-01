@@ -25,7 +25,7 @@ The shared banner and sticky navigation appear on the workspace and field guide.
 
 Filter dropdowns support several choices and named saved views. Browser storage keeps workspace/guide views; exported reports retain filters and presets in their URL fragments.
 
-Find a build lists recent GitHub packages, ordered Releases, Nightlies and Tagged builds. It also accepts a URL, exact tag, ZIP or local app path. Use `builds` and `build` for the same workflow from an agent. See [Build finder](build-finder.md); GitHub access needs existing `gh` authentication, and ZIP import needs Python 3 and macOS `ditto`. Imported packages remain outside Git, and still go through normal preparation before testing.
+Find a build lists recent GitHub packages, ordered Releases, Nightlies and Tagged builds. It also accepts a URL, exact tag, ZIP or local app path. Use `builds` and `build` for the same workflow from an agent. See [Build finder](build-finder.md); GitHub access needs existing `gh` authentication, and ZIP import needs Python 3 and macOS `ditto`. Imported packages remain outside Git, and still go through normal preparation before testing. [Shared build metadata](shared-build-catalog.md) persists PR authors and links independently of local app paths. Each workspace needs a desktop-tools configuration, even when another workspace already has the tools installed. Import that qualified configuration through More options or the `runtime` agent command.
 
 ## Included and excluded
 

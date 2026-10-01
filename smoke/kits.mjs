@@ -7,7 +7,7 @@ import {activeStates} from './runner/store.mjs';
 import {exportLocalReport} from './reports.mjs';
 
 const copyOptions={recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE};
-const sources=['runner','desktop','scope','scripts','explainer','public','docs','AGENTS.md','server.mjs','builds.mjs','reports.mjs','test-details.mjs','kits.mjs','coverage.mjs','tower.mjs','tower-live.mjs','package.json'];
+const sources=['runner','desktop','scope','scripts','explainer','public','docs','AGENTS.md','server.mjs','builds.mjs','build-catalog.mjs','reports.mjs','test-details.mjs','kits.mjs','coverage.mjs','tower.mjs','tower-live.mjs','package.json'];
 export async function snapshotSource(destination){
  await mkdir(destination,{recursive:true});
  for(const name of sources)await cp(path.join(ROOT,name),path.join(destination,name),copyOptions);

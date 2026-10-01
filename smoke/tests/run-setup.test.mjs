@@ -42,11 +42,11 @@ test('guide links open the requested workspace view and preserve run deep links'
 test('default course exposes all 137 checks and blocks start until its test tools are installed',async()=>{
  const {context,events,calls}=launcher();await context.refreshRunSetup();
  const html=context.runSetupView(null);
- assert.match(html,/All automated checks · 137 checks/);assert.match(html,/Desktop test tools aren’t installed on this Mac/);
+ assert.match(html,/All automated checks · 137 checks/);assert.match(html,/Desktop test tools aren’t configured for this workspace/);
  assert.match(html,/type="submit" disabled>Start 137 checks/);assert.ok(!html.includes('launch-options" open'));
  await submit(events);assert.deepEqual(calls.map(c=>c.route),['/run-setup']);
  await events.change({target:{id:'suite-course',value:'packaged-full'}});
- assert.match(context.runSetupView(null),/>Start 57 checks/);assert.ok(!context.runSetupView(null).includes('Desktop test tools aren’t installed'));
+ assert.match(context.runSetupView(null),/>Start 57 checks/);assert.ok(!context.runSetupView(null).includes('Desktop test tools aren’t configured'));
  await submit(events);assert.equal(calls.find(c=>c.route==='/plans').body.runtime,undefined);
 });
 test('one start action prepares the selected build and named course before admitting its exact plan',async()=>{

@@ -14,7 +14,7 @@ Dropdown filters use checkbox multi-select: selected values within a field combi
 
 Test details show the expected outcome, how it runs, Operations used, observed actions and evidence. Keep technical/source diagnostics behind Troubleshoot. Edit this test provides an agent prompt and context pack; editing a definition still follows accepted-definition review and the framework checks in `docs/test-evidence.md`.
 
-Use Find a build in New run, or the `builds` / `build` agent commands. Read `docs/build-finder.md` for inputs, prerequisites, download validation and external cache paths. GitHub discovery uses existing `gh` authentication. Downloading/selecting a build does not run a course.
+Use Find a build in New run, or the `builds` / `build` agent commands. Read `docs/build-finder.md` for inputs, prerequisites, download validation and external cache paths. GitHub discovery uses existing `gh` authentication. The PR author filter matches any included PR author; requester and publisher are separate fields. Read `docs/shared-build-catalog.md` for the durable catalog, conditional refresh and consumption by other tools. Downloading/selecting a build does not run a course.
 
 ## Start from a checkout
 

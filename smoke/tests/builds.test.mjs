@@ -29,7 +29,7 @@ test('finder orders published Mac ZIPs by channel then date and validates archiv
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
-test('Built by identifies the workflow requester, including reruns, without substituting the publisher',()=>{
+test('workflow requester is separate from PR authors and the release publisher',()=>{
  const asset={id:1,name:'Wizard-macOS.zip'},release=(tag,body)=>({tag_name:tag,body,published_at:'2026-10-01',author:{login:'github-actions[bot]'},assets:[asset]});
  const builds=releaseBuilds([release('vfeature','<!-- wizard-build: abc123 run:101 -->'),release('manual-2026-r102',''),release('vlegacy','')],[{id:101,actor:{login:'original-user'},triggering_actor:{login:'rerun-user'},event:'workflow_dispatch'},{id:102,actor:{login:'another-user'},event:'workflow_dispatch'}]);
  assert.equal(builds[0].requestedBy,'rerun-user');assert.equal(builds[0].buildRunId,'101');assert.equal(builds[1].requestedBy,'another-user');assert.equal(builds[2].requestedBy,null);assert.equal(builds[2].publisher,'github-actions[bot]');
