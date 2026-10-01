@@ -34,11 +34,69 @@ body::after {
   animation: smoke-drift 28s ease-in-out infinite alternate;
 }
 .page-header h1, main > header > span, .top > span { color: #c7ddf1; }
-.page-header h1::before {
-  content: "✦";
-  color: var(--smoke-blue);
-  margin-right: 10px;
-  text-shadow: 0 0 14px #75ace650;
+.page-header { position: relative; isolation: isolate; min-height: 108px; }
+.page-header::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 24px -12px 20px;
+  border-radius: 8px;
+  border-bottom: 1px solid #789bb326;
+  background: linear-gradient(90deg, #35485c38, #28374712 65%, transparent);
+  box-shadow: 0 10px 18px -16px #000b;
+  pointer-events: none;
+}
+.smoke-brand {
+  position: relative;
+  display: inline-block;
+  isolation: isolate;
+  white-space: nowrap;
+  color: #e2efff;
+  text-shadow: 0 2px 4px #07101e, 0 0 16px #82b5e045;
+  animation: brand-float 9s ease-in-out infinite alternate;
+}
+.page-header h1.smoke-brand { font-size: 26px; font-weight: 600; letter-spacing: .01em; }
+.smoke-brand::before, .smoke-brand::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  width: calc(100% + 70px);
+  height: 94px;
+  left: -35px;
+  top: -34px;
+  filter: blur(5px);
+}
+.smoke-brand::before {
+  background:
+    radial-gradient(ellipse 54px 18px at 18% 68%, #b9daf268 10%, transparent 90%),
+    radial-gradient(ellipse 70px 24px at 42% 50%, #91c4ef70 10%, transparent 90%),
+    radial-gradient(ellipse 58px 19px at 64% 70%, #a9cfe364 10%, transparent 90%),
+    radial-gradient(ellipse 42px 19px at 83% 40%, #a59fdd48 10%, transparent 90%);
+  animation: brand-cloud 13s ease-in-out infinite alternate;
+}
+.smoke-brand::after {
+  background:
+    radial-gradient(ellipse 52px 9px at 25% 40%, #d2e7f64a, transparent 85%),
+    radial-gradient(ellipse 44px 13px at 55% 22%, #a0c7e356, transparent 85%),
+    radial-gradient(ellipse 58px 11px at 77% 54%, #bdd5ee4b, transparent 85%);
+  animation: brand-cloud 19s -7s ease-in-out infinite alternate-reverse;
+}
+.brand-spark { color: #b8daf6; margin-right: 9px; font-size: .85em; text-shadow: 0 0 12px #80c3f0; }
+.smoke-brand-compact { font-size: 14px; letter-spacing: .01em; }
+.smoke-brand-compact::before, .smoke-brand-compact::after { height: 70px; top: -25px; }
+main > header:not(.page-header):has(.smoke-brand) { align-items: center; min-height: 62px; }
+.header-actions { position: relative; z-index: 1; }
+@keyframes brand-float { from { transform: translateY(1px); } to { transform: translateY(-2px); } }
+@keyframes brand-cloud {
+  from { transform: translate(-5px, 3px) scale(.94, .9); opacity: .65; }
+  to { transform: translate(6px, -6px) scale(1.04, 1.08); opacity: 1; }
+}
+@media(max-width:600px) {
+  .page-header h1.smoke-brand { font-size: 21px; }
+  .page-header { min-height: 100px; flex-wrap: wrap; }
+  .smoke-brand::before, .smoke-brand::after { width: calc(100% + 32px); left: -16px; }
+  .smoke-brand-compact { font-size: 12px; }
 }
 .tabs { border-bottom-color: var(--smoke-edge); }
 .tabs button { color: #9aa9b9; }
@@ -172,6 +230,8 @@ dialog::backdrop { background: #0d141db0; }
 }
 @media print {
   body::before, body::after { display: none; }
+  .smoke-brand::before, .smoke-brand::after, .page-header::before { display: none; }
+  .smoke-brand { animation: none; color: #111; text-shadow: none; }
   body { background: white; color: #111; }
   .table, .table-wrap { background: white; box-shadow: none; }
   th { background: #eee; color: #333; }
