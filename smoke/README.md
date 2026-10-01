@@ -8,7 +8,7 @@ A local testing harness with an agent CLI and a dashboard/results viewer for rep
 
 The first release supports automated testing of a selected Wizard build and agent-driven spot tests. Desktop test tools can be included in a versioned harness bundle and selected automatically. Start with the [automated build guide](docs/automated-build-testing.md). This is the WIZ-423 smoke framework; second-machine qualification remains a follow-up, documented in [import status](docs/import-status.md).
 
-For a short team walkthrough, use [demo and first run](docs/demo-guide.md). The [agent onboarding prompt](examples/agent-onboarding.txt) hands the checkout to a user’s agent.
+Start with the [two-page getting-started guide (PDF)](docs/athanor-getting-started.pdf), or use [demo and first run](docs/demo-guide.md) for a short team walkthrough. The [agent onboarding prompt](examples/agent-onboarding.txt) hands the checkout to a user’s agent.
 
 ## Install a bundled harness
 
