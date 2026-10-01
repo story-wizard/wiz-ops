@@ -6,3 +6,5 @@ dt{overflow-wrap:anywhere}
 .team-result{border-left:2px solid var(--edge);padding-left:15px}.team-result>div{display:flex;align-items:center;gap:10px}.team-result>div>span:last-child{font-size:11px;color:var(--muted)}.team-result .minor{font-size:11px;color:var(--muted)}.team-captures{margin-top:14px}.team-captures .gallery{margin-top:12px}.troubleshoot-link{border-top:1px solid var(--edge);margin-top:30px;padding-top:18px;font-size:12px}.troubleshoot-link span{display:block;color:var(--quiet);font-size:11px;margin-top:6px}.diagnostics-page main{max-width:1000px;padding-bottom:45px}.diagnostics-page .section{margin-top:30px}.diagnostics-page .run-head select{max-width:85%}
 
 .ops-label{font-size:12px;font-weight:500;color:var(--muted);margin:16px 0 8px}
+
+.action-history{padding-left:20px;font-size:13px}.action-history li{padding:6px 0}textarea{width:100%;box-sizing:border-box;min-height:260px;resize:vertical;background:#181818;color:#ccc;border:1px solid #444;padding:12px;font:12px/1.6 inherit;margin-bottom:10px}

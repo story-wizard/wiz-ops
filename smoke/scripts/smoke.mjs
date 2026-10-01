@@ -26,12 +26,13 @@ export async function waitForRun(call,id,{timeout=300,pollMs=1000}={}){
 }
 export async function main(args){
  const command=args.shift(),sub=command==='course'?args.shift():null,flags={};
- const boolean=new Set(['--wait','--json']);
+ const boolean=new Set(['--wait','--json','--export']);
  for(let i=0;i<args.length;i++){const key=args[i];if(!key.startsWith('--')||Object.hasOwn(flags,key))throw Error('Invalid or duplicate option: '+key);if(boolean.has(key))flags[key]=true;else{const value=args[++i];if(!value||value.startsWith('--'))throw Error('Missing value for '+key);flags[key]=value;}}
- const options={setup:[],list:['--category','--target'],checkpoints:[],checkpoint:['--run','--action','--file'],runtimes:[],runtime:['--file'],courses:[],course:sub==='save'?['--file']:['--id','--revision'],plan:['--app','--course','--checks','--category','--project','--file','--out','--title','--runtime','--target','--checkpoint'],run:['--plan-hash','--plan','--operator','--request-id','--wait','--timeout'],status:['--run','--request-id'],wait:['--run','--timeout'],cancel:['--run'],report:['--run'],kit:['--run']};
- if(!options[command]||Object.keys(flags).some(k=>!['--server','--json',...options[command]].includes(k)))throw Error('Usage: smoke setup | list | courses | course show/save | plan | run | status | wait | cancel | report | kit | runtimes | runtime | checkpoints | checkpoint. See docs/agent-courses.md.');
+ const options={context:['--check','--run','--export'],setup:[],list:['--category','--target'],checkpoints:[],checkpoint:['--run','--action','--file'],runtimes:[],runtime:['--file'],courses:[],course:sub==='save'?['--file']:['--id','--revision'],plan:['--app','--course','--checks','--category','--project','--file','--out','--title','--runtime','--target','--checkpoint'],run:['--plan-hash','--plan','--operator','--request-id','--wait','--timeout'],status:['--run','--request-id'],wait:['--run','--timeout'],cancel:['--run'],report:['--run'],kit:['--run']};
+ if(!options[command]||Object.keys(flags).some(k=>!['--server','--json',...options[command]].includes(k)))throw Error('Usage: smoke setup | list | context | courses | course show/save | plan | run | status | wait | cancel | report | kit | runtimes | runtime | checkpoints | checkpoint. See docs/agent-courses.md.');
  const call=client(flags['--server']),required=key=>{if(!flags[key])throw Error('Required option: '+key);return flags[key];},split=k=>(flags[k]||'').split(',').map(s=>s.trim()).filter(Boolean),runID=()=>required('--run');
  let result;
+ if(command==='context'){const route='/api/checks/'+encodeURIComponent(required('--check'))+'/context';result=flags['--export']?await call(route,{runId:flags['--run']||null}):await call(route+(flags['--run']?'?run='+encodeURIComponent(flags['--run']):''));}
  if(command==='setup')result=await call('/api/run-setup');
  if(command==='list'){result=await call('/api/checks');if(flags['--category']){const cat=flags['--category'].toLowerCase().replace(/^color$/,'colour');result.checks=result.checks.filter(c=>c.categories.some(s=>s.toLowerCase()===cat));}}
  if(command==='list'&&flags['--target'])result.checks=result.checks.filter(c=>c.target===flags['--target']);

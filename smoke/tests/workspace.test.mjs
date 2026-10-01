@@ -5,11 +5,13 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync, realpathSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { once } from 'node:events';
-import {ROOT,fingerprint} from '../runner/files.mjs';
+import {ROOT,fingerprint,digest} from '../runner/files.mjs';
 import {connect,createExecution,execution,record,updateExecution} from '../runner/store.mjs';
 import {saveCheckpoint} from '../runner/checkpoints.mjs';
 import {humanCheckpoint} from '../runner/catalog.mjs';
 import {main as smokeCommand} from '../scripts/smoke.mjs';
+import {reportScriptHash} from '../reports.mjs';
+import {createHash} from 'node:crypto';
 
 test('catalog integrity, frozen run definitions, durable edits and honest result recording',async()=>{
   const sourceBefore=(await fingerprint(ROOT)).sha256;
@@ -29,6 +31,11 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     assert.ok(setup.courses.every(c=>!c.checkpoint));assert.deepEqual(setup.runtimes,[]);
     assert.equal((await fetch(base+'/run-setup.js')).status,200);assert.equal((await fetch(base+'/wizard-tokens.css')).status,200);
     assert.deepEqual((await request('/runs')).data,[],'Opening run setup must not launch tests');
+    const context=(await request('/checks/D-TRACK-ADD/context')).data;assert.equal(context.check.id,'D-TRACK-ADD');assert.equal(context.accepted,false);assert.match(context.prompt,/independent verification/);
+    assert.equal((await request('/checks/A-CLI-01/context')).data.accepted,true);
+    assert.equal((await request('/checks/unknown/context')).status,404);
+    const pack=(await request('/checks/D-TRACK-ADD/context','POST',{})).data;assert.ok(pack.path.startsWith(realpathSync(dir)+'/agent-context/'));
+    assert.deepEqual((await request('/runs')).data,[],'Context export must not launch or record a test');
     assert.equal(setup.defaultRuntimeId,'');
     const tools={app:'test-tools/Wizard.app',cli:'test-tools/wiz-cli',qtPlugin:'test-tools/libqcocoa.dylib',bridge:'test-tools/libwizard_smoke.dylib'};
     mkdirSync(path.join(dir,tools.app,'Contents/MacOS'),{recursive:true});
@@ -47,6 +54,17 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     rmSync(path.join(dir,'desktop-runtime.json'));
     assert.deepEqual((await request('/runs')).data,[],'Automatic tool discovery must never start a test');
 
+    const theme=await fetch(base+'/wizard-tokens.css');assert.equal(theme.status,200);assert.match(theme.headers.get('Content-Type'),/text\/css/);assert.match(await theme.text(),/--selection: #447ab0/);
+    const absent=await request('/runner/preflight','POST',{});assert.equal(absent.data.ok,false);assert.match(absent.data.error,/Choose a build and test course/);
+    assert.deepEqual((await request('/runs')).data,[],'Checking readiness must not start a course');
+    const content={runnerHash:'old-runner'},planHash=digest(content);mkdirSync(path.join(dir,'plans'));
+    writeFileSync(path.join(dir,'plans',planHash+'.json'),JSON.stringify({...content,planHash}));
+    assert.equal((await request('/plans/'+planHash)).data.planHash,planHash);
+    const selectedReadiness=await request('/runner/preflight','POST',{planHash});assert.equal(selectedReadiness.data.ok,false);assert.match(selectedReadiness.data.error,/Runner changed/,'Selected plan is checked without a global prepared.json');
+    assert.match((await request('/runner/preflight','POST',{planHash:'../other'})).data.error,/Invalid prepared plan ID/);
+    assert.match((await request('/runner')).data.preflight.error,/Choose a build and test course/,'Selected readiness must not overwrite the legacy readiness record');
+    writeFileSync(path.join(dir,'plans',planHash+'.json'),JSON.stringify({runnerHash:'tampered',planHash}));
+    assert.equal((await request('/plans/'+planHash)).status,409);
     assert.equal((await fetch(base+'/history')).status,404);
     writeFileSync(path.join(dir,'history.html'),'<h1>Retained history fixture</h1>');
     const history=await fetch(base+'/history');assert.equal(history.status,200);assert.match(history.headers.get('Content-Security-Policy'),/sandbox/);
@@ -126,7 +144,11 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
       assert.equal((await request('/requests/recovered-start-request')).data.id,id);
       assert.equal((await request('/runner/start','POST',{planHash:'other',operator:'Runner contract test',requestId:'recovered-start-request'})).status,409);
       const localReport=await request(`/runs/${id}/report`,'POST',{});assert.equal(localReport.status,201);assert.equal(localReport.data.evidenceStatus,'Gaps found');
-      const reportResponse=await fetch(base+localReport.data.url);assert.equal(reportResponse.status,200);assert.ok((await reportResponse.text()).includes('V1 acceptance'));
+      const reportResponse=await fetch(base+localReport.data.url);assert.equal(reportResponse.status,200);assert.ok((await reportResponse.text()).includes('Evidence needs attention'));
+      const policy=reportResponse.headers.get('Content-Security-Policy');assert.ok(policy.includes("script-src 'sha256-"+reportScriptHash+"'"));assert.ok(policy.includes('sandbox allow-scripts'));assert.ok(!policy.includes('allow-same-origin'));
+      const oldName='smoke-report-'+id+'-0123456789ab',oldRoot=path.join(dir,'exports',oldName),oldScript="document.title='retained report controls';";
+      mkdirSync(oldRoot);writeFileSync(path.join(oldRoot,'index.html'),'<script>'+oldScript+'</script>');
+      const oldResponse=await fetch(base+'/exports/'+oldName+'/index.html');assert.equal(oldResponse.status,200);assert.ok(oldResponse.headers.get('Content-Security-Policy').includes(createHash('sha256').update(oldScript).digest('base64')),'Historical reports retain permission for their exact original control script');
       assert.equal((await request(`/runs/${id}/report`,'POST',{})).data.path,localReport.data.path);
       const recovered=(await request('/runs')).data.find(r=>r.id===id);
       assert.equal(recovered.results.find(r=>r.test_id==='A-CLI-01').status,'Unknown');

@@ -7,17 +7,18 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import {randomUUID,createHash} from 'node:crypto';
 import {spawn,execFileSync} from 'node:child_process';
 import {initializeAutomation,course,execution,createExecution,updateExecution,record,recoverInterrupted,runnerAlive} from './runner/store.mjs';
-import {readJSON,writeJSON,digest,dataDirectory} from './runner/files.mjs';
+import {readJSON,writeJSON,digest,dataDirectory,fingerprint} from './runner/files.mjs';
 import {checklistCoverage} from './coverage.mjs';
 import {desktopState,desktopCourse,serviceCourse,startDesktopJob,requestJob,jobDetails,initializeDesktopCatalog,ownedDesktopSessions} from './desktop/hub.mjs';
 import {checkPrepared,sourceIdentity,prepare} from './runner/prepare.mjs';
 import {checkRegistry,courseList,getCourse,saveCourse,resolveSelection} from './runner/catalog.mjs';
 import {runtimeList,saveRuntime,installedRuntime} from './runner/runtime.mjs';
 import {exportRunKit} from './kits.mjs';
-import {exportLocalReport} from './reports.mjs';
+import {exportLocalReport,reportScriptHash} from './reports.mjs';
+import {agentContext,exportAgentContext,candidateChecks} from './test-details.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = dataDirectory();
@@ -79,9 +80,14 @@ async function runSetup(){
  const registry=checkRegistry(),courses=courseList(db).filter(c=>!c.checkpoint).map(c=>{try{const s=resolveSelection(db,{courseIds:[c.id]});return {...c,checkCount:s.effectiveIds.length,requirements:s.requirements,targets:Object.fromEntries(['packaged','desktop','service'].map(t=>[t,s.effectiveIds.filter(id=>registry.find(c=>c.id===id)?.target===t).length]))};}catch(e){return {...c,error:e.message};}});
  return {builds,courses,runtimes,defaultRuntimeId,runtimeSetupError,project:'fresh'};
 }
+async function storedPlan(hash){
+ if(typeof hash!=='string'||!/^[a-f0-9]{64}$/.test(hash))throw Error('Invalid prepared plan ID.');
+ let plan;try{plan=await readJSON(path.join(dataDir,'plans',hash+'.json'));}catch(e){if(e.code==='ENOENT')throw Error('This prepared plan is unavailable. Prepare the selected build and course again.');throw e;}
+ const {planHash,...content}=plan;if(planHash!==hash||digest(content)!==hash)throw Error('Prepared plan is corrupt. Prepare again.');return plan;
+}
 async function runnerStatus(){
   recoverInterrupted(db);
-  let plan,preflight;try{plan=await readJSON(path.join(dataDir,'prepared.json'));preflight=await readJSON(path.join(dataDir,'preflight.json'));}catch{}
+  let plan,preflight;try{plan=await readJSON(path.join(dataDir,'prepared.json'));}catch{}try{preflight=await readJSON(path.join(dataDir,'preflight.json'));}catch{}
   const sourceMatches=plan?await sourceIdentity()===plan.runnerHash:false;
   const current=db.prepare("SELECT run_id FROM executions WHERE state IN ('Queued','Preflight','Running','Waiting for human','Continuing') ORDER BY updated_at DESC LIMIT 1").get();
   return {course,plan,preflight,prepared:Boolean(plan&&preflight?.ok&&preflight.planHash===plan.planHash&&sourceMatches),sourceMatches,active:current?execution(db,current.run_id):null};
@@ -156,9 +162,23 @@ const server=http.createServer(async(req,res)=>{
       }
       if(req.method==='GET'&&url.pathname==='/api/catalog')return send(200,await catalogPayload());
       if(req.method==='GET'&&url.pathname==='/api/checks')return send(200,{format:'wizard-smoke-checks/v1',target:'all',checks:checkRegistry()});
+      if(parts[1]==='checks'&&parts[3]==='context'&&parts.length===4&&['GET','POST'].includes(req.method)){
+        const current=[...checkRegistry(),...candidateChecks()].find(c=>c.id===parts[2]);if(!current)fail(404,'Check not found.');
+        let definition=current,options={accepted:current.accepted,servicePort:server.address().port};const runId=req.method==='GET'?url.searchParams.get('run'):body.runId;
+        if(runId){
+          const run=getRun(runId),item=run?.execution?.recipe.cases.find(c=>c.id===parts[2]);if(!item)fail(404,'This check is not in the selected run.');definition=item;
+          const directory=path.join(dataDir,'runs',run.id);let snapshot;try{snapshot=await readJSON(path.join(directory,'test-specifications.json'));}catch(e){if(e.code!=='ENOENT')throw e;}
+          const spec=snapshot?.checks.find(c=>c.id===item.id);if(spec&&spec.definitionHash!==digest(item))fail(409,'Frozen test specification changed.');
+          options={...options,runId:run.id,outcome:run.results.find(r=>r.test_id===item.id)?.status,specification:spec};
+          if(run.execution.artifact_root!==directory)fail(409,'Run artifact root differs from its identity.');
+          if(existsSync(path.join(directory,'source'))){const context=await readJSON(path.join(directory,'execution-context.json'));if((await fingerprint(path.join(directory,'source'))).sha256!==context.sourceHash)fail(409,'Frozen source changed.');if(context.testSpecificationsHash&&digest(snapshot)!==context.testSpecificationsHash)fail(409,'Frozen test specification content changed.');options.root=path.join(directory,'source');}
+        }
+        return send(200,req.method==='GET'?agentContext(definition,options):await exportAgentContext(definition,dataDir,options));
+      }
       if(req.method==='GET'&&url.pathname==='/api/runtimes')return send(200,{format:'wizard-smoke-runtimes/v1',runtimes:await runtimeList(dataDir)});
       if(req.method==='POST'&&url.pathname==='/api/runtimes'){try{return send(201,await saveRuntime(dataDir,body));}catch(e){fail(409,e.message);}}
       if(req.method==='GET'&&url.pathname==='/api/run-setup')return send(200,await runSetup());
+      if(req.method==='GET'&&parts[1]==='plans'&&parts.length===3){try{return send(200,await storedPlan(parts[2]));}catch(e){fail(409,e.message);}}
       if(req.method==='GET'&&url.pathname==='/api/courses')return send(200,courseList(db));
       if(req.method==='GET'&&parts[1]==='courses'&&parts.length===3){try{return send(200,getCourse(db,parts[2],url.searchParams.has('revision')?Number(url.searchParams.get('revision')):undefined));}catch(e){fail(404,e.message);}}
       if(req.method==='POST'&&url.pathname==='/api/courses'){try{return send(201,saveCourse(db,body));}catch(e){fail(409,e.message);}}
@@ -175,7 +195,12 @@ const server=http.createServer(async(req,res)=>{
       if(req.method==='GET'&&parts[1]==='runs'&&parts.length===3){recoverInterrupted(db);const run=getRun(parts[2]);if(!run)fail(404,'Run not found.');return send(200,run);}
       if(req.method==='GET'&&url.pathname==='/api/runner'){recoverInterrupted(db);return send(200,await runnerStatus());}
       if(req.method==='POST'&&url.pathname==='/api/runner/preflight'){
-        try{const {plan}=await checkPrepared(dataDir);const result={ok:true,planHash:plan.planHash,checkedAt:new Date().toISOString(),wizardLaunched:false,checks:['Package fingerprint unchanged','Fixture hashes unchanged','Runner and course unchanged','Required packaged operations present']};await writeJSON(path.join(dataDir,'preflight.json'),result);return send(200,result);}catch(error){const result={ok:false,checkedAt:new Date().toISOString(),wizardLaunched:false,error:error.message};await writeJSON(path.join(dataDir,'preflight.json'),result);return send(200,result);}
+        try{
+          const selected=body.planHash!==undefined?await storedPlan(body.planHash):undefined;
+          const {plan}=await checkPrepared(dataDir,selected),result={ok:true,planHash:plan.planHash,checkedAt:new Date().toISOString(),wizardLaunched:false,checks:['Build verified','Course and required operations verified','Golden Project media ready',...(plan.runtime?['Desktop helper verified']:[]),...(plan.speechModel?['Cached speech model ready']:[])]};
+          if(!selected)await writeJSON(path.join(dataDir,'preflight.json'),result);return send(200,result);
+        }catch(error){const result={ok:false,checkedAt:new Date().toISOString(),wizardLaunched:false,error:error.message};if(body.planHash===undefined)await writeJSON(path.join(dataDir,'preflight.json'),result);return send(200,result);}
+
       }
       if(req.method==='POST'&&url.pathname==='/api/runner/start'){
         const operator=str(body.operator||'Local runner','operator',120),requestId=body.requestId;
@@ -274,9 +299,9 @@ const server=http.createServer(async(req,res)=>{
       const content=readFileSync(path.join(dataDir,'history.html'));
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'self'; sandbox"});return res.end(req.method==='HEAD'?undefined:content);
     }
-    if(parts[0]==='exports'&&/^smoke-report-[a-f0-9-]{36}-[a-f0-9]{12}$/.test(parts[1]||'')&&((parts.length===3&&['index.html','report.json'].includes(parts[2]))||(parts.length===4&&parts[2]==='evidence'&&['plan.json','course.json','report.json','operations.jsonl','media-manifest.json','scope.json','execution-context.json','checkpoint.json'].includes(parts[3])))){
+    if(parts[0]==='exports'&&/^smoke-report-[a-f0-9-]{36}-[a-f0-9]{12}$/.test(parts[1]||'')&&((parts.length===3&&['index.html','report.json'].includes(parts[2]))||(parts.length===4&&parts[2]==='evidence'&&(['plan.json','course.json','report.json','operations.jsonl','media-manifest.json','scope.json','execution-context.json','checkpoint.json','test-specifications.json','steps.jsonl'].includes(parts[3])||/^computer-use-(pass\.json|[a-f0-9]{12}-[a-zA-Z0-9_-]+\.(png|jpg|jpeg|gif|mp4|mov|webm|wav|mp3|m4a|json|txt))$/.test(parts[3]))))){
       let content;try{content=readFileSync(path.join(dataDir,...parts));}catch{fail(404,'Report file not found.');}
-      const html=parts.at(-1)==='index.html';res.writeHead(200,{'Content-Type':html?'text/html; charset=utf-8':'text/plain; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'self'; sandbox allow-same-origin"});return res.end(req.method==='HEAD'?undefined:content);
+      const html=parts.at(-1)==='index.html',scriptHash=html?createHash('sha256').update(content.toString().match(/<script>([\s\S]*?)<\/script>/)?.[1]||'').digest('base64'):reportScriptHash;res.writeHead(200,{'Content-Type':html?'text/html; charset=utf-8':parts.at(-1).endsWith('.png')?'image/png':parts.at(-1).endsWith('.jpg')?'image/jpeg':({'gif':'image/gif','mp4':'video/mp4','mov':'video/quicktime','webm':'video/webm','wav':'audio/wav','mp3':'audio/mpeg','m4a':'audio/mp4','json':'application/json'})[path.extname(parts.at(-1)).slice(1)]||'text/plain; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':`default-src 'none'; img-src http://${host}; media-src http://${host}; script-src 'sha256-${scriptHash}'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'self'; sandbox allow-scripts allow-popups`});return res.end(req.method==='HEAD'?undefined:content);
     }
     if(parts[0]==='exports'&&parts.length===2&&/^wizard-smoke-\d+-[a-f0-9]{8}\.(csv|json)$/.test(parts[1])){
       let content;try{content=readFileSync(path.join(dataDir,'exports',parts[1]));}catch{fail(404,'Export not found.');}
@@ -288,5 +313,8 @@ const server=http.createServer(async(req,res)=>{
     res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'self'"});res.end(req.method==='HEAD'?undefined:content);
   }catch(error){send(error.status||500,{error:error.status?error.message:'Unable to save or load workspace data. Check the local server.'});if(!error.status)console.error(error);}
 });
-server.listen(Number(process.env.PORT||4317),'127.0.0.1',()=>console.log(`Wizard Smoke: http://127.0.0.1:${server.address().port}`));
+server.listen(Number(process.env.PORT||4317),'127.0.0.1',()=>{
+ const url=`http://127.0.0.1:${server.address().port}/`;console.log('Athanor (Smoke): '+url);
+ if(process.send)process.send({type:'listening',url});
+});
 for(const signal of ['SIGTERM','SIGINT'])process.on(signal,()=>server.close(()=>{db.close();process.exit(0);}));

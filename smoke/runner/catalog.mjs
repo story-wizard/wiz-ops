@@ -24,7 +24,7 @@ export function acceptance(){
  catch(e){if(e.code==='ENOENT')return {checks:[],status:'Not reviewed'};throw e;}
 }
 export function checkRegistry(review=acceptance()){
- return rawChecks.map(c=>({...c,categories:[...new Set([c.stage,sourceAreas.get(c.sourceId)])].filter(Boolean),target:targetFor(c.id),projectVariants:['fresh'],accepted:review.checks?.some(a=>a.id===c.id&&a.definitionHash===digest(c))===true}));
+ return rawChecks.map(c=>({...c,definitionHash:digest(c),categories:[...new Set([c.stage,sourceAreas.get(c.sourceId)])].filter(Boolean),target:targetFor(c.id),projectVariants:['fresh'],accepted:review.checks?.some(a=>a.id===c.id&&a.definitionHash===digest(c))===true}));
 }
 export function requirementsFor(ids,checkpoint){
  const speechModel=ids.some(id=>speechChecks.has(id)),targets=[...new Set(ids.map(targetFor))];if(checkpoint&&!targets.includes('desktop'))targets.push('desktop');

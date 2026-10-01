@@ -1,5 +1,5 @@
 import path from 'node:path';
-import {cp,mkdir,mkdtemp,rename,rm,realpath,access} from 'node:fs/promises';
+import {cp,mkdir,mkdtemp,rename,rm,realpath,access,writeFile} from 'node:fs/promises';
 import {constants,existsSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
 import {execFileSync} from 'node:child_process';
@@ -11,6 +11,7 @@ import {activeStates} from './store.mjs';
 import {ownedDesktopSessions,desktopState} from '../desktop/hub.mjs';
 
 const copyOptions={recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE};
+const shellQuote=value=>"'"+value.replaceAll("'","'\\''")+"'";
 export async function checkHarnessBundle(directory){
  const base=await realpath(directory),manifest=await readJSON(path.join(base,'harness.json')),{id,...content}=manifest;
  if(manifest.format!=='wizard-smoke-harness/v1'||digest(content)!==id||digest(manifest.inventory)!==manifest.inventoryHash)throw Error('Harness manifest is invalid.');
@@ -36,6 +37,7 @@ export async function bundleHarness({runtime,destination}){
  try{
   await snapshotSource(path.join(temp,'workspace'));
   for(const name of ['README.md','AGENTS.md','docs','examples','tests'])await cp(path.join(ROOT,name),path.join(temp,'workspace',name),copyOptions);
+  await writeFile(path.join(temp,'Install Athanor.command'),`#!/bin/zsh\nset -eu\ncd -- "\${0:A:h}/workspace"\nif ! command -v node >/dev/null; then\n print 'Install Node.js 24 or newer, then open this launcher again.'\n read '?Press Return to close.'\n exit 1\nfi\nnode scripts/harness.mjs install --bundle ..\nexec node scripts/harness.mjs start --port 0\n`,{mode:0o755});
   const paths={app:'tools/Desktop.app',cli:'tools/wiz-cli',qtPlugin:'tools/libqcocoa.dylib',bridge:'tools/libwizard_smoke.dylib',libraries:'tools/libraries'};
   await mkdir(path.join(temp,'tools'));
   for(const k of ['app','cli','qtPlugin','bridge'])await cp(identity[k],path.join(temp,paths[k]),{...copyOptions,filter:src=>!['.DS_Store','__pycache__'].includes(path.basename(src))&&!src.endsWith('.pyc')&&(k!=='app'||path.relative(identity.app,src)!=='Contents/MacOS/logs')});
@@ -74,5 +76,7 @@ export async function installHarness(directory,configuredDataDir){
  assertStationIdle(data);
  const runtime=Object.fromEntries(Object.entries(manifest.runtime).map(([k,v])=>[k,path.join(destination,v)])),workspace=path.join(destination,'workspace');
  await writeJSON(path.join(data,'desktop-runtime.json'),{runtime,harness:{id:manifest.id,sourceHash:manifest.sourceHash,workspace}});
- return {id:manifest.id,dataDir:data,workspace,runtime,wizardLaunched:false};
+ const launcher=path.join(data,'Open Athanor.command'),temporary=launcher+'.'+process.pid+'.tmp';
+ await writeFile(temporary,`#!/bin/zsh\nset -eu\nexec ${shellQuote(process.execPath)} ${shellQuote(path.join(workspace,'scripts/harness.mjs'))} start --data-dir ${shellQuote(data)} --port 0 "$@"\n`,{mode:0o755});await rename(temporary,launcher);
+ return {id:manifest.id,dataDir:data,workspace,runtime,launcher,wizardLaunched:false};
 }

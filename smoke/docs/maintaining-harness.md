@@ -19,7 +19,7 @@ The bundle contains no historical runs, personal projects or cached models. It i
 
 ## Install and open it
 
-On the receiving Mac, from the bundle's `workspace` directory:
+On the receiving Mac, double-click `Install Athanor.command` in the extracted bundle. It installs the harness and opens the dashboard on an available local port. For agent or terminal use, from the bundle's `workspace` directory:
 
 ```sh
 node scripts/harness.mjs install --bundle ..
@@ -28,7 +28,9 @@ node scripts/harness.mjs start
 
 Installation verifies the bundle, copies it into a versioned directory under the external workspace, and atomically writes the default desktop-tool configuration. The default workspace is `~/Library/Application Support/WizardSmoke`. Set `SMOKE_DATA_DIR` or pass `--data-dir DIR` for another location. The installer returns the installed source directory for direct agent commands.
 
-`start` verifies the installed bundle and opens its loopback service at port 4317. Use `--port 4318` if needed. It does not launch Wizard. Open the printed address in a browser. Testers choose their build and course; they do not select individual helper files.
+The first opening asks which browser to use: the system default, Safari, or another browser application. The choice is saved in `browser.json` under the external workspace. `start --browser choose` changes it; `--browser default` selects the current system default. Agents can use `start --no-open` to print the address without opening a browser or prompting.
+
+`start` verifies the installed bundle and starts its loopback service at port 4317. Use `--port 4318` for a specific port, or `--port 0` for an available port. The browser opens after the service is ready. Testers choose their build and course; the installed test tools are selected automatically. Installation also creates `Open Athanor.command` in the external workspace for subsequent launches.
 
 ## Update source or runtime
 

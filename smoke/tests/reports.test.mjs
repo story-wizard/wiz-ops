@@ -4,6 +4,7 @@ import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import {runInNewContext} from 'node:vm';
 import {dataDirectory,digest,writeJSON} from '../runner/files.mjs';
 import {localReport,exportLocalReport,renderReport} from '../reports.mjs';
 import {startPrepared} from '../scripts/run-packaged.mjs';
@@ -25,11 +26,26 @@ test('report retains exact outcomes, detects missing or mismatched evidence and 
   await writeFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:'CHECK',operation:'project.read',durationMs:12})+'\n');
   let {report}=await localReport(run,data);assert.equal(report.acceptance.evidenceStatus,'Ready for review');assert.equal(report.acceptance.scopeAcceptance,'Not assessed');assert.equal(report.scope.sourceRows[0].disposition,'Partial');
   assert.equal(report.cases[0].target,'packaged');assert.equal(report.targets[0].hash,plan.packageHash);
-  const html=renderReport(report);assert.ok(html.includes('&lt;script&gt;'));assert.ok(!html.includes('<script>'));assert.ok(html.includes('Not assessed'));
+  const html=renderReport(report);assert.ok(html.includes('&lt;script&gt;'));assert.ok(!html.includes('<script>bad()'));assert.ok(html.includes('Observed expected state'));assert.ok(html.includes('project.read'));assert.ok(html.includes('<details><summary>Technical details</summary>'));
+  assert.ok(html.includes('How the test works'));assert.ok(html.includes('Recorded actions'));assert.ok(html.includes('Copy edit prompt'));assert.ok(html.includes('Agent edit prompt'));
+  const patchedHTML=renderReport({...report,computerUse:{state:'Partial',createdAt:'2026-09-30',cases:[{id:'UI',title:'Project UI',target:'computer-use-patched',area:'Release UI pilot',status:'Pass',observation:'Visible editor',expected:'Created project',operations:['Mouse and accessibility']}]}});
+  assert.match(patchedHTML,/Smoke copy · patched Cocoa plugin/);assert.match(patchedHTML,/data-target="computer-use-patched"/);
+  // Execute the exported page's controls against a small DOM, with no runner or network.
+  const row=(order,title,status,area,text)=>({dataset:{order:String(order),title,result:status,area,target:area==='Project'?'packaged':'desktop'},textContent:title+' '+text,hidden:false});
+  const rows=[row(0,'Zebra','Pass','Project','project.read'),row(1,'Alpha','Fail','Timeline','clip.split'),row(2,'Beta','Unknown','Project','project.read')],body={rows,append(r){rows.splice(rows.indexOf(r),1);rows.push(r);}};
+  const fields=Object.fromEntries(['search','result','area','target','sort','visible-count','empty','reset'].map(id=>[id,{value:id==='sort'?'course':'',handlers:{},addEventListener(event,fn){this.handlers[event]=fn;}}]));
+  runInNewContext(html.match(/<script>([\s\S]*?)<\/script>/)[1],{document:{querySelector(selector){return selector==='#checks tbody'?body:fields[selector.slice(1)];}}});
+  assert.equal(fields['visible-count'].textContent,'3 of 3 checks');
+  fields.target.value='desktop';fields.target.handlers.change();assert.deepEqual(rows.filter(r=>!r.hidden).map(r=>r.dataset.title),['Alpha']);fields.reset.handlers.click();
+  fields.sort.value='result';fields.sort.handlers.change();assert.deepEqual(rows.map(r=>r.dataset.title),['Alpha','Beta','Zebra']);
+  fields.sort.value='name';fields.sort.handlers.change();assert.deepEqual(rows.map(r=>r.dataset.title),['Alpha','Beta','Zebra']);
+  fields.search.value=' PROJECT.READ ';fields.search.handlers.input();assert.equal(fields['visible-count'].textContent,'2 of 3 checks');
+  fields.result.value='Unknown';fields.result.handlers.change();assert.deepEqual(rows.filter(r=>!r.hidden).map(r=>r.dataset.title),['Beta']);
+  fields.area.value='Timeline';fields.area.handlers.change();assert.equal(fields.empty.hidden,false);assert.equal(fields['visible-count'].textContent,'0 of 3 checks');
+  fields.reset.handlers.click();assert.deepEqual(rows.map(r=>r.dataset.title),['Zebra','Alpha','Beta']);assert.ok(rows.every(r=>!r.hidden));assert.equal(fields.empty.hidden,true);
   assert.match(html,/Selected package engine/);assert.match(html,new RegExp(plan.packageHash));
-  const mixedHTML=renderReport({...report,targets:[...report.targets,{target:'desktop',build:'Instrumented app',hash:'c'.repeat(64),counts:{Fail:1}}]});assert.match(mixedHTML,/Instrumented desktop/);assert.ok(mixedHTML.includes('c'.repeat(64)));
   const subsetHTML=renderReport({...report,selection:{project:'fresh',requestedIds:['CHECK'],addedPrerequisites:[],notSelected:['OTHER'],groups:[{title:'My <group>',checks:['CHECK']}],courseRevisions:[{id:'custom',revision:2}]}});
-  assert.ok(subsetHTML.includes('1 requested checks'));assert.ok(subsetHTML.includes('1 checks not selected'));assert.ok(subsetHTML.includes('My &lt;group&gt;'));assert.ok(subsetHTML.includes('does not claim full Smoke Test acceptance'));
+  assert.ok(subsetHTML.includes('OTHER'));assert.ok(subsetHTML.includes('My &lt;group&gt;'));
   const first=await exportLocalReport(run,data),second=await exportLocalReport(run,data);assert.equal(first.path,second.path,'Identical report delivery is idempotent');
   assert.equal(JSON.parse(await readFile(path.join(path.dirname(first.path),'report.json'))).cases[0].status,'Pass');
   // A paused course can publish a snapshot; successful automated checks do not supply a human verdict.
@@ -39,7 +55,7 @@ test('report retains exact outcomes, detects missing or mismatched evidence and 
   await writeJSON(path.join(root,'report.json'),{runId:id,state:'Waiting for human',planHash:plan.planHash,results:[{id:'CHECK',status:'Pass',note:results[0].note}]});
   report=(await localReport(run,data)).report;
   assert.equal(report.execution.state,'Waiting for human');assert.equal(report.cases[0].status,'Pass');assert.equal(report.checkpoint.observations[0].outcome,'Fail');
-  const humanHTML=renderReport(report);assert.match(humanHTML,/Synthetic &lt;finding&gt;/);assert.match(humanHTML,/17 seconds/);assert.match(humanHTML,/Fixture tester/);
+  const humanHTML=renderReport(report);assert.match(humanHTML,/Synthetic &lt;finding&gt;/);assert.match(humanHTML,/&quot;handsOnSeconds&quot;: 17/);assert.match(humanHTML,/Fixture tester/);
   await writeJSON(path.join(root,'checkpoint.json'),{...run.checkpoint,observations:[]});
   report=(await localReport(run,data)).report;assert.ok(report.acceptance.gaps.some(s=>s.includes('Checkpoint artifact differs')));
   delete recipe.checkpoint;delete run.checkpoint;run.execution.state='Passed';

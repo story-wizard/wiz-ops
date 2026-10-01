@@ -27,9 +27,9 @@ export async function executeStages({plan,course,root,dataDir,onResult,isCancell
    const result=await execute({plan,dataDir,runtime:plan.runtime,directory,ids:selected.map(c=>c.id)},{isCancelled,signal});
    clearInterval(timer);while(busy)await new Promise(r=>setTimeout(r,10));await poll();
    await writeJSON(path.join(directory,'stage.json'),{target,root:result.root,report:result.report,sessionFile:result.sessionFile});
-   for(const filename of ['operations.jsonl','native-events.jsonl']){
+   for(const filename of ['operations.jsonl','native-events.jsonl','steps.jsonl']){
     let text;try{text=await readFile(path.join(result.root,filename),'utf8');}catch(e){if(e.code==='ENOENT')continue;throw e;}
-    for(const line of text.split('\n').filter(Boolean)){const receipt=JSON.parse(line);await appendFile(path.join(root,'operations.jsonl'),JSON.stringify({...receipt,caseId:receipt.caseId||'stage-setup',stage:target,operation:receipt.operation||'native.'+receipt.request.op})+'\n');}
+    for(const line of text.split('\n').filter(Boolean)){const receipt=JSON.parse(line);await appendFile(path.join(root,filename==='steps.jsonl'?'steps.jsonl':'operations.jsonl'),JSON.stringify({...receipt,caseId:receipt.caseId||'stage-setup',stage:target,...(filename==='steps.jsonl'?{}:{operation:receipt.operation||'native.'+receipt.request.op})})+'\n');}
    }
    let events=[];try{events=(await readFile(path.join(result.root,'check-events.jsonl'),'utf8')).split('\n').filter(Boolean).map(JSON.parse);}catch(e){if(e.code!=='ENOENT')throw e;}
    for(const c of selected){

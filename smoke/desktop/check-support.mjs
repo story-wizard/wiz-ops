@@ -29,15 +29,31 @@ export async function gapFixture(c,assets,name){
 export const selectorNamesTimeline=(label,name)=>typeof label==='string'&&label.replace(/ \(\d+\)$/,'')===name;
 export async function beginCheck(file,id){
  const s=await readJSON(file);if(s.selectedChecks&&!s.selectedChecks.includes(id))return false;
- s.currentCheck=id;await writeJSON(file,s);
+ s.currentCheck=id;s.currentStep=null;await writeJSON(file,s);
  await appendFile(path.join(s.root,'check-events.jsonl'),JSON.stringify({id,status:'Running',at:new Date().toISOString()})+'\n');return true;
 }
 export async function endCheck(file,result){
  const s=await readJSON(file);await appendFile(path.join(s.root,'check-events.jsonl'),JSON.stringify({...result,at:new Date().toISOString()})+'\n');
 }
+export async function recordStep(file,definition,fn){
+ const session=await readJSON(file);if(!session.currentCheck||session.currentStep)throw Error('A step requires an active check and cannot be nested.');
+ if(!definition?.id||!definition.title)throw Error('A step needs an ID and readable title.');
+ const journal=path.join(session.root,'steps.jsonl'),entry={caseId:session.currentCheck,stepId:definition.id,title:definition.title,phase:definition.phase||'execute'};
+ session.currentStep=definition.id;await writeJSON(file,session);await appendFile(journal,JSON.stringify({...entry,status:'Running',at:new Date().toISOString()})+'\n');
+ try{const value=await fn();await appendFile(journal,JSON.stringify({...entry,status:'Completed',at:new Date().toISOString()})+'\n');return value;}
+ catch(e){await appendFile(journal,JSON.stringify({...entry,status:e.status||'Fail',observation:e.message,at:new Date().toISOString()})+'\n');throw e;}
+ finally{const latest=await readJSON(file);latest.currentStep=null;await writeJSON(file,latest);}
+}
 export function widgetPixelDifference(a,b){
   const rgb=v=>{assert(v.sampleWidth===64&&v.sampleHeight===32&&typeof v.sampleRgb==='string','Invalid widget raster');const bytes=Buffer.from(v.sampleRgb,'base64');assert(bytes.length===64*32*3,'Incomplete widget pixels');return bytes;};
   const x=rgb(a),y=rgb(b);return x.reduce((sum,v,i)=>sum+Math.abs(v-y[i]),0)/x.length;
+}
+export function livePreviewEvidence(baseline,samples,receipt){
+ const held=samples.filter(x=>x.startedAt>=receipt.pointerDownAt&&x.finishedAt<=receipt.pointerUpAt),changed=held.filter(x=>widgetPixelDifference(x.image,baseline)>1.5);
+ assert(held.length>=3,'Insufficient preview samples during the held gesture');assert(changed.length>=3,'Displayed preview did not update during the held gesture');
+ const evolving=held.filter((x,i)=>i&&widgetPixelDifference(x.image,held[i-1].image)>.1);assert(evolving.length>=2,'Displayed preview did not evolve through the gesture');
+ for(const x of held){const rgb=Buffer.from(x.image.sampleRgb,'base64');assert(rgb.reduce((a,b)=>a+b,0)/rgb.length>5,'Preview became blank during drag');}
+ return {samplesDuringHold:held.length,changedSamples:changed.length,evolvingSamples:evolving.length,maxCaptureMs:Math.max(...held.map(x=>x.finishedAt-x.startedAt)),maxSampleGapMs:Math.max(...held.slice(1).map((x,i)=>x.startedAt-held[i].startedAt))};
 }
 
 export async function checks(file,name){
@@ -56,5 +72,5 @@ export async function checks(file,name){
   }
   async function openTimeline(name){const view=await mediaItem(name);await activate(view);await n('item-click',{target:view.id,text:name,double:true});await until(async()=>(await ui()).widgets.some(w=>w.name==='panelSubtabSelector'&&selectorNamesTimeline(w.text,name)));const v=(await ui()).widgets.filter(w=>w.class==='TimelineWidget').sort((a,b)=>a.y-b.y)[0];assert(v,'Timeline is unavailable');await activate(v);return v;}
   function finish(){writeFileSync(output,JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(report.results.some(r=>r.status!=='Pass'))process.exitCode=1;}
-  return {s,report,n,c,ui,until,check,activate,action,mediaItem,mediaMenu,openTimeline,finish};
+  return {s,report,n,c,ui,until,check,step:(definition,fn)=>recordStep(file,definition,fn),activate,action,mediaItem,mediaMenu,openTimeline,finish};
 }

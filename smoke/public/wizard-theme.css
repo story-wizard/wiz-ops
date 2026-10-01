@@ -89,7 +89,6 @@ dialog::backdrop{backdrop-filter:none}
 main{max-width:1180px;margin:0 auto;padding:0 28px 32px}
 .page-header{min-height:86px;padding:18px 0;margin-bottom:0;border-bottom:0}
 .page-header h1{font-size:20px;color:#eee}
-.workspace-subtitle{font-size:12px;color:var(--secondary);margin:3px 0 0}
 .tabs{margin-bottom:26px;gap:20px;border-bottom:1px solid #383838}
 .tabs button{min-width:0;padding:10px 0;background:transparent;border:0;border-radius:0;font-size:13px}
 .tabs button.active{background:transparent;border:0;border-bottom:2px solid var(--selection);color:#fff}
@@ -100,36 +99,40 @@ main{max-width:1180px;margin:0 auto;padding:0 28px 32px}
 .launch-heading p{margin:0;color:var(--secondary);max-width:65ch}
 .launch-workspace form{background:#202020;border:1px solid #3b3b3b;border-radius:5px;overflow:hidden}
 .launch-workspace fieldset{border:0;padding:8px 24px 0;margin:0;min-width:0}
-.launch-step{display:grid;grid-template-columns:26px 1fr;gap:14px;padding:20px 0;border-bottom:1px solid #343434}
+.launch-step{display:block;padding:20px 0;border-bottom:1px solid #343434}
 .launch-step:last-of-type{border-bottom:0}
-.step-number{width:24px;height:24px;display:grid;place-items:center;background:#2c2c2c;border:1px solid #484848;border-radius:50%;color:#bbb;font-size:12px;margin-top:2px}
 .launch-workspace .field{font-size:13px;font-weight:500;color:#eee;margin:0;display:grid;gap:8px}
 .launch-workspace .field+ .field{margin-top:14px}
 .launch-workspace input,.launch-workspace select{min-height:38px;width:100%;padding:8px 10px;background:#272727;border:1px solid #505050;font-size:14px}
 .launch-workspace input::placeholder{color:#929292}
 .launch-workspace .field-help{font-size:12px;font-weight:400;color:#b4b4b4;margin:8px 0 0;line-height:1.6}
-.build-location{font-size:12px;color:#999;margin:6px 0 0;overflow-wrap:anywhere}
-.optional{font-size:11px;font-weight:400;color:#a5a5a5;display:inline}
 .course-coverage{display:flex;gap:24px;margin:15px 0 4px;flex-wrap:wrap}
 .course-coverage span{display:flex;align-items:baseline;gap:7px;font-size:12px;color:#b4b4b4}
 .course-coverage strong{font-size:19px;font-weight:500;color:#eee}
-.helper-status{margin:18px 0 8px 40px;font-size:12px;border-left:2px solid #d2a45b;padding:1px 12px}
+.helper-status{margin:18px 0 8px;font-size:12px;border-left:2px solid #d2a45b;padding:1px 12px}
 .helper-status strong{color:#e2c08d;font-weight:500}
 .helper-status p{color:#bbb;margin:4px 0;line-height:1.6}
 .helper-status.configured{border-color:#6ea979}.helper-status.configured strong{color:#a9d5b2}
-.launch-options{margin:12px 0 18px 40px;font-size:12px;color:#aaa}
+.launch-options{margin:12px 0 18px;font-size:12px;color:#aaa}
 .launch-options summary{cursor:pointer;padding:8px 0}
 .option-content{padding:4px 0 12px}
 .option-content .field{margin-top:12px}
 .option-content .setup-fields{margin:10px 0;gap:12px}
 .option-content #suite-operator{max-width:320px}
-.launch-footer{padding:18px 24px;display:flex;gap:20px;justify-content:space-between;align-items:center;background:#242424;border-top:1px solid #3b3b3b}
+.launch-footer{padding:18px 24px;display:flex;gap:20px;justify-content:flex-end;align-items:center;background:#242424;border-top:1px solid #3b3b3b}
 .launch-footer p{margin:0 0 3px;color:#bbb;font-size:12px}
-.launch-footer small{font-size:11px;color:#999}
 .launch-start{white-space:nowrap;min-height:38px;font-weight:500;padding:9px 18px}
 .launch-error{margin:8px 24px 18px;padding:12px;border:1px solid #785244;background:#302522;border-radius:3px;color:#e8b29a}
 .launch-error p{margin:5px 0;color:#ddd;overflow-wrap:anywhere}
 .launch-error .button{margin-top:8px}
-@media(max-width:600px){main{padding:0 16px 24px}.page-header{min-height:80px}.page-header h1{font-size:17px}.header-actions{gap:10px}.launch-heading h2{font-size:19px}.launch-workspace fieldset{padding:4px 16px 0}.launch-step{gap:10px;padding:17px 0}.course-coverage{gap:16px}.course-coverage strong{font-size:17px}.helper-status,.launch-options{margin-left:36px}.launch-footer{padding:16px;flex-direction:column;align-items:stretch;gap:14px}.launch-start{width:100%}.launch-error{margin:8px 16px 16px}.setup-fields{grid-template-columns:1fr}}
+@media(max-width:600px){main{padding:0 16px 24px}.page-header{min-height:80px}.page-header h1{font-size:17px}.header-actions{gap:10px}.launch-heading h2{font-size:19px}.launch-workspace fieldset{padding:4px 16px 0}.launch-step{gap:10px;padding:17px 0}.course-coverage{gap:16px}.course-coverage strong{font-size:17px}.launch-footer{padding:16px;flex-direction:column;align-items:stretch;gap:14px}.launch-start{width:100%}.launch-error{margin:8px 16px 16px}.setup-fields{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
-.manual-helper{margin-top:16px;color:#aaa;font-size:12px}.manual-helper summary{cursor:pointer}input[type=file]{font-size:12px}input::file-selector-button{font:inherit;background:#383838;color:#eee;border:0;padding:5px 8px;margin-right:10px;border-radius:3px}.launch-workspace .optional{margin-left:6px}
+.manual-helper{margin-top:16px;color:#aaa;font-size:12px}.manual-helper summary{cursor:pointer}input[type=file]{font-size:12px}input::file-selector-button{font:inherit;background:#383838;color:#eee;border:0;padding:5px 8px;margin-right:10px;border-radius:3px}
+
+.field-label{display:flex;align-items:center;gap:8px}
+.field-hint{position:relative;display:inline-flex}
+.hint-trigger{width:18px;height:18px;padding:0;border:1px solid #666;border-radius:50%;background:transparent;color:#aaa;font-size:11px;line-height:16px;cursor:help}
+.hint-text{position:absolute;z-index:5;top:calc(100% + 8px);left:-20px;width:max-content;max-width:min(300px,65vw);padding:9px 11px;border:1px solid #555;border-radius:3px;background:#303030;box-shadow:0 4px 14px #0006;color:#ddd;font-size:12px;font-weight:400;line-height:1.5;overflow-wrap:anywhere;visibility:hidden}
+.field-hint:hover .hint-text,.field-hint:focus-within .hint-text{visibility:visible}
+.hint-text:before{content:"";position:absolute;left:0;right:0;top:-9px;height:9px}
+.field-hint[data-dismissed] .hint-text{visibility:hidden}

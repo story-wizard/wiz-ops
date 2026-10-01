@@ -1,0 +1,374 @@
+{
+  "id": "physical-editor-candidate",
+  "title": "Physical editor paths \u00b7 candidate qualification",
+  "revision": 5,
+  "target": "Instrumented isolated desktop with native macOS input",
+  "status": "Candidate",
+  "cases": [
+    {
+      "id": "P-TL-BIN-DROP",
+      "sourceId": "TL-01",
+      "area": "Timeline editing",
+      "title": "Physical bin-to-timeline drop",
+      "expected": "Dragging the observed media row onto V1 creates the correct source clip with its full duration; one Undo restores the empty timeline.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readback and native input receipts."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The owned app or displayed preview at the observed result."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Create and open a disposable timeline",
+          "phase": "prepare"
+        },
+        {
+          "id": "drop",
+          "title": "Drag the observed media row onto V1",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Check the source, position and duration",
+          "phase": "verify"
+        },
+        {
+          "id": "restore",
+          "title": "Capture the result and restore with Undo",
+          "phase": "cleanup"
+        }
+      ]
+    },
+    {
+      "id": "P-TL-BIN-OVERWRITE",
+      "sourceId": "TL-01",
+      "area": "Timeline editing",
+      "title": "Physical bin drop overwrites existing material",
+      "expected": "Dropping at the start replaces covered material with the requested source, preserves a later clip and restores the baseline with one Undo.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readback and native input receipts."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The owned app or displayed preview at the observed result."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Create and open a disposable timeline",
+          "phase": "prepare"
+        },
+        {
+          "id": "drop",
+          "title": "Drag the observed media row onto V1",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Check the source, position and duration",
+          "phase": "verify"
+        },
+        {
+          "id": "restore",
+          "title": "Capture the result and restore with Undo",
+          "phase": "cleanup"
+        }
+      ]
+    },
+    {
+      "id": "P-RG-MOVE",
+      "sourceId": "RG-01",
+      "area": "Render graph",
+      "title": "Render Graph native node move and pan",
+      "expected": "A header drag changes one node's scene position; middle-button panning changes its screen position while preserving graph contents and scene positions.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readback and native input receipts."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The owned app or displayed preview at the observed result."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Before and after graph state used to check the node or connection."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare a blur graph and capture its starting layout",
+          "phase": "prepare"
+        },
+        {
+          "id": "move",
+          "title": "Drag the blur node by its header",
+          "phase": "execute"
+        },
+        {
+          "id": "verify-move",
+          "title": "Check that scene position changed and graph contents stayed intact",
+          "phase": "verify"
+        },
+        {
+          "id": "pan",
+          "title": "Pan the canvas with the middle mouse button",
+          "phase": "execute"
+        },
+        {
+          "id": "verify-pan",
+          "title": "Check that only the view moved and capture the result",
+          "phase": "verify"
+        }
+      ]
+    },
+    {
+      "id": "P-RG-WIRE",
+      "sourceId": "RG-01",
+      "area": "Render graph",
+      "title": "Render Graph physical port connection",
+      "expected": "A physical output-to-input drag restores a deliberately disconnected source/effect edge; Undo removes it and Redo restores it.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readback and native input receipts."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The owned app or displayed preview at the observed result."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Before and after graph state used to check the node or connection."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare a disconnected blur input and observe its visible ports",
+          "phase": "prepare"
+        },
+        {
+          "id": "wire",
+          "title": "Drag the source output onto the blur input",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Read the exact connection and capture the connected graph",
+          "phase": "verify"
+        },
+        {
+          "id": "history",
+          "title": "Check that Undo removes the edge and Redo restores it",
+          "phase": "verify"
+        }
+      ]
+    },
+    {
+      "id": "P-RG-CLIPBOARD",
+      "sourceId": "RG-01",
+      "area": "Render graph",
+      "title": "Render Graph native copy, paste and delete",
+      "expected": "Copy/paste mints an independent effect node with matching parameters; Delete removes the copy; Undo restores it and then restores the original graph.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readback and native input receipts."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The owned app or displayed preview at the observed result."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Before and after graph state used to check the node or connection."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare and select a blur node; preserve the system clipboard",
+          "phase": "prepare"
+        },
+        {
+          "id": "paste",
+          "title": "Copy the node and paste it through native shortcuts",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Check the new identity, matching parameters and unchanged original",
+          "phase": "verify"
+        },
+        {
+          "id": "delete",
+          "title": "Select and delete the pasted node; check that it is gone",
+          "phase": "execute"
+        },
+        {
+          "id": "restore",
+          "title": "Undo Delete and Paste to recover the original graph",
+          "phase": "cleanup"
+        },
+        {
+          "id": "clipboard",
+          "title": "Restore the system clipboard",
+          "phase": "cleanup"
+        }
+      ]
+    },
+    {
+      "id": "P-GRADE-LIVE",
+      "sourceId": "PF-05",
+      "area": "Performance",
+      "title": "Primary wheel drag with live preview sampling",
+      "expected": "On a fresh clip with an existing primary grade and warmed displayed frame, a ten-second native wheel drag changes grade parameters and displayed pixels during the held gesture; one Undo restores the preceding state. Samples and response timings are retained.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readback and native input receipts."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The owned app or displayed preview at the observed result."
+        },
+        {
+          "id": "preview-clip",
+          "kind": "video",
+          "when": "during",
+          "required": false,
+          "caption": "Preview samples played at their recorded spacing during the held gesture."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare a clip, open the control and capture the baseline",
+          "phase": "prepare"
+        },
+        {
+          "id": "gesture",
+          "title": "Hold a ten-second native drag and sample the preview",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Check changed parameters and evolving frames during the drag",
+          "phase": "verify"
+        },
+        {
+          "id": "restore",
+          "title": "Undo and check that the graph and displayed frame are restored",
+          "phase": "cleanup"
+        }
+      ]
+    },
+    {
+      "id": "P-CURVE-LIVE",
+      "sourceId": "PF-07",
+      "area": "Performance",
+      "title": "Ten-second curve drag with live preview sampling",
+      "expected": "A ten-second native curve drag changes curve parameters and displayed pixels during the held gesture; one Undo restores the preceding state. Samples and response timings are retained.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readback and native input receipts."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The owned app or displayed preview at the observed result."
+        },
+        {
+          "id": "preview-clip",
+          "kind": "video",
+          "when": "during",
+          "required": false,
+          "caption": "Preview samples played at their recorded spacing during the held gesture."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare a clip, open the control and capture the baseline",
+          "phase": "prepare"
+        },
+        {
+          "id": "gesture",
+          "title": "Hold a ten-second native drag and sample the preview",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Check changed parameters and evolving frames during the drag",
+          "phase": "verify"
+        },
+        {
+          "id": "restore",
+          "title": "Undo and check that the graph and displayed frame are restored",
+          "phase": "cleanup"
+        }
+      ]
+    }
+  ]
+}

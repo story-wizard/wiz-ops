@@ -2,6 +2,8 @@
 
 The CLI, application adapter and native adapter work without the dashboard. They use the same installed desktop tools, ownership checks and operation receipts as the automated courses.
 
+For a focused explanation and edit prompt, run `node scripts/smoke.mjs context --check D-EDIT-DELETE`. Add `--export` for a curated reference folder, or `--run ID` for the frozen source and result of a previous run. See [test evidence](test-evidence.md) for readable steps, evidence declarations and acceptance after editing. These commands do not execute a test.
+
 ## Discover and run one check
 
 From the installed bundle's `workspace` directory, with the dashboard service running:
@@ -9,7 +11,7 @@ From the installed bundle's `workspace` directory, with the dashboard service ru
 ```sh
 node scripts/smoke.mjs setup
 node scripts/smoke.mjs list --target desktop
-node scripts/smoke.mjs plan --app /Applications/Wizard.app --checks D-TRACK-ADD --out /tmp/track-check-plan.json
+node scripts/smoke.mjs plan --app /Applications/Wizard.app --checks D-EDIT-DELETE --out /tmp/track-check-plan.json
 node scripts/smoke.mjs run --plan /tmp/track-check-plan.json --operator "Agent spot test" --request-id track-check-001
 node scripts/smoke.mjs status --request-id track-check-001
 ```

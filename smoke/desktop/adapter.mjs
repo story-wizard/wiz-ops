@@ -117,7 +117,7 @@ export async function desktopCall(file,operation,params={},expectedError){
     session=await readJSON(file);verifyDesktopOwner(session);
     const engine=new PackagedEngine(session.plan,session.root,session.harnessId,session.schema);
     if(session.desktopCli){assert(await sha(session.desktopCli)===session.desktopCliHash,'Paired CLI changed.');engine.macos=path.dirname(session.desktopCli);}
-    engine.child={pid:session.pid,exitCode:null,signalCode:null};engine.url=session.url;engine.env=session.env;engine.counter=session.counter;engine.caseId=session.currentCheck||'desktop-agent';
+    engine.child={pid:session.pid,exitCode:null,signalCode:null};engine.url=session.url;engine.env=session.env;engine.counter=session.counter;engine.caseId=session.currentCheck||'desktop-agent';engine.stepId=session.currentStep||null;
     await engine.call(session.bundle,'project.get_name');
     let result;try{result=await engine.call(session.bundle,operation,params,expectedError);}finally{session.counter=engine.counter;await writeJSON(file,session);}
     return result;
@@ -145,9 +145,10 @@ export async function nativeCall(file,op,params={}){
     await writeJSON(path.join(session.native,'request.json'),request);
     for(let i=0;i<100;i++){
       let response;try{response=await readJSON(path.join(session.native,`response-${id}.json`));}catch(e){if(e.code!=='ENOENT')throw e;}
-      if(response){assert(response.id===id&&response.pid===session.pid&&response.generation===ready.generation,'Native response identity mismatch.');await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),caseId:session.currentCheck||'desktop-agent',request,response})+'\n');assert(response.ok,response.error||'Native operation failed');return response.result;}
+      if(response){assert(response.id===id&&response.pid===session.pid&&response.generation===ready.generation,'Native response identity mismatch.');await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,response})+'\n');assert(response.ok,response.error||'Native operation failed');return response.result;}
       await pause(50);
     }
+    await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,status:'Unknown',error:'No native response within five seconds.'})+'\n');
     throw new OutcomeError('Native action outcome is unknown; inspect before continuing and do not replay.','Unknown');
   }finally{await held.close();await unlink(lock);}
 }

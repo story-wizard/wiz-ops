@@ -10,13 +10,13 @@ export async function speechModelIdentity(directory=path.join(homedir(),'.cache/
   const identity=await fingerprint(directory,{followFileLinks:true});return {directory,sha256:identity.sha256,files:identity.files,model:'FluidInference/parakeet-tdt-0.6b-v2-coreml',revision:path.basename(directory)};
 }
 
-import {ROOT,dataDirectory,readJSON,writeJSON,fingerprint,digest} from './files.mjs';
+import {ROOT,dataDirectory,readJSON,writeJSON,fingerprint,digest,sha} from './files.mjs';
 import {prepareFixtures,validateFixtures} from './fixtures.mjs';
 import {ingestPython,validateIngestProfile} from './ingest.mjs';
 import {runtimeIdentity,verifyRuntime} from './runtime.mjs';
 import {selectedRecipe,validateRecipe,requirementsFor} from './catalog.mjs';
 
-export async function sourceIdentity(){return digest([(await fingerprint(path.join(ROOT,'runner'))).sha256,(await fingerprint(path.join(ROOT,'desktop'))).sha256]);}
+export async function sourceIdentity(){return digest([(await fingerprint(path.join(ROOT,'runner'))).sha256,(await fingerprint(path.join(ROOT,'desktop'))).sha256,await sha(path.join(ROOT,'test-details.mjs')),await sha(path.join(ROOT,'explainer/notes.mjs'))]);}
 export async function checkPrepared(dataDir=dataDirectory(),frozenPlan){
   dataDir=dataDirectory(dataDir);
   let plan=frozenPlan;

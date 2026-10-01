@@ -2,7 +2,7 @@ import {fileURLToPath} from 'node:url';
 import {mkdir,cp,realpath} from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
-import {ROOT,dataDirectory,writeJSON} from './files.mjs';
+import {ROOT,dataDirectory,writeJSON,digest} from './files.mjs';
 import {checkPrepared} from './prepare.mjs';
 import {PackagedEngine,OutcomeError} from './engine.mjs';
 import {CaseContext,cases} from './cases.mjs';
@@ -10,6 +10,7 @@ import {snapshotSource} from '../kits.mjs';
 import {prepareCheckpoint} from '../desktop/checkpoint.mjs';
 import {executeStages} from './stages.mjs';
 import {targetFor} from './catalog.mjs';
+import {testSpecification} from '../test-details.mjs';
 import {connect,execution,updateExecution,record} from './store.mjs';
 
 export async function executeCourse({course,engine,fixtures,onResult,isCancelled=()=>false}){
@@ -35,9 +36,11 @@ async function run(dataDir,runId){
     await mkdir(row.artifact_root,{recursive:true,mode:0o700});
     const root=await realpath(row.artifact_root);if(root!==row.artifact_root)throw new Error('Run artifact path must not contain symlinks.');
     await writeJSON(path.join(root,'plan.json'),plan);await writeJSON(path.join(root,'course.json'),course);
+    const specifications={format:'wizard-smoke-test-specifications/v1',courseHash:plan.courseHash,runnerHash:plan.runnerHash,checks:course.cases.map(testSpecification)};
+    await writeJSON(path.join(root,'test-specifications.json'),specifications);
     await cp(path.join(ROOT,'scope/v1-candidate.json'),path.join(root,'scope.json'));
     const sourceHash=await snapshotSource(path.join(root,'source'));
-    await writeJSON(path.join(root,'execution-context.json'),{startedAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,node:process.version,osRelease:os.release(),operator:db.prepare('SELECT operator FROM runs WHERE id=?').get(runId).operator,sourceHash,evidenceMode:course.target,runtime:plan.runtime||null,runnerHash:plan.runnerHash});
+    await writeJSON(path.join(root,'execution-context.json'),{startedAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,node:process.version,osRelease:os.release(),operator:db.prepare('SELECT operator FROM runs WHERE id=?').get(runId).operator,sourceHash,testSpecificationsHash:digest(specifications),evidenceMode:course.target,runtime:plan.runtime||null,runnerHash:plan.runnerHash});
     await cp(plan.fixtureRoot,path.join(root,'media'),{recursive:true,errorOnExist:true,force:false});
     engine=new PackagedEngine(plan,root,runId,schema);await engine.start();
     updateExecution(db,runId,'Running','Running the local packaged-engine course.',process.pid);

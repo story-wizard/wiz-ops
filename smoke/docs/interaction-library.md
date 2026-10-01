@@ -66,3 +66,16 @@ The desktop helpers `mediaItem`, `mediaMenu` and `openTimeline` resolve exact vi
 The smoke-only native bridge also reads slider values, bounded rich-document text/HTML and selectable graphics-item rectangles/labels. `type-text` sends up to 1,024 printable ASCII characters through key events. The editor batches use these observations to select an actual graph node and verify bypass, or type a document mention; direct graph/document mutation is not used to imitate those gestures.
 
 The revision-8 expansion adds owned-window Metal capture (`snapshot-presented`), slider groove/handle and tab geometry, native context menus, double-click, and the application's own model MIME/drop-event path. The latter is intentionally scoped to Qt drag/drop handling, not an OS pointer drag. Focus retries are bounded and idempotent; mutations are never replayed. Background sessions reject these input paths. See the playback, Spellbook, relink and curves expansion (historical report retained outside Git).
+
+## Physical desktop input
+
+`desktop/physical-input.mjs` resolves current Qt widgets to verified native
+windows, adds title-bar chrome to point coordinates, and dispatches actual macOS
+clicks, drags and keyboard events. Cross-window drags can take a glossary result
+into its canvas. The existing native bridge reads node positions and visible
+port centers so a test can address the same node and verify the resulting graph.
+
+`desktop/check-physical.mjs` demonstrates setup, native gesture, independent
+readback and screenshots. Its course remains a candidate until reviewed. Use
+`node scripts/probe-physical.mjs --plan FILE --checks ID,ID` for a subset and
+`node scripts/export-physical-report.mjs SESSION_FILE` for the local report.

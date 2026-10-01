@@ -1,4 +1,8 @@
-# Wizard smoke harness
+# Athanor · Smoke
+
+**Athanor** is the app’s name; **Smoke** is its everyday moniker. Charles chose the name on September 30, 2026, after the alchemical furnace that maintains even, controlled heat for sustained transmutation. That image guides future smoke-themed design: a steady environment in which tests run, observations accumulate and defects become understandable.
+
+The current UI keeps Wizard’s dark style. Existing CLI names, data formats and the `WizardSmoke` workspace path remain compatible.
 
 A local testing harness with an agent CLI and a dashboard/results viewer for repeatable Wizard smoke tests. It creates disposable projects, executes selected checks, verifies state and output independently, and retains evidence. The web dashboard uses the same local service as agents and optional native clients.
 
@@ -6,14 +10,14 @@ The first release supports automated testing of a selected Wizard build and agen
 
 ## Install a bundled harness
 
-From a supplied bundle's `workspace` directory:
+Double-click `Install Athanor.command` in a supplied bundle. On first opening, choose your browser; Smoke remembers it. Later, use `Open Athanor.command` in the external workspace. For terminal or agent use, from the bundle's `workspace` directory:
 
 ```sh
 node scripts/harness.mjs install --bundle ..
 node scripts/harness.mjs start
 ```
 
-The bundle includes the desktop app, CLI, native adapter and Qt dependencies. Installation does not launch a test. See [build, install and update](docs/maintaining-harness.md) for packaging and maintenance, and [agent tools](docs/agent-tools.md) for single-check and atomic testing.
+The bundle includes the desktop app, CLI, native adapter and Qt dependencies. Use `start --browser choose` to change browsers or `start --no-open` for agent use. Installation does not launch a test. See [build, install and update](docs/maintaining-harness.md) for packaging and maintenance, and [agent tools](docs/agent-tools.md) for single-check and atomic testing.
 
 ## Start from source without a Wizard build
 

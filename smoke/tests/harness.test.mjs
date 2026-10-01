@@ -7,6 +7,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {checkHarnessBundle,installHarness} from '../runner/harness.mjs';
 import {installedRuntime,runtimeIdentity,runtimeEnvironment} from '../runner/runtime.mjs';
 import {ROOT,fingerprint,digest,writeJSON,readJSON,inside} from '../runner/files.mjs';
+import {openDashboard} from '../runner/browser.mjs';
 
 async function fixtureBundle(directory,version){
  await mkdir(path.join(directory,'workspace'),{recursive:true});await mkdir(path.join(directory,'tools'));
@@ -26,6 +27,7 @@ test('bundled runtime installation survives relocation, retains older versions, 
   const installed=await installHarness(a,data);
   assert.equal(installed.id,first.id);assert.ok(inside(data,installed.runtime.bridge));
   assert.equal(await readFile(installed.runtime.bridge,'utf8'),'first');
+  assert.ok((await readFile(installed.launcher,'utf8')).includes('--port 0'));
   const updated=await installHarness(b,data);assert.equal(updated.id,second.id);
   assert.equal(await readFile(installed.runtime.bridge,'utf8'),'first','An update must preserve the old runtime');
   assert.equal((await installedRuntime(data)).bridge,updated.runtime.bridge);
@@ -34,6 +36,23 @@ test('bundled runtime installation survives relocation, retains older versions, 
   await assert.rejects(()=>installHarness(a,data),/test run is active/);
   assert.equal((await readJSON(path.join(data,'desktop-runtime.json'))).harness.id,second.id);
  }finally{await rm(root,{recursive:true,force:true});}
+});
+test('first browser choice is remembered only after opening; cancellation and errors preserve it',async()=>{
+ const data=await mkdtemp(path.join(tmpdir(),'smoke browser ')),url='http://127.0.0.1:4321/';
+ const calls=[],launch=async(command,args)=>calls.push({command,args});
+ try{
+  assert.deepEqual(await openDashboard(url,data,{prompt:async()=>'',launch}),{opened:false,cancelled:true});
+  await assert.rejects(()=>readJSON(path.join(data,'browser.json')),e=>e.code==='ENOENT');
+  await openDashboard(url,data,{prompt:async()=>'default',launch});
+  await openDashboard(url,data,{prompt:async()=>{throw Error('Must not prompt twice');},launch});
+  assert.equal(calls.length,2);assert.deepEqual(calls[0],{command:'/usr/bin/open',args:[url]});
+  const app=path.join(data,"Browser's Name.app");await mkdir(app);
+  await openDashboard(url,data,{browser:app,launch});assert.deepEqual(calls.at(-1).args,['-a',app,url]);
+  await assert.rejects(()=>openDashboard(url,data,{browser:'default',launch:async()=>{throw Error('open failed');}}),/open failed/);
+  assert.equal((await readJSON(path.join(data,'browser.json'))).browser,app);
+  await assert.rejects(()=>openDashboard('https://example.com/',data,{browser:'default',launch}),/local dashboard/);
+  await assert.rejects(()=>openDashboard(url,data,{browser:'Safari; touch /tmp/no',launch}),/installed browser/);
+ }finally{await rm(data,{recursive:true,force:true});}
 });
 test('bundle verification rejects changed bytes, extra files and runtime paths outside the bundle',async()=>{
  const root=await realpath(await mkdtemp(path.join(tmpdir(),'smoke bundle checks ')));

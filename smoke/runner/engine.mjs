@@ -74,7 +74,7 @@ export class PackagedEngine{
     if(definition.additionalProperties===false)for(const key of Object.keys(full))assert(Object.hasOwn(definition.properties,key),`${operation}: unexpected parameter ${key}`);
     const [group,op]=operation.split('.');const started=Date.now();
     const receipt=await command(path.join(this.macos,'wiz-cli'),[group,op.replaceAll('_','-'),'--url',this.url,'--no-spawn','--bundle',bundle,'--actor',`system:smoke:${this.runId}`,'--params',JSON.stringify(body),'--json'],{env:this.env,timeout:Math.max(1,Math.min(20000,(this.deadline||Infinity)-Date.now()))});
-    await appendFile(path.join(this.root,'operations.jsonl'),JSON.stringify({sequence:++this.counter,caseId:this.caseId,startedAt:new Date(started).toISOString(),durationMs:Date.now()-started,operation,params:full,...receipt})+'\n');
+    await appendFile(path.join(this.root,'operations.jsonl'),JSON.stringify({sequence:++this.counter,caseId:this.caseId,stepId:this.stepId||null,expectedError:expectedError||null,startedAt:new Date(started).toISOString(),durationMs:Date.now()-started,operation,params:full,...receipt})+'\n');
     const envelope=parseEnvelope(receipt,operation,expectedError);
     if(envelope.ok&&typeof envelope.bundle_version==='string'&&envelope.bundle_version)this.revisions.set(bundle,envelope.bundle_version);
     return envelope.result;

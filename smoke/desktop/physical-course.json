@@ -1,0 +1,44 @@
+{
+  "id": "physical-spellbook-candidate",
+  "revision": 2,
+  "target": "Instrumented isolated desktop with native macOS input",
+  "status": "Candidate",
+  "cases": [
+    {
+      "id": "P-SB-CREATE",
+      "sourceId": "SB-01",
+      "title": "New Spell through native shortcut and button",
+      "expected": "Command-Shift-N and the corner button create distinct empty documents and visible tabs."
+    },
+    {
+      "id": "P-SB-SEARCH-DROP",
+      "sourceId": "SB-02",
+      "title": "Both search shortcuts and physical glossary drag",
+      "expected": "Each shortcut opens Quick Node Search; dragging Text from results creates exactly one text node; Undo restores the empty graph."
+    },
+    {
+      "id": "P-SB-WIRE",
+      "sourceId": "SB-03",
+      "title": "Physical output-to-input wire gesture",
+      "expected": "Dragging a source output to a local effect input creates the requested edge; one Undo removes it and Redo restores it."
+    },
+    {
+      "id": "P-SB-BYPASS",
+      "sourceId": "SB-05",
+      "title": "D shortcut bypass and restore",
+      "expected": "Selecting a local effect and pressing D toggles its bypass state, then restores it without changing another node."
+    },
+    {
+      "id": "P-SB-GESTURE-UNDO",
+      "sourceId": "SB-11",
+      "title": "Node movement is one Undo gesture",
+      "expected": "One physical drag changes the intended node position; one Undo restores that position and a second Undo reverses the earlier separate marker edit."
+    },
+    {
+      "id": "P-SB-DOCK",
+      "sourceId": "SB-09",
+      "title": "Float and redock a populated Spellbook",
+      "expected": "A visible Float/Detach control floats the Spellbook panel; physical native title-bar redocking preserves the document, nodes, edges, parameters and layout."
+    }
+  ]
+}

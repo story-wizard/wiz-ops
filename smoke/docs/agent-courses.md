@@ -124,6 +124,230 @@ Current package compatibility remains conservative: the selected package must ma
 
 The canonical full Smoke Test course and V1 scope remain distinct from a custom course. The maintained `packaged-full` selection represents all 57 packaged checks, not all 143 automated definitions or every behavior in Logan's checklist.
 
+## Friday release testing
+
+Choose the downloaded Friday package explicitly. Use the maintained 57-check
+packaged engine course first:
+
+```sh
+node scripts/smoke.mjs plan --app "/path/to/Friday/Wizard.app" --course packaged-full --out /tmp/friday-plan.json
+node scripts/smoke.mjs run --plan /tmp/friday-plan.json --operator "Tester name" --request-id friday-release-001
+node scripts/smoke.mjs wait --run RUN_ID --timeout 45
+node scripts/smoke.mjs report --run RUN_ID
+```
+
+Repeat `wait` while the run is active. A changed package requires a new plan.
+Keep an unexpected result in the report and investigate it after the release
+test. The report names the tested builds: selected package engine, instrumented
+desktop/services, and selected package computer use. Filter by build to review
+each lane.
+
+### Computer-use companion
+
+The UI pilot adds projectless and project Preferences, New Project, Save As,
+quit/reopen, both New Spell paths, both Spellbook search shortcuts, and float/redock. These are pilot definitions
+linked to Logan's rows; their results stay separate from the accepted course.
+
+```sh
+node scripts/computer-use.mjs prepare --run RUN_ID --data-dir "/path/to/smoke/workspace"
+node scripts/computer-use.mjs status --run RUN_ID --data-dir "/path/to/smoke/workspace"
+node scripts/computer-use.mjs record --run RUN_ID --data-dir "/path/to/smoke/workspace" --file /tmp/ui-observation.json
+node scripts/smoke.mjs report --run RUN_ID
+```
+
+By default, prepare retains an unchanged package copy and a frozen checklist under the run's
+`computer-use` directory. Bind Computer Use to that exact app path, read each
+case's steps, and use keyboard/mouse input. Save screenshots and accessibility
+observations in its `evidence` directory. Use a scratch directory and copy the
+files there if the computer-use sandbox cannot write to the workspace directly.
+The app uses the current macOS user's preferences; these checks keep preference
+values unchanged and use only owned test projects.
+
+Record one terminal observation at a time using the current pass revision:
+
+```json
+{
+  "id": "C-UI-05-PROJECTLESS",
+  "revision": 1,
+  "status": "Pass",
+  "note": "Application Preferences opened without a project. Cancel returned to the hub.",
+  "artifacts": ["evidence/projectless-preferences.jpg", "evidence/returned-hub.txt"]
+}
+```
+
+PNG and JPEG screenshots retain their original bytes. Pass/Fail requires a
+screenshot. New Project also requires `project` with a saved bundle path relative
+to the companion root. Save As requires `project` and `original`; independent
+inspection checks that the original and copied timelines retain their bytes.
+Saved projects belong under `projects/`. An already recorded verdict cannot be
+overwritten. A fresh automated run supplies a fresh UI companion.
+
+The New Project Location field takes the complete bundle path, for example
+`.../computer-use/projects/Release UI First.wiz`. Supplying just the `projects`
+directory creates a sibling `projects.wiz` bundle.
+
+Use `--checks ID,ID` on `prepare` to freeze a subset in the requested order.
+Save As and quit/reopen require New Project earlier in that selection.
+
+### Smoke-only Cocoa attachment
+
+An optional attachment replaces the Cocoa plugin in the owned copy of an
+already built arm64 app. It supports the locally qualified Qt 6.11.2 plugin:
+
+```sh
+node scripts/computer-use.mjs prepare --run RUN_ID \
+  --cocoa-plugin /path/to/reviewed/platforms/libqcocoa.dylib \
+  --cocoa-sha256 REVIEWED_SHA256 \
+  --checks C-UI-05-PROJECTLESS,C-LP-02-NEW,C-UI-05-PROJECT,C-LP-02-REOPEN
+```
+
+The runner checks the supplied hash and bundled Qt version, rewrites the
+plugin's two Homebrew framework links to the app's original bundled frameworks,
+and signs the replacement locally. It rejects any other package-file change.
+The companion retains the source package hash, modified package hash and plugin
+hashes. Reports label this lane "Smoke copy · patched Cocoa plugin".
+The installed app and build pipeline stay unchanged.
+
+September 30 qualification on `oz-model-reg-ui2` passed projectless Preferences,
+New Project/save, project Preferences and a normal quit/reopen. The corner New
+Spell button worked. Canvas coordinates were rejected by Computer Use with
+`windowNotFoundAtPosition`, so shortcut and dock gestures remained blocked.
+The earlier Save As probe crashed with a different QtWidgets accessibility stack.
+Qualify each downloaded package before relying on this attachment for its UI course.
+
+If the app exits or an action's outcome is uncertain, record `Unknown`, retain
+the observation, and mark dependent checks `Blocked`. On September 30, the
+`oz-model-reg-ui2` package passed projectless Preferences, then crashed in the
+macOS accessibility path during New Project. The remaining three pilot checks
+were blocked. Qualify this path on Friday's package before assigning it a UI
+pass.
+
+### Native input fallback
+
+When the standard Computer Use app or coordinate lookup fails, use the owned
+companion's native input command. It discovers the Unix PID by the exact
+`wizard-bin` executable and reads that process's accessibility windows directly.
+It uses accessibility actions for controls, macOS pointer events for physical
+clicks/drags, PID-targeted keyboard events, and window-specific screenshots.
+
+```sh
+node scripts/computer-use.mjs input --run RUN_ID --data-dir "/path/to/smoke/workspace" --file /tmp/native-request.json
+```
+
+Start with `{"command":"inspect","depth":16}`. Use the returned PID, start time,
+window ID and frame in subsequent requests. An example drag request is:
+
+```json
+{
+  "command": "drag",
+  "pid": 12345,
+  "started": "COPY THE INSPECTED START TIME",
+  "window": 67890,
+  "frame": {"x": 100, "y": 100, "width": 1200, "height": 800},
+  "button": "middle",
+  "x": 400, "y": 300,
+  "toX": 450, "toY": 330
+}
+```
+
+Replace the sample identity and geometry with fresh observations. Coordinates
+are relative to the window in macOS points; captures are two pixels per point.
+`button` accepts `left` (default), `middle` and `right`. Other commands:
+
+- `click`: same identity/geometry with `x`, `y`.
+- `key`: same identity/geometry with `key`, such as `cmd+shift+n` or `cmd+k`.
+- `action`: PID/start time, observed `path` or unique `identifier`, `role`, `title`,
+  and optional `action` (default `AXPress`).
+- `set-value`: same control identity with bounded `value`; secure fields are rejected.
+- `screenshot`: PID/start time and `window`; the runner assigns its evidence path.
+
+The helper compiles once into the external workspace using the installed Swift
+compiler. Requests and receipts are retained under the run's `evidence/` folder;
+screenshots can be passed directly to `record`. The helper checks package and
+driver hashes, process start time, window geometry, foreground ownership and
+pointer hit tests. It uses existing permissions and stops when they are absent.
+It makes no app bundle, signature, preference or permission changes.
+
+`Observed` identifies a successful read. `Dispatched` requires a subsequent
+state or screenshot assertion. `Blocked` means no input was dispatched;
+`Unknown` requires inspection before further actions and is never replayed
+by this helper. The CLI returns exit 2 for either nonpassing state.
+
+September 30 qualification on the existing smoke copy verified New Spell by
+both native click and Command-Shift-N, Command-K search, panel-divider movement,
+and physical middle-button canvas panning. Search-panel opening also reproduced
+a QtWidgets accessibility crash in `QComboBox::clear`; retain it as a failed
+app path. Node movement, wiring and float/redock still need their own fixtures
+and outcome checks. These observations do not replace earlier frozen results.
+
+### Physical Spellbook candidates
+
+The next physical course exercises six Logan paths: New Spell (SB-01), both
+search shortcuts and glossary drag/drop (SB-02), wire connection with Undo/Redo
+(SB-03), D bypass (SB-05), node-move Undo boundaries (SB-11), and float/redock
+with retained canvas content (SB-09).
+
+These candidate definitions live in `desktop/physical-course.json`, separate
+from the accepted 137-check registry. Use an existing prepared plan with the
+isolated desktop runtime and the current runner fingerprint. Execution exports
+an interactive report automatically:
+
+```sh
+node scripts/probe-physical.mjs --list
+node scripts/probe-physical.mjs --plan /absolute/current-plan.json
+node scripts/probe-physical.mjs --plan /absolute/current-plan.json --checks P-SB-WIRE,P-SB-GESTURE-UNDO
+node scripts/export-physical-report.mjs /absolute/desktop-run/session.json
+```
+
+Each check prepares a new Spell. CLI operations author fixtures; native input
+executes the tested gesture; CLI state, widget geometry and retained screenshots
+verify the result. The wire fixture uses an image source and one blur with its
+image and mask inputs. Source → two effects → output remains an expansion of
+that row.
+
+For these node-heavy checks, `physical-input.mjs` combines Qt widget inspection
+with the native driver's `window-server` mode. It reads window ownership and
+geometry through CoreGraphics and sends physical events without querying Qt's
+accessibility tree. This avoids activating the combo accessibility crash path.
+The driver checks popup layers, both ends of cross-window drags, process start
+time and foreground ownership. Floating panels use their native title bar;
+docked panels are resolved through their owning dock area, including elided
+labels. Float/Detach uses an observed context-menu action. Existing accessibility commands remain available for other controls.
+
+The local report uses the same filtered/sortable report table and keeps requests,
+receipts and screenshots under expandable evidence. An uncertain mutation stops
+execution. A failed assertion remains a failed result for investigation; the
+runner does not repair the application or publish Jira issues.
+
+### Physical editor candidates
+
+```sh
+node scripts/probe-physical.mjs --course editor --list
+node scripts/probe-physical.mjs --course editor --plan /absolute/current-plan.json
+node scripts/probe-physical.mjs --course editor --plan /absolute/current-plan.json --checks P-RG-WIRE,P-CURVE-LIVE
+```
+
+This candidate course maps seven physical paths to TL-01, RG-01, PF-05 and
+PF-07. Every mutating path creates a fresh timeline/clip. Bin drops explicitly
+keep timeline settings when Wizard asks. Known drop rejections are captured
+and dismissed; an unexpected modal dialog blocks further execution.
+
+Render Graph port geometry is read from the smoke plugin; mouse gestures and
+shortcuts use the verified native PID/window driver. The driver accepts bounded
+drag durations up to ten seconds. Native execution is asynchronous so the
+runner can sample the displayed Metal preview while the pointer is held.
+Only samples entirely between recorded mouse-down/up times count. Live-preview
+assertions reject stale, blank, unchanged and post-release-only frames. Reports
+retain sample images, capture timings, input receipts and graph observations,
+including when a check fails.
+
+PF-05 currently uses an existing primary-grade node and a warmed displayed
+frame. Cold-cache first-frame qualification remains a separate expansion.
+The local sample intervals measure observation responsiveness; frame-rate and
+stall acceptance budgets still need their own measurements and agreement.
+TL-01 insert placement and RG-01 adding a node from the library remain separate
+paths. Candidate outcomes stay outside the accepted catalog until reviewed.
+
 ## Local run kits
 
 ```sh
