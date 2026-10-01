@@ -76,9 +76,9 @@ body::after {
 .smoke-wordmark::before, .smoke-wordmark::after { display: none; }
 .report-banner .smoke-wordmark { width:180px; height:80px; }
 .top { position:relative; }
-.wizard-signature { position:absolute; right:16px; bottom:8px; width:64px; height:auto; opacity:.55; filter:invert(1); pointer-events:none; z-index:2; }
+.wizard-signature { position:absolute; right:16px; bottom:10px; width:clamp(80px,6.5vw,112px); height:auto; opacity:.68; filter:invert(1); pointer-events:none; z-index:2; }
 .page-header .wizard-signature, .report-banner .wizard-signature { right:calc(50% - 50vw + 16px); }
-.top .wizard-signature { bottom:5px; }
+.top .wizard-signature { width:72px; bottom:3px; }
 .smoke-brand::before, .smoke-brand::after {
   content: "";
   position: absolute;
@@ -108,8 +108,16 @@ body::after {
 .smoke-brand-compact::before, .smoke-brand-compact::after { height: 75px; top: -24px; opacity: .2; }
 .report-banner { --scene-size: max(120%, 357px); align-items: center; min-height: 119px; }
 .report-banner .smoke-brand:not(.smoke-wordmark) { font-family: Georgia, 'Times New Roman', serif; font-size: 24px; }
-.header-actions { position: relative; z-index: 1; padding: 7px 11px; background: #111b28b3; border-radius: 6px; }
-.header-actions .text-button, .header-actions summary { color: #c3d5e8; }
+.header-actions { position:relative; z-index:3; padding:0; gap:14px; background:transparent; }
+.header-actions > .text-button, .header-actions .workspace-menu > summary {
+  color:#b8c5d2;
+  padding:5px 3px;
+  border-radius:4px;
+  text-shadow:0 1px 3px #07101e;
+}
+.header-actions > .text-button:hover, .header-actions .workspace-menu > summary:hover,
+.header-actions .workspace-menu[open] > summary { color:#e0ebf5; background:#10192540; }
+.header-actions .workspace-menu > div { top:calc(100% + 8px); }
 @keyframes brand-float { from { transform: translateY(1px); } to { transform: translateY(-2px); } }
 @keyframes brand-cloud {
   from { transform: translate(-5px, 3px) scale(.94, .9); }
@@ -119,7 +127,7 @@ body::after {
   .page-header h1.smoke-brand { font-size: 28px; }
   .page-header h1.smoke-wordmark { width:150px; height:62px; font-size:0; }
   .page-header { min-height: 138px; flex-wrap: wrap; align-content: center; gap: 12px; }
-  .header-actions { padding: 5px 7px; }
+  .header-actions { padding:0; gap:10px; }
   .header-actions .text-button, .header-actions summary { font-size: 11px; }
   .smoke-brand::before, .smoke-brand::after { width: calc(100% + 40px); left: -20px; }
   .smoke-brand-compact { font-size: 12px; }
