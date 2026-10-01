@@ -1,0 +1,178 @@
+/* Athanor: Wizard's blue controls, with smoke kept behind the work. */
+:root {
+  --smoke-edge: #3b4857;
+  --smoke-blue: #8cbee7;
+  --control-accent: #447ab0;
+  --control-hover: #5385b6;
+}
+body {
+  min-height: 100vh;
+  isolation: isolate;
+  background: #181c22;
+  color: #d4d4d4;
+}
+body::before, body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  left: -12%;
+  right: -12%;
+  bottom: -10vh;
+  height: 65vh;
+}
+body::before {
+  background:
+    radial-gradient(ellipse at 12% 100%, #76889838, transparent 60%),
+    radial-gradient(ellipse at 82% 100%, #70889e40, transparent 58%),
+    linear-gradient(0deg, #697c903b, #3c536719 42%, transparent 85%);
+}
+body::after {
+  background:
+    radial-gradient(ellipse at 25% 80%, #acb7c624, transparent 42%),
+    radial-gradient(ellipse at 70% 100%, #a4b5c430, transparent 48%);
+  animation: smoke-drift 28s ease-in-out infinite alternate;
+}
+.page-header h1, main > header > span, .top > span { color: #c7ddf1; }
+.page-header h1::before {
+  content: "✦";
+  color: var(--smoke-blue);
+  margin-right: 10px;
+  text-shadow: 0 0 14px #75ace650;
+}
+.tabs { border-bottom-color: var(--smoke-edge); }
+.tabs button { color: #9aa9b9; }
+.tabs button.active {
+  color: #cce5fa;
+  border-bottom-color: var(--smoke-blue);
+  text-shadow: 0 0 18px #87bceb38;
+}
+.launch-workspace form, .filterbar, .table-wrap, .table,
+.coverage-overview, .area-chart, .empty-state, .metrics {
+  background: linear-gradient(135deg, #252b33f5, #20252cf5);
+  border-color: var(--smoke-edge);
+  border-radius: 8px;
+  box-shadow: 0 1px 0 #ffffff08 inset, 0 12px 32px #00000014;
+}
+.launch-workspace form { border-top-color: #5a7187; }
+.launch-step { border-bottom-color: #37414e; }
+.launch-footer {
+  background: linear-gradient(100deg, #242c34, #2c3845);
+  border-top-color: var(--smoke-edge);
+}
+.launch-workspace input, .launch-workspace select,
+input:not([type=checkbox]), select, textarea {
+  color: #d4dce5;
+  background-color: #1d232b;
+  border-color: #485768;
+  border-radius: 5px;
+  transition: border-color .18s ease, box-shadow .18s ease;
+}
+.launch-workspace input:hover, .launch-workspace select:hover,
+input:not([type=checkbox]):hover, select:hover { border-color: #637990; }
+select option { background: #242b34; color: #d4dce5; }
+:focus-visible {
+  outline: 2px solid var(--smoke-blue);
+  outline-offset: 3px;
+}
+.button, #reset, .drawer-top button, [data-copy], .courses button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: #cbd9e7;
+  background: linear-gradient(180deg, #3d4b5b, #303b48);
+  border: 1px solid #5b6d80;
+  border-radius: 6px;
+  box-shadow: 0 1px 0 #ffffff10 inset, 0 2px 5px #0003;
+  transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.button::after, #reset::after, .drawer-top button::after, [data-copy]::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -30% -40%;
+  background: radial-gradient(ellipse at 25% 100%, #e6f0ff45, transparent 58%);
+  opacity: 0;
+  transform: translateX(-12%) translateY(20%);
+  transition: opacity .3s ease, transform .6s ease;
+}
+.button:hover:not(:disabled), #reset:hover, .drawer-top button:hover:not(:disabled),
+[data-copy]:hover, .courses button:hover:not(:disabled) {
+  color: #f0f6ff;
+  background: linear-gradient(180deg, #4a5d72, #37495d);
+  border-color: #7b98b5;
+  box-shadow: 0 1px 0 #ffffff15 inset, 0 3px 14px #477bae24;
+  transform: translateY(-1px);
+}
+.button:hover:not(:disabled)::after, #reset:hover::after,
+.drawer-top button:hover:not(:disabled)::after, [data-copy]:hover::after {
+  opacity: 1;
+  transform: translateX(12%) translateY(-10%);
+}
+.button.primary {
+  background: linear-gradient(180deg, #447ab0, #3b6896);
+  border-color: #78a6cc;
+  color: #fff;
+  box-shadow: 0 1px 0 #d7eaff30 inset, 0 3px 16px #447ab030;
+}
+.button.primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #4677a4, #39658f);
+  border-color: #9ec5e5;
+}
+.button.primary::after {
+  background: radial-gradient(ellipse at 25% 100%, #10243c60, transparent 58%);
+}
+.button.primary:active:not(:disabled), .button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px #0004 inset;
+}
+.button:disabled { box-shadow: none; }
+.button:disabled::after { display: none; }
+th { background: #2b3541; color: #afc1d3; }
+tr[data-test]:hover, tr[data-run]:hover, tr[data-result]:hover,
+#checks tbody tr:hover { background: #304052; }
+.run-progress {
+  position: relative;
+  height: 12px;
+  padding: 2px;
+  gap: 0;
+  border-radius: 8px;
+  background: #131a22;
+  box-shadow: 0 0 0 1px #415166, 0 1px 4px #0007 inset;
+}
+.run-progress .segment { border-radius: 3px; box-shadow: 0 1px 0 #ffffff25 inset; }
+.run-progress .segment.pass { background: linear-gradient(180deg, #80c69c, #4d9570); }
+.run-progress .segment.fail { background: linear-gradient(180deg, #e89191, #b65c67); }
+.run-progress .segment.blocked { background: linear-gradient(180deg, #e6c284, #bb8e4f); }
+.run-progress .segment.n-a { background: linear-gradient(180deg, #aeb8c4, #758397); }
+.run-progress .segment.unknown { background: linear-gradient(180deg, #cfac8c, #9b7655); }
+.run-progress .segment.running {
+  background: linear-gradient(110deg, #487cad 15%, #a4d5f2 45%, #568cbd 75%);
+  background-size: 220% 100%;
+  animation: progress-flow 3s linear infinite;
+}
+dialog {
+  background: #222a33;
+  border-color: #52677d;
+  box-shadow: 0 12px 60px #0008;
+}
+dialog[open] { animation: smoke-reveal .2s ease-out; }
+dialog::backdrop { background: #0d141db0; }
+.drawer-top, .top { background: #1b232c; border-color: #3b4857; }
+.workspace-menu > div, .more-filters > div, .hint-text { background: #27313d; border-color: #52677d; }
+.ops code { color: #b8d6ed; background: #2c3b4b; border-radius: 4px; }
+@keyframes smoke-drift {
+  from { transform: translate3d(-3%, 3%, 0); opacity: .55; }
+  to { transform: translate3d(3%, -5%, 0); opacity: .95; }
+}
+@keyframes progress-flow { from { background-position: 100% 0; } to { background-position: -120% 0; } }
+@keyframes smoke-reveal { from { opacity: .5; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+@media print {
+  body::before, body::after { display: none; }
+  body { background: white; color: #111; }
+  .table, .table-wrap { background: white; box-shadow: none; }
+  th { background: #eee; color: #333; }
+}
