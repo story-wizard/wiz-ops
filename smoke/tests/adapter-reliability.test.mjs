@@ -9,6 +9,14 @@ import {verifyNativeCapabilities} from '../desktop/adapter.mjs';
 import {waitForObservation} from '../desktop/check-support.mjs';
 import {executeDesktop} from '../desktop/run.mjs';
 import {writeJSON} from '../runner/files.mjs';
+import {stageObservation} from '../runner/stages.mjs';
+
+test('final blocked results cannot inherit a passing fixture preparation receipt',()=>{
+ const id='D-MEDIA-RELINK',blocked={id,status:'Blocked',error:'Missing Media prevented the actual test'},events=[{id,status:'Pass',evidence:{prepared:true}}];
+ assert.deepEqual(stageObservation(id,{results:[blocked]},events),blocked);
+ assert.equal(stageObservation(id,{results:[]},events).status,'Pass');
+ assert.equal(stageObservation(id,{results:[blocked]},[...events,{id,status:'Running'}]).status,'Unknown');
+});
 
 test('failure collection keeps the original error, observed UI and actual captured bytes',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'athanor-failure-capture-'));
