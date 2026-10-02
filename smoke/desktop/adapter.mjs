@@ -176,7 +176,7 @@ export function verifyNativeCapabilities(ready,required=['inspect']){
 }
 export async function captureDesktopFailure(file,error,label='check'){
   let session;try{session=await readJSON(file);}catch(e){return {captureError:e.message};}
-  const prefix=String(label).replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,80);
+  const prefix=String(label).replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,80)+'-g'+(session.generation||0)+'-'+randomUUID().slice(0,8);
   const evidence={failureState:path.join(session.root,prefix+'-failure-state.json')},diagnostic={error:error.message,status:error.status||'Fail',wait:error.diagnostics||null,captureErrors:[]};
   try{
     diagnostic.ui=await nativeCall(file,'inspect');
@@ -187,7 +187,7 @@ export async function captureDesktopFailure(file,error,label='check'){
 }
 export async function terminateOwnedDesktop(file,live){
   if(live.child.exitCode!==null||live.child.signalCode)return;
-  const session=await readJSON(file);verifyDesktopOwner(session);
+  const session=await readJSON(file);assert(live.child.pid===session.pid,'Cleanup child differs from the recorded owner');verifyDesktopOwner(session);
   live.child.kill('SIGTERM');const force=setTimeout(()=>live.child.kill('SIGKILL'),3000);
   try{await Promise.race([live.closed,pause(6000).then(()=>{throw new OutcomeError('Owned process termination could not be confirmed.','Unknown');})]);}
   finally{clearTimeout(force);}
@@ -195,7 +195,7 @@ export async function terminateOwnedDesktop(file,live){
 }
 export async function nativeCall(file,op,params={}){
   const session=await readJSON(file);verifyDesktopOwner(session);
-  assert(session.inputMode!=='service'||['inspect','screenshot','snapshot-widget'].includes(op),'Background service sessions cannot dispatch UI input. Run the foreground desktop course for UI evidence.');
+  assert(session.inputMode!=='service'||['capabilities','inspect','screenshot','snapshot-widget'].includes(op),'Background service sessions cannot dispatch UI input. Run the foreground desktop course for UI evidence.');
   if(op==='spellbook-run-local'){
     const graph=await desktopCall(file,'spellbook.inspect',{document_id:params.documentId,view:'overview',limit:100});assertLocalPreviewGraph(graph,session.root);
     const ui=await nativeCall(file,'inspect'),panel=ui.widgets.find(w=>w.id===params.target&&w.class==='DetachedGraphPanel');

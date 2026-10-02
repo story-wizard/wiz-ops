@@ -16,13 +16,14 @@ test('failure collection keeps the original error, observed UI and actual captur
   const source=await readFile(new URL('../desktop/adapter.mjs',import.meta.url),'utf8'),start=source.indexOf('export async function captureDesktopFailure('),end=source.indexOf('export async function terminateOwnedDesktop(',start);
   assert.ok(start>=0&&end>start);
   const image=path.join(root,'observed.png');await writeFile(image,Buffer.from('captured-window-bytes'));
-  const prefix=`import path from 'node:path';import {cp} from 'node:fs/promises';import {readJSON,writeJSON,inside} from '${new URL('../runner/files.mjs',import.meta.url).href}';import {assert} from '${new URL('../runner/engine.mjs',import.meta.url).href}';const nativeCall=async(file,op)=>op==='inspect'?{widgets:[{id:'window',window:'window',class:'MainWindow',active:true,title:'Golden.wiz — Wizard'}]}:{path:${JSON.stringify(image)},width:100,height:80};\n`;
+  const prefix=`import path from 'node:path';import {randomUUID} from 'node:crypto';import {cp} from 'node:fs/promises';import {readJSON,writeJSON,inside} from '${new URL('../runner/files.mjs',import.meta.url).href}';import {assert} from '${new URL('../runner/engine.mjs',import.meta.url).href}';const nativeCall=async(file,op)=>op==='inspect'?{widgets:[{id:'window',window:'window',class:'MainWindow',active:true,title:'Golden.wiz — Wizard'}]}:{path:${JSON.stringify(image)},width:100,height:80};\n`;
   const module=path.join(root,'capture.mjs');await writeFile(module,prefix+source.slice(start,end));
   const file=path.join(root,'session.json');await writeJSON(file,{root});
   const {captureDesktopFailure}=await import(pathToFileURL(module).href),error=Object.assign(Error('Expected two tracks'),{status:'Fail',diagnostics:{attempts:5}});
   const evidence=await captureDesktopFailure(file,error,'D-TRACK');
   assert.deepEqual(await readFile(evidence.failureScreenshot),await readFile(image));
   const state=JSON.parse(await readFile(evidence.failureState));assert.equal(state.error,error.message);assert.equal(state.ui.widgets[0].title,'Golden.wiz — Wizard');assert.equal(state.wait.attempts,5);assert.equal(state.image.source,'Qt widget raster');
+  const next=await captureDesktopFailure(file,error,'D-TRACK');assert.notEqual(next.failureState,evidence.failureState);assert.deepEqual(await readFile(evidence.failureScreenshot),await readFile(image),'A later capture must preserve the first evidence');
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
