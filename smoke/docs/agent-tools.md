@@ -25,7 +25,7 @@ node scripts/smoke.mjs run --plan /tmp/track-check-plan.json --operator "Agent s
 node scripts/smoke.mjs status --request-id track-check-001 --server "$ATHANOR_URL"
 ```
 
-`setup` returns known builds, courses and the automatic desktop-tool selection. `list` returns accepted and candidate definitions with their operations and requirements. `plan` adds the declared prerequisites and freezes the exact selection; it does not execute the check. `run` executes only that selection and its prerequisites. The resulting verdict and evidence appear in Results. See [agent-friendly courses](agent-courses.md) for wait, cancel, report and request recovery.
+`setup` returns known builds, courses and the automatic desktop-tool selection. `list` returns course-catalog definitions with their operations and requirements. Physical qualification candidates are available separately in an owned session's context; see [computer-use testing](computer-use-agent.md). `plan` adds the declared prerequisites and freezes the exact selection; it does not execute the check. `run` executes only that selection and its prerequisites. The resulting verdict and evidence appear in Results. See [agent-friendly courses](agent-courses.md) for wait, cancel, report and request recovery.
 
 Desktop/service plans automatically prepare an external adapter for the selected package and its shipped CLI. They never substitute a separate test app. Use `prepare` and poll `preparation --id ID` for step progress and a repair prompt; see [desktop setup](desktop-tools-setup.md). Packaged-only plans do not need the desktop adapter.
 

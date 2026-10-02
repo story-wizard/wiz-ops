@@ -18,9 +18,9 @@ Use Find a build in New run, or the `builds` / `build` agent commands. Read `doc
 
 Read `docs/demo-guide.md` for the short team walkthrough and `examples/agent-onboarding.txt` for the complete setup prompt.
 
-## Start from a checkout
+## Start from a checkout or bundle
 
-Use Node.js 24 or newer, then run these commands from `smoke/`:
+Use Node.js 24 or newer. The command root is `smoke/` in a repository checkout and `workspace/` in a delivered bundle. It contains `package.json`, `scripts/`, `desktop/` and `docs/`; guidance paths below are relative to that root. Run:
 
 ```sh
 npm test

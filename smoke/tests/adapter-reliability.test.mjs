@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
-import {mkdtemp,rm,mkdir,readFile,writeFile} from 'node:fs/promises';
+import {mkdtemp,rm,mkdir,readFile,writeFile,realpath} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {generatedPlacement,createLocalGraphic} from '../desktop/generated-fixture.mjs';
 import {verifyNativeCapabilities,parseNativeResponse} from '../desktop/adapter.mjs';
@@ -97,4 +97,12 @@ test('a group crash after passing assertions cannot produce a successful desktop
   const result=await executeDesktop({directory:root,ids:['D-DOCUMENT-EDIT']},{executeGroup:async p=>{const owned=path.join(p.directory,'owned');await mkdir(owned);return {root:owned,report:{status:'Fail',error:'Final checkpoint failed',results:p.ids.map(id=>({id,status:'Pass'}))}};}});
   assert.equal(result.report.results[0].status,'Pass');assert.equal(result.report.status,'Fail');assert.match(result.report.error,/Final checkpoint failed/);
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('standalone desktop execution retains external workspace defaults after grouping',async()=>{
+ const root=await realpath(await mkdtemp(path.join(tmpdir(),'athanor-standalone-'))),previous=process.env.SMOKE_DATA_DIR;process.env.SMOKE_DATA_DIR=root;let calls=0;
+ try{
+  const result=await executeDesktop(undefined,{isCancelled:()=>calls>0,executeGroup:async(p)=>{calls++;assert.ok(p.directory.startsWith(path.join(root,'desktop-runs')));assert.ok(p.runtime);const owned=path.join(p.directory,'owned');await mkdir(owned);return {root:owned,report:{status:'Pass',results:p.ids.map(id=>({id,status:'Pass'}))}};}});
+  assert.equal(calls,1);assert.ok(result.root.startsWith(path.join(root,'desktop-runs')));assert.equal(result.report.completed,false);
+ }finally{if(previous===undefined)delete process.env.SMOKE_DATA_DIR;else process.env.SMOKE_DATA_DIR=previous;await rm(root,{recursive:true,force:true});}
 });

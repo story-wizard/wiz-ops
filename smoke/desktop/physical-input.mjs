@@ -23,7 +23,7 @@ export async function physicalInput(file,command,params={}){
  if(!widget||!window)throw new OutcomeError(`Physical input target ${params.target} (${widget?.class||'absent'}; window ${widget?.window||'absent'}) is not observable`,'Blocked');
  if(params.expected)assert(['id','window','x','y','width','height'].every(k=>widget[k]===params.expected[k]),'Target geometry changed after resolution; observe again before input');
  if(params.clipId){const fresh=await nativeCall(file,'timeline-clip-rect',{target:widget.id,clipId:params.clipId});assert(JSON.stringify(fresh.rect)===JSON.stringify(params.expectedClip),'Clip geometry changed after resolution; observe again before input');}
- if(command==='type')assert(widget.editableText===true&&u.focus===widget.id,'Physically click the intended editable field before typing; secure and read-only fields are unavailable');
+ if(command==='type'&&!(widget.editableText===true&&u.focus===widget.id))throw new OutcomeError('Physically click the intended editable field before typing; secure and read-only fields are unavailable','Blocked');
  if(command!=='screenshot')await nativeCall(file,'activate',{target:window.id});
  const native=await nativeDesktopInput(file,{command:'inspect',depth:0,mode:'window-server'});
  const matches=native.windows.filter(w=>w.title===window.title&&Math.abs(w.frame.width-window.width)<=1&&Math.abs(w.frame.height-window.height)<=80);

@@ -2,7 +2,7 @@ import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {mkdir,mkdtemp,appendFile,readFile} from 'node:fs/promises';
 import {prepareDesktop,launchDesktop,stopDesktop,terminateOwnedDesktop,captureDesktopFailure,retainChild,desktopCall,nativeCall} from './adapter.mjs';
-import {readJSON,writeJSON,sha} from '../runner/files.mjs';
+import {readJSON,writeJSON,sha,dataDirectory} from '../runner/files.mjs';
 import {command,assert,same,snapshotState} from '../runner/engine.mjs';
 import {saveDiscard} from './check-lifecycle.mjs';
 import {unsetRateExport} from './check-unset-rate.mjs';
@@ -87,9 +87,9 @@ export function desktopGroups(ids,map){
   if(remaining.size)throw Error('Unmapped desktop checks: '+[...remaining].join(', '));
   return groups.sort((a,b)=>(b.name==='check-core.mjs')-(a.name==='check-core.mjs'));
 }
-export async function executeDesktop(prepared,{onResult=async()=>{},isCancelled=()=>false,signal,executeGroup=executeDesktopGroup}={}){
+export async function executeDesktop(prepared={}, {onResult=async()=>{},isCancelled=()=>false,signal,executeGroup=executeDesktopGroup}={}){
   const full=await readJSON(new URL('./course.json',import.meta.url)),ids=prepared?.ids||full.cases.map(c=>c.id),map=await readJSON(new URL('./check-map.json',import.meta.url));
-  const groups=desktopGroups(ids,map),directory=prepared.directory;await mkdir(directory,{recursive:true});const root=await mkdtemp(path.join(directory,'desktop-course-'));
+  const groups=desktopGroups(ids,map),directory=prepared.directory||path.join(dataDirectory(prepared.dataDir),'desktop-runs'),runtime=prepared.runtime||{app:process.argv[2],qtPlugin:process.argv[3],cli:process.argv[4]};await mkdir(directory,{recursive:true});const root=await mkdtemp(path.join(directory,'desktop-course-'));
   const report={course:{...full,cases:full.cases.filter(c=>ids.includes(c.id))},startedAt:new Date().toISOString(),scope:'Fresh owned project and session per independent desktop group',results:[],groups:[]};
   let sessionFile;
   for(const group of groups){
@@ -100,7 +100,7 @@ export async function executeDesktop(prepared,{onResult=async()=>{},isCancelled=
     });
     const timer=setInterval(()=>void poll().catch(()=>{}),500);
     try{
-      const result=await executeGroup({...prepared,directory:owned,ids:[...new Set(['D-CLI-01',...group.ids])]},{isCancelled,signal,onSession:s=>{session=s;},onResult:async r=>{if(group.ids.includes(r.id))await onResult(r,root);}});
+      const result=await executeGroup({...prepared,runtime,directory:owned,ids:[...new Set(['D-CLI-01',...group.ids])]},{isCancelled,signal,onSession:s=>{session=s;},onResult:async r=>{if(group.ids.includes(r.id))await onResult(r,root);}});
       await poll();sessionFile=result.sessionFile;report.guiHash=result.report.guiHash;report.cliHash=result.report.cliHash;
       report.groups.push({name:group.name,root:result.root,sessionFile,status:result.report.status,error:result.report.error||null,cleanupRecovery:result.report.cleanupRecovery||null});
       for(const id of group.ids){const value=result.report.results.find(r=>r.id===id)||{id,status:'Blocked',error:'Group did not retain this observation.'};report.results.push({...value,group:group.name});}

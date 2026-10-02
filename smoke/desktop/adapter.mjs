@@ -222,7 +222,7 @@ export async function nativeCall(file,op,params={}){
   try{
     await writeJSON(path.join(session.native,'request.json'),request);
     for(let i=0;i<100;i++){
-      let response;try{response=parseNativeResponse(await readFile(path.join(session.native,`response-${id}.json`),'utf8'),{id,pid:session.pid,generation:ready.generation});}catch(e){if(e.code!=='ENOENT')throw e;}
+      let response;try{response=parseNativeResponse(await readFile(path.join(session.native,`response-${id}.json`),'utf8'),{id,pid:session.pid,generation:ready.generation});}catch(e){if(e.code!=='ENOENT')throw e.status==='Unknown'?e:new OutcomeError('Cannot read the dispatched native response; outcome unknown. Inspect before continuing.','Unknown');}
       if(response){await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,response})+'\n');assert(response.ok,response.error||'Native operation failed');return response.result;}
       await pause(50);
     }

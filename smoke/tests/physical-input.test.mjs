@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {windowPoint,clipPoint} from '../desktop/physical-input.mjs';
 import {validateNativeRequest,keyboardWindowProof} from '../desktop/macos-input.mjs';
+import {mkdtemp,readFile,writeFile,rm} from 'node:fs/promises';
+import {pathToFileURL} from 'node:url';
 test('physical coordinates include native title chrome and reject stale windows or escaped endpoints',()=>{
  const window={id:'window',window:'window',width:1000,height:700},widget={window:'window',x:20,y:40,width:100,height:60},native={frame:{x:120,y:200,width:1000,height:723}};
  assert.deepEqual(windowPoint(widget,window,native,10,15),{x:30,y:78});
@@ -32,4 +34,15 @@ test('clip targets use current visible rectangles and refuse an offscreen trim e
  assert.throws(()=>clipPoint(geometry,'left-edge'));
  assert.throws(()=>clipPoint({...geometry,visibleRect:{x:0,y:0,width:0,height:0}}));
  assert.throws(()=>clipPoint(geometry,'unknown'));
+});
+
+test('an unfocused text target is Blocked before activation or input',async()=>{
+ const root=await mkdtemp('/private/tmp/athanor-text-focus-');
+ try{
+  const stub=pathToFileURL(root+'/platform.mjs').href;
+  await writeFile(root+'/platform.mjs',`export async function nativeCall(file,op){if(op!=='inspect')throw Error('Activation must not happen');return {focus:'other',widgets:[{id:'field',window:'main',editableText:true},{id:'main',window:'main'}]};}export async function nativeDesktopInput(){throw Error('Input must not happen');}`);
+  const source=(await readFile(new URL('../desktop/physical-input.mjs',import.meta.url),'utf8')).replace(/from '(\.\.?\/[^']+)'/g,(_,relative)=>"from '"+(['./adapter.mjs','./macos-input.mjs'].includes(relative)?stub:new URL(relative,new URL('../desktop/',import.meta.url)).href)+"'");
+  await writeFile(root+'/probe.mjs',source);const {physicalInput}=await import(pathToFileURL(root+'/probe.mjs').href);
+  await assert.rejects(()=>physicalInput('owned-session','type',{target:'field',text:'hello'}),e=>e.status==='Blocked');
+ }finally{await rm(root,{recursive:true,force:true});}
 });

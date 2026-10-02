@@ -4,7 +4,7 @@ Athanor prepares the selected Wizard build and a disposable project, then gives 
 
 ## Open a test session
 
-Start Athanor from `smoke/` with `npm run open -- --no-open`. Use its printed URL for the plan command:
+Start Athanor from the command root (`smoke/` in a checkout, `workspace/` in a bundle) with `npm run open -- --no-open`. Use its printed URL for the plan command:
 
 ```sh
 node scripts/smoke.mjs plan --app /path/to/Wizard.app --checks D-CLI-01 --out /tmp/agent-plan.json --server URL
@@ -12,6 +12,8 @@ node desktop/session.mjs start --plan /tmp/agent-plan.json
 ```
 
 If you use a separate workspace, export `SMOKE_DATA_DIR=/absolute/external/workspace` and keep that same environment for the service and every session/tool command. Keep the second command running. It prints a Ready receipt with the session file and `agent-context.json`. Give those paths to your agent. The context contains the selected package identity, project and media identities, adapter capabilities, available checks, expected outcomes, and tool instructions. Each session starts with a fresh Golden Project fixture.
+
+The course catalog and `list` command expose normal course definitions. Physical qualification candidates such as `P-TRACK-ADD` are supplied by the owned session's context, not by that catalog. Prepare the `D-CLI-01` desktop connection plan above, then use `begin` with the candidate ID from `agent-context.json`. Starting that session prepares the fixture; it does not execute the plan's checks.
 
 Preparation attaches an external adapter to a byte-identical disposable copy of the build. The session holds a shared foreground lease across Athanor workspaces. A competing session receives a Blocked response. The operating system releases the lease when the launcher ends; an uncertain orphan app still needs inspection and cleanup.
 
