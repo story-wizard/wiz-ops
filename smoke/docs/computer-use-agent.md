@@ -89,6 +89,8 @@ Report exports the existing Athanor interactive table and detail drawer, with ac
 
 Toolkit edits, Begin, Verify, Capture, Resolve and Record run one at a time. Observations and waits can sample a held gesture. Wait for the original receipt when another command is in progress. Raw `call`/`native` escape hatches require the same serial discipline. If a command crashes and leaves `agent-action.lock`, inspect its process and the current app state before removing that session-local lock; never remove a live command's lock. Reports freeze a recorded attempt's evidence and actions at its verdict; later investigation appears in a new attempt.
 
+Pass `stepId` from the check specification to label a toolkit action's place in the walkthrough. A step with recorded actions and no lifecycle receipt appears as Observed. Explicit script step outcomes take precedence, and a started step without a terminal receipt remains Unknown.
+
 ## Give this to another agent
 
 > Read smoke/AGENTS.md and smoke/docs/computer-use-agent.md. Prepare the Wizard build I selected, start an owned session, and read its agent-context.json. Check physical readiness. Use CLI/Qt calls for setup and physical input for the action under test. Resolve targets from current observations, verify the expected behavior independently, capture the result, and record the outcome. Export the report and stop your session. Preserve failed and uncertain attempts.

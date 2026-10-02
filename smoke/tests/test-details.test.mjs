@@ -9,6 +9,13 @@ import {writeJSON,readJSON,digest} from '../runner/files.mjs';
 import {testSpecification,actionHistory,stepHistory,evidenceSpec,evidenceCoverage,evidenceItems,exportAgentContext,agentContext,candidateChecks} from '../test-details.mjs';
 import {checkRegistry} from '../runner/catalog.mjs';
 
+test('recorded agent actions make a step Observed without inventing a completion receipt',()=>{
+ const spec={steps:[{id:'edit',title:'Edit'},{id:'verify',title:'Verify'},{id:'unused',title:'Unused'}]},actions=[{stepId:'edit',at:'2026-10-01T10:00:00Z',status:'Completed'}];
+ const history=stepHistory(spec,[],actions);assert.deepEqual(history.map(s=>s.status),['Observed','Not run','Not run']);assert.equal(history[0].actionCount,1);assert.equal(history[0].startedAt,actions[0].at);assert.equal(history[0].finishedAt,null);
+ assert.equal(stepHistory(spec,[{stepId:'edit',status:'Fail',observation:'Wrong state'}],actions)[0].status,'Fail');
+ assert.equal(stepHistory(spec,[{stepId:'edit',status:'Running',at:actions[0].at}],actions)[0].status,'Unknown');
+});
+
 test('a lost mutation response stays Unknown, later steps remain unexecuted and receipts belong to the active step',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'smoke-steps-')),file=path.join(root,'session.json');
  const check={id:'CHECK',title:'Drop clip',expected:'Correct placement',steps:[{id:'setup',title:'Prepare',phase:'prepare'},{id:'drop',title:'Drag',phase:'execute'},{id:'verify',title:'Inspect',phase:'verify'}]};

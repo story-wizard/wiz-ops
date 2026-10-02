@@ -41,8 +41,8 @@ export function actionHistory(operations=[],native=[],input=[]){
 }
 export function stepHistory(spec,events=[],actions=[]){
  return (spec.steps||[]).map(step=>{
-  const records=events.filter(e=>e.stepId===step.id),terminal=records.findLast(e=>e.status!=='Running'),start=records.find(e=>e.status==='Running');
-  return {...step,status:terminal?.status||(start?'Unknown':'Not run'),startedAt:start?.at||null,finishedAt:terminal?.at||null,observation:terminal?.observation||'',actionCount:actions.filter(a=>a.stepId===step.id).length};
+  const records=events.filter(e=>e.stepId===step.id),terminal=records.findLast(e=>e.status!=='Running'),start=records.find(e=>e.status==='Running'),observed=actions.filter(a=>a.stepId===step.id);
+  return {...step,status:terminal?.status||(start?'Unknown':observed.length?'Observed':'Not run'),startedAt:start?.at||observed[0]?.at||null,finishedAt:terminal?.at||null,observation:terminal?.observation||'',actionCount:observed.length};
  });
 }
 export function evidenceCaption(file){
