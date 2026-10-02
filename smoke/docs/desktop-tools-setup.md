@@ -52,6 +52,10 @@ Legacy instrumented test-app bundles remain historical tooling. They must not re
 
 Preparation retains the package hash, adapter hash, actual executable path and PID, isolated settings path, loaded Qt library paths and UI inspection. A completed course also retains the Golden Project, operations, native actions and verdicts. The attachment receipt is fingerprinted in the plan and checked before execution.
 
+The adapter advertises protocol version, supported commands, capture methods and inspection limits in its readiness receipt. Preparation verifies the required startup commands; atomic native calls reject unavailable commands before dispatch. Use `node desktop/session.mjs native SESSION.json capabilities '{}'` to inspect the attached adapter.
+
+Independent desktop groups use fresh projects and sessions. Persistence steps retain their own fixture through the save/reopen sequence. A failed restoration preserves that group's observations and lets the next independent group start after owned-process cleanup is confirmed. Unconfirmed cleanup stops further launches. Missing Media during opening is reported with its dialog; the harness does not choose Continue Offline automatically.
+
 For a direct diagnostic probe, an agent can run:
 
 ```sh

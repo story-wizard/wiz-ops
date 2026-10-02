@@ -5,7 +5,7 @@ import {mkdir,mkdtemp,cp,open,realpath} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {dataDirectory,fingerprint,readJSON,writeJSON,sha,inside} from '../runner/files.mjs';
 import {assert,pause} from '../runner/engine.mjs';
-import {nativeCall,verifyDesktopOwner} from './adapter.mjs';
+import {nativeCall,verifyDesktopOwner,verifyNativeCapabilities} from './adapter.mjs';
 import {setupAttachmentTools,verifyAttachmentTools} from './attachment-tools.mjs';
 
 const run=(command,args,options={})=>execFileSync(command,args,{encoding:'utf8',timeout:120000,...options});
@@ -37,13 +37,14 @@ export async function attachSelectedBuild({app,dataDir=dataDirectory(),preparedS
   while(Date.now()<deadline){if(spawnError)throw spawnError;assert(child.exitCode===null&&!child.signalCode,'Selected build exited before attachment.');try{ready=await readJSON(path.join(native,'ready.json'));break;}catch(e){if(e.code!=='ENOENT')throw e;}await pause(100);}
   assert(ready?.pid===child.pid&&ready.harness===session.harnessId,'Attachment did not bind to the launched process.');
   assert(ready.settingsFormat===1&&inside(settings,ready.settingsFile),'Selected build did not establish isolated INI settings.');
+  session.capabilities=verifyNativeCapabilities(ready,['inspect','click','action','text','key','activate','screenshot']);
   session.pid=child.pid;session.processStart=run('/bin/ps',['-p',String(child.pid),'-o','lstart=']).trim();session.state='Attached';session.settingsFile=ready.settingsFile;session.env=env;
   await writeJSON(file,session);verifyDesktopOwner(session,dataDir);
   const ui=await nativeCall(file,'inspect');assert(ui.widgets.length>0,'Attached process has no observed UI.');await writeJSON(path.join(root,'inspection.json'),ui);
   assert((await fingerprint(copy,{packageTree:true})).sha256===source.sha256,'The selected app changed during attachment.');
   const loaded=run('/usr/sbin/lsof',['-p',String(child.pid),'-Fn'],{maxBuffer:8*1024*1024}).split('\n').filter(line=>line.startsWith('n/')).map(line=>line.slice(1));
   for(const name of ['QtCore','QtGui','QtWidgets'])assert(loaded.some(p=>p===path.join(copy,'Contents/Frameworks',name+'.framework/Versions/A',name))&&!loaded.some(p=>p.includes('/'+name+'.framework/')&&!p.startsWith(copy+'/')),'Attachment loaded '+name+' outside the selected build.');
-  await writeJSON(path.join(root,'attachment-evidence.json'),{selectedApp:app,copy,packageHash:source.sha256,executable:session.executable,pid:session.pid,settingsFile:ready.settingsFile,qtVersion:version,toolHash:session.toolHash,loaded,widgetCount:ui.widgets.length});
+  await writeJSON(path.join(root,'attachment-evidence.json'),{selectedApp:app,copy,packageHash:source.sha256,executable:session.executable,pid:session.pid,settingsFile:ready.settingsFile,qtVersion:version,toolHash:session.toolHash,capabilities:session.capabilities,loaded,widgetCount:ui.widgets.length});
   return {session,file,child,closed};
  }catch(e){child.kill('SIGTERM');const force=setTimeout(()=>child.kill('SIGKILL'),3000);await closed;clearTimeout(force);session.state='Blocked';session.error=e.message;await writeJSON(file,session);throw e;}
 }

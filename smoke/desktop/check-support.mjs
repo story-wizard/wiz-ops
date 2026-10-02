@@ -1,7 +1,7 @@
 import path from 'node:path';
 import {writeFileSync} from 'node:fs';
 import {appendFile} from 'node:fs/promises';
-import {desktopCall,nativeCall} from './adapter.mjs';
+import {desktopCall,nativeCall,captureDesktopFailure} from './adapter.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
 import {assert,pause,OutcomeError,clips,bounds} from '../runner/engine.mjs';
 
@@ -15,6 +15,12 @@ export function requireScriptCompletion(receipt,report,name){
 export function requirePassed(results,ids){
  const missing=ids.filter(id=>results.find(r=>r.id===id)?.status!=='Pass');
  if(missing.length)throw new OutcomeError('Required checks did not pass: '+missing.map(id=>id+' ('+(results.find(r=>r.id===id)?.status||'not executed')+')').join(', '),'Blocked');
+}
+export async function waitForObservation(fn,{description='Expected observation',timeoutMs=5000,intervalMs=100}={}){
+ assert(Number.isFinite(timeoutMs)&&timeoutMs>0&&timeoutMs<=60000&&Number.isFinite(intervalMs)&&intervalMs>0,'Observation wait must be bounded');
+ const started=Date.now();let attempts=0,last;
+ do{attempts++;last=await fn();if(last)return last;await pause(Math.min(intervalMs,Math.max(0,timeoutMs-(Date.now()-started))));}while(Date.now()-started<timeoutMs);
+ const e=new OutcomeError(description+' did not arrive within '+timeoutMs+'ms ('+attempts+' observations).');e.diagnostics={expected:description,elapsedMs:Date.now()-started,attempts,lastObservation:last??null};throw e;
 }
 export function requireExactTimingFixture(snapshot){
  const timed=clips(snapshot).filter(c=>c.source?.timing==='timed');
@@ -66,11 +72,11 @@ export function livePreviewEvidence(baseline,samples,receipt){
 export async function checks(file,name){
   const s=await readJSON(file),report={scope:s.scope,inputMode:s.inputMode||'desktop',pid:s.pid,generation:s.generation,results:[]};
   const output=path.join(s.root,name),n=(op,p)=>nativeCall(file,op,p),c=(op,p,e)=>desktopCall(file,op,p,e),ui=()=>n('inspect');
-  async function until(fn){for(let i=0;i<50;i++){const v=await fn();if(v)return v;await pause(100);}throw Error('Expected observation did not arrive within five seconds');}
-  async function check(id,fn,requires=[]){if(!await beginCheck(file,id))return;try{requirePassed(report.results,requires);report.results.push({id,status:'Pass',evidence:await fn()});}catch(e){report.results.push({id,status:e.status||'Fail',error:e.message});if(e.status==='Unknown'||e.fatal){report.fatal=e.message;await writeJSON(output,report);throw e;}}finally{if(report.results.at(-1)?.id===id)await endCheck(file,report.results.at(-1));}await writeJSON(output,report);}
+  const until=waitForObservation;
+  async function check(id,fn,requires=[]){if(!await beginCheck(file,id))return;try{requirePassed(report.results,requires);report.results.push({id,status:'Pass',evidence:await fn()});}catch(e){report.results.push({id,status:e.status||'Fail',error:e.message,diagnostics:e.diagnostics||null,evidence:await captureDesktopFailure(file,e,id)});if(e.status==='Unknown'||e.fatal){report.fatal=e.message;await writeJSON(output,report);throw e;}}finally{if(report.results.at(-1)?.id===id)await endCheck(file,report.results.at(-1));}await writeJSON(output,report);}
   async function activate(w){for(let i=0;i<10;i++){await n('activate',{target:w.window});await pause(100);if((await ui()).widgets.some(a=>a.id===w.window&&a.active))return;}const e=new OutcomeError('The owned smoke window could not retain keyboard focus; unlock the desktop before retrying','Blocked');e.fatal=true;throw e;}
   async function action(text){const matches=(await ui()).actions.filter(a=>a.text===text&&a.enabled);assert(matches.length===1,`Expected one enabled action: ${text}`);await n('action',{target:matches[0].id});}
-  async function mediaItem(name){return until(async()=>(await ui()).widgets.find(w=>w.class==='QTreeView'&&w.model?.some(r=>r[0]===name)));}
+  async function mediaItem(name){return until(async()=>(await ui()).widgets.find(w=>w.class==='QTreeView'&&w.model?.some(r=>r[0]===name)),{description:'Media item '+name});}
   async function mediaMenu(name,label){
     const view=await mediaItem(name);await activate(view);await n('item-click',{target:view.id,text:name,context:true});
     const menu=await until(async()=>(await ui()).widgets.find(w=>w.class==='QMenu'&&w.menuItems?.some(a=>a.text===label&&a.enabled)));

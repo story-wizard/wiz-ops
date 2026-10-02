@@ -24,6 +24,8 @@ Supported kinds are `image`, `video`, `audio` and `json`. Supported collection p
 
 Retain artifacts in the owned run directory. Include them in the result’s `evidence` object using absolute paths inside that directory or `evidence/` relative paths. Pass and fail results may both retain artifacts. Use captions to explain what a reader should look for. Screenshots and recordings must target the owned app window or preview, rather than the whole desktop.
 
+The shared desktop check helpers automatically retain a failure-state JSON file and a screenshot of the observed owned window when capture is available. The JSON includes the original error, the last UI inspection, wait diagnostics and any capture errors. Capture failure does not replace the original verdict. These screenshots are Qt widget rasters; tests of displayed GPU imagery still need their declared presented-window capture. Bounded observation waits retain the expected condition, attempts, elapsed time and last returned observation. Give waits a descriptive condition when authoring checks.
+
 The physical Render Graph checks require a `graph-state` JSON capture, retained as `CHECK-ID-graph-observations.txt`. It holds the before and after graph state used by the assertions. Input receipts cannot satisfy that requirement. Named `-before`, `-after` and `-undo` captures retain their collection point even if a later step fails.
 
 The physical live-preview checks retain timed PNG samples and before/after graph JSON. Report export can encode those samples into a video at their observed spacing. This is a sampled preview sequence. Full motion or audio checks should declare and capture their own recording.

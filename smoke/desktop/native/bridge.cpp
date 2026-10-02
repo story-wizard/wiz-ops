@@ -74,6 +74,11 @@ class SmokeBridge : public QObject {
         QSaveFile output(root+"/"+file);if(!output.open(QIODevice::WriteOnly))return;
         output.write(QJsonDocument(value).toJson());output.commit();
     }
+    static QJsonObject capabilities(){
+        return {{"protocol",1},{"version",2},{"operations",QJsonArray{"capabilities","inspect","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
+                {"limits",QJsonObject{{"modelRows",64},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
+                {"captures",QJsonObject{{"screenshot","Qt widget raster"},{"snapshot-presented","Owned native window pixels"},{"snapshot-node-preview","Rendered graph preview"}}}};
+    }
     QJsonObject inspect(){
         QJsonArray widgets,actions;QSet<QAction*> seen;
         for(auto* w:QApplication::allWidgets()){
@@ -114,6 +119,7 @@ class SmokeBridge : public QObject {
         if(request["generation"].toString()!=generation)throw QString("Stale GUI generation");
         const auto op=request["op"].toString(),key=request["target"].toString();
         QObject* target=objects.value(key);auto* widget=qobject_cast<QWidget*>(target);
+        if(op=="capabilities")return capabilities();
         if(op=="inspect")return inspect();
         if(op=="quit"){
             if(!widget||!widget->isWindow()||!widget->isVisible()||QString(widget->metaObject()->className())!="MainWindow"||QApplication::activeModalWidget())throw QString("Quit requires the observed main window with no modal dialog");
@@ -211,7 +217,7 @@ public:
     explicit SmokeBridge(QString directory):QObject(qApp),root(std::move(directory)){
         QCoreApplication::setAttribute(Qt::AA_DontUseNativeDialogs); // Only this disposable smoke process.
         connect(qApp,&QCoreApplication::aboutToQuit,this,[this]{restoreClipboard();save("quit-observed.json",{{"pid",qint64(QCoreApplication::applicationPid())},{"generation",generation},{"event","aboutToQuit"}});});
-        save("ready.json",{{"cocoaImage",QString::fromUtf8(class_getImageName(objc_getClass("QMacAccessibilityElement")))},{"pid",qint64(QCoreApplication::applicationPid())},{"generation",generation},{"harness",qEnvironmentVariable("WIZ_HARNESS_RUN_ID")},{"settingsFile",QSettings().fileName()},{"settingsFormat",int(QSettings().format())}});
+        save("ready.json",{{"cocoaImage",QString::fromUtf8(class_getImageName(objc_getClass("QMacAccessibilityElement")))},{"pid",qint64(QCoreApplication::applicationPid())},{"generation",generation},{"harness",qEnvironmentVariable("WIZ_HARNESS_RUN_ID")},{"settingsFile",QSettings().fileName()},{"settingsFormat",int(QSettings().format())},{"capabilities",capabilities()}});
         auto* timer=new QTimer(this);timer->setInterval(100);
         connect(timer,&QTimer::timeout,this,[this]{
             QFile input(root+"/request.json");if(!input.open(QIODevice::ReadOnly))return;

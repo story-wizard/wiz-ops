@@ -1,12 +1,12 @@
-import {beginCheck,endCheck} from './check-support.mjs';
+import {beginCheck,endCheck,waitForObservation} from './check-support.mjs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
-import {desktopCall,nativeCall} from './adapter.mjs';
+import {desktopCall,nativeCall,captureDesktopFailure} from './adapter.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
 import {assert,pause,same,snapshotState} from '../runner/engine.mjs';
 const file=process.argv[2],s=await readJSON(file),report={scope:s.scope,pid:s.pid,generation:s.generation,guiHash:s.guiHash,bridgeHash:s.bridgeHash,results:[]};
-async function check(id,fn){if(!await beginCheck(file,id))return;try{const evidence=await fn();report.results.push({id,status:'Pass',evidence});}catch(e){report.results.push({id,status:e.status||'Fail',error:e.message});if(e.status==='Unknown'){await writeJSON(path.join(s.root,'desktop-core-report.json'),report);await endCheck(file,report.results.at(-1));throw e;}}await writeJSON(path.join(s.root,'desktop-core-report.json'),report);await endCheck(file,report.results.at(-1));}
-async function until(fn){for(let i=0;i<50;i++){const value=await fn();if(value)return value;await pause(100);}throw new Error('GUI observation did not arrive within five seconds.');}
+async function check(id,fn){if(!await beginCheck(file,id))return;try{const evidence=await fn();report.results.push({id,status:'Pass',evidence});}catch(e){report.results.push({id,status:e.status||'Fail',error:e.message,diagnostics:e.diagnostics||null,evidence:await captureDesktopFailure(file,e,id)});if(e.status==='Unknown'){await writeJSON(path.join(s.root,'desktop-core-report.json'),report);await endCheck(file,report.results.at(-1));throw e;}}await writeJSON(path.join(s.root,'desktop-core-report.json'),report);await endCheck(file,report.results.at(-1));}
+const until=waitForObservation;
 const ui=()=>nativeCall(file,'inspect');
 const tc=state=>state.widgets.find(w=>w.name==='previewCurrentTimecode')?.text;
 await check('D-CLI-01',async()=>{const state=await ui();assert(state.widgets.some(w=>w.class==='MainWindow'&&/^Golden\.wiz — Wizard(?: [•*])?$/.test(w.title)),'Owned project window is absent.');const failed=state.widgets.filter(w=>w.text?.includes('failed to load'));assert(!failed.length,'Panel startup failed: '+failed.map(w=>w.text).join('; '));return {endpoint:s.endpoint,window:state.widgets.find(w=>w.class==='MainWindow')};});
