@@ -1,4 +1,4 @@
-import {testSpecification} from '../test-details.mjs';
+import {testSpecification,evidenceCaption} from '../test-details.mjs';
 import path from 'node:path';
 import {copyFile} from 'node:fs/promises';
 import {checks,livePreviewEvidence,widgetPixelDifference,requireExactTimingFixture,verifyTrimmedClip} from './check-support.mjs';
@@ -14,7 +14,7 @@ async function screen(label){const u=await ui(),window=u.widgets.find(w=>w.id===
 const check=(id,fn)=>runCheck(id,async()=>{await agentTool(file,'begin',{id});try{if((await ui()).widgets.some(w=>w.class==='QMessageBox')){const e=new OutcomeError('An unresolved app dialog blocks a fresh fixture','Blocked');e.fatal=true;throw e;}const result=await fn();
  if(result.agentVerification){
   for(const relative of result.observations||[])await agentTool(file,'evidence',{file:path.join(s.root,relative),title:'Measured application state during this check'});
-  for(const image of [result.screenshots||[]].flat())if(image.relative)await agentTool(file,'evidence',{file:path.join(s.root,image.relative),kind:'image',title:path.basename(image.relative,'.png')});
+  for(const image of [result.screenshots||[]].flat())if(image.relative)await agentTool(file,'evidence',{file:path.join(s.root,image.relative),kind:'image',title:evidenceCaption(image.relative)});
   await agentTool(file,'verify',{...result.agentVerification,title:'Confirm the tested state after restoration'});await agentTool(file,'capture',{target:result.agentCaptureTarget,title:'Displayed result after this check'});await agentTool(file,'record',{status:'Pass',note:result.summary});}
  return result;
  }catch(e){if(e.status!=='Unknown'){const observed=await ui();await writeJSON(path.join(s.root,id+'-observed-ui.json'),observed);if(observed.widgets.some(w=>w.class==='QMessageBox')){e.status='Blocked';e.fatal=true;e.message='App dialog prevented the check: '+e.message;}try{await screen(id+'-failure');}catch{}}await agentTool(file,'record',{status:e.status||'Fail',note:e.message});throw e;}});
@@ -102,7 +102,7 @@ await check('P-RG-CLIPBOARD',async()=>{
  }finally{await staged(id,'clipboard',async()=>{const restored=await n('clipboard-restore');if(marked)assert(restored.restored,'Clipboard restoration failed');});}
 });
 
-async function retainImage(result,label){const relative='evidence/'+label+'.png';await copyFile(result.path||result.output,path.join(s.root,relative));return {...result,artifacts:[...(result.artifacts||[]).filter(file=>!file.endsWith('.png')),relative]};}
+async function retainImage(result,label){const relative='evidence/'+label+'.png';await copyFile(result.path||result.output,path.join(s.root,relative));return {...result,relative,artifacts:[...(result.artifacts||[]).filter(file=>!file.endsWith('.png')),relative]};}
 async function liveDrag(id,setup){
  const {f,control,points,before,preview,baseline}=await staged(id,'setup',async()=>{
   const prepared=await setup(),before=await graph(prepared.f),preview=(await ui()).widgets.find(w=>w.class==='MetalPreviewWidget');assert(preview,'Metal preview absent');await physical('screenshot',{target:prepared.control.id});

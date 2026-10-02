@@ -1,5 +1,6 @@
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import {mkdir,appendFile,readFile,copyFile,realpath,stat} from 'node:fs/promises';
 import {isDeepStrictEqual} from 'node:util';
 import {nativeCall,desktopCall,verifyDesktopOwner,verifyDesktopPaths,captureDesktopFailure,agentReadOperations,agentReadNative} from './adapter.mjs';
@@ -7,7 +8,7 @@ import {physicalInput} from './physical-input.mjs';
 import {nativeDesktopInput} from './macos-input.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
 import {waitForObservation} from './check-support.mjs';
-import {readJSON,writeJSON,inside,sha} from '../runner/files.mjs';
+import {ROOT,readJSON,writeJSON,inside,sha} from '../runner/files.mjs';
 import {OutcomeError,assert} from '../runner/engine.mjs';
 import {testSpecification,candidateChecks,actionHistory,stepHistory} from '../test-details.mjs';
 
@@ -48,13 +49,18 @@ export function requirePassProof(s,evidence,verified,events=[]){
  assert(verified.some(e=>current.includes(e)),'Pass needs a successful current independent verification');
  if(s.agentRequiredRoute==='physical')assert(events.some(e=>e.caseId===s.currentCheck&&e.attempt===s.agentAttempt&&e.operation==='physical'&&e.status==='Completed'&&e.result?.status==='Dispatched'),'This check requires a physical input receipt');
 }
-const definitions=s=>[...(s.plan.cases||[]),...candidateChecks()];
+export function sessionDefinitions(s){
+ const candidates=candidateChecks(),catalog=['runner/course.json','desktop/course.json','desktop/service-course.json'].flatMap(file=>JSON.parse(readFileSync(path.join(ROOT,file),'utf8')).cases);
+ const planned=(s.plan.cases||[]).map(c=>typeof c==='string'?catalog.find(item=>item.id===c):c);assert(planned.every(Boolean),'A planned check is missing from the source catalog');
+ return [...planned,...candidates.filter(c=>!planned.some(p=>p.id===c.id))];
+}
+const definitions=s=>s.agentDefinitions||sessionDefinitions(s);
 const definition=(s,id)=>definitions(s).find(c=>c.id===id);
 
 export async function sessionContext(file){
  const s=await readJSON(file);verifyDesktopPaths(s);
- const ready=await readJSON(path.join(s.native,'ready.json'));
- const result={format:'athanor-agent-session/v1',session:file,build:{app:s.sourceApp,packageHash:s.guiHash,version:s.plan.version},process:{pid:s.pid,started:s.processStart,generation:s.generation},project:{bundle:s.bundle,main:s.main,alternate:s.alternate,assets:s.assets},adapter:ready.capabilities,physical:{commands:['click','drag','key','screenshot'],keys:['escape','return','tab','space','delete','k','n','s','a','z','d','c','v'],coordinates:'Widget-relative macOS points; target and destination geometry are rechecked before dispatch'},operations,checks:definitions(s).filter(c=>s.plan.cases?.some(x=>x.id===c.id)||c.id.startsWith('P-')).map(testSpecification),evidenceDirectory:path.join(s.root,'evidence'),guidance:[
+ const ready=await readJSON(path.join(s.native,'ready.json'));if(!s.agentDefinitions){s.agentDefinitions=sessionDefinitions(s);await writeJSON(file,s);}
+ const result={format:'athanor-agent-session/v1',session:file,build:{app:s.sourceApp,packageHash:s.guiHash,version:s.plan.version},process:{pid:s.pid,started:s.processStart,generation:s.generation},project:{bundle:s.bundle,main:s.main,alternate:s.alternate,assets:s.assets},adapter:ready.capabilities,physical:{commands:['click','drag','key','screenshot'],keys:['escape','return','tab','space','delete','k','n','s','a','z','d','c','v'],coordinates:'Widget-relative macOS points; target and destination geometry are rechecked before dispatch'},operations,checks:definitions(s).map(testSpecification),evidenceDirectory:path.join(s.root,'evidence'),guidance:[
   'Use CLI/Qt operations to prepare a fixture; perform the action under test with physical input.',
   'Resolve targets from a fresh observation. An ambiguous target is Blocked.',
   'Use wait for read-only conditions. Never replay an Unknown mutation.',

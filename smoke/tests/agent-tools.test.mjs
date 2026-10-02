@@ -3,9 +3,15 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
 import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from 'node:fs/promises';
-import {selectUI,uniqueTarget,compareObservation,exportAgentReport,requirePassProof} from '../desktop/agent-tools.mjs';
+import {selectUI,uniqueTarget,compareObservation,exportAgentReport,requirePassProof,sessionDefinitions} from '../desktop/agent-tools.mjs';
 import {acquireDesktopLease} from '../desktop/desktop-lease.mjs';
 import {verifyTrimmedClip} from '../desktop/check-support.mjs';
+
+test('prepared plan IDs resolve their actual definitions alongside physical candidates',()=>{
+ const checks=sessionDefinitions({plan:{cases:['A-CLI-01','D-CLI-01']}});
+ assert.match(checks.find(c=>c.id==='D-CLI-01').title,/connection/i);assert.ok(checks.find(c=>c.id==='P-TL-TRIM'));assert.equal(checks.filter(c=>c.id==='D-CLI-01').length,1);
+ assert.throws(()=>sessionDefinitions({plan:{cases:['UNKNOWN-ID']}}));
+});
 
 test('physical trim accepts supported carrier timing and rejects corrupt range or identity',()=>{
  const before={clip_id:'clip',timeline_range:{start_seconds:0,end_seconds:4},source:{asset_id:'asset',source_range:{start_seconds:1,end_seconds:5}}};
