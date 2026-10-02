@@ -12,6 +12,8 @@ Start with the [two-page getting-started guide (PDF)](docs/athanor-getting-start
 
 For agents driving Wizard with mouse and keyboard, use the [computer-use toolkit](docs/computer-use-agent.md). It supplies a prepared test session, scoped Qt observations, physical gestures, independent verification and an interactive evidence report.
 
+Read the [October 2 changes](docs/changes-2026-10-02.md) for the expanded mixed course, physical checks and composable authoring guidance.
+
 ## Install a bundled harness
 
 Double-click `Install Athanor.command` in a supplied bundle. On first opening, choose your browser; Athanor remembers it. Later, use `Open Athanor.command` in the external workspace. For terminal or agent use, from the bundle's `workspace` directory:
@@ -42,7 +44,7 @@ To hand setup to an agent, point it at [AGENTS.md](AGENTS.md) or give it this pr
 
 > Set up Athanor from this checkout. Read AGENTS.md, run the framework checks, start the local service, and inspect setup and the accepted catalog. Help me select a compatible build and course, then run my selection and return the report with any failures or missing prerequisites.
 
-The dashboard opens at **Run tests**: choose a build, choose a course, optionally name the run, and start. **All automated checks** selects the 137 accepted definitions. Preparation sets up and verifies an external adapter on the selected build. **Build engine checks** selects 57 checks from the chosen package without those tools. Press Prepare build to see its setup steps, then Start checks when it is ready. Setup failures include a copyable agent repair prompt. Run progress and reports live in **Results**.
+The dashboard opens at **Run tests**: choose a build, choose a course and optionally name the run. Fresh workspaces default to **Logan’s checklist — full automated course** (`smoke-full`): 153 checks, including 137 accepted definitions and 16 qualification candidates. **All automated checks** (`automated-full`) keeps the accepted-only selection. **Build engine checks** selects 57 packaged checks without desktop tools. Press Prepare build to see adapter and fixture setup, then Start checks when ready. Setup failures include a copyable agent repair prompt. Run progress and reports live in **Results**. Foreground checks need the Mac unlocked and available; ordinary failures remain recorded while unrelated checks continue.
 
 **Find a build…** lists recent GitHub packages, grouped Releases, Nightlies and Tagged builds, with search and saved multi-select filters. Add an exact tag, HTTPS URL, ZIP or existing app path. Downloads stay in the external workspace. Agents use `smoke.mjs builds` and `build`; see [Build finder](docs/build-finder.md).
 
@@ -82,14 +84,15 @@ The maintained `packaged-full` course contains 57 automated checks and runs with
 | Execution target | Definitions | Boundary |
 | --- | ---: | --- |
 | Packaged engine | 57 | Uses the selected package's headless engine, shipped CLI and local ingest tools |
-| Foreground desktop | 78 | Uses the selected packaged app, its shipped CLI and an external Qt test adapter |
+| Foreground desktop | 94 | Uses the selected packaged app, its shipped CLI, external Qt observations and physical input where specified |
 | Background app services | 8 | Uses the selected package and export worker with UI input disabled during checks; includes the provisional idle CPU candidate |
-| **Total** | **143** | Definition count, not passing coverage |
+| **Runnable catalog** | **159** | Available definitions, including candidates; the default course selects 153 |
 
-**137 definitions are accepted for custom-course selection.** Five unlinked team checks and the new idle CPU candidate remain outside that registry. The 137 original checklist rows are a different count: 77 have mapped counterparts, 32 have none, 24 NAS rows are deferred and four are placeholders. A mapped row can still lack part of its original behavior.
+**137 definitions are accepted for custom-course selection.** The default course adds 16 maintained qualification candidates; five unlinked team checks and the idle CPU candidate stay outside it. The scope inventory also retains two exploratory physical definitions excluded from the runnable catalog. Logan's 137 original checklist rows are a different count: the runnable catalog maps to 82 rows, 27 have no counterpart, 24 NAS rows are deferred and four are placeholders. A mapped row can cover only part of its original behavior.
 
 - [Proposed full scope](docs/v1-scope.md)
 - [Shared interaction library](docs/interaction-library.md)
+- [Composable test authoring and examples](docs/test-evidence.md#compose-a-test-from-reusable-parts)
 - [Idle CPU candidate](docs/idle-candidate.md)
 
 The testing lead's accepted-definition registry is source-controlled. Saving a custom course cannot accept new definitions or change canonical membership.

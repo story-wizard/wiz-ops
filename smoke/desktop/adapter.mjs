@@ -10,13 +10,20 @@ import {ROOT,dataDirectory,externalPath,readJSON,writeJSON,fingerprint,inside,sh
 import {runtimeEnvironment} from '../runner/runtime.mjs';
 import {attachSelectedBuild} from './attach.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
+import {currentAction,withAgentAction,withAdapterAction,validateApplicationParams,validateNativeParams,markUnknown,requireProof,jsonLines,terminalResult} from './agent-proof.mjs';
 
 export const agentReadOperations=['project.get_name','timeline.inspect','graph.get_clip_graph','media.list_assets','media.resolve_path','media.probe','spellbook.inspect','spellbook.list'];
-export const agentReadNative=['capabilities','inspect','timeline-clip-rect','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview'];
+// Observations and ownership-checked clipboard bookkeeping do not edit the test project.
+export const agentReadNative=['capabilities','inspect','timeline-clip-rect','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview','clipboard-save','clipboard-mark','clipboard-restore'];
 export async function markAgentMutation(file,session){
   if(!session.agentTracking)return;
-  if(session.agentUncertain)throw new OutcomeError('An earlier mutation is Unknown. Inspect, verify and explicitly resolve it before another edit.','Blocked');
-  session.agentRevision=(session.agentRevision||0)+1;await writeJSON(file,session);
+  if(currentAction(file)?.purpose==='shutdown')return;
+  requireProof(!terminalResult(await jsonLines(path.join(session.root,'agent-results.jsonl')),session.agentAttempt),'attempt_closed','Begin a new attempt before another edit',['begin_new_attempt','report']);
+  requireProof(!session.agentUncertain,'unresolved_mutation','An earlier mutation is Unknown. Inspect, verify and explicitly resolve it before another edit.',['verify_resolution','resolve','record_unknown']);
+  const action=currentAction(file);session.agentRevision=(session.agentRevision||0)+1;
+  session.agentLastMutation={id:action?.id||randomUUID(),operation:action?.operation||'raw mutation',revision:session.agentRevision};
+  if((!action||action.raw)&&session.agentProof&&(session.agentProof.baseline||Object.keys(session.agentProof.checkpoints).length))session.agentProof.tainted=true;
+  await writeJSON(file,session);
 }
 
 export function verifyDesktopPaths(session,configuredDataDir){
@@ -157,7 +164,11 @@ export async function launchDesktop(session,{foreground=true}={}){
 }
 
 export async function desktopCall(file,operation,params={},expectedError){
+ return withAdapterAction(file,!agentReadOperations.includes(operation),operation,params,()=>desktopCallOwned(file,operation,params,expectedError));
+}
+async function desktopCallOwned(file,operation,params={},expectedError){
   let session=await readJSON(file);verifyDesktopPaths(session);
+  validateApplicationParams(session.schema,operation,params);
   const lock=path.join(session.root,'call.lock');const held=await open(lock,'wx');
   try{
     session=await readJSON(file);verifyDesktopOwner(session);
@@ -167,7 +178,7 @@ export async function desktopCall(file,operation,params={},expectedError){
     if(session.desktopCli){assert(await sha(session.desktopCli)===session.desktopCliHash,'Paired CLI changed.');engine.macos=path.dirname(session.desktopCli);}
     engine.child={pid:session.pid,exitCode:null,signalCode:null};engine.url=session.url;engine.env=session.env;engine.counter=session.counter;engine.caseId=session.currentCheck||'desktop-agent';engine.stepId=session.currentStep||null;
     await engine.call(session.bundle,'project.get_name');
-    let result;try{result=await engine.call(session.bundle,operation,params,expectedError);}catch(e){if(session.agentTracking&&e.status==='Unknown'&&!agentReadOperations.includes(operation))session.agentUncertain=true;throw e;}finally{session.counter=engine.counter;await writeJSON(file,session);}
+    let result;try{result=await engine.call(session.bundle,operation,params,expectedError);}catch(e){if(session.agentTracking&&e.status==='Unknown'&&!agentReadOperations.includes(operation))await markUnknown(file,e);throw e;}finally{const latest=await readJSON(file);latest.counter=engine.counter;latest.observedRevision=engine.revisions.get(session.bundle)||null;await writeJSON(file,latest);}
     return result;
   }finally{await held.close();await unlink(lock);}
 }
@@ -204,10 +215,14 @@ export async function terminateOwnedDesktop(file,live){
   session.state='Stopped';session.forcedCleanup=true;await writeJSON(file,session);
 }
 export async function nativeCall(file,op,params={}){
+ validateNativeParams(op,params);
+ return withAdapterAction(file,!agentReadNative.includes(op),op,params,()=>nativeCallOwned(file,op,params));
+}
+async function nativeCallOwned(file,op,params={}){
   const session=await readJSON(file);verifyDesktopOwner(session);
+  assert(session.inputMode!=='service'||['capabilities','inspect','screenshot','snapshot-widget'].includes(op),'Background service sessions cannot dispatch UI input. Run the foreground desktop course for UI evidence.');
   if(session.plan?.runtime?.kind==='selected-build-attachment'&&!agentReadNative.includes(op))verifyDesktopLease(session);
   if(!agentReadNative.includes(op))await markAgentMutation(file,session);
-  assert(session.inputMode!=='service'||['capabilities','inspect','screenshot','snapshot-widget'].includes(op),'Background service sessions cannot dispatch UI input. Run the foreground desktop course for UI evidence.');
   if(op==='spellbook-run-local'){
     const graph=await desktopCall(file,'spellbook.inspect',{document_id:params.documentId,view:'overview',limit:100});assertLocalPreviewGraph(graph,session.root);
     const ui=await nativeCall(file,'inspect'),panel=ui.widgets.find(w=>w.id===params.target&&w.class==='DetachedGraphPanel');
@@ -228,7 +243,7 @@ export async function nativeCall(file,op,params={}){
     }
     await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,status:'Unknown',error:'No native response within five seconds.'})+'\n');
     throw new OutcomeError('Native action outcome is unknown; inspect before continuing and do not replay.','Unknown');
-  }catch(e){if(session.agentTracking&&e.status==='Unknown'&&!agentReadNative.includes(op)){const latest=await readJSON(file);latest.agentUncertain=true;await writeJSON(file,latest);}throw e;}finally{await held.close();await unlink(lock);}
+  }catch(e){if(session.agentTracking&&e.status==='Unknown'&&!agentReadNative.includes(op))await markUnknown(file,e);throw e;}finally{await held.close();await unlink(lock);}
 }
 
 export function parseNativeResponse(text,identity){
@@ -242,19 +257,27 @@ export function assertQuitEvidence(receipt,observed,ready){
   assert(observed?.event==='aboutToQuit'&&observed.pid===ready.pid&&observed.generation===ready.generation,'Quit evidence does not match the owned GUI generation.');
 }
 export async function stopDesktop(file,{quit=false}={}){
+ return withAgentAction(file,()=>stopDesktopOwned(file,{quit}),{purpose:'shutdown',operation:'stop'});
+}
+async function stopDesktopOwned(file,{quit=false}={}){
   const session=await readJSON(file);verifyDesktopOwner(session);
-  if(session.agentUncertain){
+  const closed=session.agentTracking&&terminalResult(await jsonLines(path.join(session.root,'agent-results.jsonl')),session.agentAttempt);
+  // A closed attempt cannot be edited to tidy up. Preserve its autosaved fixture.
+  if(session.agentUncertain||closed&&!quit){
     process.kill(session.pid,'SIGTERM');
     for(let i=0;i<100;i++){try{process.kill(session.pid,0);}catch(e){if(e.code==='ESRCH'){session.state='Stopped';await writeJSON(file,session);return;}throw e;}await pause(100);}
     throw new OutcomeError('Uncertain owned session did not stop; inspect it before starting another.','Unknown');
   }
   assert(!quit||session.inputMode==='desktop','Native Quit requires a foreground desktop session.');
   // Keep the owned test project's evidence and clear Wizard's unsaved-change dialog.
+  if(!closed){
   if(session.inputMode==='service')await desktopCall(file,'project.checkpoint');
   else{const ui=await nativeCall(file,'inspect'),save=ui.actions.filter(a=>a.text==='Save'&&a.enabled);assert(save.length===1,'Cannot resolve the owned GUI Save action before shutdown.');await nativeCall(file,'action',{target:save[0].id});}
   let saved=false;
   for(let i=0;i<50;i++){const readRef=ref=>execFileSync('/usr/bin/git',['-C',session.bundle,'rev-parse',`refs/heads/${ref}`],{encoding:'utf8'}).trim();if(readRef('main')===readRef('autosave')){saved=true;break;}await pause(100);}
-  assert(saved,'GUI save did not settle before shutdown.');let receipt,ready;
+  assert(saved,'GUI save did not settle before shutdown.');
+  }
+  let receipt,ready;
   if(quit){
     const ui=await nativeCall(file,'inspect'),main=ui.widgets.filter(w=>w.class==='MainWindow'&&w.title.startsWith(path.basename(session.bundle)+' — Wizard'));
     assert(main.length===1,'Quit must target the prepared project.');ready=await readJSON(path.join(session.native,'ready.json'));

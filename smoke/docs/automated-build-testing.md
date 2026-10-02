@@ -6,7 +6,9 @@ Select a Wizard build, prepare its checks, run them, and open the report. The ma
 
 Start the service as described below and open <http://127.0.0.1:4317>. In **Run tests**, choose the build, choose the course, optionally name the run, then select **Prepare build**. Follow the setup steps until Ready, then select **Start checks**. Progress and outcomes appear in **Results**; open the report after the run finishes.
 
-The default **All automated checks** course selects all 137 accepted definitions: 57 packaged-engine, 73 desktop and 7 background-service checks. It does not add a human checkpoint or accept the six remaining candidate definitions. Existing failures and unavailable capabilities remain Fail or Blocked in the results.
+Fresh workspaces default to **Logan’s checklist — full automated course** (`smoke-full`): 153 checks, comprising 57 packaged-engine, 89 desktop and 7 service checks. It adds 16 qualification candidates to the 137 accepted definitions, including 13 physical computer-use paths. Idle CPU measurement is deferred to a separate candidate probe. Reserve the desktop for foreground stages. **All automated checks** (`automated-full`) remains the accepted-only option: 57 engine, 73 desktop and 7 service checks. Custom courses remain accepted-only.
+
+Ordinary failures remain recorded and unrelated checks continue after verified cleanup. Missing capabilities block their checks; an uncertain mutation stops its owned session for inspection. Neither course adds a human checkpoint.
 
 All checks use the selected package and its shipped CLI. Desktop and service selections automatically prepare a matching external adapter and verify attachment to a disposable package copy. Missing prerequisites produce a repair prompt for the user's agent. Engine-only selections need no desktop adapter. See [desktop setup](desktop-tools-setup.md).
 

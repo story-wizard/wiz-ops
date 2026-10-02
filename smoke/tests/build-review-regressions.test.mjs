@@ -59,14 +59,14 @@ test('a refreshed first page reopens older-build discovery when release history 
  const get=async endpoint=>{
   if(endpoint==='user')return {login:'Tester'};
   if(endpoint.includes('/runs?'))return {workflow_runs:[]};
-  if(endpoint.includes('/releases?')){const page=Number(new URL('https://example.com/'+endpoint).searchParams.get('page'));return Array.from({length:count},(_,i)=>release(i+1)).slice((page-1)*50,page*50);}
+  if(endpoint.includes('/releases?')){const params=new URL('https://example.com/'+endpoint).searchParams,page=Number(params.get('page')),size=Number(params.get('per_page'));return Array.from({length:count},(_,i)=>release(i+1)).slice((page-1)*size,page*size);}
   throw Error('Unexpected provider request: '+endpoint);
  };
  try{
   const first=await findBuilds(root,{get});assert.equal(first.hasMoreGitHub,false);
-  count=51;const refreshed=await findBuilds(root,{get,refresh:true});
+  count=11;const refreshed=await findBuilds(root,{get,refresh:true});
   assert.equal(refreshed.hasMoreGitHub,true,'Reaching the old end of history must not hide new provider pages');
   const older=await findBuilds(root,{get,githubPage:refreshed.nextGitHubPage});
-  assert.equal(older.builds.length,51);assert.ok(older.builds.some(b=>b.assetId===51));assert.equal(older.hasMoreGitHub,false);
+  assert.equal(older.builds.length,11);assert.ok(older.builds.some(b=>b.assetId===11));assert.equal(older.hasMoreGitHub,false);
  }finally{await rm(root,{recursive:true,force:true});}
 });

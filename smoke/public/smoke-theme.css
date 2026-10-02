@@ -416,6 +416,12 @@ dialog::backdrop { background: #0d141db0; }
 .build-import-fields { display:grid; gap:16px; }
 .build-import-fields > button { justify-self:start; }
 .build-status { color:#b6d7f1; }
+.build-download-progress { position:sticky; bottom:0; padding:18px 0 4px; background:#1c242d; }
+.build-progress-heading { display:flex; justify-content:space-between; gap:16px; margin-bottom:10px; color:#b6d7f1; font-size:13px; }
+.build-progress-heading span { color:#aebbc9; font-variant-numeric:tabular-nums; }
+.build-transfer-progress.indeterminate[data-active="true"] .progress-fill { animation:build-transfer-wait 6s ease-in-out infinite alternate; }
+@keyframes build-transfer-wait { from{opacity:.45}to{opacity:1} }
+@media(prefers-reduced-motion:reduce) { .build-transfer-progress.indeterminate[data-active="true"] .progress-fill { animation:none; } }
 .field-label > [data-setup="find-build"] { margin-left:auto; }
 
 .multi-select select[hidden], .multi-select:not([open]) > .multi-select-options { display:none !important; }

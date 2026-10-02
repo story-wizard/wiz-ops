@@ -12,7 +12,20 @@ For atomic calls and exploratory sessions, see [agent tools](agent-tools.md).
 - Run that plan, observe status, wait, cancel and obtain a local report.
 - Recover a lost start response using its request ID without duplicating execution.
 
-Each selected course adds its connection checks and any declared shared-fixture sequence. The plan lists those additions. Execution is serial: packaged checks, background services, then foreground desktop. Packaged checks own disposable projects; desktop/service checks share a disposable project within their authored stage. Groups organize the report and do not create parallel execution.
+Each selected course adds its connection checks and any declared shared-fixture sequence. The plan lists those additions. Execution is serial: packaged checks, background services, then foreground desktop. Packaged checks own disposable projects. Desktop checks run in isolated script groups; only an authored setup/persistence sequence shares its fixture. Groups organize the report and do not create parallel execution.
+
+## Default mixed course
+
+`smoke-full` is the default course: 153 checks, comprising the 137 accepted definitions plus 16 explicit qualification candidates. It runs 57 engine, 7 service and 89 desktop checks, including 13 physical computer-use paths. Candidate results stay labeled by their definition and retained verdict; inclusion does not approve them for custom courses.
+
+```sh
+node scripts/smoke.mjs plan --app /path/to/Wizard.app --course smoke-full --out /tmp/full-plan.json --server URL
+node scripts/smoke.mjs run --plan /tmp/full-plan.json --operator "Your name" --wait --server URL
+```
+
+Preparation attaches the adapter to a disposable copy of that exact package. Keep the Mac unlocked and available for foreground stages. Every independent physical/checklist check gets a fresh project and owned session. Fail and Blocked continue into unrelated groups after confirmed cleanup; an uncertain action stops its session. A package missing required operations retains a Blocked result instead of substituting another build.
+
+`automated-full` remains the accepted-only course. User-created courses remain accepted-only. Warm live-grade sampling stays outside the default because it does not establish Logan's cold-cache criterion. Idle CPU measurement is retained as a separate candidate probe; see [idle candidate](idle-candidate.md). The default revision is now 2. NAS remains deferred.
 
 ## Acceptance boundary
 
@@ -97,24 +110,13 @@ A wait timeout does not cancel execution. Start is never automatically retried. 
 
 ## Fixtures and current limits
 
-For desktop/service selections, the installed harness bundle is the default. For an explicit override, pass `--runtime runtime.json` with retained files:
+Desktop and service selections attach matching external tools to a disposable copy of the selected package. Prepare the build through the dashboard or `prepare` / `preparation --id ID`; readiness freezes the package, shipped CLI and adapter identities. A matching installed bundle supplies the tools. A source checkout can compile them with a matching SDK. Missing tools or capabilities produce a repair prompt. Legacy runtime descriptors are retained for historical tooling and must not substitute another app for the selected package.
 
-```json
-{
-  "app": "/path/to/Instrumented Wizard.app",
-  "cli": "/path/to/paired/wiz-cli",
-  "qtPlugin": "/path/to/smoke/libqcocoa.dylib",
-  "libraries": "/path/to/retained/runtime-libraries"
-}
-```
-
-The optional `libraries` directory holds retained development libraries. The plan fingerprints those files, the native bridge and the paired schema. The app must expose the isolated automation startup hooks. It is recorded separately from `--app`, the packaged engine used for preparation and packaged checks. No historical run is needed to select a runtime. `runtime --file runtime.json` retains a runtime descriptor; `runtimes` lists descriptors. Descriptors are checked again during preparation and launch.
-
-The isolated desktop app uses the search worker bundled in the explicitly selected preparation package. That worker is covered by the package fingerprint. GUI search therefore exercises the instrumented app together with this packaged worker; it is not a claim about an independently distributed desktop bundle.
+GUI search uses the search worker bundled in that selected package, covered by its package fingerprint. Service checks reject foreground input before dispatch. Independent desktop script groups use fresh projects and sessions; authored persistence families retain their own sequence.
 
 `list --target desktop` filters discovery. Category selection defaults to packaged checks for compatibility; `plan --category color --target all` includes corresponding checks across targets. Explicit check IDs and saved courses can mix targets without this flag.
 
-The `examples/accepted-automated.json` course groups all 137 accepted definitions. It does not approve the separate 143-candidate V1 scope.
+The `examples/accepted-automated.json` course groups all 137 accepted definitions. It does not accept qualification candidates or the broader scope inventory.
 
 Fresh is the available empty starting project. A check's setup populates it as required. Story-user and Large are reserved future inputs and currently fail readiness explicitly.
 
@@ -122,7 +124,7 @@ Color-only plans use the six-file synthetic core pack and no speech model. Speec
 
 Current package compatibility remains conservative: the selected package must match the mapped operation schema. A local run kit retains the exact runtime inputs and lists required external libraries. It does not automatically qualify arbitrary new schemas. The separate [harness bundle](maintaining-harness.md) includes desktop libraries and an installation/update path.
 
-The canonical full Smoke Test course and V1 scope remain distinct from a custom course. The maintained `packaged-full` selection represents all 57 packaged checks, not all 143 automated definitions or every behavior in Logan's checklist.
+The canonical full Smoke Test course and V1 scope remain distinct from a custom course. The maintained `packaged-full` selection represents all 57 packaged checks, not the entire mixed course or every behavior in Logan's checklist.
 
 ## Friday release testing
 
@@ -142,7 +144,9 @@ test. The report names the tested builds: selected package engine, instrumented
 desktop/services, and selected package computer use. Filter by build to review
 each lane.
 
-### Computer-use companion
+### Historical computer-use companion
+
+The companion and smoke-only Cocoa replacement below document the earlier pilot. For new testing, use selected-build external attachment and the toolkit in [computer-use testing](computer-use-agent.md); the maintained mixed course integrates physical candidates. Do not replace the selected package’s Cocoa plugin as part of the current workflow.
 
 The UI pilot adds projectless and project Preferences, New Project, Save As,
 quit/reopen, both New Spell paths, both Spellbook search shortcuts, and float/redock. These are pilot definitions
@@ -287,8 +291,7 @@ search shortcuts and glossary drag/drop (SB-02), wire connection with Undo/Redo
 (SB-03), D bypass (SB-05), node-move Undo boundaries (SB-11), and float/redock
 with retained canvas content (SB-09).
 
-These candidate definitions live in `desktop/physical-course.json`, separate
-from the accepted 137-check registry. Use an existing prepared plan with the
+These definitions live in `desktop/physical-course.json`. They are included as qualification candidates in `smoke-full`, while remaining outside the accepted 137-check set. Use an existing prepared plan with the
 isolated desktop runtime and the current runner fingerprint. Execution exports
 an interactive report automatically:
 
@@ -346,7 +349,7 @@ frame. Cold-cache first-frame qualification remains a separate expansion.
 The local sample intervals measure observation responsiveness; frame-rate and
 stall acceptance budgets still need their own measurements and agreement.
 TL-01 insert placement and RG-01 adding a node from the library remain separate
-paths. Candidate outcomes stay outside the accepted catalog until reviewed.
+paths. Candidate outcomes stay outside the accepted set until reviewed. The default course includes bin drop/overwrite, move/pan, wire, clipboard, trim and continuous curve sampling; cold-grade sampling stays excluded.
 
 ## Local run kits
 

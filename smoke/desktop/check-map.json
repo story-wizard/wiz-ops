@@ -118,5 +118,27 @@
   ],
   "check-unset-rate.mjs": [
     "S-EXPORT-UNSET-RATE"
+  ],
+  "check-physical-editor.mjs": [
+    "P-TL-BIN-DROP",
+    "P-TL-BIN-OVERWRITE",
+    "P-RG-MOVE",
+    "P-RG-WIRE",
+    "P-RG-CLIPBOARD",
+    "P-CURVE-LIVE",
+    "P-TL-TRIM"
+  ],
+  "check-physical.mjs": [
+    "P-SB-CREATE",
+    "P-SB-SEARCH-DROP",
+    "P-SB-WIRE",
+    "P-SB-BYPASS",
+    "P-SB-GESTURE-UNDO",
+    "P-SB-DOCK"
+  ],
+  "check-checklist.mjs": [
+    "D-EXTERNAL-RELOAD",
+    "D-SOURCE-COLOR",
+    "D-MGFX-BIN-DROP"
   ]
 }

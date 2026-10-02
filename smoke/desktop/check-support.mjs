@@ -74,6 +74,12 @@ export function widgetPixelDifference(a,b){
   const rgb=v=>{assert(v.sampleWidth===64&&v.sampleHeight===32&&typeof v.sampleRgb==='string','Invalid widget raster');const bytes=Buffer.from(v.sampleRgb,'base64');assert(bytes.length===64*32*3,'Incomplete widget pixels');return bytes;};
   const x=rgb(a),y=rgb(b);return x.reduce((sum,v,i)=>sum+Math.abs(v-y[i]),0)/x.length;
 }
+export function requireRedGraphic(image){
+ widgetPixelDifference(image,image);const rgb=Buffer.from(image.sampleRgb,'base64');let red=0,total=0;
+ // The local fixture has a red background. Sample away from its central title and letterboxing.
+ for(let y=8;y<24;y++)for(let x=8;x<24;x++){const i=(y*64+x)*3;total++;if(rgb[i]>160&&rgb[i]>rgb[i+1]*1.8&&rgb[i]>rgb[i+2]*1.8)red++;}
+ assert(red/total>.75,'Preview does not show the known red graphic fixture');return {redFraction:red/total};
+}
 export function livePreviewEvidence(baseline,samples,receipt){
  const held=samples.filter(x=>x.startedAt>=receipt.pointerDownAt&&x.finishedAt<=receipt.pointerUpAt),changed=held.filter(x=>widgetPixelDifference(x.image,baseline)>1.5);
  assert(held.length>=3,'Insufficient preview samples during the held gesture');assert(changed.length>=3,'Displayed preview did not update during the held gesture');

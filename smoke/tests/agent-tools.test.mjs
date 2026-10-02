@@ -38,10 +38,9 @@ test('verification checks an observed value and fails for absent paths or wrong 
  assert.equal(compareObservation(observed,{path:['enabled'],equals:false}).matched,true);
  assert.throws(()=>compareObservation(observed,{path:['__proto__'],equals:{}}));assert.throws(()=>compareObservation(observed,{}));
 });
-test('Pass requires current verified evidence and physical mode requires actual dispatched input',()=>{
+test('uncontracted image, arbitrary verification and unrelated physical dispatch cannot qualify Pass',()=>{
  const s={currentCheck:'P-TEST',agentAttempt:'attempt',agentRevision:3,generation:2,agentRequiredRoute:'physical'},image={caseId:s.currentCheck,attempt:s.agentAttempt,revision:3,generation:2,kind:'image'},proof={...image,kind:'json'},event={caseId:s.currentCheck,attempt:s.agentAttempt,operation:'physical',status:'Completed',result:{status:'Dispatched'}};
- assert.doesNotThrow(()=>requirePassProof(s,[image,proof],[proof],[event]));
- for(const run of [()=>requirePassProof(s,[image,proof],[proof],[]),()=>requirePassProof({...s,agentRevision:4},[image,proof],[proof],[event]),()=>requirePassProof({...s,generation:3},[image,proof],[proof],[event]),()=>requirePassProof({...s,agentAttempt:'other'},[image,proof],[proof],[event]),()=>requirePassProof({...s,agentUncertain:true},[image,proof],[proof],[event]),()=>requirePassProof(s,[image,proof],[],[event])])assert.throws(run);
+ assert.throws(()=>requirePassProof(s,[image,proof],[proof],[event]),e=>e.code==='proof_contract_missing'&&e.status==='Blocked');
 });
 test('a new attempt without a verdict cannot inherit an earlier Pass in the exported report',async()=>{
  const data=await realpath(await mkdtemp(path.join(tmpdir(),'athanor-agent-report-'))),previous=process.env.SMOKE_DATA_DIR;process.env.SMOKE_DATA_DIR=data;

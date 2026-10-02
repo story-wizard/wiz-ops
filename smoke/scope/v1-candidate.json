@@ -5,7 +5,7 @@
   "jira": "WIZ-423",
   "approvedBy": null,
   "approvedAt": null,
-  "policy": "All 143 current definitions remain required candidates, including failed and blocked checks. A scope change must be explicit; this snapshot is not release acceptance.",
+  "policy": "All current definitions remain in the inventory, including failed and blocked checks. The maintained mixed course includes explicit qualification candidates; custom courses still use accepted definitions.",
   "courses": [
     {
       "file": "runner/course.json",
@@ -75,9 +75,9 @@
     },
     {
       "file": "desktop/course.json",
-      "sha256": "7e6dfdce8c2625b785378ebd600da6e2c5005dc1fe108319a238444e80cf8438",
+      "sha256": "190ed4ed512c2787f11b09ff630d635c61fb9fc6bb189044fe022173e30bf174",
       "id": "local-desktop-v1",
-      "revision": 9,
+      "revision": 11,
       "target": "Instrumented local GUI with isolated Qt runtime",
       "requiredCheckIds": [
         "D-CLI-01",
@@ -157,7 +157,10 @@
         "D-MEDIA-RELINK",
         "D-CURVE-RGB-CLIPBOARD",
         "D-CURVE-HUE-RESET",
-        "S-EXPORT-UNSET-RATE"
+        "S-EXPORT-UNSET-RATE",
+        "D-EXTERNAL-RELOAD",
+        "D-SOURCE-COLOR",
+        "D-MGFX-BIN-DROP"
       ]
     },
     {
@@ -175,6 +178,39 @@
         "S-EXPORT-PRORES",
         "S-EXPORT-AV1",
         "S-PF-IDLE"
+      ]
+    },
+    {
+      "file": "desktop/physical-course.json",
+      "sha256": "a74c1f1a3e18fc5c044be36c3e5381cb64b4682436e83a480491387ffa02cd98",
+      "id": "physical-spellbook-candidate",
+      "revision": 2,
+      "target": "Instrumented isolated desktop with native macOS input",
+      "requiredCheckIds": [
+        "P-SB-CREATE",
+        "P-SB-SEARCH-DROP",
+        "P-SB-WIRE",
+        "P-SB-BYPASS",
+        "P-SB-GESTURE-UNDO",
+        "P-SB-DOCK"
+      ]
+    },
+    {
+      "file": "desktop/physical-editor-course.json",
+      "sha256": "37a85a1ed7405890d9357053b80dd44c416f97b3448ebb1e40ba50973000c58b",
+      "id": "physical-editor-candidate",
+      "revision": 8,
+      "target": "Instrumented isolated desktop with native macOS input",
+      "requiredCheckIds": [
+        "P-TL-BIN-DROP",
+        "P-TL-BIN-OVERWRITE",
+        "P-RG-MOVE",
+        "P-RG-WIRE",
+        "P-RG-CLIPBOARD",
+        "P-GRADE-LIVE",
+        "P-CURVE-LIVE",
+        "P-TL-TRIM",
+        "P-TRACK-ADD"
       ]
     }
   ],
@@ -555,7 +591,9 @@
       "disposition": "Partial",
       "checkIds": [
         "A-TL-01",
-        "D-EDIT-DRAG"
+        "D-EDIT-DRAG",
+        "P-TL-BIN-DROP",
+        "P-TL-BIN-OVERWRITE"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -594,7 +632,8 @@
         "D-EDIT-NUDGE",
         "D-EDIT-TRIM",
         "D-RIPPLE-GAP",
-        "D-EDIT-SLIP"
+        "D-EDIT-SLIP",
+        "P-TL-TRIM"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -726,15 +765,17 @@
     {
       "id": "UP-02",
       "area": "Undo / persistence",
-      "disposition": "Not automated",
-      "checkIds": [],
+      "disposition": "Partial",
+      "checkIds": [
+        "D-EXTERNAL-RELOAD"
+      ],
       "originalProjectVariants": [
         "Fresh",
         "Story-user",
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+      "remaining": "New scripted qualification candidate. Retained runtime evidence and representative project variants still need review."
     },
     {
       "id": "UP-03",
@@ -868,15 +909,17 @@
     {
       "id": "CO-08",
       "area": "Colour",
-      "disposition": "Not automated",
-      "checkIds": [],
+      "disposition": "Partial",
+      "checkIds": [
+        "D-SOURCE-COLOR"
+      ],
       "originalProjectVariants": [
         "Fresh",
         "Story-user",
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs an application-owned input-colour override operation; the clip input CST is locked to ordinary graph edits."
+      "remaining": "New scripted qualification candidate. Retained runtime evidence and representative project variants still need review."
     },
     {
       "id": "CO-09",
@@ -898,7 +941,10 @@
       "area": "Render graph / Inspector",
       "disposition": "Partial",
       "checkIds": [
-        "A-RG-01"
+        "A-RG-01",
+        "P-RG-MOVE",
+        "P-RG-WIRE",
+        "P-RG-CLIPBOARD"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -958,7 +1004,8 @@
       "area": "Spellbook",
       "disposition": "Partial",
       "checkIds": [
-        "D-SB-CREATE"
+        "D-SB-CREATE",
+        "P-SB-CREATE"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -974,7 +1021,8 @@
       "disposition": "Partial",
       "checkIds": [
         "D-SB-QUICK-SEARCH",
-        "D-SB-SEARCH-DROP"
+        "D-SB-SEARCH-DROP",
+        "P-SB-SEARCH-DROP"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -989,7 +1037,8 @@
       "area": "Spellbook",
       "disposition": "Partial",
       "checkIds": [
-        "D-SB-GRAPH"
+        "D-SB-GRAPH",
+        "P-SB-WIRE"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -1020,7 +1069,8 @@
       "area": "Spellbook",
       "disposition": "Partial",
       "checkIds": [
-        "D-SB-BYPASS"
+        "D-SB-BYPASS",
+        "P-SB-BYPASS"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -1078,15 +1128,17 @@
     {
       "id": "SB-09",
       "area": "Spellbook",
-      "disposition": "Not automated",
-      "checkIds": [],
+      "disposition": "Partial",
+      "checkIds": [
+        "P-SB-DOCK"
+      ],
       "originalProjectVariants": [
         "Fresh",
         "Story-user",
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "The retained local smoke build exposes Spellbook operations. This row still needs its specific UI, execution or output observations; support in a schema alone is not coverage."
+      "remaining": "New scripted qualification candidate. Retained runtime evidence and representative project variants still need review."
     },
     {
       "id": "SB-10",
@@ -1106,7 +1158,8 @@
       "area": "Spellbook",
       "disposition": "Partial",
       "checkIds": [
-        "D-SB-UNDO"
+        "D-SB-UNDO",
+        "P-SB-GESTURE-UNDO"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -1199,15 +1252,17 @@
     {
       "id": "OZ-06",
       "area": "Oz / MGFX",
-      "disposition": "Not automated",
-      "checkIds": [],
+      "disposition": "Partial",
+      "checkIds": [
+        "D-MGFX-BIN-DROP"
+      ],
       "originalProjectVariants": [
         "Fresh",
         "Story-user",
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "The installed headless MGFX admission returns runtime_verifier_unavailable. Needs an owned GUI agent/generator session, controlled synthetic attachments and provider authorization where a model is required."
+      "remaining": "New scripted qualification candidate. Retained runtime evidence and representative project variants still need review."
     },
     {
       "id": "OZ-07",
@@ -1903,15 +1958,17 @@
     {
       "id": "PF-05",
       "area": "Performance",
-      "disposition": "Not automated",
-      "checkIds": [],
+      "disposition": "Partial",
+      "checkIds": [
+        "P-GRADE-LIVE"
+      ],
       "originalProjectVariants": [
         "Fresh",
         "Story-user",
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+      "remaining": "New scripted qualification candidate. Retained runtime evidence and representative project variants still need review."
     },
     {
       "id": "PF-06",
@@ -1929,15 +1986,17 @@
     {
       "id": "PF-07",
       "area": "Performance",
-      "disposition": "Not automated",
-      "checkIds": [],
+      "disposition": "Partial",
+      "checkIds": [
+        "P-CURVE-LIVE"
+      ],
       "originalProjectVariants": [
         "Fresh",
         "Story-user",
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+      "remaining": "New scripted qualification candidate. Retained runtime evidence and representative project variants still need review."
     },
     {
       "id": "PF-08",

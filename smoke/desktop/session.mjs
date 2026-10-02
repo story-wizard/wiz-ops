@@ -3,6 +3,7 @@ import {checkPrepared} from '../runner/prepare.mjs';
 import path from 'node:path';
 import {readJSON} from '../runner/files.mjs';
 import {agentTool,sessionContext} from './agent-tools.mjs';
+import {normalizeToolError} from './agent-proof.mjs';
 const [action,target,operation,params]=process.argv.slice(2);
 if(action==='start'||action==='resume'){
   let session;
@@ -17,9 +18,11 @@ if(action==='start'||action==='resume'){
   finally{clearTimeout(limit);if(child.exitCode===null&&!child.signalCode){stop();await closed;}}
 }else if(action==='tool'){
  try{console.log(JSON.stringify({format:'athanor-agent-tool/v1',operation,result:await agentTool(target,operation,JSON.parse(params||'{}'))},null,2));}
- catch(e){console.log(JSON.stringify({format:'athanor-agent-tool/v1',operation,status:e.status||'Fail',error:e.message,diagnostics:e.diagnostics||null,evidence:e.evidence||null}));process.exitCode=e.status==='Unknown'?5:3;}
-}else if(action==='call')console.log(JSON.stringify(await desktopCall(target,operation,JSON.parse(params||'{}')),null,2));
-else if(action==='native')console.log(JSON.stringify(await nativeCall(target,operation,JSON.parse(params||'{}')),null,2));
+ catch(e){e=normalizeToolError(e);console.log(JSON.stringify({format:'athanor-agent-tool/v1',operation,status:e.status||'Blocked',code:e.code||'tool_failed',origin:e.origin||'harness',error:e.message,nextActions:e.nextActions||['correct_parameters','context'],diagnostics:e.diagnostics||null,evidence:e.evidence||null}));process.exitCode=e.status==='Unknown'?5:3;}
+}else if(action==='call'||action==='native'){
+ try{const session=await readJSON(target),p=JSON.parse(params||'{}');console.log(JSON.stringify(session.agentTracking?await agentTool(target,action,{operation,params:p}):await (action==='call'?desktopCall:nativeCall)(target,operation,p),null,2));}
+ catch(e){e=normalizeToolError(e);console.log(JSON.stringify({format:'athanor-agent-tool/v1',operation,status:e.status||'Blocked',code:e.code||'tool_failed',error:e.message,nextActions:e.nextActions||['correct_parameters','context']}));process.exitCode=e.status==='Unknown'?5:3;}
+}
 else if(action==='stop')await stopDesktop(target);
 else if(action==='schema')console.log(JSON.stringify(await readJSON(new URL('../runner/contracts/desktop-schema.json',import.meta.url)),null,2));
 else throw new Error('Usage: schema | start --plan PLAN.json | start SOURCE.app [COCOA_PLUGIN] | resume SESSION.json | call SESSION.json operation JSON | native SESSION.json operation JSON | stop SESSION.json');

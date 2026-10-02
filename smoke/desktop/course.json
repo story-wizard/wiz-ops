@@ -1,6 +1,6 @@
 {
   "id": "local-desktop-v1",
-  "revision": 9,
+  "revision": 11,
   "title": "Local desktop smoke",
   "target": "Instrumented local GUI with isolated Qt runtime",
   "cases": [
@@ -8,7 +8,20 @@
       "id": "D-CLI-01",
       "sourceId": "CLI-01",
       "title": "Owned GUI connection",
-      "expected": "Owned process, endpoint and Golden Project agree."
+      "expected": "Owned process, endpoint and Golden Project agree.",
+      "proof": {
+        "version": 1,
+        "mode": "hybrid",
+        "actions": [],
+        "checkpoints": [
+          {
+            "id": "connection",
+            "verifier": "connection",
+            "actions": [],
+            "capture": "presented"
+          }
+        ]
+      }
     },
     {
       "id": "D-CLI-02",
@@ -494,6 +507,78 @@
       "sourceId": "EX-02",
       "title": "Export a timeline with an unset rate",
       "expected": "A disposable fixture with stored timeline rate 0/1 resolves to 24/1 and exports 48 decodable H.264 frames; a 1 fps fallback must fail this check."
+    },
+    {
+      "id": "D-EXTERNAL-RELOAD",
+      "sourceId": "UP-02",
+      "stage": "Desktop editor",
+      "title": "External timeline edit notification and reload",
+      "expected": "An external edit leaves dirty live content unchanged, shows the reload notification, and Ctrl+Shift+R adopts and saves the external timeline.",
+      "scope": "Owned raw OTIO name edit during an unsaved project; visible toast, shortcut, model and disk verification.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Input receipts and independent application state."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Displayed editor state during the test."
+        }
+      ]
+    },
+    {
+      "id": "D-SOURCE-COLOR",
+      "sourceId": "CO-08",
+      "stage": "Desktop editor",
+      "title": "Override and restore source colour space",
+      "expected": "Selecting an alternate source colour changes the manual input transform and displayed pixels; reverting restores the original graph and image.",
+      "scope": "Actual source colour combo in the clip graph; exact clip identity, independent graph readback and displayed image samples.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Input receipts and independent application state."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Displayed editor state during the test."
+        }
+      ]
+    },
+    {
+      "id": "D-MGFX-BIN-DROP",
+      "sourceId": "OZ-06",
+      "stage": "Desktop editor",
+      "title": "Drag a generated graphic from Media and play",
+      "expected": "A physical bin drag places the two-second graphic on V1, renders and plays it; Undo restores the empty timeline.",
+      "scope": "Local deterministic generated graphic. Bin gesture, playback and Undo; Oz conversation generation remains separate.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Input receipts and independent application state."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Displayed editor state during the test."
+        }
+      ]
     }
   ]
 }

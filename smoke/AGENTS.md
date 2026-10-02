@@ -18,6 +18,8 @@ Use Find a build in New run, or the `builds` / `build` agent commands. Read `doc
 
 Read `docs/demo-guide.md` for the short team walkthrough and `examples/agent-onboarding.txt` for the complete setup prompt.
 
+Read `docs/changes-2026-10-02.md` for the current update. Use the maintained course and catalog as the authority for counts; historical pilot sections describe earlier tooling.
+
 ## Start from a checkout or bundle
 
 Use Node.js 24 or newer. The command root is `smoke/` in a repository checkout and `workspace/` in a delivered bundle. It contains `package.json`, `scripts/`, `desktop/` and `docs/`; guidance paths below are relative to that root. Run:
@@ -42,6 +44,8 @@ Attached adapters advertise versioned capabilities, supported native commands, c
 
 Use `node scripts/smoke.mjs context --check ID --server URL` for a test definition, source pointers and edit prompt. Add `--export` to retain a curated context folder outside Git, or `--run ID` to use a run's frozen definition and source. Read `docs/test-evidence.md` when changing checks, step recording or evidence collection.
 
+Treat checks as reusable examples: keep fixture setup, tested action, pure independent assertions, evidence and cleanup separable. Read the composition and authoring examples in `docs/test-evidence.md`; that guide is included in exported agent packs. A check should run alone with explicit identities and declared prerequisites. Reuse the existing adapters and helpers, isolate mutable fixtures, and demonstrate a representative wrong result that its assertion rejects. Keep application-specific transports separate from state comparison logic. Course membership does not imply full checklist coverage or runtime qualification.
+
 Use `plan --checks ID` for a focused check, then `run` for an evidence-backed verdict in the dashboard. Desktop tools attach to a byte-identical disposable copy of the selected build, using its shipped CLI and bundled Qt. For exploratory calls, prepare a desktop selection and use `desktop/session.mjs start --plan FILE`, `call`, `native`, and `stop`. Resolve identities from current observations. Operation success alone is not a behavioral pass.
 
 Framework checks need loopback servers and local process inspection. If the agent sandbox denies `listen` or `ps`, use the agent's narrowly scoped approval mechanism to run those checks outside that sandbox. Do not change system permissions to make framework checks pass.
@@ -50,6 +54,13 @@ Run only when the user has authorized testing on that machine. Foreground sessio
 
 For new-build preparation failures or feature changes, read `docs/build-repair.md`. Context packs include a build-repair prompt, mapped contracts and qualification records. Qualify exact reviewed schemas, update affected assertions for behavioral changes, and keep new feature checks behind lead acceptance. For source or runtime updates, follow `docs/maintaining-harness.md`. Keep bundles, models, projects and evidence outside Git. Preserve existing run evidence and installed runtime versions.
 
-Build discovery displays 50 records per page by default. Filters search all retained metadata before pagination. Agents can use `builds --author me --page 2`, `--page-size all` for the cached catalog, and `--github-page N` to load older metadata in batches of 50. Inspect `nextGitHubPage` and `hasMoreGitHub` before requesting the next provider page.
+Build discovery displays 10 records per page by default. Filters search all retained metadata before pagination. Agents can use `builds --author me --page 2`, `--page-size all` for the cached catalog, and `--github-page N` to load older metadata in batches of 10. Inspect `nextGitHubPage` and `hasMoreGitHub` before requesting the next provider page.
 
 For lost course-start responses, query the original request ID first. If the service returns 404, an explicitly requested retry may use the exact same request ID, plan hash and operator; admission is idempotent. Do not retry application mutations through this mechanism. Changed downloaded caches are blocked from reuse; reimport legacy archives to establish their package fingerprint, or explicitly register a modified app as a local build.
+
+
+## Default checklist and qualification
+
+A fresh launcher defaults to `smoke-full`: accepted core checks plus the maintained allowlist of physical/checklist qualification candidates. `automated-full` remains accepted-only; custom courses cannot promote candidates. Read `docs/agent-courses.md` for current composition. New physical groups must expose their selected definitions in `agent-context.json`, execute in fresh owned projects, preserve failures and retain native-input receipts in the course report. Stage executors run from the retained source snapshot. Keep the Mac unlocked for desktop checks; never attempt to bypass the lock screen or change system security settings.
+
+The default `smoke-full` revision 2 excludes `S-PF-IDLE`. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.

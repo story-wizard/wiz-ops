@@ -2,6 +2,7 @@ import path from 'node:path';
 import {readFileSync,readdirSync,existsSync,mkdirSync,writeFileSync,openSync,closeSync,realpathSync,appendFileSync} from 'node:fs';
 import {spawn,execFileSync} from 'node:child_process';
 import {createHash,randomUUID} from 'node:crypto';
+import {physicalChecks} from '../runner/catalog.mjs';
 import {ROOT,dataDirectory} from '../runner/files.mjs';
 import {verifyDesktopOwner} from './adapter.mjs';
 export const desktopCourse=JSON.parse(readFileSync(path.join(ROOT,'desktop/course.json')));
@@ -57,7 +58,7 @@ export function requestJob(data,id,action,body={}){
 export function jobDetails(data,id){let j=getJob(data,id);if(['Preparing','Ready','Running'].includes(j.state)&&!live(j))j={...j,state:'Interrupted',message:'Worker stopped; inspect the retained session before starting another.'};const reviews=path.join(j.root,'reviews');return {...j,brief:existsSync(path.join(j.root,'brief.md'))?readFileSync(path.join(j.root,'brief.md'),'utf8'):'',ozPrompt:existsSync(path.join(j.root,'oz-prompt.txt'))?readFileSync(path.join(j.root,'oz-prompt.txt'),'utf8'):'',bugDraft:existsSync(path.join(j.root,'bug-draft.md'))?readFileSync(path.join(j.root,'bug-draft.md'),'utf8'):'',reviews:existsSync(reviews)?readdirSync(reviews).filter(n=>n.endsWith('.json')).map(n=>read(path.join(reviews,n))).sort((a,b)=>a.at.localeCompare(b.at)):[]};}
 
 export function initializeDesktopCatalog(db){
- for(const [name,definition] of [['Local desktop',desktopCourse],['Local services',serviceCourse]])for(const c of definition.cases){
+ for(const [name,definition] of [['Local desktop',desktopCourse],['Local services',serviceCourse],['Physical computer use',{id:'physical-qualification',target:'Physical macOS input + independent state',cases:physicalChecks}]])for(const c of definition.cases){
   const stored=db.prepare('SELECT definition FROM tests WHERE id=?').get(c.id);if(stored&&JSON.parse(stored.definition).revision!==1)continue;
   const source=c.sourceId?JSON.parse(db.prepare('SELECT definition FROM tests WHERE id=?').get(c.sourceId).definition):{};
   const t={...source,id:c.id,sourceId:c.sourceId,sourceRow:source.sourceRow||null,sourceResults:null,title:c.title,criteria:c.expected,area:source.area||'Desktop interaction',execution:'Automated',course:name,readiness:'Ready for pilot',priority:'P1',environment:'Local',gpScope:'GP v0',owner:'Unassigned',fixtureIds:['gp-project','gp-media','gp-timelines'],revision:1,kind:c.sourceId?'Automated counterpart':'Team addition',approach:definition.target,expected:c.expected,blocker:'See run evidence; not release-package acceptance.',notes:'Automated failures require a separate human investigation; original results are immutable.',automation:{course:definition.id,target:definition.target}};

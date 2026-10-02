@@ -18,7 +18,7 @@ A new workspace starts with the test catalog and no run history. Preparation aut
 ## Walk through the app
 
 1. In Run tests, open Find a build. Show Releases, Nightlies and Tagged builds, then use Mine to find builds containing your PRs. Builds can include several PR authors. Filters search all retained metadata. The list starts at 50 per page, with larger pages, All cached builds and Load older available.
-2. Choose a compatible build and course. For the short demo, have your agent save `examples/color-regression.json` once through `smoke.mjs course save --file examples/color-regression.json --server URL`. Color regression then appears as a 13-check course; Build engine checks selects 57 checks. All automated checks selects 137 accepted definitions and needs desktop tools and the course's media/model prerequisites. Add a run name if useful.
+2. Choose a compatible build and course. The fresh default, Logan’s checklist — full automated course, selects 153 checks including 16 qualification candidates. All automated checks selects only the 137 accepted definitions. For a short demo, save `examples/color-regression.json` once through `smoke.mjs course save --file examples/color-regression.json --server URL`; it appears as a 13-check course. Build engine checks selects 57 checks. Add a run name if useful.
 3. Press Prepare build. Follow the preparation steps until Build ready, then press Start checks. Athanor records course progress in Results.
 4. Click a completed test row. Its details open immediately in the right sidebar. Show the expected result, how the check works, Operations used, recorded actions and evidence. Clicking another row updates that sidebar. Close or Escape returns to the table.
 5. Open the report to view the saved run independently. Show its filters, evidence and Edit this test prompt. The report stays on this Mac until someone deliberately shares it.
@@ -36,9 +36,10 @@ The adapter provides application operations and Qt controls; verified macOS inpu
 
 | Count | Meaning |
 | --- | --- |
-| 137 | Accepted automated definitions available to courses |
-| 57 / 73 / 7 | Engine / desktop / service checks in the full automated course |
-| 143 | All scripted definitions, including six candidates |
+| 153 | Default mixed course, including 137 accepted checks and 16 qualification candidates |
+| 57 / 89 / 7 | Engine / desktop / service checks in that default course; desktop includes 13 physical paths |
+| 137 | Accepted definitions available to custom courses; 57 engine, 73 desktop and 7 service |
+| 159 | Runnable catalog definitions; the default course excludes five unlinked team checks and idle CPU |
 | 137 original checklist rows | Logan's user paths; these are tracked separately from automated definitions |
 
 Mapped checks can cover part of an original path. The coverage view records that relationship. Fresh supplies the empty starting project; Story-user, Large and NAS are future fixture work. Human handoff is a later workflow.
@@ -47,4 +48,4 @@ Mapped checks can cover part of an original path. The coverage view records that
 
 Open Athanor on the intended Mac and prepare the selected build and course. For a full run, keep the desktop unlocked. Check media tools and any required speech model. Keep a completed report handy to show details while another course runs.
 
-For a new testing Mac, follow [source handoff](source-handoff.md) and [installation](maintaining-harness.md). Local installation checks are recorded separately from a first smoke run on that Mac.
+For a new testing Mac, follow [source handoff](source-handoff.md) and [installation](maintaining-harness.md). Local installation checks are recorded separately from a first smoke run on that Mac. For extending the checks, use the reusable fixture/action/assertion/evidence examples in [test authoring](test-evidence.md#compose-a-test-from-reusable-parts).

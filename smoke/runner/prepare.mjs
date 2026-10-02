@@ -11,6 +11,7 @@ export async function speechModelIdentity(directory=path.join(homedir(),'.cache/
 }
 
 import {ROOT,dataDirectory,readJSON,writeJSON,fingerprint,digest,sha,inside} from './files.mjs';
+import {localBuilds,assertBuildIdentity} from '../builds.mjs';
 import {prepareFixtures,validateFixtures} from './fixtures.mjs';
 import {ingestPython,validateIngestProfile} from './ingest.mjs';
 import {selectedBuildRuntime,verifyRuntime,assertSelectedRuntime} from './runtime.mjs';
@@ -64,6 +65,7 @@ export async function prepare({app='/Applications/Wizard.app',dataDir=dataDirect
   console.log('Fingerprinting the selected package…');
   await onProgress('build');
   const pkg=await fingerprint(app,{packageTree:true});
+  assertBuildIdentity(await localBuilds(dataDir,{verify:false}),app,pkg.sha256);
   const version=execFileSync('/usr/bin/plutil',['-extract','CFBundleShortVersionString','raw','-o','-',path.join(app,'Contents/Info.plist')],{timeout:10000,encoding:'utf8'}).trim();
   const schema=JSON.parse(execFileSync(path.join(app,'Contents/MacOS/wiz-cli'),['project','create','--schema','--no-spawn'],{timeout:15000,maxBuffer:8*1024*1024,encoding:'utf8'}));
   for(const c of course.cases)for(const op of c.operations)if(!schema.operations[op])throw new Error(`Missing operation ${op} for ${c.id}`);

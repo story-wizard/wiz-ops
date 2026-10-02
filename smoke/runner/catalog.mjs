@@ -5,10 +5,12 @@ import {ROOT,digest} from './files.mjs';
 export const baseCourse=JSON.parse(readFileSync(path.join(ROOT,'runner/course.json'),'utf8'));
 export const desktopCourse=JSON.parse(readFileSync(path.join(ROOT,'desktop/course.json'),'utf8'));
 export const serviceCourse=JSON.parse(readFileSync(path.join(ROOT,'desktop/service-course.json'),'utf8'));
+export const physicalCourses=['physical-course.json','physical-editor-course.json'].map(file=>JSON.parse(readFileSync(path.join(ROOT,'desktop',file),'utf8')));
+export const physicalChecks=physicalCourses.flatMap(c=>c.cases).filter(c=>c.sourceId&&(c.id.startsWith('P-SB-')||c.proof||c.id==='P-CURVE-LIVE'));
 export const humanCheckpoint=JSON.parse(readFileSync(path.join(ROOT,'runner/checkpoint.json'),'utf8'));
 function checkpointID(id){if(id!==undefined&&id!==humanCheckpoint.id)throw Error('Unknown human checkpoint');return id;}
-export const rawChecks=[...baseCourse.cases,...desktopCourse.cases,...serviceCourse.cases];
-export const targetFor=id=>baseCourse.cases.some(c=>c.id===id)?'packaged':desktopCourse.cases.some(c=>c.id===id)?'desktop':'service';
+export const rawChecks=[...baseCourse.cases,...desktopCourse.cases,...serviceCourse.cases,...physicalChecks];
+export const targetFor=id=>baseCourse.cases.some(c=>c.id===id)?'packaged':[...desktopCourse.cases,...physicalChecks].some(c=>c.id===id)?'desktop':'service';
 // These checks share authored setup and persistence state. Expose the closure before launch.
 const families=[
  ['D-CLI-02','D-LP-02-SAVE','D-LP-02-RELAUNCH'],
@@ -35,9 +37,14 @@ export function initializeCourses(db){
 }
 export const builtinCourse=()=>({id:'packaged-full',revision:baseCourse.revision,title:'Packaged engine — full course',project:'fresh',kind:'maintained',groups:[{id:'packaged',title:'Packaged engine',checks:baseCourse.cases.map(c=>c.id)}]});
 export const allAutomatedCourse=()=>({id:'automated-full',revision:1,title:'All automated checks',project:'fresh',kind:'maintained',groups:['packaged','service','desktop'].map(target=>({id:target,title:({packaged:'Build engine',service:'Background services',desktop:'Desktop editor'})[target],checks:checkRegistry().filter(c=>c.accepted&&c.target===target).map(c=>c.id)})).filter(g=>g.checks.length)});
-export function courseList(db){return [allAutomatedCourse(),builtinCourse(),...db.prepare('SELECT definition FROM user_courses c WHERE revision=(SELECT MAX(revision) FROM user_courses WHERE id=c.id) ORDER BY id').all().map(r=>JSON.parse(r.definition))];}
+const qualificationChecks=()=>[...physicalChecks.map(c=>c.id),'D-EXTERNAL-RELOAD','D-SOURCE-COLOR','D-MGFX-BIN-DROP'];
+export const fullSmokeCourse=()=>{
+ const registry=checkRegistry(),allowed=qualificationChecks(),checks=registry.filter(c=>c.accepted||allowed.includes(c.id));
+ return {id:'smoke-full',title:'Logan’s checklist — full automated course',revision:2,project:'fresh',kind:'maintained',qualificationChecks:checks.filter(c=>!c.accepted).map(c=>c.id),groups:[...['packaged','service','desktop'].map(target=>({id:target,title:({packaged:'Build engine',service:'Background services',desktop:'Desktop editor'})[target],checks:checks.filter(c=>c.target===target&&!c.id.startsWith('P-')).map(c=>c.id)})),{id:'physical',title:'Physical computer use',checks:checks.filter(c=>c.id.startsWith('P-')).map(c=>c.id)}].filter(g=>g.checks.length)};
+};
+export function courseList(db){return [fullSmokeCourse(),allAutomatedCourse(),builtinCourse(),...db.prepare('SELECT definition FROM user_courses c WHERE revision=(SELECT MAX(revision) FROM user_courses WHERE id=c.id) ORDER BY id').all().map(r=>JSON.parse(r.definition))];}
 export function getCourse(db,id,revision){
- if(['packaged-full','automated-full'].includes(id)){const c=id==='packaged-full'?builtinCourse():allAutomatedCourse();if(revision!==undefined&&revision!==c.revision)throw Error('Maintained course revision is unavailable.');return c;}
+ if(['packaged-full','automated-full','smoke-full'].includes(id)){const c=id==='packaged-full'?builtinCourse():id==='smoke-full'?fullSmokeCourse():allAutomatedCourse();if(revision!==undefined&&revision!==c.revision)throw Error('Maintained course revision is unavailable.');return c;}
  const r=revision===undefined?db.prepare('SELECT definition FROM user_courses WHERE id=? ORDER BY revision DESC LIMIT 1').get(id):db.prepare('SELECT definition FROM user_courses WHERE id=? AND revision=?').get(id,revision);
  if(!r)throw Error('Course not found: '+id);return JSON.parse(r.definition);
 }
@@ -69,10 +76,11 @@ export function resolveSelection(db,input,review=acceptance()){
  if(!input||Object.keys(input).some(k=>!['courseIds','checkIds','categories','groups','project','title','target','checkpoint'].includes(k)))throw Error('Unknown selection field.');
  if(input.target!==undefined&&!['packaged','desktop','service','all'].includes(input.target))throw Error('Unknown target');
  const project=input.project===undefined?'fresh':input.project;if(project!=='fresh')throw Error('Project variant unavailable: '+project);
- const registry=checkRegistry(review),selectedGroups=[],origins=[];let checkpoint=checkpointID(input.checkpoint);
+ const registry=checkRegistry(review),selectedGroups=[],origins=[],qualification=new Set();let checkpoint=checkpointID(input.checkpoint);
  for(const field of ['courseIds','checkIds','categories'])if(input[field]!==undefined&&(!Array.isArray(input[field])||input[field].length>500||input[field].some(v=>typeof v!=='string')))throw Error('Invalid '+field);
  for(const id of input.courseIds||[]){
   const c=getCourse(db,id);if(c.project!==project)throw Error('Course project variant differs from the requested variant.');origins.push({id:c.id,revision:c.revision});if(c.checkpoint){checkpointID(c.checkpoint);checkpoint=c.checkpoint;}
+  for(const id of c.qualificationChecks||[])qualification.add(id);
   selectedGroups.push(...c.groups.map(g=>({...g,id:c.id+'/'+g.id})));
  }
  if(input.checkIds?.length)selectedGroups.push({id:'selected',title:'Selected checks',checks:input.checkIds});
@@ -83,22 +91,22 @@ export function resolveSelection(db,input,review=acceptance()){
   selectedGroups.push({id:'category/'+normalized,title:matches[0].categories.find(s=>s.toLowerCase()===normalized),checks:matches.map(c=>c.id)});
  }
  if(input.groups)selectedGroups.push(...input.groups);
- const resolvedGroups=groups(selectedGroups,registry,200),requestedIds=[...new Set(resolvedGroups.flatMap(g=>g.checks))];
+ const resolvedGroups=groups(selectedGroups,registry.map(c=>({...c,accepted:c.accepted||qualification.has(c.id)})),200),requestedIds=[...new Set(resolvedGroups.flatMap(g=>g.checks))];
  const chosen=new Set(requestedIds),reasons=new Map();
  const add=(id,reason)=>{if(!chosen.has(id)){chosen.add(id);reasons.set(id,reason);}};
  add('A-CLI-01','Verify the owned packaged endpoint and project binding before selected checks.');
  if(requestedIds.some(id=>targetFor(id)==='desktop'))add('D-CLI-01','Verify the owned desktop endpoint and visible project before desktop checks.');
  for(const family of families)if(family.some(id=>chosen.has(id)))for(const id of family)add(id,'Shared fixture and persistence sequence: '+family.join(', '));
- for(const id of chosen)if(!registry.some(c=>c.id===id&&c.accepted))throw Error('Required check acceptance is missing: '+id);
+ for(const id of chosen)if(!registry.some(c=>c.id===id&&(c.accepted||qualification.has(id))))throw Error('Required check acceptance is missing: '+id);
  const effectiveIds=['A-CLI-01',...requestedIds.filter(id=>targetFor(id)==='packaged'&&id!=='A-CLI-01'),...['service','desktop'].flatMap(target=>rawChecks.filter(c=>chosen.has(c.id)&&targetFor(c.id)===target).map(c=>c.id))];
  const addedPrerequisites=effectiveIds.filter(id=>!requestedIds.includes(id)).map(id=>({id,reason:reasons.get(id)}));
  const targets=[...new Set(effectiveIds.map(targetFor))];
- return {format:'wizard-smoke-selection/v2',title:input.title?text(input.title,'selection title'):origins.length===1&&!input.checkIds?.length&&!input.categories?.length&&!input.groups?getCourse(db,origins[0].id).title:'Custom checks',project,courseRevisions:origins,groups:resolvedGroups,requestedIds,effectiveIds,addedPrerequisites,notSelected:registry.filter(c=>targets.includes(c.target)&&!effectiveIds.includes(c.id)).map(c=>c.id),requirements:requirementsFor(effectiveIds,checkpoint),...(checkpoint?{checkpoint:structuredClone(humanCheckpoint)}:{}),registryHash:digest(rawChecks),acceptanceBasis:{reviewedBy:review.reviewedBy||null,reviewedAt:review.reviewedAt||null},fullSmokeAcceptance:'Not assessed'};
+ return {format:'wizard-smoke-selection/v2',title:input.title?text(input.title,'selection title'):origins.length===1&&!input.checkIds?.length&&!input.categories?.length&&!input.groups?getCourse(db,origins[0].id).title:'Custom checks',project,courseRevisions:origins,groups:resolvedGroups,requestedIds,effectiveIds,qualificationIds:effectiveIds.filter(id=>qualification.has(id)),addedPrerequisites,notSelected:registry.filter(c=>targets.includes(c.target)&&!effectiveIds.includes(c.id)).map(c=>c.id),requirements:requirementsFor(effectiveIds,checkpoint),...(checkpoint?{checkpoint:structuredClone(humanCheckpoint)}:{}),registryHash:digest(rawChecks),acceptanceBasis:{reviewedBy:review.reviewedBy||null,reviewedAt:review.reviewedAt||null},fullSmokeAcceptance:'Not assessed'};
 }
 export function selectedRecipe(selection){
  if(selection.checkpoint&&digest(selection.checkpoint)!==digest(humanCheckpoint))throw Error('Human checkpoint definition changed; prepare again.');
  if(selection.registryHash!==digest(rawChecks))throw Error('Check definitions changed; resolve the selection again.');
- return {...baseCourse,id:'selected-checks',revision:1,sourceCourses:[baseCourse,serviceCourse,desktopCourse].filter(c=>c.cases.some(x=>selection.effectiveIds.includes(x.id))).map(c=>({id:c.id,revision:c.revision,target:c.target})),title:selection.title,target:selection.requirements.executionOrder.map(t=>({packaged:'Packaged engine',service:'Background services',desktop:'Desktop editor'}[t])).join(' + '),scope:'Selected automated checks: '+selection.effectiveIds.join(', ')+'. Results apply only to these checks on '+selection.project+'; other full-course behavior is not exercised.',selection,...(selection.checkpoint?{checkpoint:selection.checkpoint}:{}),cases:selection.effectiveIds.map(id=>{
+ return {...baseCourse,id:'selected-checks',revision:1,sourceCourses:[baseCourse,serviceCourse,desktopCourse,...physicalCourses].filter(c=>c.cases.some(x=>selection.effectiveIds.includes(x.id))).map(c=>({id:c.id,revision:c.revision,target:c.target})),title:selection.title,target:selection.requirements.executionOrder.map(t=>({packaged:'Packaged engine',service:'Background services',desktop:'Desktop editor'}[t])).join(' + '),scope:'Selected automated checks: '+selection.effectiveIds.join(', ')+'. Results apply only to these checks on '+selection.project+'; other full-course behavior is not exercised.',selection,...(selection.checkpoint?{checkpoint:selection.checkpoint}:{}),cases:selection.effectiveIds.map(id=>{
   const c=rawChecks.find(c=>c.id===id);if(!c)throw Error('Unknown selected check: '+id);return targetFor(id)==='packaged'?c:{...c,scope:(targetFor(id)==='desktop'?desktopCourse:serviceCourse).target,operations:[],target:targetFor(id)};
  })};
 }
@@ -106,5 +114,7 @@ export function validateRecipe(recipe,review=acceptance()){
  if(!recipe.selection)return;
  const s=recipe.selection,ids=recipe.cases.map(c=>c.id);
  if(s.project!=='fresh'||!ids.length||ids[0]!=='A-CLI-01'||new Set(ids).size!==ids.length||digest(ids)!==digest(s.effectiveIds)||digest(recipe)!==digest(selectedRecipe(s))||digest(s.requirements)!==digest(requirementsFor(ids,s.checkpoint)))throw Error('Selected recipe or prerequisites changed.');
- const registry=checkRegistry(review);for(const id of ids)if(!registry.some(c=>c.id===id&&c.accepted))throw Error('Selected check acceptance is missing or stale: '+id);
+ const registry=checkRegistry(review),qualifying=s.courseRevisions.some(c=>c.id==='smoke-full'&&c.revision===fullSmokeCourse().revision)?fullSmokeCourse().qualificationChecks:[];
+ if(digest(s.qualificationIds||[])!==digest(ids.filter(id=>qualifying.includes(id))))throw Error('Candidate qualification selection changed.');
+ for(const id of ids)if(!registry.some(c=>c.id===id&&(c.accepted||qualifying.includes(id))))throw Error('Selected check acceptance is missing or stale: '+id);
 }

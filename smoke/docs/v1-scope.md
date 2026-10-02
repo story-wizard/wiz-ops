@@ -1,22 +1,22 @@
 # V1 scope proposal
 
-The source inventory in [v1-candidate.json](../scope/v1-candidate.json) records 143 candidate definitions: 57 packaged engine, 78 foreground desktop and eight background service checks. It remains **Proposed**, with no full-scope approver or approval time. The separate accepted registry permits reuse of 137 definitions in custom courses; it does not assert passing execution.
+The source inventory in [v1-candidate.json](../scope/v1-candidate.json) records 161 definitions, including two exploratory physical definitions excluded from the 159-check runnable catalog. The runnable catalog contains 57 packaged engine, 94 foreground desktop and eight background service checks. It remains **Proposed**, with no full-scope approver or approval time. The separate accepted registry permits reuse of 137 definitions in custom courses; it does not assert passing execution.
 
-All 137 original checklist rows remain visible: 77 have mapped counterparts, 32 have none, 24 NAS rows are deferred and four are undefined placeholders. The existing Partial label is an inventory disposition, not an assertion that every mapped criterion is incomplete or fully satisfied. Consult the original criterion and the specific executable assertions.
+All 137 original checklist rows remain visible: the runnable catalog maps to 82, 27 have no counterpart, 24 NAS rows are deferred and four are undefined placeholders. The existing Partial label is an inventory disposition, not an assertion that every mapped criterion is incomplete or fully satisfied. Consult the original criterion and the specific executable assertions.
 
 Fresh is the empty starting project. Each check constructs the synthetic media and state it needs. Story-user and Large remain future versioned inputs; their absence does not remove credit for a completed Fresh criterion. NAS remains deferred.
 
-## Proposed first required course
+## Accepted core and default mixed course
 
-Use the existing [accepted-automated course](../examples/accepted-automated.json) as the proposed Fresh-only V1 execution scope. It contains all 137 accepted definitions linked to Logan's checklist. Keep failed and blocked checks in that course. A green subset is useful developer feedback, but cannot stand in for the full course.
+The fresh default is `smoke-full`: 153 checks, comprising 137 accepted definitions plus 16 maintained qualification candidates. Its lanes contain 57 engine, 89 desktop and seven service checks, including 13 physical paths. The accepted-only `automated-full` course remains available. Use the existing [accepted-automated course](../examples/accepted-automated.json) to compose the accepted core. It contains all 137 accepted definitions linked to Logan's checklist. Keep failed and blocked checks in that course. A green subset is useful developer feedback, but cannot stand in for the full course.
 
 | Required lane | Checks | What its evidence establishes |
 |---|---:|---|
 | Packaged engine | 57 | The explicitly selected package executes the operations and produces the asserted project, media and output state. |
-| Background services | 7 | The retained instrumented app and its workers satisfy the selected service contracts. |
-| Foreground desktop | 73 | The retained instrumented app responds to the authored interaction and state checks. |
+| Background services | 7 | The selected package and its workers satisfy the authored service assertions, with foreground input disabled. |
+| Foreground desktop | 73 | The selected package, with externally attached tools, satisfies the authored interaction and state assertions. |
 
-This is a proposal for required membership, not a new approval record. The broader 143-definition inventory remains unchanged: five unlinked team additions and the provisional idle-CPU check remain candidates outside this proposed course. Existing acceptance applies to check definitions, not to runtime results or the complete V1 delivery scope.
+The maintained default adds physical paths, external reload, source-colour override, generated-graphic bin drop as candidates. Membership does not promote them into the accepted registry. Five unlinked team checks, idle CPU measurement and two exploratory physical definitions stay outside the default. Existing acceptance applies to exact definitions; runtime results and full delivery acceptance remain separately recorded.
 
 Fresh requires versioned synthetic fixture recipes, media hashes, the expected timeline/project state for each check, and disposable output projects. Missing or changed inputs must block execution. Story-user and Large need separately versioned fixture manifests, an agreed set of representative media and expected states before becoming selectable; silently substituting Fresh is not allowed.
 
@@ -28,13 +28,13 @@ Retain the selected package/runtime identities, source snapshot, frozen course, 
 
 - A real Fresh course through the imported runner and CLI, with project/media/output readback.
 - Rejection of stale plans and altered fixtures before app operations.
-- An interrupted mutation recorded as Unknown, later checks Blocked, no automatic replay, and verified cleanup of owned engine, ingest and desktop processes where exercised.
+- An interrupted mutation recorded as Unknown, dependent checks Blocked, no automatic replay, and verified cleanup of owned engine, ingest and desktop processes where exercised.
 - Focused wrong-result checks that prove assertions reject incorrect successful responses, bad renders and failed ingest. These are runner regression evidence; they do not replace a real app course.
-- A complete required-course run on the intended runtime, with every failure or blocker resolved or explicitly reviewed. Mixed packaged and instrumented builds must retain both identities and cannot claim single-package release qualification.
+- A complete required-course run on the intended runtime, with every failure or blocker resolved or explicitly reviewed. Selected-package and external-tool identities must both be retained. Never substitute a different instrumented app.
 
-The desktop adapter explicitly binds GUI search to the worker in the selected preparation package; reports retain both the instrumented app and preparation-package identities. Unset-rate export now uses an app-created empty project and therefore runs in the foreground desktop lane. Its check ID and accepted expected result are unchanged; acceptance metadata records the corrected target. Populated unset-rate export remains unqualified. The combined preview check verifies Inspector state and Undo but remains Blocked pending a supported node and defined preview interaction. Blur thumbnails from an internal render path are not evidence of a live-preview contract. Playback-loop and Spell-tab duplication still need supported controls. Preserve failing or blocked outcomes until the original criterion is exercised.
+Desktop and service checks now attach to the selected package. Retain package, shipped CLI, adapter and native-driver hashes. Individual rows still have gaps: for example, warm live-grade sampling does not exercise a cold-cache first frame, source-colour override requires its actual control, and physical Spellbook fixtures require operations present in the chosen build. The report preserves missing capabilities and failed assertions.
 
-The desktop/service target is an instrumented runtime and is distinct from packaged-engine evidence. Release qualification, second-machine execution, human handoff, remote build integration and shared publication each require their own retained evidence.
+Release qualification, second-machine execution, human handoff, remote build integration and shared publication each have their own retained evidence and delivery gates.
 
 ## Review and integrity
 

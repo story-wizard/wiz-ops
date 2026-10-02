@@ -87,12 +87,14 @@ The report is designed to become the readable payload for WIZ-512. A later publi
 
 ## Coverage and fixture review
 
-The proposal still contains 143 scripted definitions linked to 137 original rows:
+The scope inventory retains 161 definitions, including two exploratory physical definitions outside the 159-check runnable catalog. Logan's original checklist keeps 137 rows. The runnable catalog maps as follows:
 
-- 77 Partial.
-- 32 Not automated.
+- 82 Partial (mapped behaviors).
+- 27 Not automated.
 - 24 Deferred NAS.
 - 4 Undefined.
+
+The broader scope inventory has one additional mapped row through its excluded warm-grade experiment. Use the runnable catalog when describing available automated coverage. The maintained default selects 153 definitions; 137 definitions remain accepted for custom courses.
 
 Run `npm run scope:check` to inspect integrity, dispositions and fixture recipe sources. This command grants no acceptance. This slice adds duplicate-mapping and disposition validation; it does not approve or reduce the candidate scope.
 

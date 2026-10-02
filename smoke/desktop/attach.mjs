@@ -27,6 +27,7 @@ export async function attachSelectedBuild({app,dataDir=dataDirectory(),preparedS
  await cp(tools.directory,plugins,{recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE});
  const bridge=path.join(plugins,'styles/libwizard_smoke.dylib');
  const session={...preparedSession,format:'wizard-smoke-attachment/v1',dataDir,root,bundle:preparedSession?.bundle||path.join(root,'projects'),app:copy,sourceApp:app,executableName,executable:path.join(copy,'Contents/MacOS',executableName),guiHash:source.sha256,sourcePackageHash:source.sha256,native,harnessId:path.basename(root),generation,inputMode:'desktop',state:'Preparing',scope:'Selected packaged build with an external Qt test plugin; original app and bundled Qt unchanged',toolHash:await sha(bridge),qtVersion:version};
+ if(session.agentProof)session.agentProof={...session.agentProof,tainted:true};
  const file=path.join(root,'session.json');await writeJSON(file,session);
  const stdout=await open(path.join(root,'stdout.log'),'a'),stderr=await open(path.join(root,'stderr.log'),'a');
  let lease;try{lease=await acquireDesktopLease(dataDir);}catch(e){await stdout.close();await stderr.close();throw e;}

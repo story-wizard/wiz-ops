@@ -8,7 +8,7 @@ import {PackagedEngine,OutcomeError} from './engine.mjs';
 import {CaseContext,cases} from './cases.mjs';
 import {snapshotSource} from '../kits.mjs';
 import {prepareCheckpoint} from '../desktop/checkpoint.mjs';
-import {executeStages} from './stages.mjs';
+import {pathToFileURL} from 'node:url';
 import {targetFor} from './catalog.mjs';
 import {testSpecification} from '../test-details.mjs';
 import {connect,execution,updateExecution,record} from './store.mjs';
@@ -49,6 +49,7 @@ async function run(dataDir,runId){
     await engine.stop();
     if(results.some(r=>r.status==='Unknown'))throw new OutcomeError('Uncertain packaged outcome; later stages were not started.','Unknown');
     if(results.some(r=>r.id==='A-CLI-01'&&r.status!=='Pass'))throw new OutcomeError('Connection prerequisite did not pass.','Blocked');
+    const {executeStages}=await import(pathToFileURL(path.join(root,'source/runner/stages.mjs')).href);
     if(course.cases.some(c=>targetFor(c.id)!=='packaged'))results.push(...await executeStages({plan,course,root,dataDir,onResult,isCancelled:()=>cancelled,signal:controller.signal,onStage:(target,count)=>updateExecution(db,runId,'Running',`Running ${target} stage: ${count} selected checks.`,process.pid)}));
     if(course.checkpoint&&!cancelled){await prepareCheckpoint(db,runId,dataDir);return;}
     const state=results.some(r=>r.status==='Unknown')?'Unknown':results.some(r=>r.status==='Fail')?'Failed':results.some(r=>r.status==='Blocked')?'Blocked':'Passed';

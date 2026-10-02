@@ -25,7 +25,7 @@ node scripts/smoke.mjs run --plan /tmp/track-check-plan.json --operator "Agent s
 node scripts/smoke.mjs status --request-id track-check-001 --server "$ATHANOR_URL"
 ```
 
-`setup` returns known builds, courses and the automatic desktop-tool selection. `list` returns course-catalog definitions with their operations and requirements. Physical qualification candidates are available separately in an owned session's context; see [computer-use testing](computer-use-agent.md). `plan` adds the declared prerequisites and freezes the exact selection; it does not execute the check. `run` executes only that selection and its prerequisites. The resulting verdict and evidence appear in Results. See [agent-friendly courses](agent-courses.md) for wait, cancel, report and request recovery.
+`setup` returns known builds, courses and the automatic desktop-tool selection. `list` returns course-catalog definitions with their operations and requirements. The default `smoke-full` also includes explicit physical qualification candidates; unlinked exploratory checks remain in an owned session's context; see [computer-use testing](computer-use-agent.md). `plan` adds the declared prerequisites and freezes the exact selection; it does not execute the check. `run` executes only that selection and its prerequisites. The resulting verdict and evidence appear in Results. See [agent-friendly courses](agent-courses.md) for wait, cancel, report and request recovery.
 
 Desktop/service plans automatically prepare an external adapter for the selected package and its shipped CLI. They never substitute a separate test app. Use `prepare` and poll `preparation --id ID` for step progress and a repair prompt; see [desktop setup](desktop-tools-setup.md). Packaged-only plans do not need the desktop adapter.
 
@@ -52,7 +52,7 @@ node desktop/session.mjs stop SESSION.json
 
 Application calls retain requests, responses and observed revisions in `operations.jsonl`. Native calls retain requests and responses in `native-events.jsonl`. Resolve returned identities, query the resulting state, and assert the behavior you intended. A dispatch receipt or success envelope is not a passing check. An ambiguous action remains Unknown and must not be replayed automatically.
 
-Atomic probes keep their evidence in the owned session directory. They do not create dashboard Pass records. Use a focused course when a probe needs a durable verdict in Results.
+Atomic probes keep their evidence in the owned session directory. During a tracked toolkit attempt, raw call/native commands share its admission boundary. Unqualified mutations invalidate its proof. They do not create dashboard Pass records. Use a focused course when a probe needs a durable verdict in Results.
 
 ## Compose tools in JavaScript
 

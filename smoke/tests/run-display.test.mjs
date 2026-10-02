@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {formatDuration,runTiming,progressBar} from '../public/run-display.js';
+import {formatDuration,runTiming,progressBar,buildImportProgress} from '../public/run-display.js';
 
 test('run clocks freeze at completion and estimate only comparable completed executions',()=>{
   const start='2026-09-30T20:00:00Z',now=Date.parse(start)+600_000;
@@ -35,4 +35,15 @@ test('smoke progress reports completed checks separately from success and keeps 
   assert.match(html,/class="energy-edge" aria-hidden="true"/);
   for(const state of ['Queued','Waiting for human','Passed','Failed','Unknown'])assert.ok(!progressBar([{status:'Pass'}],state).includes('class="energy-edge"'));
   assert.ok(!progressBar([{status:'Not run'}],'Preflight').includes('class="energy-edge"'));
+});
+
+test('build progress shows actual transfer bytes and does not invent totals during validation',()=>{
+ const known=buildImportProgress({stage:'Downloading',bytes:25*1024**2,totalBytes:100*1024**2});
+ assert.match(known,/25.0 MB of 100.0 MB · 25%/);assert.match(known,/aria-valuenow="25"/);assert.match(known,/class="energy-edge"/);
+ const unknown=buildImportProgress({stage:'Downloading',bytes:7*1024**2});assert.match(unknown,/7.0 MB transferred/);assert.ok(!unknown.includes('aria-valuenow'));assert.match(unknown,/indeterminate/);
+ const checking=buildImportProgress({stage:'Checking archive',bytes:100,totalBytes:100});assert.ok(!checking.includes('aria-valuenow'));assert.match(checking,/Checking archive/);
+ const verifying=[0,1,2,3,4].map(completedSteps=>buildImportProgress({stage:'Fingerprinting app',phase:'validation',completedSteps,totalSteps:4}));assert.deepEqual(verifying.map(html=>Number(html.match(/aria-valuenow="(\d+)"/)[1])),[0,25,50,75,100]);assert.ok(verifying.every(html=>!html.includes('indeterminate')));assert.match(verifying[3],/3 of 4 verification steps complete/);
+ const ready=buildImportProgress({stage:'Ready',complete:true});assert.match(ready,/aria-valuenow="100"/);assert.ok(!ready.includes('class="energy-edge"'));
+ assert.match(buildImportProgress({stage:'Failed',complete:true}),/data-active="false"/);
+ assert.ok(!buildImportProgress({stage:'<script>',bytes:NaN}).includes('<script>'));
 });

@@ -77,7 +77,7 @@ class SmokeBridge : public QObject {
         output.write(QJsonDocument(value).toJson());output.commit();
     }
     static QJsonObject capabilities(){
-        return {{"protocol",1},{"version",3},{"operations",QJsonArray{"capabilities","inspect","timeline-clip-rect","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
+        return {{"protocol",1},{"version",4},{"operations",QJsonArray{"capabilities","inspect","timeline-clip-rect","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
                 {"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
                 {"limits",QJsonObject{{"modelRows",64},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
                 {"captures",QJsonObject{{"screenshot","Qt widget raster"},{"snapshot-presented","Owned native window pixels"},{"snapshot-node-preview","Rendered graph preview"}}}};
@@ -105,13 +105,27 @@ class SmokeBridge : public QObject {
             if(auto* p=qobject_cast<QTextEdit*>(w)){item["text"]=p->toPlainText().left(32768);item["html"]=p->toHtml().left(65536);}
             if(auto* p=qobject_cast<QGraphicsView*>(w);p&&p->scene()){QJsonArray entries;for(auto* g:p->scene()->items()){if(entries.size()>=256)break;QString text;if(auto* t=qgraphicsitem_cast<QGraphicsTextItem*>(g))text=t->toPlainText();if(auto* t=qgraphicsitem_cast<QGraphicsSimpleTextItem*>(g))text=t->text();if(text.isEmpty())continue;auto r=p->mapFromScene(g->sceneBoundingRect()).boundingRect();entries.append(QJsonObject{{"text",text},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}});}item["sceneText"]=entries;item["viewport"]=id(p->viewport());}
 
-            if(auto* p=qobject_cast<QComboBox*>(w)){QJsonArray entries;for(int i=0;i<p->count();i++)entries.append(p->itemText(i));item["items"]=entries;item["index"]=p->currentIndex();}
+            // Read the packaged public getters; missing symbols leave identity unavailable.
+            if(QString(w->metaObject()->className())=="RenderGraphView"){
+                using Getter=QString(*)(const QWidget*);
+                auto graph=reinterpret_cast<Getter>(dlsym(RTLD_DEFAULT,"_ZNK16RenderGraphPanel16inspectorGraphIdEv"));
+                auto timeline=reinterpret_cast<Getter>(dlsym(RTLD_DEFAULT,"_ZNK16RenderGraphPanel19inspectorTimelineIdEv"));
+                for(auto* owner=w->parentWidget();owner;owner=owner->parentWidget())if(QString(owner->metaObject()->className())=="RenderGraphPanel"){
+                    if(graph)item["graphId"]=graph(owner);if(timeline)item["timelineId"]=timeline(owner);break;
+                }
+            }
+            if(auto* p=qobject_cast<QComboBox*>(w)){QJsonArray entries,values;for(int i=0;i<p->count();i++){entries.append(p->itemText(i));values.append(QJsonValue::fromVariant(p->itemData(i)));}item["items"]=entries;item["itemValues"]=values;item["index"]=p->currentIndex();}
             if(auto* p=qobject_cast<QGraphicsView*>(w);p&&p->scene()){QJsonArray entries;for(auto* g:p->scene()->items()){if(entries.size()>=128)break;if(!(g->flags()&QGraphicsItem::ItemIsSelectable))continue;QJsonArray labels;for(auto* child:g->childItems())if(auto* proxy=qgraphicsitem_cast<QGraphicsProxyWidget*>(child);proxy&&proxy->widget())for(auto* label:proxy->widget()->findChildren<QLabel*>())labels.append(label->text());const auto r=p->mapFromScene(g->sceneBoundingRect()).boundingRect();QJsonArray ports;
                 for(auto* child:g->childItems())if(child->isVisible()&&(qgraphicsitem_cast<QGraphicsEllipseItem*>(child)||(QString(p->metaObject()->className())=="RenderGraphView"&&child->type()==QGraphicsItem::UserType+1&&child->boundingRect()==QRectF(-6,-6,12,12)))){
                     const auto center=p->mapFromScene(child->mapToScene(child->boundingRect().center()));
                     ports.append(QJsonObject{{"x",center.x()},{"y",center.y()},{"side",child->pos().x()<g->boundingRect().center().x()?"input":"output"},{"tooltip",child->toolTip()}});
                 }
-                entries.append(QJsonObject{{"labels",labels},{"selected",g->isSelected()},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()},{"sceneX",g->pos().x()},{"sceneY",g->pos().y()},{"ports",ports}});}item["sceneItems"]=entries;}
+                QJsonObject node{{"labels",labels},{"selected",g->isSelected()},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()},{"sceneX",g->pos().x()},{"sceneY",g->pos().y()},{"ports",ports}};
+                if(QString(p->metaObject()->className())=="RenderGraphView"&&g->type()==QGraphicsItem::UserType+4&&g->toGraphicsObject()){
+                    using Getter=QString(*)(const QGraphicsObject*);auto getter=reinterpret_cast<Getter>(dlsym(RTLD_DEFAULT,"_ZNK14RenderNodeItem6nodeIdEv"));
+                    if(getter)node["nodeId"]=getter(g->toGraphicsObject());
+                }
+                entries.append(node);}item["sceneItems"]=entries;}
             if(auto* p=qobject_cast<QTabBar*>(w)){QJsonArray entries;for(int i=0;i<p->count();i++)entries.append(p->tabText(i));item["tabs"]=entries;item["index"]=p->currentIndex();QJsonArray rects;for(int i=0;i<p->count();i++){const auto r=p->tabRect(i);QWidget* close=p->tabButton(i,QTabBar::RightSide);if(!close)close=p->tabButton(i,QTabBar::LeftSide);rects.append(QJsonObject{{"text",p->tabText(i)},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()},{"close",close&&close->isVisible()?id(close):QString()}});}item["tabRects"]=rects;}
             if(auto* p=qobject_cast<QMenu*>(w)){QJsonArray entries;for(auto* a:p->actions()){const auto r=p->actionGeometry(a);entries.append(QJsonObject{{"text",a->text()},{"enabled",a->isEnabled()},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}});}item["menuItems"]=entries;}
             if(auto* p=qobject_cast<QAbstractItemView*>(w);p&&p->model()){

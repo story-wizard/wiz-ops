@@ -1,6 +1,7 @@
 import {nativeCall} from './adapter.mjs';
 import {nativeDesktopInput} from './macos-input.mjs';
 import {assert,pause,OutcomeError} from '../runner/engine.mjs';
+import {withAdapterAction,markUnknown} from './agent-proof.mjs';
 
 export function clipPoint(geometry,part='body'){
  assert(['body','left-edge','right-edge'].includes(part),'Choose body, left-edge or right-edge');
@@ -18,6 +19,14 @@ export function windowPoint(widget,window,native,x,y){
  return {x:widget.x+x,y:titleHeight+widget.y+y};
 }
 export async function physicalInput(file,command,params={}){
+ return withAdapterAction(file,command!=='screenshot',command,params,async()=>{try{return await physicalInputOwned(file,command,params);}catch(e){if(e.status==='Unknown')await markUnknown(file,e);throw e;}});
+}
+export function postInputFocus(ui,target,receipt,command){
+ if(command!=='type'&&!(command==='click'&&target.editableText))return;
+ const key=ui.widgets.find(w=>w.keyWindow===true),field=ui.widgets.find(w=>w.id===target.id);
+ if(ui.focus!==target.id||!field?.editableText||field.window!==key?.id||key?.nativeWindow!==receipt.window){const e=new OutcomeError('The editable target did not retain focus after input; inspect before continuing','Unknown');e.code='input_focus_lost';e.diagnostics={target:target.id,focus:ui.focus,keyWindow:key?.nativeWindow||null};throw e;}
+}
+async function physicalInputOwned(file,command,params={}){
  let u,widget,window;
  for(let i=0;i<5;i++){u=await nativeCall(file,'inspect');widget=u.widgets.find(w=>w.id===params.target);window=u.widgets.find(w=>w.id===widget?.window);if(widget&&window)break;await pause(100);}
  if(!widget||!window)throw new OutcomeError(`Physical input target ${params.target} (${widget?.class||'absent'}; window ${widget?.window||'absent'}) is not observable`,'Blocked');
@@ -29,8 +38,9 @@ export async function physicalInput(file,command,params={}){
  const matches=native.windows.filter(w=>w.title===window.title&&Math.abs(w.frame.width-window.width)<=1&&Math.abs(w.frame.height-window.height)<=80);
  assert(matches.length===1,'Native window title/geometry is absent or ambiguous');
  const target=matches[0],request={command,mode:'window-server',pid:native.pid,started:native.started,window:target.window,frame:target.frame};
+ if(command==='screenshot'&&params.crop){const r=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height},p=windowPoint(widget,window,target,r.x,r.y);request.captureRect={...p,width:r.width,height:r.height};}
  if(command==='key')request.key=params.key;
- else if(command==='type')request.text=params.text;
+ else if(command==='type'){request.text=params.text;request.focusTarget=widget.id;}
  else if(command!=='screenshot'){
   if(params.chrome){
    assert(widget.id===window.id&&Number.isFinite(params.x)&&params.x>=120&&params.x<target.frame.width&&params.y>=0&&params.y<target.frame.height-window.height,'Choose an observed native title-bar drag point away from window controls');
@@ -47,5 +57,10 @@ export async function physicalInput(file,command,params={}){
   if(params.durationMs!==undefined)request.durationMs=params.durationMs;
   if(command==='scroll'){request.deltaX=params.deltaX??0;request.deltaY=params.deltaY??0;}
  }
- return nativeDesktopInput(file,request);
+ const receipt=await nativeDesktopInput(file,request);
+ if(command==='type'||command==='click'&&widget.editableText){
+  try{let after;for(let i=0;i<10;i++){after=await nativeCall(file,'inspect');if(after.focus===widget.id)break;await pause(100);}postInputFocus(after,widget,receipt,command);receipt.focus={target:widget.id,focused:after.focus,keyWindow:after.widgets.find(w=>w.keyWindow)?.nativeWindow,observedAt:new Date().toISOString()};}
+  catch(e){e.status='Unknown';e.code=e.code||'post_input_observation_failed';e.nextActions=['observe','verify_resolution','resolve'];e.diagnostics={...e.diagnostics,receipt};throw e;}
+ }
+ return receipt;
 }
