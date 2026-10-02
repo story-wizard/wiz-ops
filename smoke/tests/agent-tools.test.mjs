@@ -5,6 +5,14 @@ import {tmpdir} from 'node:os';
 import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from 'node:fs/promises';
 import {selectUI,uniqueTarget,compareObservation,exportAgentReport,requirePassProof} from '../desktop/agent-tools.mjs';
 import {acquireDesktopLease} from '../desktop/desktop-lease.mjs';
+import {verifyTrimmedClip} from '../desktop/check-support.mjs';
+
+test('physical trim accepts supported carrier timing and rejects corrupt range or identity',()=>{
+ const before={clip_id:'clip',timeline_range:{start_seconds:0,end_seconds:4},source:{asset_id:'asset',source_range:{start_seconds:1,end_seconds:5}}};
+ const after={clip_id:'clip',timeline_range:{start_seconds:0,end_seconds:67/24},source:{asset_id:'asset',source_range:{start_seconds:1,end_seconds:91/24},fps:24,projection_status:'carrier',projection_diagnostics:[],source_availability:'bounded'}};
+ assert.equal(verifyTrimmedClip(before,after,24).projection,'carrier');
+ for(const mutate of [a=>a.clip_id='other',a=>a.source.asset_id='other',a=>a.timeline_range.start_seconds=1,a=>a.source.projection_status='rejected',a=>a.source.projection_diagnostics=['exact_authority_limit_exceeded'],a=>a.source.source_availability='out_of_bounds',a=>a.source.source_range.end_seconds+=1,a=>{a.source.source_range.end_seconds+=.01;a.timeline_range.end_seconds+=.01;}]){const bad=structuredClone(after);mutate(bad);assert.throws(()=>verifyTrimmedClip(before,bad,24));}
+});
 
 test('agent target queries reject ambiguity and expose limits without shipping the entire UI',()=>{
  const ui={widgets:[{id:'1',class:'Button',text:'Add',window:'main',enabled:true},{id:'2',class:'Button',text:'Add',window:'floating',enabled:true},{id:'3',class:'List',rows:100,model:Array(64).fill(['item']),itemRects:[{x:1,y:2}]}]};

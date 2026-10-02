@@ -13,7 +13,7 @@ import {testSpecification,candidateChecks,actionHistory,stepHistory} from '../te
 
 const readOps=agentReadOperations,readNative=agentReadNative;
 const selectorKeys=['id','class','name','text','tooltip','title','window','parent','enabled','active','contains'];
-const operations=['context','preflight','observe','find','physical','native','call','wait','capture','begin','verify','resolve','record','report'];
+const operations=['context','schema','preflight','observe','find','physical','native','call','wait','capture','evidence','begin','verify','resolve','record','report'];
 
 export function selectUI(ui,{kind='widgets',selector={},limit=20,details=false}={}){
  assert(['widgets','actions'].includes(kind)&&Number.isInteger(limit)&&limit>=1&&limit<=100,'Choose widgets/actions and a limit from 1 to 100');
@@ -63,14 +63,15 @@ export async function sessionContext(file){
   'Candidate physical checks do not change canonical acceptance. Raw call/native commands are escape hatches; use tool call/native to keep the evidence revision current.',
   'Stop the session when done. The foreground lease is shared across Athanor workspaces and released when its launcher exits.'
  ]};
+ result.applicationOperations=Object.keys(s.schema.operations||{});result.readOnlyOperations=readOps;
  await writeJSON(path.join(s.root,'agent-context.json'),result);return result;
 }
 
-async function retain(s,label,value,kind='json'){
+async function retain(s,label,value,kind='json',imported=false){
  s=await readJSON(path.join(s.root,'session.json'));
  await mkdir(path.join(s.root,'evidence'),{recursive:true});const name='agent-'+randomUUID()+(kind==='json'?'.json':'.png'),file=path.join(s.root,'evidence',name);
  if(kind==='json')await writeJSON(file,value);else{assert(inside(s.root,await realpath(value)),'Capture escaped the session');await copyFile(value,file);}
- const evidence={file:name,path:file,kind,caption:label,sha256:await sha(file),caseId:s.currentCheck||null,attempt:s.agentAttempt||null,generation:s.generation,revision:s.agentRevision||0};
+ const evidence={file:name,path:file,kind,caption:label,sha256:await sha(file),caseId:s.currentCheck||null,attempt:s.agentAttempt||null,generation:s.generation,revision:imported?null:s.agentRevision||0};
  await appendFile(path.join(s.root,'agent-evidence.jsonl'),JSON.stringify(evidence)+'\n');return evidence;
 }
 async function journal(s,operation,params,start,result,status='Completed'){
@@ -91,8 +92,15 @@ export async function agentTool(file,operation,params={}){
  try{
   if(operation==='preflight'){
    const observed=await nativeDesktopInput(file,{command:'inspect',mode:'window-server',depth:0});result={pid:observed.pid,started:observed.started,permissions:observed.permissions,frontmost:observed.frontmost,windows:observed.windows,ready:observed.permissions?.input===true&&observed.permissions?.screenCapture===true};
+  }else if(operation==='schema'){
+   assert(typeof params.operation==='string'&&Object.hasOwn(s.schema.operations,params.operation),'Choose an advertised application operation');result={operation:params.operation,params:s.schema.operations[params.operation],result:s.schema.results?.[params.operation],errors:s.schema.errors?.[params.operation]};
+  }else if(operation==='evidence'){
+   assert(s.currentCheck&&typeof params.file==='string'&&typeof params.title==='string','Begin a check and supply a file and title');
+   assert(inside(s.root,await realpath(params.file)),'Evidence escaped the session');
+   // Imported observations illustrate the attempt; they cannot satisfy its current capture gate.
+   result=await retain(s,params.title,params.kind==='image'?params.file:await readJSON(params.file),params.kind==='image'?'image':'json',true);
   }else if(operation==='observe'||operation==='find'){
-   const ui=await nativeCall(file,'inspect');result=operation==='find'?uniqueTarget(ui,params.selector,params.kind):selectUI(ui,params);result={...result,observedAt:new Date().toISOString(),generation:s.generation,observationBytes:{full:Buffer.byteLength(JSON.stringify(ui)),returned:Buffer.byteLength(JSON.stringify(result))}};
+   const ui=await nativeCall(file,'inspect');result=operation==='find'?uniqueTarget(ui,params.selector,params.kind):selectUI(ui,params);result={...result,observedAt:new Date().toISOString(),generation:s.generation,observationBytes:{full:Buffer.byteLength(JSON.stringify(ui)),selectedPayload:Buffer.byteLength(JSON.stringify(result))}};
   }else if(operation==='physical'){
    assert(['click','drag','key','screenshot'].includes(params.command),'Unsupported physical command');
    const ui=await nativeCall(file,'inspect'),target=uniqueTarget(ui,params.target||params.selector);
@@ -100,6 +108,7 @@ export async function agentTool(file,operation,params={}){
    if(!['key','screenshot'].includes(params.command)){p.x=params.x??target.width*(params.xRatio??.5);p.y=params.y??target.height*(params.yRatio??.5);}
    if(params.command==='drag'){const to=uniqueTarget(ui,params.toTarget||params.target||params.selector);p.toTarget=to.id;p.toX=params.toX??to.width*(params.toXRatio??.5);p.toY=params.toY??to.height*(params.toYRatio??.5);}
    result=await physicalInput(file,params.command,p);
+   if(params.command==='screenshot')result.capture=await retain(s,params.title||'Owned native window',result.output,'image');
   }else if(operation==='call'||operation==='native')result=await (operation==='call'?desktopCall:nativeCall)(file,params.operation,params.params||{});
   else if(operation==='wait'){
    assert(['exists','absent','enabled','value','text','checked'].includes(params.condition||'exists'),'Unsupported wait condition');
@@ -128,6 +137,7 @@ export async function agentTool(file,operation,params={}){
    assert(verified,'Resolve needs a current independent verification of the actual state');s.agentUncertain=false;await writeJSON(file,s);result={resolved:true,note:params.note.trim()};
   }else if(operation==='record'){
    assert(s.currentCheck&&['Pass','Fail','Blocked','Unknown'].includes(params.status)&&typeof params.note==='string'&&params.note.trim(),'Begin a check and supply its verdict and observation');
+   if(params.status!=='Pass'){const failure=await captureDesktopFailure(file,Object.assign(Error(params.note),{status:params.status}),s.currentCheck);if(failure.failureState)await retain(s,'State when the check failed',await readJSON(failure.failureState));if(failure.failureScreenshot)await retain(s,'Qt window raster when the check failed',failure.failureScreenshot,'image');}
    const evidence=await evidenceFor(s,s.currentCheck);
    if(params.status==='Pass'){
     const verified=[];for(const e of evidence.filter(e=>e.kind==='json'))if((await readJSON(e.path)).matched===true)verified.push(e);
@@ -147,14 +157,14 @@ async function evidenceFor(s,id){
 export async function exportAgentReport(file){
  const s=await readJSON(file);verifyDesktopPaths(s);const events=await jsonLines(path.join(s.root,'agent-tools.jsonl')),results=await jsonLines(path.join(s.root,'agent-results.jsonl'));
  const app=await jsonLines(path.join(s.root,'operations.jsonl')),native=await jsonLines(path.join(s.root,'native-events.jsonl')),input=await jsonLines(path.join(s.root,'native-input.jsonl')),steps=await jsonLines(path.join(s.root,'steps.jsonl'));
- const ids=[...new Set(events.filter(e=>e.operation==='begin').map(e=>e.caseId))],directory=path.join(s.root,'agent-report-'+randomUUID());await mkdir(path.join(directory,'evidence'),{recursive:true});
+ const ids=[...new Set(events.filter(e=>e.operation==='begin').map(e=>e.caseId))],name='agent-report-'+randomUUID(),directory=path.join(s.dataDir,'exports',name);await mkdir(path.join(directory,'evidence'),{recursive:true});
  const artifacts=[],cases=[];
  for(const id of ids){const begin=events.findLast(e=>e.caseId===id&&e.operation==='begin'),recorded=results.findLast(r=>r.id===id&&r.attempt===begin.attempt),spec=testSpecification(definition(s,id)),evidence=await evidenceFor({...s,agentAttempt:begin.attempt},id);
-  for(const e of evidence){await copyFile(e.path,path.join(directory,'evidence',e.file));artifacts.push({file:e.file,source:path.relative(s.root,e.path),bytes:(await stat(e.path)).size,sha256:e.sha256});}
+  for(const e of evidence){const destination=path.join(directory,'evidence',e.file);await copyFile(e.path,destination);assert(await sha(destination)===e.sha256,'Agent evidence changed during export');artifacts.push({file:e.file,source:path.relative(s.root,e.path),bytes:(await stat(e.path)).size,sha256:e.sha256});}
   const journal=events.filter(e=>e.caseId===id&&e.attempt===begin.attempt&&!['begin','record'].includes(e.operation)),within=rows=>rows.filter(e=>e.caseId===id&&(e.startedAt||e.at||'')>=begin.at),actions=[...actionHistory(within(app),within(native),within(input)),...journal].sort((a,b)=>String(a.at).localeCompare(String(b.at)));
   cases.push({...spec,area:definition(s,id).area||'Agent qualification',target:'computer-use',status:recorded?.status||'Unknown',observation:recorded?.observation||'No verdict was recorded',operations:[...new Set(actions.map(a=>a.operation))],actions,evidence,steps:stepHistory(spec,within(steps),actions),recordedAt:recorded?.recordedAt||null});
  }
  const counts=cases.reduce((n,r)=>(n[r.status]=(n[r.status]||0)+1,n),{}),report={format:'athanor-agent-report/v1',runId:s.harnessId,title:'Computer-use agent session',operator:'Agent',asOf:new Date().toISOString(),execution:{state:cases.length&&cases.every(c=>c.status==='Pass')?'Passed':'Needs review',target:'Selected build · agent computer use',context:'Agent-reviewed outcomes'},identities:{version:s.plan.version,packageHash:s.guiHash,adapterHash:s.toolHash},counts,cases,artifacts,acceptance:{gaps:cases.filter(c=>c.status==='Unknown').map(c=>c.id+': no terminal verdict')},scope:{sourceRows:[]},fixtures:{bundle:s.bundle,assets:s.assets},selection:{checks:ids},targets:[{target:'computer-use',build:s.plan.version,hash:s.guiHash,counts}]};
- await writeJSON(path.join(directory,'report.json'),report);const {renderReport}=await import('../reports.mjs');await writeJSON(path.join(s.root,'agent-report-location.json'),{directory});
- const {writeFile}=await import('node:fs/promises');await writeFile(path.join(directory,'index.html'),renderReport(report));return {path:path.join(directory,'index.html'),counts,report:path.join(directory,'report.json')};
+ await writeJSON(path.join(directory,'report.json'),report);const {renderReport}=await import('../reports.mjs');
+ const {writeFile}=await import('node:fs/promises');await writeFile(path.join(directory,'index.html'),renderReport(report));await writeJSON(path.join(s.root,'agent-report-location.json'),{directory});return {path:path.join(directory,'index.html'),url:'/exports/'+name+'/index.html',counts,report:path.join(directory,'report.json')};
 }

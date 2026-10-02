@@ -42,6 +42,8 @@ node desktop/session.mjs tool SESSION.json wait '{"selector":{"title":"Export"},
 
 Wait supports `exists`, `absent`, `enabled`, `value`, `text`, and `checked`. Supply `expected` for the last three. It polls observations locally, with a maximum timeout of 60 seconds. It dispatches no edits. Available physical keys and adapter operations are listed in the context; native typing and scrolling are not part of this first toolkit.
 
+The context also lists the selected build's application operations and the verification allowlist. Use `schema '{"operation":"timeline.inspect"}'` to retrieve one operation's parameter, result and error schemas. Use `evidence '{"file":"/absolute/session/file.json","title":"Measured state"}'` to retain existing JSON, or add `kind:"image"` for a PNG. Imported observations appear in the report but cannot satisfy the current capture or verification required for Pass.
+
 ## Record a check with evidence
 
 Begin a check listed in the context before executing it. Give actions a short `title` explaining their purpose. Existing application and native escape hatches remain available through toolkit `call` and `native`.
@@ -64,7 +66,7 @@ Capture defaults to displayed native-window pixels, including GPU preview conten
 
 Record Fail, Blocked or Unknown with the observed reason. An Unknown edit is not replayed. Inspect the UI and application state, verify what actually happened, then use `resolve` with an explanation before further edits. Stop preserves an uncertain session's autosaved fixture and terminates only its owned app.
 
-Report exports the existing Athanor interactive table and detail drawer, with actions, evidence and selected-build identity. It creates a new immutable export directory for each request. Agent session reports are local qualification evidence; they do not change canonical test acceptance or replace earlier course results.
+Report exports the existing Athanor interactive table and detail drawer, with actions, evidence and selected-build identity. It returns an absolute file path and a URL relative to the workspace service. It creates a new immutable export directory for each request. Agent session reports are local qualification evidence; they do not change canonical test acceptance or replace earlier course results.
 
 ## Give this to another agent
 

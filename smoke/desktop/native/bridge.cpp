@@ -61,9 +61,10 @@ class SmokeBridge : public QObject {
         CGColorSpaceRef colors=CGColorSpaceCreateDeviceRGB();CGContextRef ctx=CGBitmapContextCreate(image.bits(),image.width(),image.height(),8,image.bytesPerLine(),colors,kCGImageAlphaPremultipliedLast|kCGBitmapByteOrder32Big);
         if(!ctx){CGColorSpaceRelease(colors);CGImageRelease(capture);throw QString("Capture conversion failed");}
         CGContextDrawImage(ctx,CGRectMake(0,0,image.width(),image.height()),capture);CGContextRelease(ctx);CGColorSpaceRelease(colors);CGImageRelease(capture);
-        const auto pos=widget->mapTo(window,QPoint{});const auto frame=window->frameGeometry();const double scale=double(image.width())/frame.width();
-        const int title=window->geometry().top()-frame.top();const QRect crop(qRound(pos.x()*scale),qRound((pos.y()+title)*scale),qRound(widget->width()*scale),qRound(widget->height()*scale));
-        if(!image.rect().contains(crop))throw QString("Preview crop outside owned window");return QPixmap::fromImage(image.copy(crop));
+        const auto visible=widget->visibleRegion().boundingRect();if(visible.isEmpty())throw QString("Target has no visible capture region");
+        const auto pos=widget->mapTo(window,visible.topLeft());const auto frame=window->frameGeometry();const double scale=double(image.width())/frame.width();
+        const int title=window->geometry().top()-frame.top();const QRect crop=QRect(qRound(pos.x()*scale),qRound((pos.y()+title)*scale),qRound(visible.width()*scale),qRound(visible.height()*scale)).intersected(image.rect());
+        if(crop.isEmpty())throw QString("Target is outside the owned window");return QPixmap::fromImage(image.copy(crop));
     }
     QString id(QObject* object) {
         auto key=object->property("_smoke_id").toString();

@@ -3,7 +3,7 @@ import {writeFileSync} from 'node:fs';
 import {appendFile} from 'node:fs/promises';
 import {desktopCall,nativeCall,captureDesktopFailure} from './adapter.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
-import {assert,pause,OutcomeError,clips,bounds} from '../runner/engine.mjs';
+import {assert,pause,OutcomeError,clips,bounds,near} from '../runner/engine.mjs';
 
 // A normal finish is required: a prior Fail cannot explain a later script crash.
 // Exit 1 with that receipt retains ordinary non-Pass verdicts and permits independent checks.
@@ -26,6 +26,19 @@ export function requireExactTimingFixture(snapshot){
  const timed=clips(snapshot).filter(c=>c.source?.timing==='timed');
  const rejected=timed.filter(c=>c.source.projection_status!=='exact');
  if(!timed.length||rejected.length)throw new OutcomeError('Source timing fixture is not exact: '+JSON.stringify(rejected.map(c=>({clip:c.clip_id,status:c.source.projection_status,diagnostics:c.source.projection_diagnostics}))),'Blocked');
+}
+export function verifyTrimmedClip(before,after,timelineFps){
+ // Same-clock Fresh fixture; cross-rate trimming needs its own rational timing oracle.
+ assert(before.clip_id===after.clip_id&&before.source.asset_id===after.source.asset_id,'Trim identity changed');
+ near(after.timeline_range.start_seconds,before.timeline_range.start_seconds,'Trim left edge preserved');
+ assert(after.timeline_range.end_seconds>after.timeline_range.start_seconds&&after.timeline_range.end_seconds<before.timeline_range.end_seconds,'Right trim did not shorten the intended edge');
+ const source=after.source,range=source.source_range;
+ assert(['exact','carrier'].includes(source.projection_status)&&source.projection_diagnostics?.length===0&&source.source_availability==='bounded','Trim source projection is rejected or unavailable');
+ near(range.start_seconds,before.source.source_range.start_seconds,'Source start preserved');
+ near(range.end_seconds-range.start_seconds,after.timeline_range.end_seconds-after.timeline_range.start_seconds,'Trim source duration');
+ assert(Number.isFinite(source.fps)&&source.fps>0&&Number.isFinite(timelineFps)&&timelineFps>0,'Trim clocks are absent');
+ for(const [value,rate] of [[range.start_seconds,source.fps],[range.end_seconds,source.fps],[after.timeline_range.start_seconds,timelineFps],[after.timeline_range.end_seconds,timelineFps]])near(value*rate,Math.round(value*rate),'Trim frame alignment');
+ return {projection:source.projection_status,sourceRange:range,timelineRange:after.timeline_range};
 }
 export async function gapFixture(c,assets,name){
  try{

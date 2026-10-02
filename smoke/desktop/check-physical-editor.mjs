@@ -1,7 +1,7 @@
 import {testSpecification} from '../test-details.mjs';
 import path from 'node:path';
 import {copyFile} from 'node:fs/promises';
-import {checks,livePreviewEvidence,widgetPixelDifference,requireExactTimingFixture} from './check-support.mjs';
+import {checks,livePreviewEvidence,widgetPixelDifference,requireExactTimingFixture,verifyTrimmedClip} from './check-support.mjs';
 import {agentTool} from './agent-tools.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
 import {assert,same,near,clips,snapshotState,pause,OutcomeError} from '../runner/engine.mjs';
@@ -10,9 +10,12 @@ report.course=await readJSON(new URL('./physical-editor-course.json',import.meta
 const physical=(command,params)=>agentTool(file,'physical',{command,...params}),inspect=id=>c('timeline.inspect',{timeline_id:id}),graph=f=>c('graph.get_clip_graph',f.scope);
 const staged=(id,stepId,fn)=>step(report.course.cases.find(c=>c.id===id).steps.find(s=>s.id===stepId),fn);
 const content=g=>({nodes:g.nodes,edges:g.edges});
-async function screen(label){const u=await ui(),window=u.widgets.find(w=>w.id===w.window&&w.active&&['QMessageBox','ads::CFloatingDockContainer'].includes(w.class))||u.widgets.find(w=>w.class==='MainWindow'),r=await physical('screenshot',{target:window.id});await writeJSON(path.join(s.root,label+'-screen.json'),r);return retainImage(r,label);}
+async function screen(label){const u=await ui(),window=u.widgets.find(w=>w.id===w.window&&w.active&&['QMessageBox','ads::CFloatingDockContainer'].includes(w.class))||u.widgets.find(w=>w.class==='MainWindow'),r=await physical('screenshot',{target:window.id,title:label+' · owned Wizard window'});await writeJSON(path.join(s.root,label+'-screen.json'),r);return retainImage(r,label);}
 const check=(id,fn)=>runCheck(id,async()=>{await agentTool(file,'begin',{id});try{if((await ui()).widgets.some(w=>w.class==='QMessageBox')){const e=new OutcomeError('An unresolved app dialog blocks a fresh fixture','Blocked');e.fatal=true;throw e;}const result=await fn();
- if(result.agentVerification){await agentTool(file,'verify',{...result.agentVerification,title:'Confirm the tested state after restoration'});await agentTool(file,'capture',{target:result.agentCaptureTarget,title:'Displayed result after this check'});await agentTool(file,'record',{status:'Pass',note:result.summary});}
+ if(result.agentVerification){
+  for(const relative of result.observations||[])await agentTool(file,'evidence',{file:path.join(s.root,relative),title:'Measured application state during this check'});
+  for(const image of result.screenshots||[])if(image.relative)await agentTool(file,'evidence',{file:path.join(s.root,image.relative),kind:'image',title:path.basename(image.relative,'.png')});
+  await agentTool(file,'verify',{...result.agentVerification,title:'Confirm the tested state after restoration'});await agentTool(file,'capture',{target:result.agentCaptureTarget,title:'Displayed result after this check'});await agentTool(file,'record',{status:'Pass',note:result.summary});}
  return result;
  }catch(e){if(e.status!=='Unknown'){const observed=await ui();await writeJSON(path.join(s.root,id+'-observed-ui.json'),observed);if(observed.widgets.some(w=>w.class==='QMessageBox')){e.status='Blocked';e.fatal=true;e.message='App dialog prevented the check: '+e.message;}try{await screen(id+'-failure');}catch{}}await agentTool(file,'record',{status:e.status||'Fail',note:e.message});throw e;}});
 async function fixture(name,placed=true,later=false){
@@ -57,7 +60,7 @@ await check('P-TL-TRIM',async()=>{
  requireExactTimingFixture(f.before);
  // ponytail: Fresh's default 16 pixels/second zoom; qualify other zooms when clip hit geometry is exposed.
  await staged(id,'trim',()=>physical('drag',{target:f.v.id,x:63,y:f.v.height-30,toX:47,toY:f.v.height-30}));
- const after=await staged(id,'verify',async()=>{const a=await until(async()=>{const a=await inspect(f.id);return clips(a)[0]?.timeline_range.end_seconds<4?a:null;}),clip=clips(a)[0];near(clip.timeline_range.start_seconds,0,'Left edge preserved');assert(clip.timeline_range.end_seconds>2&&clip.timeline_range.end_seconds<4,'Trimmed duration must be between two and four seconds');near(clip.source.source_range.start_seconds,before.source.source_range.start_seconds,'Source start preserved');near(clip.source.source_range.end_seconds-clip.source.source_range.start_seconds,clip.timeline_range.end_seconds,'Trim source duration');assert(clip.clip_id===before.clip_id&&clip.source.asset_id===before.source.asset_id,'Trim identity changed');assert(clip.source.projection_status==='exact','Physical trim left invalid source timing authority');return a;});
+ const after=await staged(id,'verify',async()=>{const a=await until(async()=>{const a=await inspect(f.id);return clips(a)[0]?.timeline_range.end_seconds<4?a:null;});verifyTrimmedClip(before,clips(a)[0],24);return a;});
  const capture=await screen(id+'-after');await staged(id,'restore',()=>undoTimeline(f));
  return {summary:'Physical right-edge drag shortened the intended clip and source range; one Undo restored its original timing.',before:f.before,after,capture,agentVerification:{read:{operation:'timeline.inspect',params:{timeline_id:f.id}},expect:{path:['tracks',0,'items',0,'timeline_range'],equals:before.timeline_range}},agentCaptureTarget:f.v.id};
 });
@@ -65,7 +68,7 @@ await check('P-TRACK-ADD',async()=>{
  const id='P-TRACK-ADD',f=await staged(id,'setup',()=>fixture('Physical add video track',false));
  const button=await agentTool(file,'find',{selector:{name:'panelChromeAction',text:'+ Video',enabled:true}});await screen(id+'-before');
  await staged(id,'add',()=>physical('click',{target:button.id}));await physical('key',{target:f.v.id,key:'cmd+s'});
- const after=await staged(id,'verify',async()=>{const a=await until(async()=>{const a=await inspect(f.id);return a.tracks.length===f.before.tracks.length+1?a:null;}),added=a.tracks.filter(t=>!f.before.tracks.some(b=>b.track_id===t.track_id));assert(added.length===1&&added[0].kind==='video'&&added[0].items.every(i=>i.kind!=='clip'),'Track addition has wrong identity, type or contents');return a;});
+ const after=await staged(id,'verify',async()=>{const a=await until(async()=>{const a=await inspect(f.id);return a.tracks.length===f.before.tracks.length+1?a:null;}),added=a.tracks.filter(t=>!f.before.tracks.some(b=>b.track_id===t.track_id));assert(added.length===1&&added[0].address==='V2'&&added[0].items.every(i=>i.kind!=='clip'),'Track addition has wrong identity, type or contents');return a;});
  const capture=await screen(id+'-after');await staged(id,'restore',async()=>{await physical('key',{target:f.v.id,key:'cmd+z'});await physical('key',{target:f.v.id,key:'cmd+s'});await until(async()=>JSON.stringify(snapshotState(await inspect(f.id)))===JSON.stringify(snapshotState(f.before)));});
  return {summary:'Physical + Video click and Save added one empty video track; Undo and Save restored the original tracks.',before:f.before,after,capture,agentVerification:{read:{operation:'timeline.inspect',params:{timeline_id:f.id}},expect:{path:['tracks'],length:f.before.tracks.length}},agentCaptureTarget:f.v.id};
 });
