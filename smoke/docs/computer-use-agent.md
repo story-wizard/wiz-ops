@@ -11,7 +11,7 @@ node scripts/smoke.mjs plan --app /path/to/Wizard.app --checks D-CLI-01 --out /t
 node desktop/session.mjs start --plan /tmp/agent-plan.json
 ```
 
-Keep the second command running. It prints a Ready receipt with the session file and `agent-context.json`. Give those paths to your agent. The context contains the selected package identity, project and media identities, adapter capabilities, available checks, expected outcomes, and tool instructions. Each session starts with a fresh Golden Project fixture.
+If you use a separate workspace, export `SMOKE_DATA_DIR=/absolute/external/workspace` and keep that same environment for the service and every session/tool command. Keep the second command running. It prints a Ready receipt with the session file and `agent-context.json`. Give those paths to your agent. The context contains the selected package identity, project and media identities, adapter capabilities, available checks, expected outcomes, and tool instructions. Each session starts with a fresh Golden Project fixture.
 
 Preparation attaches an external adapter to a byte-identical disposable copy of the build. The session holds a shared foreground lease across Athanor workspaces. A competing session receives a Blocked response. The operating system releases the lease when the launcher ends; an uncertain orphan app still needs inspection and cleanup.
 
@@ -26,13 +26,13 @@ node desktop/session.mjs tool SESSION.json find '{"selector":{"name":"panelChrom
 node desktop/session.mjs tool SESSION.json physical '{"command":"click","target":{"name":"panelChromeAction","text":"+ Video","enabled":true},"title":"Click Add Video Track"}'
 ```
 
-`preflight` reports physical input and screen-capture permissions, the verified PID, visible windows and focus. It does not change permissions. If access is missing, let the user handle the macOS prompt and rerun preflight.
+`preflight` reports physical input and screen-capture permissions, the verified PID, visible windows, the foremost WindowServer window, the actual Qt/AppKit key window, and the focused control. It does not change permissions. If access is missing, let the user handle the macOS prompt and rerun preflight.
 
-Selectors match exactly by default. Use `contains:true` for substring matching. Available fields are `id`, `class`, `name`, `text`, `tooltip`, `title`, `window`, `parent`, `enabled`, and `active`. `kind:"actions"` queries QAction entries. Find and physical input require exactly one match. Narrow ambiguous matches using the observed window, parent, or control name.
+Selectors match exactly by default. Use `contains:true` for substring matching. Available fields are `id`, `class`, `name`, `text`, `tooltip`, `title`, `window`, `parent`, `enabled`, `active`, `focused`, `editableText`, and `keyWindow`. `kind:"actions"` queries QAction entries. Find and physical input require exactly one match. Narrow ambiguous matches using the observed window, parent, or control name.
 
 Observe returns at most 20 matches by default, with a configurable limit up to 100. It reports the full match count and truncation. Add `details:true` for media rows, graph nodes/ports, tab rectangles or menu entries. The Qt adapter currently inspects at most 64 model rows, 128 selectable scene items and 256 scene labels; inspect the truncation fields before choosing a target.
 
-Physical input supports `click`, `drag`, `key`, and `screenshot`. Points are local to the observed widget in macOS points. A click defaults to its center. A drag accepts `toTarget`, `toX`, and `toY`; `xRatio`, `yRatio`, `toXRatio`, and `toYRatio` can address fractions of the current widget. Geometry is checked again before dispatch. The native driver verifies the actual Unix PID, start time, native window frame and pointer ownership.
+Physical input supports `click`, `drag`, `key`, `type`, `scroll`, and `screenshot`. Points are local to the observed widget in macOS points. A click defaults to its center. A drag accepts `toTarget`, `toX`, and `toY`; `xRatio`, `yRatio`, `toXRatio`, and `toYRatio` can address fractions of the current widget. Geometry is checked again before dispatch. The native driver verifies the actual Unix PID, start time, native window frame and pointer ownership.
 
 ```sh
 node desktop/session.mjs tool SESSION.json physical '{"command":"drag","target":{"id":"OBSERVED_VIEWPORT"},"x":100,"y":50,"toX":180,"toY":90,"durationMs":1000,"title":"Drag the clip right"}'
@@ -40,9 +40,24 @@ node desktop/session.mjs tool SESSION.json physical '{"command":"key","target":{
 node desktop/session.mjs tool SESSION.json wait '{"selector":{"title":"Export"},"condition":"exists","timeoutMs":5000}'
 ```
 
-Wait supports `exists`, `absent`, `enabled`, `value`, `text`, and `checked`. Supply `expected` for the last three. It polls observations locally, with a maximum timeout of 60 seconds. It dispatches no edits. Available physical keys and adapter operations are listed in the context; native typing and scrolling are not part of this first toolkit.
+Wait supports `exists`, `absent`, `enabled`, `value`, `text`, and `checked`. Supply `expected` for the last three. It polls observations locally, with a maximum timeout of 60 seconds. It dispatches no edits. Available physical keys and adapter operations are listed in the context.
 
 The context also lists the selected build's application operations and the verification allowlist. Use `schema '{"operation":"timeline.inspect"}'` to retrieve one operation's parameter, result and error schemas. Use `evidence '{"file":"/absolute/session/file.json","title":"Measured state"}'` to retain existing JSON, or add `kind:"image"` for a PNG. Imported observations appear in the report but cannot satisfy the current capture or verification required for Pass.
+
+## Text, scrolling and timeline targets
+
+Physically click the intended editable field before `type`. The toolkit verifies that the same normal, enabled text field has focus; secure and read-only fields are refused. Text uses native Unicode keyboard events, up to 4096 UTF-16 units, without changing the clipboard. Scroll uses native pointer/wheel events at a verified visible point; positive deltas scroll down/right, with a 2000-pixel limit per axis. Verify the resulting text or scrollbar state afterward.
+
+```sh
+node desktop/session.mjs tool SESSION.json physical '{"command":"click","target":{"class":"QLineEdit","name":"OBSERVED_FIELD","editableText":true}}'
+node desktop/session.mjs tool SESSION.json physical '{"command":"type","target":{"class":"QLineEdit","name":"OBSERVED_FIELD","focused":true},"text":"Athanor — ✨"}'
+node desktop/session.mjs tool SESSION.json physical '{"command":"scroll","target":{"id":"OBSERVED_VIEWPORT"},"deltaY":300}'
+node desktop/session.mjs tool SESSION.json geometry '{"target":{"id":"OBSERVED_TIMELINE"},"clipId":"OBSERVED_CLIP_ID","part":"right-edge"}'
+```
+
+`geometry` calls the selected package's exported `TimelineWidget::clipRectFor` function. It returns the clip rectangle, visible intersection and a point for `body`, `left-edge`, or `right-edge`. Physical click/drag accepts the same `clipId` and `part`; the rectangle is checked again before dispatch. An offscreen edge requires scrolling and a new observation. This route requires the packaged function and a matching Qt adapter; preparation/capabilities report availability. It uses the current app geometry instead of assuming a zoom level. Read clip identities from `timeline.inspect` first.
+
+For keyboard actions, use preflight's key-window/focused-control information. If another owned window receives keys, physically click the intended control and observe focus again. A lost or covered target stays Blocked or Unknown; it is never bypassed or replayed.
 
 ## Record a check with evidence
 

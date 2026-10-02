@@ -5,24 +5,26 @@ import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {mkdir,open,unlink,rename,mkdtemp,rm,appendFile,copyFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
-import {verifyDesktopOwner,markAgentMutation} from './adapter.mjs';
+import {verifyDesktopOwner,markAgentMutation,nativeCall} from './adapter.mjs';
 import {OutcomeError} from '../runner/engine.mjs';
 import {uiRoot,retainedUI} from './computer-use.mjs';
 import {ROOT,dataDirectory,writeJSON,readJSON,sha,fingerprint,inside} from '../runner/files.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
 
 export function validateNativeRequest(request){
- const allowed=['command','pid','started','window','frame','depth','limit','path','identifier','role','title','action','value','x','y','toX','toY','key','button','toWindow','toFrame','mode','durationMs'];
+ const allowed=['command','pid','started','window','frame','depth','limit','path','identifier','role','title','action','value','x','y','toX','toY','key','text','deltaX','deltaY','button','toWindow','toFrame','mode','durationMs'];
  if(request&&Object.keys(request).some(k=>!allowed.includes(k)))throw Error('Unknown native input request field. Screenshot outputs are assigned inside the run.');
  if(request.mode!==undefined&&!['accessibility','window-server'].includes(request.mode))throw Error('Unsupported native inspection mode.');
- const commands=['inspect','screenshot','action','set-value','click','drag','key'];
+ const commands=['inspect','screenshot','action','set-value','click','drag','key','type','scroll'];
  if(!request||!commands.includes(request.command))throw Error('Select a native inspection, screenshot, accessibility action, click, drag or key.');
  if(request.command!=='inspect'&&(!Number.isInteger(request.pid)||request.pid<=1||typeof request.started!=='string'||!request.started.trim()))throw Error('Supply the PID and start time returned by inspect.');
- if(['click','drag','key'].includes(request.command)&&(!Number.isInteger(request.window)||request.window<=0||!request.frame||!['x','y','width','height'].every(k=>Number.isFinite(request.frame[k]))||request.frame.width<=0||request.frame.height<=0))throw Error('Supply the window ID and frame returned by inspect.');
+ if(['click','drag','key','type','scroll'].includes(request.command)&&(!Number.isInteger(request.window)||request.window<=0||!request.frame||!['x','y','width','height'].every(k=>Number.isFinite(request.frame[k]))||request.frame.width<=0||request.frame.height<=0))throw Error('Supply the window ID and frame returned by inspect.');
  if(['action','set-value'].includes(request.command)&&(!request.role||typeof request.title!=='string'))throw Error('Supply the observed accessibility role and title.');
  if((request.toWindow===undefined)!==(request.toFrame===undefined))throw Error('Drag destination window and frame must be supplied together.');
  if(request.toWindow!==undefined&&(!Number.isInteger(request.toWindow)||request.toWindow<=0||!request.toFrame||!['x','y','width','height'].every(k=>Number.isFinite(request.toFrame[k]))||request.toFrame.width<=0||request.toFrame.height<=0))throw Error('Supply the observed drag destination window and frame.');
- if(['click','drag'].includes(request.command))for(const [x,y] of request.command==='drag'?[['x','y'],['toX','toY']]:[['x','y']])if(!Number.isFinite(request[x])||!Number.isFinite(request[y])||request[x]<0||request[y]<0||request[x]>=(x==='toX'?request.toFrame?.width??request.frame.width:request.frame.width)||request[y]>=(x==='toX'?request.toFrame?.height??request.frame.height:request.frame.height))throw Error('Pointer coordinates must be inside the observed window in macOS points.');
+ if(['click','drag','scroll'].includes(request.command))for(const [x,y] of request.command==='drag'?[['x','y'],['toX','toY']]:[['x','y']])if(!Number.isFinite(request[x])||!Number.isFinite(request[y])||request[x]<0||request[y]<0||request[x]>=(x==='toX'?request.toFrame?.width??request.frame.width:request.frame.width)||request[y]>=(x==='toX'?request.toFrame?.height??request.frame.height:request.frame.height))throw Error('Pointer coordinates must be inside the observed window in macOS points.');
+ if(request.command==='type'&&(typeof request.text!=='string'||request.text.length<1||request.text.length>4096||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(request.text)))throw Error('Supply 1–4096 text characters without control codes');
+ if(request.command==='scroll'&&(!['deltaX','deltaY'].every(k=>Number.isInteger(request[k]??0)&&Math.abs(request[k]??0)<=2000)||!(request.deltaX||request.deltaY)))throw Error('Supply a nonzero scroll of at most 2000 pixels per axis');
  if(request.button!==undefined&&!['left','middle','right'].includes(request.button))throw Error('Unsupported pointer button.');
  if(request.durationMs!==undefined&&(request.command!=='drag'||!Number.isInteger(request.durationMs)||request.durationMs<300||request.durationMs>10000))throw Error('Drag duration must be 300–10000 milliseconds.');
  if(request.command==='key'&&(typeof request.key!=='string'||! /^(?:(?:cmd|super|shift|alt|option|ctrl)\+)*(?:escape|return|tab|space|delete|k|n|s|a|z|d|c|v)$/i.test(request.key)))throw Error('Unsupported key chord.');
@@ -30,6 +32,7 @@ export function validateNativeRequest(request){
 
 export async function nativeUIInput(dataDir,runId,request){
  validateNativeRequest(request);
+ if(request.command==='type')throw new OutcomeError('Physical text entry requires an instrumented agent session to verify the editable field','Blocked');
  if(process.platform!=='darwin')throw Error('Native Wizard input requires macOS.');
  const root=uiRoot(dataDir,runId),pass=await retainedUI(dataDir,runId);
  if(!pass)throw Error('Prepare the owned computer-use pass first.');
@@ -59,6 +62,10 @@ export async function nativeDesktopInput(file,request){
  const session=await readJSON(file);verifyDesktopOwner(session);verifyDesktopLease(session);
  if(session.inputMode!=='desktop')throw new OutcomeError('Physical input requires a foreground desktop session','Blocked');
  validateNativeRequest(request);
+ if(request.command==='type'){
+  const ui=await nativeCall(file,'inspect'),field=ui.widgets.find(w=>w.id===ui.focus),window=ui.widgets.find(w=>w.id===field?.window);
+  if(!field?.editableText||window?.nativeWindow!==request.window)throw new OutcomeError('Text entry requires the focused editable field in the verified window','Blocked');
+ }
  if(!['inspect','screenshot'].includes(request.command))await markAgentMutation(file,session);
  const receipt=await nativeInput(session.dataDir,session.root,session.executable,session.guiHash,request,{caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null});
  if(receipt.status==='Unknown'||receipt.status==='Blocked')throw new OutcomeError(receipt.error,receipt.status);

@@ -12,7 +12,7 @@ import {attachSelectedBuild} from './attach.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
 
 export const agentReadOperations=['project.get_name','timeline.inspect','graph.get_clip_graph','media.list_assets','media.resolve_path','media.probe','spellbook.inspect','spellbook.list'];
-export const agentReadNative=['capabilities','inspect','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview'];
+export const agentReadNative=['capabilities','inspect','timeline-clip-rect','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview'];
 export async function markAgentMutation(file,session){
   if(!session.agentTracking)return;
   if(session.agentUncertain)throw new OutcomeError('An earlier mutation is Unknown. Inspect, verify and explicitly resolve it before another edit.','Blocked');
@@ -205,7 +205,7 @@ export async function terminateOwnedDesktop(file,live){
 }
 export async function nativeCall(file,op,params={}){
   const session=await readJSON(file);verifyDesktopOwner(session);
-  if(session.plan?.runtime?.kind==='selected-build-attachment'&&!['capabilities','inspect','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview'].includes(op))verifyDesktopLease(session);
+  if(session.plan?.runtime?.kind==='selected-build-attachment'&&!agentReadNative.includes(op))verifyDesktopLease(session);
   if(!agentReadNative.includes(op))await markAgentMutation(file,session);
   assert(session.inputMode!=='service'||['capabilities','inspect','screenshot','snapshot-widget'].includes(op),'Background service sessions cannot dispatch UI input. Run the foreground desktop course for UI evidence.');
   if(op==='spellbook-run-local'){

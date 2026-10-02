@@ -5,6 +5,7 @@
 #include <QStylePlugin>
 #include <QSaveFile>
 #include <QUuid>
+#include <dlfcn.h>
 #include <objc/runtime.h>
 #include <objc/message.h>
 #include <ApplicationServices/ApplicationServices.h>
@@ -76,7 +77,8 @@ class SmokeBridge : public QObject {
         output.write(QJsonDocument(value).toJson());output.commit();
     }
     static QJsonObject capabilities(){
-        return {{"protocol",1},{"version",2},{"operations",QJsonArray{"capabilities","inspect","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
+        return {{"protocol",1},{"version",3},{"operations",QJsonArray{"capabilities","inspect","timeline-clip-rect","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
+                {"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
                 {"limits",QJsonObject{{"modelRows",64},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
                 {"captures",QJsonObject{{"screenshot","Qt widget raster"},{"snapshot-presented","Owned native window pixels"},{"snapshot-node-preview","Rendered graph preview"}}}};
     }
@@ -86,10 +88,16 @@ class SmokeBridge : public QObject {
             if(!w->isVisible())continue;
             QJsonObject item{{"active",w->isActiveWindow()},{"id",id(w)},{"class",w->metaObject()->className()},{"name",w->objectName()},{"tooltip",w->toolTip()},{"parent",w->parentWidget()?id(w->parentWidget()):QString()},{"enabled",w->isEnabled()},{"title",w->windowTitle()},{"window",id(w->window())},{"width",w->width()},{"height",w->height()}};
             const auto pos=w->mapTo(w->window(),QPoint{});item["x"]=pos.x();item["y"]=pos.y();
+            const auto visible=w->visibleRegion().boundingRect();item["visibleRect"]=QJsonObject{{"x",visible.x()},{"y",visible.y()},{"width",visible.width()},{"height",visible.height()}};
+            item["focused"]=w==qApp->focusWidget();
+            if(w->isWindow()){NSView* view=(__bridge NSView*)reinterpret_cast<void*>(w->winId());item["nativeWindow"]=qint64(view.window.windowNumber);item["keyWindow"]=view.window.isKeyWindow;}
             for(auto* owner=w;owner;owner=owner->parentWidget())if(auto* proxy=owner->graphicsProxyWidget();proxy&&proxy->scene()&&!proxy->scene()->views().isEmpty()){item["graphView"]=id(proxy->scene()->views().front());break;}
             if(auto* p=qobject_cast<QLabel*>(w))item["text"]=p->text();
             if(auto* p=qobject_cast<QAbstractButton*>(w)){item["text"]=p->text();item["checked"]=p->isChecked();}
             if(auto* p=qobject_cast<QLineEdit*>(w);p&&p->echoMode()==QLineEdit::Normal)item["text"]=p->text();
+            if(auto* p=qobject_cast<QLineEdit*>(w))item["editableText"]=p->echoMode()==QLineEdit::Normal&&!p->isReadOnly()&&p->isEnabled();
+            if(auto* p=qobject_cast<QPlainTextEdit*>(w))item["editableText"]=!p->isReadOnly()&&p->isEnabled();
+            if(auto* p=qobject_cast<QTextEdit*>(w))item["editableText"]=!p->isReadOnly()&&p->isEnabled();
             if(auto* p=qobject_cast<QPlainTextEdit*>(w);p&&p->isReadOnly())item["text"]=p->toPlainText().right(32768);
             if(auto* p=qobject_cast<QAbstractSpinBox*>(w))item["text"]=p->text();
             if(auto* p=qobject_cast<QAbstractSlider*>(w)){item["value"]=p->value();item["minimum"]=p->minimum();item["maximum"]=p->maximum();item["orientation"]=p->orientation()==Qt::Horizontal?"horizontal":"vertical";}
@@ -122,6 +130,17 @@ class SmokeBridge : public QObject {
         QObject* target=objects.value(key);auto* widget=qobject_cast<QWidget*>(target);
         if(op=="capabilities")return capabilities();
         if(op=="inspect")return inspect();
+        if(op=="timeline-clip-rect"){
+            using ClipRect=QRect(*)(const QWidget*,const QString&);
+            auto geometry=reinterpret_cast<ClipRect>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"));
+            const auto clipId=request["clipId"].toString();
+            if(!geometry||!widget||!widget->isVisible()||QString(widget->metaObject()->className())!="TimelineWidget"||clipId.isEmpty()||clipId.size()>256)throw QString("Packaged clip geometry unavailable; choose an observed timeline and clip ID");
+            // Reuse the packaged painter's public QRect function; never infer its object layout.
+            const auto rect=geometry(widget,clipId),visible=rect.intersected(widget->visibleRegion().boundingRect());
+            if(rect.isEmpty())throw QString("Clip ID is absent from this timeline widget");
+            auto json=[](QRect r){return QJsonObject{{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}};};
+            return {{"clipId",clipId},{"rect",json(rect)},{"visibleRect",json(visible)},{"method","packaged TimelineWidget::clipRectFor"}};
+        }
         if(op=="quit"){
             if(!widget||!widget->isWindow()||!widget->isVisible()||QString(widget->metaObject()->className())!="MainWindow"||QApplication::activeModalWidget())throw QString("Quit requires the observed main window with no modal dialog");
             NSArray<NSMenuItem*>* items=quitItems(NSApp.mainMenu);if(items.count!=1||!items.firstObject.enabled||!items.firstObject.action)throw QString("Unique enabled Command-Q menu action unavailable");

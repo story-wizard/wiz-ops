@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {mkdir,appendFile,readFile,copyFile,realpath,stat} from 'node:fs/promises';
 import {isDeepStrictEqual} from 'node:util';
 import {nativeCall,desktopCall,verifyDesktopOwner,verifyDesktopPaths,captureDesktopFailure,agentReadOperations,agentReadNative} from './adapter.mjs';
-import {physicalInput} from './physical-input.mjs';
+import {physicalInput,clipPoint} from './physical-input.mjs';
 import {nativeDesktopInput} from './macos-input.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
 import {waitForObservation} from './check-support.mjs';
@@ -13,15 +13,15 @@ import {OutcomeError,assert} from '../runner/engine.mjs';
 import {testSpecification,candidateChecks,actionHistory,stepHistory} from '../test-details.mjs';
 
 const readOps=agentReadOperations,readNative=agentReadNative;
-const selectorKeys=['id','class','name','text','tooltip','title','window','parent','enabled','active','contains'];
-const operations=['context','schema','preflight','observe','find','physical','native','call','wait','capture','evidence','begin','verify','resolve','record','report'];
+const selectorKeys=['id','class','name','text','tooltip','title','window','parent','enabled','active','focused','editableText','keyWindow','contains'];
+const operations=['context','schema','preflight','observe','find','geometry','physical','native','call','wait','capture','evidence','begin','verify','resolve','record','report'];
 
 export function selectUI(ui,{kind='widgets',selector={},limit=20,details=false}={}){
  assert(['widgets','actions'].includes(kind)&&Number.isInteger(limit)&&limit>=1&&limit<=100,'Choose widgets/actions and a limit from 1 to 100');
  assert(selector&&typeof selector==='object'&&!Array.isArray(selector)&&Object.keys(selector).every(k=>selectorKeys.includes(k)),'Unsupported target selector');
  const keys=Object.keys(selector).filter(k=>k!=='contains');
  const matches=(ui[kind]||[]).filter(w=>keys.every(k=>selector.contains&&typeof selector[k]==='string'?typeof w[k]==='string'&&w[k].includes(selector[k]):w[k]===selector[k]));
- const summary=['id','class','name','text','tooltip','title','window','parent','enabled','active','x','y','width','height','value','minimum','maximum','checked','index','rows','viewport','handle','minHandle','maxHandle','groove'];
+ const summary=['id','class','name','text','tooltip','title','window','parent','enabled','active','focused','editableText','keyWindow','nativeWindow','visibleRect','x','y','width','height','value','minimum','maximum','checked','index','rows','viewport','handle','minHandle','maxHandle','groove'];
  return {kind,matchCount:matches.length,truncated:matches.length>limit,limits:{modelRows:64,sceneItems:128,sceneText:256},matches:matches.slice(0,limit).map(w=>{
   const result=Object.fromEntries(summary.filter(k=>w[k]!==undefined).map(k=>[k,w[k]]));
   if(details)for(const k of ['model','itemRects','sceneItems','sceneText','tabs','tabRects','items','menuItems','selectedRows'])if(w[k]!==undefined)result[k]=w[k];
@@ -60,7 +60,7 @@ const definition=(s,id)=>definitions(s).find(c=>c.id===id);
 export async function sessionContext(file){
  const s=await readJSON(file);verifyDesktopPaths(s);
  const ready=await readJSON(path.join(s.native,'ready.json'));if(!s.agentDefinitions){s.agentDefinitions=sessionDefinitions(s);await writeJSON(file,s);}
- const result={format:'athanor-agent-session/v1',session:file,build:{app:s.sourceApp,packageHash:s.guiHash,version:s.plan.version},process:{pid:s.pid,started:s.processStart,generation:s.generation},project:{bundle:s.bundle,main:s.main,alternate:s.alternate,assets:s.assets},adapter:ready.capabilities,physical:{commands:['click','drag','key','screenshot'],keys:['escape','return','tab','space','delete','k','n','s','a','z','d','c','v'],coordinates:'Widget-relative macOS points; target and destination geometry are rechecked before dispatch'},operations,checks:definitions(s).map(testSpecification),evidenceDirectory:path.join(s.root,'evidence'),guidance:[
+ const result={format:'athanor-agent-session/v1',session:file,build:{app:s.sourceApp,packageHash:s.guiHash,version:s.plan.version},process:{pid:s.pid,started:s.processStart,generation:s.generation},project:{bundle:s.bundle,main:s.main,alternate:s.alternate,assets:s.assets},adapter:ready.capabilities,physical:{commands:['click','drag','key','type','scroll','screenshot'],keys:['escape','return','tab','space','delete','k','n','s','a','z','d','c','v'],coordinates:'Widget-relative macOS points; target and destination geometry are rechecked before dispatch'},operations,checks:definitions(s).map(testSpecification),evidenceDirectory:path.join(s.root,'evidence'),guidance:[
   'Use CLI/Qt operations to prepare a fixture; perform the action under test with physical input.',
   'Resolve targets from a fresh observation. An ambiguous target is Blocked.',
   'Use wait for read-only conditions. Never replay an Unknown mutation.',
@@ -97,7 +97,7 @@ export async function agentTool(file,operation,params={}){
  let result;
  try{
   if(operation==='preflight'){
-   const observed=await nativeDesktopInput(file,{command:'inspect',mode:'window-server',depth:0});result={pid:observed.pid,started:observed.started,permissions:observed.permissions,frontmost:observed.frontmost,windows:observed.windows,ready:observed.permissions?.input===true&&observed.permissions?.screenCapture===true};
+   const observed=await nativeDesktopInput(file,{command:'inspect',mode:'window-server',depth:0});const ui=await nativeCall(file,'inspect');result={pid:observed.pid,started:observed.started,permissions:observed.permissions,frontmost:observed.frontmost,frontWindow:observed.frontWindow,windows:observed.windows,keyWindow:ui.widgets.find(w=>w.id===w.window&&w.keyWindow)||null,focusedControl:ui.widgets.find(w=>w.id===ui.focus)||null,ready:observed.permissions?.input===true&&observed.permissions?.screenCapture===true};
   }else if(operation==='schema'){
    assert(typeof params.operation==='string'&&Object.hasOwn(s.schema.operations,params.operation),'Choose an advertised application operation');result={operation:params.operation,params:s.schema.operations[params.operation],result:s.schema.results?.[params.operation],errors:s.schema.errors?.[params.operation]};
   }else if(operation==='evidence'){
@@ -107,11 +107,14 @@ export async function agentTool(file,operation,params={}){
    result=await retain(s,params.title,params.kind==='image'?params.file:await readJSON(params.file),params.kind==='image'?'image':'json',true);
   }else if(operation==='observe'||operation==='find'){
    const ui=await nativeCall(file,'inspect');result=operation==='find'?uniqueTarget(ui,params.selector,params.kind):selectUI(ui,params);result={...result,observedAt:new Date().toISOString(),generation:s.generation,observationBytes:{full:Buffer.byteLength(JSON.stringify(ui)),selectedPayload:Buffer.byteLength(JSON.stringify(result))}};
+  }else if(operation==='geometry'){
+   const target=uniqueTarget(await nativeCall(file,'inspect'),params.target||params.selector);result=await nativeCall(file,'timeline-clip-rect',{target:target.id,clipId:params.clipId});result={...result,target:target.id,point:clipPoint(result,params.part)};
   }else if(operation==='physical'){
-   assert(['click','drag','key','screenshot'].includes(params.command),'Unsupported physical command');
+   assert(['click','drag','key','type','scroll','screenshot'].includes(params.command),'Unsupported physical command');
    const ui=await nativeCall(file,'inspect'),target=uniqueTarget(ui,params.target||params.selector);
-   const p={target:target.id,expected:target};for(const k of ['button','durationMs','chrome','key'])if(params[k]!==undefined)p[k]=params[k];
-   if(!['key','screenshot'].includes(params.command)){p.x=params.x??target.width*(params.xRatio??.5);p.y=params.y??target.height*(params.yRatio??.5);}
+   const p={target:target.id,expected:target};for(const k of ['button','durationMs','chrome','key','text','deltaX','deltaY'])if(params[k]!==undefined)p[k]=params[k];
+   if(!['key','type','screenshot'].includes(params.command)){p.x=params.x??target.width*(params.xRatio??.5);p.y=params.y??target.height*(params.yRatio??.5);}
+   if(params.clipId){assert(['click','drag'].includes(params.command),'Clip targeting supports click and drag');const geometry=await nativeCall(file,'timeline-clip-rect',{target:target.id,clipId:params.clipId});Object.assign(p,clipPoint(geometry,params.part),{clipId:params.clipId,expectedClip:geometry.rect});}
    if(params.command==='drag'){const to=uniqueTarget(ui,params.toTarget||params.target||params.selector);p.toTarget=to.id;p.toX=params.toX??to.width*(params.toXRatio??.5);p.toY=params.toY??to.height*(params.toYRatio??.5);}
    result=await physicalInput(file,params.command,p);
    if(params.command==='screenshot')result.capture=await retain(s,params.title||'Owned native window',result.output,'image');
