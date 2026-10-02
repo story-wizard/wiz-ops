@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
 import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from 'node:fs/promises';
-import {selectUI,uniqueTarget,compareObservation,exportAgentReport,requirePassProof,sessionDefinitions} from '../desktop/agent-tools.mjs';
+import {selectUI,uniqueTarget,compareObservation,exportAgentReport,requirePassProof,sessionDefinitions,agentTool} from '../desktop/agent-tools.mjs';
+import {sha} from '../runner/files.mjs';
 import {acquireDesktopLease} from '../desktop/desktop-lease.mjs';
 import {verifyTrimmedClip} from '../desktop/check-support.mjs';
 
@@ -47,8 +48,15 @@ test('a new attempt without a verdict cannot inherit an earlier Pass in the expo
  try{
   const root=path.join(data,'desktop-test'),bundle=path.join(root,'projects/Golden.wiz');await mkdir(bundle,{recursive:true});
   const id='D-CLI-01',file=path.join(root,'session.json');await writeFile(file,JSON.stringify({dataDir:data,root,bundle,executable:path.join(root,'Wizard Smoke.app/Contents/MacOS/wizard'),harnessId:'pilot',generation:1,guiHash:'package',plan:{version:'test',cases:[{id,title:'Connect',expected:'Observe the selected app'}]},assets:{}}));
-  await writeFile(path.join(root,'agent-tools.jsonl'),[{operation:'begin',caseId:id,attempt:'old'},{operation:'begin',caseId:id,attempt:'new'}].map(JSON.stringify).join('\n')+'\n');
-  await writeFile(path.join(root,'agent-results.jsonl'),JSON.stringify({id,attempt:'old',status:'Pass',observation:'Earlier attempt'})+'\n');
+  await writeFile(path.join(root,'agent-action.lock'),'held');await assert.rejects(()=>agentTool(file,'context'),e=>e.status==='Blocked');await rm(path.join(root,'agent-action.lock'));
+  await mkdir(path.join(root,'evidence'));const evidence=[];
+  for(const name of ['before','after']){const p=path.join(root,'evidence',name+'.json');await writeFile(p,JSON.stringify({name}));evidence.push({caseId:id,attempt:'old',file:name+'.json',path:p,kind:'json',sha256:await sha(p)});}
+  await writeFile(path.join(root,'agent-evidence.jsonl'),evidence.map(JSON.stringify).join('\n')+'\n');
+  const events=[{operation:'begin',caseId:id,attempt:'old',at:'2026-10-01T10:00:00Z'},{operation:'physical',caseId:id,attempt:'old',at:'2026-10-01T10:01:00Z'},{operation:'physical',caseId:id,attempt:'old',at:'2026-10-01T10:03:00Z'}];
+  await writeFile(path.join(root,'agent-tools.jsonl'),events.map(JSON.stringify).join('\n')+'\n');
+  await writeFile(path.join(root,'agent-results.jsonl'),JSON.stringify({id,attempt:'old',status:'Pass',observation:'Earlier attempt',recordedAt:'2026-10-01T10:02:00Z',evidence:[evidence[0]]})+'\n');
+  const frozen=JSON.parse(await readFile((await exportAgentReport(file)).report));assert.deepEqual(frozen.cases[0].evidence.map(e=>e.file),['before.json']);assert.equal(frozen.cases[0].actions.length,1);assert.equal(frozen.artifacts.length,1);
+  await writeFile(path.join(root,'agent-tools.jsonl'),[...events,{operation:'begin',caseId:id,attempt:'new',at:'2026-10-01T10:04:00Z'}].map(JSON.stringify).join('\n')+'\n');
   const result=await exportAgentReport(file),report=JSON.parse(await readFile(result.report));assert.deepEqual(report.counts,{Unknown:1});assert.equal(report.cases[0].status,'Unknown');assert.match(await readFile(result.path,'utf8'),/Computer-use agent session/);
  }finally{if(previous===undefined)delete process.env.SMOKE_DATA_DIR;else process.env.SMOKE_DATA_DIR=previous;await rm(data,{recursive:true,force:true});}
 });

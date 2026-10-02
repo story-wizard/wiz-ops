@@ -59,6 +59,8 @@ node desktop/session.mjs tool SESSION.json geometry '{"target":{"id":"OBSERVED_T
 
 For keyboard actions, use preflight's key-window/focused-control information. If another owned window receives keys, physically click the intended control and observe focus again. A lost or covered target stays Blocked or Unknown; it is never bypassed or replayed.
 
+The instrumented route uses a fresh AppKit key-window observation rather than WindowServer stacking order: a floating panel can sit above the actual key window. The driver checks that observation's age and the owned process before dispatch. Keep the desktop available while a gesture runs; the session lease excludes other Athanor sessions, not a person using the keyboard.
+
 ## Record a check with evidence
 
 Begin a check listed in the context before executing it. Give actions a short `title` explaining their purpose. Existing application and native escape hatches remain available through toolkit `call` and `native`.
@@ -82,6 +84,8 @@ Capture defaults to displayed native-window pixels, including GPU preview conten
 Record Fail, Blocked or Unknown with the observed reason. An Unknown edit is not replayed. Inspect the UI and application state, verify what actually happened, then use `resolve` with an explanation before further edits. Stop preserves an uncertain session's autosaved fixture and terminates only its owned app.
 
 Report exports the existing Athanor interactive table and detail drawer, with actions, evidence and selected-build identity. It returns an absolute file path and a URL relative to the workspace service. It creates a new immutable export directory for each request. Agent session reports are local qualification evidence; they do not change canonical test acceptance or replace earlier course results.
+
+Toolkit edits, Begin, Verify, Capture, Resolve and Record run one at a time. Observations and waits can sample a held gesture. Wait for the original receipt when another command is in progress. Raw `call`/`native` escape hatches require the same serial discipline. If a command crashes and leaves `agent-action.lock`, inspect its process and the current app state before removing that session-local lock; never remove a live command's lock. Reports freeze a recorded attempt's evidence and actions at its verdict; later investigation appears in a new attempt.
 
 ## Give this to another agent
 

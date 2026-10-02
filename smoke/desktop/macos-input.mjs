@@ -62,15 +62,26 @@ export async function nativeDesktopInput(file,request){
  const session=await readJSON(file);verifyDesktopOwner(session);verifyDesktopLease(session);
  if(session.inputMode!=='desktop')throw new OutcomeError('Physical input requires a foreground desktop session','Blocked');
  validateNativeRequest(request);
- if(request.command==='type'){
-  const ui=await nativeCall(file,'inspect'),field=ui.widgets.find(w=>w.id===ui.focus),window=ui.widgets.find(w=>w.id===field?.window);
-  if(!field?.editableText||window?.nativeWindow!==request.window)throw new OutcomeError('Text entry requires the focused editable field in the verified window','Blocked');
+ if(['key','type'].includes(request.command)){
+  await nativeInputDriver(session.dataDir);
+  const ui=await nativeCall(file,'inspect');
+  request={...request,...keyboardWindowProof(ui,request),focusObservedAt:Date.now()};
  }
  if(!['inspect','screenshot'].includes(request.command))await markAgentMutation(file,session);
  const receipt=await nativeInput(session.dataDir,session.root,session.executable,session.guiHash,request,{caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null});
  if(receipt.status==='Unknown'||receipt.status==='Blocked')throw new OutcomeError(receipt.error,receipt.status);
  if(receipt.pid!==session.pid||receipt.started!==session.processStart)throw new OutcomeError('Native input receipt differs from the owned desktop process','Unknown');
  verifyDesktopOwner(session);return receipt;
+}
+
+export function keyboardWindowProof(ui,request){
+ const key=ui.widgets.find(w=>w.keyWindow===true);
+ if(key?.nativeWindow!==request.window)throw new OutcomeError('Keyboard input requires the actual key window; physically click the intended control first','Blocked');
+ if(request.command==='type'){
+  const field=ui.widgets.find(w=>w.id===ui.focus);
+  if(!field?.editableText||field.window!==key.id)throw new OutcomeError('Text entry requires the focused editable field in the verified key window','Blocked');
+ }
+ return {verifiedKeyWindow:key.nativeWindow};
 }
 
 export async function nativeInputDriver(dataDir){

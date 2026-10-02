@@ -158,7 +158,14 @@ func emit(_ value: [String: Any]) { if let data = try? JSONSerialization.data(wi
                     if !windowServer { try require(AXUIElementSetAttributeValue(app,kAXFrontmostAttribute as CFString,kCFBooleanTrue) == .success,"Unable to activate the verified PID"); AXUIElementPerformAction(window,kAXRaiseAction as CFString) }
                     try await Task.sleep(nanoseconds:200_000_000)
                     try require(foreground(),"Verified PID did not become frontmost")
-                    if ["key","type"].contains(command) && windowServer { try require((topWindow()?[kCGWindowNumber as String] as? NSNumber)==number,"Another Wizard window owns keyboard focus; physically click the intended control first") }
+                    // Floating panels can lead WindowServer order without owning keyboard focus.
+                    // Only the instrumented wrapper can supply a fresh AppKit key-window proof.
+                    let verifiedKey=request["verifiedKeyWindow"] as? NSNumber
+                    func keyboardWindowMatches() -> Bool { verifiedKey.map { $0==number } ?? ((topWindow()?[kCGWindowNumber as String] as? NSNumber)==number) }
+                    if ["key","type"].contains(command) && windowServer {
+                        if verifiedKey != nil { let age=Date().timeIntervalSince1970*1000-(request["focusObservedAt"] as? Double ?? 0);try require(age>=0 && age<2000,"Keyboard focus observation expired; inspect again") }
+                        try require(keyboardWindowMatches(),"Another Wizard window owns keyboard focus; physically click the intended control first")
+                    }
                     if ["key","type"].contains(command) && !windowServer { guard let focused = attribute(app,kAXFocusedWindowAttribute) else { throw InputError(message:"No focused Wizard window") }; try require(frame(focused as! AXUIElement) == bounds,"Another Wizard window owns keyboard focus") }
                     func post(_ event: CGEvent) throws { try verifyOwner(); event.setIntegerValueField(.eventSourceUserData,value:42); dispatched = true; event.postToPid(pid) }
                     if command == "key" {
@@ -176,7 +183,7 @@ func emit(_ value: [String: Any]) { if let data = try? JSONSerialization.data(wi
                         var batches=[[UniChar]](),batch=[UniChar]()
                         for scalar in text.unicodeScalars { let units=Array(String(scalar).utf16);if batch.count+units.count>20 { batches.append(batch);batch=[] };batch.append(contentsOf:units) };if !batch.isEmpty { batches.append(batch) }
                         for units in batches {
-                            try require(foreground() && (topWindow()?[kCGWindowNumber as String] as? NSNumber)==number,"Keyboard focus changed during text entry")
+                            try require(foreground() && keyboardWindowMatches(),"Keyboard focus changed during text entry")
                             guard let down=CGEvent(keyboardEventSource:nil,virtualKey:0,keyDown:true),let up=CGEvent(keyboardEventSource:nil,virtualKey:0,keyDown:false) else { throw InputError(message:"Unable to create Unicode keyboard events") }
                             units.withUnsafeBufferPointer { p in down.keyboardSetUnicodeString(stringLength:units.count,unicodeString:p.baseAddress!);up.keyboardSetUnicodeString(stringLength:units.count,unicodeString:p.baseAddress!) }
                             try post(down);try post(up);try await Task.sleep(nanoseconds:20_000_000)

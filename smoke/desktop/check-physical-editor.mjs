@@ -13,10 +13,9 @@ const content=g=>({nodes:g.nodes,edges:g.edges});
 async function screen(label){const u=await ui(),window=u.widgets.find(w=>w.id===w.window&&w.active&&['QMessageBox','ads::CFloatingDockContainer'].includes(w.class))||u.widgets.find(w=>w.class==='MainWindow'),r=await physical('screenshot',{target:window.id,title:label+' · owned Wizard window'});await writeJSON(path.join(s.root,label+'-screen.json'),r);return retainImage(r,label);}
 const check=(id,fn)=>runCheck(id,async()=>{await agentTool(file,'begin',{id});try{if((await ui()).widgets.some(w=>w.class==='QMessageBox')){const e=new OutcomeError('An unresolved app dialog blocks a fresh fixture','Blocked');e.fatal=true;throw e;}const result=await fn();
  assert(result.agentVerification&&result.agentCaptureTarget,'Physical checks require an independent verifier and capture target');
- {
   for(const relative of result.observations||[])await agentTool(file,'evidence',{file:path.join(s.root,relative),title:'Measured application state during this check'});
   for(const image of [result.screenshots||[]].flat())if(image.relative)await agentTool(file,'evidence',{file:path.join(s.root,image.relative),kind:'image',title:evidenceCaption(image.relative)});
-  await agentTool(file,'verify',{...result.agentVerification,title:'Confirm the tested state after restoration'});await agentTool(file,'capture',{target:result.agentCaptureTarget,title:'Displayed result after this check'});await agentTool(file,'record',{status:'Pass',note:result.summary});}
+  await agentTool(file,'verify',{...result.agentVerification,title:'Confirm the tested state after restoration'});await agentTool(file,'capture',{target:result.agentCaptureTarget,title:'Displayed result after this check'});await agentTool(file,'record',{status:'Pass',note:result.summary});
  return result;
  }catch(e){if(e.status!=='Unknown'){const observed=await ui();await writeJSON(path.join(s.root,id+'-observed-ui.json'),observed);if(observed.widgets.some(w=>w.class==='QMessageBox')){e.status='Blocked';e.fatal=true;e.message='App dialog prevented the check: '+e.message;}try{await screen(id+'-failure');}catch{}}await agentTool(file,'record',{status:e.status||'Fail',note:e.message});throw e;}});
 async function fixture(name,placed=true,later=false){

@@ -216,18 +216,25 @@ export async function nativeCall(file,op,params={}){
   const ready=await readJSON(path.join(session.native,'ready.json'));assert(ready.pid===session.pid&&ready.harness===session.harnessId,'Native bridge identity mismatch.');
   const capabilities=verifyNativeCapabilities(ready);
   if(!capabilities.operations.includes(op))throw new OutcomeError('Unsupported native operation: '+op,'Blocked');
+  if(op==='timeline-clip-rect'&&!capabilities.timelineGeometry)throw new OutcomeError('This package does not export clip geometry; inspect the visible timeline before choosing another input route','Blocked');
   const lock=path.join(session.root,'native-call.lock'),held=await open(lock,'wx'),id=randomUUID();
   const request={...params,id,generation:ready.generation,op};
   try{
     await writeJSON(path.join(session.native,'request.json'),request);
     for(let i=0;i<100;i++){
-      let response;try{response=await readJSON(path.join(session.native,`response-${id}.json`));}catch(e){if(e.code!=='ENOENT')throw e;}
-      if(response){assert(response.id===id&&response.pid===session.pid&&response.generation===ready.generation,'Native response identity mismatch.');await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,response})+'\n');assert(response.ok,response.error||'Native operation failed');return response.result;}
+      let response;try{response=parseNativeResponse(await readFile(path.join(session.native,`response-${id}.json`),'utf8'),{id,pid:session.pid,generation:ready.generation});}catch(e){if(e.code!=='ENOENT')throw e;}
+      if(response){await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,response})+'\n');assert(response.ok,response.error||'Native operation failed');return response.result;}
       await pause(50);
     }
     await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,status:'Unknown',error:'No native response within five seconds.'})+'\n');
     throw new OutcomeError('Native action outcome is unknown; inspect before continuing and do not replay.','Unknown');
   }catch(e){if(session.agentTracking&&e.status==='Unknown'&&!agentReadNative.includes(op)){const latest=await readJSON(file);latest.agentUncertain=true;await writeJSON(file,latest);}throw e;}finally{await held.close();await unlink(lock);}
+}
+
+export function parseNativeResponse(text,identity){
+ let response;try{response=JSON.parse(text);}catch{throw new OutcomeError('Native response is unreadable; outcome unknown. Inspect before continuing.','Unknown');}
+ if(!response||response.id!==identity.id||response.pid!==identity.pid||response.generation!==identity.generation||typeof response.ok!=='boolean')throw new OutcomeError('Native response identity or protocol differs; outcome unknown. Inspect before continuing.','Unknown');
+ return response;
 }
 
 export function assertQuitEvidence(receipt,observed,ready){

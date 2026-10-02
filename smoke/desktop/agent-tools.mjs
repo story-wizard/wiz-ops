@@ -1,7 +1,7 @@
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {readFileSync} from 'node:fs';
-import {mkdir,appendFile,readFile,copyFile,realpath,stat} from 'node:fs/promises';
+import {mkdir,appendFile,readFile,copyFile,realpath,stat,open,unlink} from 'node:fs/promises';
 import {isDeepStrictEqual} from 'node:util';
 import {nativeCall,desktopCall,verifyDesktopOwner,verifyDesktopPaths,captureDesktopFailure,agentReadOperations,agentReadNative} from './adapter.mjs';
 import {physicalInput,clipPoint} from './physical-input.mjs';
@@ -87,6 +87,14 @@ async function journal(s,operation,params,start,result,status='Completed'){
 }
 
 export async function agentTool(file,operation,params={}){
+ const s=await readJSON(file);verifyDesktopPaths(s);
+ // Reads can sample a held gesture; state admission and evidence capture must not race edits.
+ if(['observe','find','wait','schema','preflight'].includes(operation))return runAgentTool(file,operation,params);
+ const lock=path.join(s.root,'agent-action.lock');let held;
+ try{held=await open(lock,'wx');}catch(e){if(e.code==='EEXIST')throw new OutcomeError('Another agent command is in progress; wait for its receipt before continuing','Blocked');throw e;}
+ try{return await runAgentTool(file,operation,params);}finally{await held.close();await unlink(lock);}
+}
+async function runAgentTool(file,operation,params={}){
  assert(operations.includes(operation),'Unknown agent tool: '+operation);assert(params&&typeof params==='object'&&!Array.isArray(params),'Supply a JSON object');
  let s=await readJSON(file);verifyDesktopPaths(s);
  if(operation==='context')return sessionContext(file);
@@ -168,9 +176,9 @@ export async function exportAgentReport(file){
  const app=await jsonLines(path.join(s.root,'operations.jsonl')),native=await jsonLines(path.join(s.root,'native-events.jsonl')),input=await jsonLines(path.join(s.root,'native-input.jsonl')),steps=await jsonLines(path.join(s.root,'steps.jsonl'));
  const ids=[...new Set(events.filter(e=>e.operation==='begin').map(e=>e.caseId))],name='agent-report-'+randomUUID(),directory=path.join(s.dataDir,'exports',name);await mkdir(path.join(directory,'evidence'),{recursive:true});
  const artifacts=[],cases=[];
- for(const id of ids){const begin=events.findLast(e=>e.caseId===id&&e.operation==='begin'),recorded=results.findLast(r=>r.id===id&&r.attempt===begin.attempt),spec=testSpecification(definition(s,id)),evidence=await evidenceFor({...s,agentAttempt:begin.attempt},id);
+ for(const id of ids){const begin=events.findLast(e=>e.caseId===id&&e.operation==='begin'),recorded=results.findLast(r=>r.id===id&&r.attempt===begin.attempt),spec=testSpecification(definition(s,id)),retained=await evidenceFor({...s,agentAttempt:begin.attempt},id),evidence=recorded?retained.filter(e=>(recorded.evidence||[]).some(r=>r.file===e.file&&r.sha256===e.sha256)):retained;
   for(const e of evidence){const destination=path.join(directory,'evidence',e.file);await copyFile(e.path,destination);assert(await sha(destination)===e.sha256,'Agent evidence changed during export');artifacts.push({file:e.file,source:path.relative(s.root,e.path),bytes:(await stat(e.path)).size,sha256:e.sha256});}
-  const journal=events.filter(e=>e.caseId===id&&e.attempt===begin.attempt&&!['begin','record'].includes(e.operation)),within=rows=>rows.filter(e=>e.caseId===id&&(e.startedAt||e.at||'')>=begin.at),actions=[...actionHistory(within(app),within(native),within(input)),...journal].sort((a,b)=>String(a.at).localeCompare(String(b.at)));
+  const inTime=e=>(e.startedAt||e.at||'')>=begin.at&&(!recorded||(e.startedAt||e.at||'')<=recorded.recordedAt),journal=events.filter(e=>e.caseId===id&&e.attempt===begin.attempt&&inTime(e)&&!['begin','record'].includes(e.operation)),within=rows=>rows.filter(e=>e.caseId===id&&inTime(e)),actions=[...actionHistory(within(app),within(native),within(input)),...journal].sort((a,b)=>String(a.at).localeCompare(String(b.at)));
   cases.push({...spec,area:definition(s,id).area||'Agent qualification',target:'computer-use',status:recorded?.status||'Unknown',observation:recorded?.observation||'No verdict was recorded',operations:[...new Set(actions.map(a=>a.operation))],actions,evidence,steps:stepHistory(spec,within(steps),actions),recordedAt:recorded?.recordedAt||null});
  }
  const counts=cases.reduce((n,r)=>(n[r.status]=(n[r.status]||0)+1,n),{}),report={format:'athanor-agent-report/v1',runId:s.harnessId,title:'Computer-use agent session',operator:'Agent',asOf:new Date().toISOString(),execution:{state:cases.length&&cases.every(c=>c.status==='Pass')?'Passed':'Needs review',target:'Selected build · agent computer use',context:'Agent-reviewed outcomes'},identities:{version:s.plan.version,packageHash:s.guiHash,adapterHash:s.toolHash},counts,cases,artifacts,acceptance:{gaps:cases.filter(c=>c.status==='Unknown').map(c=>c.id+': no terminal verdict')},scope:{sourceRows:[]},fixtures:{bundle:s.bundle,assets:s.assets},selection:{checks:ids},targets:[{target:'computer-use',build:s.plan.version,hash:s.guiHash,counts}]};

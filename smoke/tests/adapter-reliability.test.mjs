@@ -5,11 +5,18 @@ import {tmpdir} from 'node:os';
 import {mkdtemp,rm,mkdir,readFile,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {generatedPlacement,createLocalGraphic} from '../desktop/generated-fixture.mjs';
-import {verifyNativeCapabilities} from '../desktop/adapter.mjs';
+import {verifyNativeCapabilities,parseNativeResponse} from '../desktop/adapter.mjs';
 import {waitForObservation} from '../desktop/check-support.mjs';
 import {executeDesktop} from '../desktop/run.mjs';
 import {writeJSON} from '../runner/files.mjs';
 import {stageObservation} from '../runner/stages.mjs';
+
+test('lost or mismatched native replies remain Unknown rather than a retryable failure',()=>{
+ const identity={id:'request',pid:123,generation:2},reply={...identity,ok:true,result:{done:true}};
+ assert.deepEqual(parseNativeResponse(JSON.stringify(reply),identity).result,{done:true});
+ assert.equal(parseNativeResponse(JSON.stringify({...reply,ok:false,error:'Rejected'}),identity).ok,false);
+ for(const raw of ['{','null',JSON.stringify({...reply,id:'other'}),JSON.stringify({...reply,pid:124}),JSON.stringify({...reply,generation:3}),JSON.stringify({...reply,ok:undefined})])assert.throws(()=>parseNativeResponse(raw,identity),e=>e.status==='Unknown');
+});
 
 test('final blocked results cannot inherit a passing fixture preparation receipt',()=>{
  const id='D-MEDIA-RELINK',blocked={id,status:'Blocked',error:'Missing Media prevented the actual test'},events=[{id,status:'Pass',evidence:{prepared:true}}];
