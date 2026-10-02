@@ -29,6 +29,11 @@ func rectangle(_ value: CGRect) -> [String: Double] { ["x":value.minX,"y":value.
 func children(_ element: AXUIElement) -> [AXUIElement] { attribute(element, kAXChildrenAttribute) as? [AXUIElement] ?? [] }
 func actions(_ element: AXUIElement) -> [String] { var names: CFArray?; AXUIElementCopyActionNames(element, &names); return names as? [String] ?? [] }
 let keyCodes: [String:CGKeyCode] = ["escape":53,"return":36,"tab":48,"space":49,"delete":51,"k":40,"n":45,"s":1,"a":0,"z":6,"d":2,"c":8,"v":9]
+func scrollEvent(at point:CGPoint,deltaX:Int32,deltaY:Int32) -> CGEvent? {
+    guard let event=CGEvent(scrollWheelEvent2Source:nil,units:.pixel,wheelCount:2,wheel1:-deltaY,wheel2:-deltaX,wheel3:0) else { return nil }
+    // The event otherwise retains the cursor location from before mouseMoved is posted.
+    event.location=point;return event
+}
 func emit(_ value: [String: Any]) { if let data = try? JSONSerialization.data(withJSONObject: value, options: [.sortedKeys]) { FileHandle.standardOutput.write(data); print() } }
 
 @main struct NativeInput {
@@ -193,7 +198,7 @@ func emit(_ value: [String: Any]) { if let data = try? JSONSerialization.data(wi
                         let point=CGPoint(x:bounds.minX+(request["x"] as! Double),y:bounds.minY+(request["y"] as! Double))
                         guard let top=topWindow(point) else { throw InputError(message:"Scroll target has no visible window") }
                         try require((top[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==pid && (top[kCGWindowNumber as String] as? NSNumber)==number,"Another window covers the scroll target")
-                        guard let move=CGEvent(mouseEventSource:nil,mouseType:.mouseMoved,mouseCursorPosition:point,mouseButton:.left),let wheel=CGEvent(scrollWheelEvent2Source:nil,units:.pixel,wheelCount:2,wheel1:Int32(-(request["deltaY"] as? Int ?? 0)),wheel2:Int32(-(request["deltaX"] as? Int ?? 0)),wheel3:0) else { throw InputError(message:"Unable to create physical scroll events") }
+                        guard let move=CGEvent(mouseEventSource:nil,mouseType:.mouseMoved,mouseCursorPosition:point,mouseButton:.left),let wheel=scrollEvent(at:point,deltaX:Int32(request["deltaX"] as? Int ?? 0),deltaY:Int32(request["deltaY"] as? Int ?? 0)) else { throw InputError(message:"Unable to create physical scroll events") }
                         try verifyOwner();dispatched=true;move.post(tap:.cghidEventTap);try await Task.sleep(nanoseconds:50_000_000);try verifyOwner();try require(foreground() && (topWindow(point)?[kCGWindowNumber as String] as? NSNumber)==number,"Scroll lost target ownership");wheel.post(tap:.cghidEventTap);result["eventsPosted"]=2;result["deltaX"]=request["deltaX"] ?? 0;result["deltaY"]=request["deltaY"] ?? 0
                     } else {
                         var destinationBounds=bounds

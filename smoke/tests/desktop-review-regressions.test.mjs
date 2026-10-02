@@ -13,6 +13,17 @@ async function reviewedSource(relative){
   :readFile(path.join(smoke,relative),'utf8');
 }
 
+test('native wheel events retain the verified target point, not the previous cursor position',{skip:process.platform!=='darwin'},async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-wheel-regression-'));
+ try{
+  const original=await reviewedSource('desktop/macos-input.swift'),start=original.indexOf('func scrollEvent('),end=original.indexOf('func emit(',start);assert.ok(start>=0&&end>start);
+  const source=path.join(root,'wheel.swift'),binary=path.join(root,'wheel');
+  await writeFile(source,'import Foundation\nimport CoreGraphics\n'+original.slice(start,end)+`\nlet point=CGPoint(x:987,y:654)\nguard let event=scrollEvent(at:point,deltaX:200,deltaY:100) else { fatalError("No event") }\nprecondition(event.location==point,"Wheel escaped its observed target")\nprecondition(event.getIntegerValueField(.scrollWheelEventPointDeltaAxis1)==(-100))\nprecondition(event.getIntegerValueField(.scrollWheelEventPointDeltaAxis2)==(-200))\nprint("Verified wheel point and deltas")\n`);
+  execFileSync('/usr/bin/swiftc',['-module-cache-path',path.join(root,'module-cache'),source,'-o',binary],{encoding:'utf8',timeout:60000});
+  assert.match(execFileSync(binary,[],{encoding:'utf8',timeout:5000}),/Verified wheel/);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('media search rejects inert dispatch and waits for filtered results before clearing',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'athanor-search-regression-'));
  try{
