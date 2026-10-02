@@ -654,8 +654,9 @@
         "CLI-01"
       ],
       "courseId": "local-desktop-v1",
-      "courseRevision": 8,
-      "definitionHash": "0f93fcdb837fc443184aadb37375b48ccc015b069180d717d75b3142a326ff0c"
+      "courseRevision": 10,
+      "definitionHash": "5ca5c89919c35eab9da4ffed9e0ee43b44a0f8154b4ea3493f1a0cccb8e3edfb",
+      "proofAuthorization": "Charles approved the definition-owned proof remediation slice on 2026-10-01; connection behavior unchanged."
     },
     {
       "id": "D-CLI-02",

@@ -5,6 +5,12 @@ import {executeService} from '../desktop/service-run.mjs';
 import {writeJSON,readJSON} from './files.mjs';
 import {targetFor} from './catalog.mjs';
 
+export function stageObservation(id,report,events){
+ const observation=report.results.find(r=>r.id===id),last=events.findLast(r=>r.id===id);
+ if(last?.status==='Running')return {id,status:'Unknown',error:'Check started but no terminal observation was retained.'};
+ return observation||last;
+}
+
 export async function executeStages({plan,course,root,dataDir,onResult,isCancelled,signal,onStage=()=>{}}){
  const results=[];
  for(const target of ['service','desktop']){
@@ -27,18 +33,16 @@ export async function executeStages({plan,course,root,dataDir,onResult,isCancell
    const result=await execute({plan,dataDir,runtime:plan.runtime,directory,ids:selected.map(c=>c.id)},{isCancelled,signal});
    clearInterval(timer);while(busy)await new Promise(r=>setTimeout(r,10));await poll();
    await writeJSON(path.join(directory,'stage.json'),{target,root:result.root,report:result.report,sessionFile:result.sessionFile});
-   for(const filename of ['operations.jsonl','native-events.jsonl','steps.jsonl']){
+   for(const filename of ['operations.jsonl','native-events.jsonl','native-input.jsonl','steps.jsonl']){
     let text;try{text=await readFile(path.join(result.root,filename),'utf8');}catch(e){if(e.code==='ENOENT')continue;throw e;}
-    for(const line of text.split('\n').filter(Boolean)){const receipt=JSON.parse(line);await appendFile(path.join(root,filename==='steps.jsonl'?'steps.jsonl':'operations.jsonl'),JSON.stringify({...receipt,caseId:receipt.caseId||'stage-setup',stage:target,...(filename==='steps.jsonl'?{}:{operation:receipt.operation||'native.'+receipt.request.op})})+'\n');}
+    for(const line of text.split('\n').filter(Boolean)){const receipt=JSON.parse(line);await appendFile(path.join(root,filename==='steps.jsonl'?'steps.jsonl':'operations.jsonl'),JSON.stringify({...receipt,source:receipt.source||path.join(result.root,filename),caseId:receipt.caseId||'stage-setup',stage:target,...(filename==='steps.jsonl'?{}:{operation:receipt.operation||(filename==='native-input.jsonl'?'physical.'+receipt.command:'native.'+receipt.request.op)})})+'\n');}
    }
    let events=[];try{events=(await readFile(path.join(result.root,'check-events.jsonl'),'utf8')).split('\n').filter(Boolean).map(JSON.parse);}catch(e){if(e.code!=='ENOENT')throw e;}
    for(const c of selected){
-    let observation=result.report.results.find(r=>r.id===c.id);const last=events.findLast(r=>r.id===c.id);
-    if(last?.status==='Running')observation={id:c.id,status:'Unknown',error:'Check started but no terminal observation was retained.'};
-    else if(last&&(!observation||observation.status==='Blocked'))observation=last;
+    const observation=stageObservation(c.id,result.report,events);
     const status=observation?.status||'Blocked';
     const r={id:c.id,status,note:observation?.error||result.report.error||('Independent '+target+' assertions completed; see retained stage evidence.')};
-    await appendFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:c.id,operation:'check.observation',stage:target,status:r.status,evidence:observation?.evidence||null,source:path.join(result.root,'desktop-course-report.json')})+'\n');
+    await appendFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:c.id,operation:'check.observation',stage:target,status:r.status,evidence:observation?.evidence||null,source:observation?.source||path.join(result.root,'desktop-course-report.json')})+'\n');
     results.push(r);await onResult(c,r.status,r.note);
    }
    if(results.some(r=>r.status==='Unknown'))throw Object.assign(Error('Uncertain stage outcome; later stages were not started.'),{status:'Unknown'});

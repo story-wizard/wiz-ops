@@ -2,6 +2,7 @@ const activeStates = new Set(['Queued', 'Preflight', 'Running', 'Waiting for hum
 const movingStates = new Set(['Preflight', 'Running', 'Continuing']);
 const completedStates = new Set(['Passed', 'Failed']);
 const outcomes = ['Pass', 'Fail', 'Blocked', 'Running', 'N/A', 'Unknown'];
+const smokeHead='<div class="smoke-head" aria-hidden="true"><i class="puff"></i><i class="puff"></i><i class="puff"></i><i class="puff"></i><i class="puff"></i></div><div class="energy-edge" aria-hidden="true"></div>';
 export const progressEffects = `<svg class="progress-effects" aria-hidden="true" focusable="false"><defs>
  <filter id="steam-wisp" x="-20%" y="-50%" width="140%" height="200%" color-interpolation-filters="sRGB">
   <feTurbulence type="fractalNoise" baseFrequency=".012 .075" numOctaves="2" seed="12" result="flow"/>
@@ -23,6 +24,18 @@ export function formatDuration(ms) {
   if (!Number.isFinite(ms) || ms < 0) return '—';
   const seconds = Math.floor(ms / 1000), minutes = Math.floor(seconds / 60);
   return (minutes >= 60 ? Math.floor(minutes / 60) + ':' + String(minutes % 60).padStart(2, '0') : minutes) + ':' + String(seconds % 60).padStart(2, '0');
+}
+
+export function buildImportProgress(progress={}) {
+ const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const bytes=Number.isFinite(progress.bytes)&&progress.bytes>=0?progress.bytes:0,total=Number.isFinite(progress.totalBytes)&&progress.totalBytes>0?progress.totalBytes:null;
+ const transferring=['Downloading','Receiving ZIP','Copying archive'].includes(progress.stage),known=transferring&&total!==null,done=progress.stage==='Ready';
+ const steps=progress.phase==='validation'&&Number.isInteger(progress.completedSteps)&&Number.isInteger(progress.totalSteps)&&progress.totalSteps>0;
+ const percent=done?100:steps?100*Math.min(progress.totalSteps,Math.max(0,progress.completedSteps))/progress.totalSteps:known?Math.min(100,100*bytes/total):null,moving=!progress.complete;
+ const size=n=>n>=1024**3?(n/1024**3).toFixed(2)+' GB':(n/1024**2).toFixed(1)+' MB';
+ const detail=transferring?size(bytes)+(total?' of '+size(total):' transferred')+(known?' · '+Math.floor(percent)+'%':''):done?'Build selected':steps?`${progress.completedSteps} of ${progress.totalSteps} verification steps complete`:'';
+ const stage=progress.stage||'Starting import',description=stage+(detail?' · '+detail:'');
+ return `<div class="build-progress-heading"><strong role="status">${esc(stage)}</strong><span>${esc(detail)}</span></div><div class="run-progress build-transfer-progress ${percent===null?'indeterminate':''}" data-active="${moving}" role="progressbar" aria-label="${steps?'Build verification steps':'Build import progress'}" aria-valuetext="${esc(description)}" ${percent===null?'':`aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.floor(percent)}"`}><div class="steam-channel"><div class="progress-fill" style="width:${percent===null?30:percent}%"><div class="color-fill"><span class="segment ${done?'pass':'running'}" style="width:100%"></span></div>${moving?smokeHead:''}</div></div></div>`;
 }
 
 export function runTiming(run, history = [], now = Date.now()) {
@@ -55,5 +68,5 @@ export function progressBar(results, state) {
   const completed = total - results.filter(r => ['Not run', 'Running'].includes(r.status)).length;
   const description = outcomes.filter(s => counts[s]).map(s => counts[s] + ' ' + s.toLowerCase()).join(', ') || 'No checks recorded';
   const occupied = Object.values(counts).reduce((a,b) => a+b,0), moving = movingStates.has(state) && occupied > 0;
-  return `<div class="run-progress" data-active="${moving}" role="progressbar" aria-label="Check progress" aria-valuemin="0" aria-valuemax="${total || 1}" aria-valuenow="${completed}" aria-valuetext="${description}"><div class="steam-channel"><div class="progress-fill" style="width:${total ? 100 * occupied / total : 0}%"><div class="color-fill">${outcomes.map(s => `<span class="segment ${s.toLowerCase().replace(/[^a-z]+/g, '-')}" style="width:${occupied ? 100 * counts[s] / occupied : 0}%" title="${s}: ${counts[s]}"></span>`).join('')}</div>${moving?'<div class="smoke-head" aria-hidden="true"><i class="puff"></i><i class="puff"></i><i class="puff"></i><i class="puff"></i><i class="puff"></i></div><div class="energy-edge" aria-hidden="true"></div>':''}</div></div></div>`;
+  return `<div class="run-progress" data-active="${moving}" role="progressbar" aria-label="Check progress" aria-valuemin="0" aria-valuemax="${total || 1}" aria-valuenow="${completed}" aria-valuetext="${description}"><div class="steam-channel"><div class="progress-fill" style="width:${total ? 100 * occupied / total : 0}%"><div class="color-fill">${outcomes.map(s => `<span class="segment ${s.toLowerCase().replace(/[^a-z]+/g, '-')}" style="width:${occupied ? 100 * counts[s] / occupied : 0}%" title="${s}: ${counts[s]}"></span>`).join('')}</div>${moving?smokeHead:''}</div></div></div>`;
 }

@@ -17,6 +17,8 @@ node scripts/harness.mjs check --bundle /external/Athanor-VERSION
 
 Bundling compiles or reuses the adapter, copies it beside the source, and verifies the complete inventory. It does not launch Wizard. The destination must be new and outside Git. The bundle can be relocated. Its manifest records source and tool hashes; it is an integrity check for a trusted bundle.
 
+Selected-build bundles also include the compiled native input driver and foreground lease helper. They are matched by source hash and CPU architecture, copied into the external cache, and verified before use. Source-only checkouts compile this driver with the Swift compiler from macOS Command Line Tools. See [computer-use testing](computer-use-agent.md) for the agent workflow and physical permission checks.
+
 ## Install and open
 
 Double-click `Install Athanor.command`, or from the bundle's `workspace` directory:

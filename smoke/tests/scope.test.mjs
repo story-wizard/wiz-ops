@@ -10,7 +10,7 @@ test('scope rejects silently removed checks and changed fixtures',()=>{
  try{
   const scope=JSON.parse(fs.readFileSync(path.join(ROOT,'scope/v1-candidate.json')));
   for(const file of ['scope/v1-candidate.json',...scope.courses.map(c=>c.file),scope.checkpoint.file,...scope.fixtureSources.map(f=>f.file)]){fs.mkdirSync(path.dirname(path.join(dir,file)),{recursive:true});fs.copyFileSync(path.join(ROOT,file),path.join(dir,file));}
-  assert.equal(checkScope(dir).checks,143);
+  assert.equal(checkScope(dir).checks,161);
   const file=scope.courses[0].file,c=JSON.parse(fs.readFileSync(path.join(dir,file)));c.cases.pop();fs.writeFileSync(path.join(dir,file),JSON.stringify(c));
   assert.throws(()=>checkScope(dir),/changed; review/);
   fs.copyFileSync(path.join(ROOT,file),path.join(dir,file));

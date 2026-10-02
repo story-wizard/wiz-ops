@@ -1,7 +1,7 @@
 {
   "id": "physical-editor-candidate",
   "title": "Physical editor paths \u00b7 candidate qualification",
-  "revision": 5,
+  "revision": 8,
   "target": "Instrumented isolated desktop with native macOS input",
   "status": "Candidate",
   "cases": [
@@ -48,7 +48,67 @@
           "title": "Capture the result and restore with Undo",
           "phase": "cleanup"
         }
-      ]
+      ],
+      "proof": {
+        "version": 1,
+        "mode": "physical",
+        "oracle": "editor-v1",
+        "readOperation": "timeline.inspect",
+        "actions": [
+          {
+            "id": "drop",
+            "command": "drag",
+            "stepId": "drop",
+            "target": {
+              "class": "QWidget"
+            },
+            "surface": "bin",
+            "destination": "timeline",
+            "checkpoint": "changed"
+          },
+          {
+            "id": "keep",
+            "command": "click",
+            "stepId": "drop",
+            "target": {
+              "class": "QPushButton",
+              "text": "Keep Timeline Settings"
+            },
+            "optional": true,
+            "dialog": true,
+            "checkpoint": "changed"
+          },
+          {
+            "id": "undo",
+            "command": "key",
+            "stepId": "restore",
+            "target": {
+              "class": "TimelineWidget"
+            },
+            "key": "cmd+z",
+            "surface": "view",
+            "checkpoint": "restored"
+          }
+        ],
+        "checkpoints": [
+          {
+            "id": "changed",
+            "actions": [
+              "drop"
+            ],
+            "verifier": "editor",
+            "capture": "presented"
+          },
+          {
+            "id": "restored",
+            "actions": [
+              "undo"
+            ],
+            "verifier": "editor",
+            "capture": "presented"
+          }
+        ]
+      }
     },
     {
       "id": "P-TL-BIN-OVERWRITE",
@@ -93,7 +153,55 @@
           "title": "Capture the result and restore with Undo",
           "phase": "cleanup"
         }
-      ]
+      ],
+      "proof": {
+        "version": 1,
+        "mode": "physical",
+        "oracle": "editor-v1",
+        "readOperation": "timeline.inspect",
+        "actions": [
+          {
+            "id": "drop",
+            "command": "drag",
+            "stepId": "drop",
+            "target": {
+              "class": "QWidget"
+            },
+            "surface": "bin",
+            "destination": "timeline",
+            "checkpoint": "changed"
+          },
+          {
+            "id": "undo",
+            "command": "key",
+            "stepId": "restore",
+            "target": {
+              "class": "TimelineWidget"
+            },
+            "key": "cmd+z",
+            "surface": "view",
+            "checkpoint": "restored"
+          }
+        ],
+        "checkpoints": [
+          {
+            "id": "changed",
+            "actions": [
+              "drop"
+            ],
+            "verifier": "editor",
+            "capture": "presented"
+          },
+          {
+            "id": "restored",
+            "actions": [
+              "undo"
+            ],
+            "verifier": "editor",
+            "capture": "presented"
+          }
+        ]
+      }
     },
     {
       "id": "P-RG-MOVE",
@@ -150,7 +258,54 @@
           "title": "Check that only the view moved and capture the result",
           "phase": "verify"
         }
-      ]
+      ],
+      "proof": {
+        "version": 1,
+        "mode": "physical",
+        "oracle": "editor-v1",
+        "readOperation": "graph.get_clip_graph",
+        "actions": [
+          {
+            "id": "move",
+            "command": "drag",
+            "stepId": "move",
+            "target": {
+              "class": "QWidget"
+            },
+            "surface": "viewport",
+            "checkpoint": "moved"
+          },
+          {
+            "id": "pan",
+            "command": "drag",
+            "stepId": "verify-pan",
+            "target": {
+              "class": "QWidget"
+            },
+            "surface": "viewport",
+            "button": "middle",
+            "checkpoint": "panned"
+          }
+        ],
+        "checkpoints": [
+          {
+            "id": "moved",
+            "actions": [
+              "move"
+            ],
+            "verifier": "editor",
+            "capture": "presented"
+          },
+          {
+            "id": "panned",
+            "actions": [
+              "pan"
+            ],
+            "verifier": "editor",
+            "capture": "presented"
+          }
+        ]
+      }
     },
     {
       "id": "P-RG-WIRE",
@@ -202,7 +357,73 @@
           "title": "Check that Undo removes the edge and Redo restores it",
           "phase": "verify"
         }
-      ]
+      ],
+      "proof": {
+        "version": 1,
+        "mode": "physical",
+        "oracle": "editor-v1",
+        "readOperation": "graph.get_clip_graph",
+        "actions": [
+          {
+            "id": "wire",
+            "command": "drag",
+            "stepId": "wire",
+            "target": {
+              "class": "QWidget"
+            },
+            "surface": "viewport",
+            "checkpoint": "changed"
+          },
+          {
+            "id": "undo",
+            "command": "key",
+            "stepId": "history",
+            "target": {
+              "class": "RenderGraphView"
+            },
+            "surface": "view",
+            "key": "cmd+z",
+            "checkpoint": "restored"
+          },
+          {
+            "id": "redo",
+            "command": "key",
+            "stepId": "history",
+            "target": {
+              "class": "RenderGraphView"
+            },
+            "surface": "view",
+            "key": "cmd+shift+z",
+            "checkpoint": "redone"
+          }
+        ],
+        "checkpoints": [
+          {
+            "id": "changed",
+            "actions": [
+              "wire"
+            ],
+            "verifier": "editor",
+            "capture": "presented"
+          },
+          {
+            "id": "restored",
+            "actions": [
+              "undo"
+            ],
+            "verifier": "editor",
+            "capture": "presented"
+          },
+          {
+            "id": "redone",
+            "actions": [
+              "redo"
+            ],
+            "verifier": "editor",
+            "capture": "presented"
+          }
+        ]
+      }
     },
     {
       "id": "P-RG-CLIPBOARD",
@@ -264,7 +485,116 @@
           "title": "Restore the system clipboard",
           "phase": "cleanup"
         }
-      ]
+      ],
+      "proof": {
+        "version": 1,
+        "mode": "physical",
+        "oracle": "editor-v1",
+        "readOperation": "graph.get_clip_graph",
+        "actions": [
+          {
+            "id": "copy",
+            "command": "key",
+            "stepId": "paste",
+            "target": {
+              "class": "RenderGraphView"
+            },
+            "surface": "view",
+            "key": "cmd+c",
+            "checkpoint": "pasted"
+          },
+          {
+            "id": "paste",
+            "command": "key",
+            "stepId": "paste",
+            "target": {
+              "class": "RenderGraphView"
+            },
+            "surface": "view",
+            "key": "cmd+v",
+            "checkpoint": "pasted"
+          },
+          {
+            "id": "select",
+            "command": "click",
+            "stepId": "delete",
+            "target": {
+              "class": "QWidget"
+            },
+            "surface": "viewport",
+            "checkpoint": "deleted"
+          },
+          {
+            "id": "delete",
+            "command": "key",
+            "stepId": "delete",
+            "target": {
+              "class": "RenderGraphView"
+            },
+            "surface": "view",
+            "key": "delete",
+            "checkpoint": "deleted"
+          },
+          {
+            "id": "undo-delete",
+            "command": "key",
+            "stepId": "restore",
+            "target": {
+              "class": "RenderGraphView"
+            },
+            "surface": "view",
+            "key": "cmd+z",
+            "checkpoint": "paste-restored"
+          },
+          {
+            "id": "undo-paste",
+            "command": "key",
+            "stepId": "restore",
+            "target": {
+              "class": "RenderGraphView"
+            },
+            "surface": "view",
+            "key": "cmd+z",
+            "checkpoint": "restored"
+          }
+        ],
+        "checkpoints": [
+          {
+            "id": "pasted",
+            "actions": [
+              "copy",
+              "paste"
+            ],
+            "verifier": "editor",
+            "capture": "presented"
+          },
+          {
+            "id": "deleted",
+            "actions": [
+              "select",
+              "delete"
+            ],
+            "verifier": "editor",
+            "capture": "presented"
+          },
+          {
+            "id": "paste-restored",
+            "actions": [
+              "undo-delete"
+            ],
+            "verifier": "editor",
+            "capture": "presented"
+          },
+          {
+            "id": "restored",
+            "actions": [
+              "undo-paste"
+            ],
+            "verifier": "editor",
+            "capture": "presented"
+          }
+        ]
+      }
     },
     {
       "id": "P-GRADE-LIVE",
@@ -369,6 +699,207 @@
           "phase": "cleanup"
         }
       ]
+    },
+    {
+      "id": "P-TL-TRIM",
+      "sourceId": "TL-03",
+      "area": "Timeline editing",
+      "title": "Physical right-edge trim and undo",
+      "expected": "Physically drag the right edge of the Fresh fixture clip; preserve source and clip identity, shorten matching source/timeline ranges, and restore exact original timing with Undo.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Physical input receipts and independent timeline observations."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Displayed timeline after the tested action."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Create and open a four-second clip",
+          "phase": "prepare"
+        },
+        {
+          "id": "trim",
+          "title": "Physically drag the right edge left",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Check clip identity and matching source/timeline durations",
+          "phase": "verify"
+        },
+        {
+          "id": "restore",
+          "title": "Undo and verify the original clip timing",
+          "phase": "restore"
+        }
+      ],
+      "proof": {
+        "version": 1,
+        "mode": "physical",
+        "actions": [
+          {
+            "id": "trim",
+            "checkpoint": "changed",
+            "stepId": "trim",
+            "command": "drag",
+            "part": "right-edge",
+            "target": {
+              "class": "TimelineWidget"
+            }
+          },
+          {
+            "id": "undo",
+            "checkpoint": "restored",
+            "stepId": "restore",
+            "command": "key",
+            "key": "cmd+z",
+            "target": {
+              "class": "TimelineWidget"
+            }
+          }
+        ],
+        "checkpoints": [
+          {
+            "id": "changed",
+            "verifier": "clip-trimmed",
+            "actions": [
+              "trim"
+            ],
+            "capture": "presented"
+          },
+          {
+            "id": "restored",
+            "verifier": "timeline-restored",
+            "actions": [
+              "undo"
+            ],
+            "capture": "presented"
+          }
+        ]
+      }
+    },
+    {
+      "id": "P-TRACK-ADD",
+      "sourceId": null,
+      "area": "Timeline editing",
+      "title": "Physical Add Video Track and save",
+      "expected": "Physically click + Video and Save; independently observe one new empty video track, then Undo and Save to restore the original track identities.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Physical input receipts and independent timeline observations."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Displayed timeline after the tested action."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Open a fresh empty timeline",
+          "phase": "prepare"
+        },
+        {
+          "id": "add",
+          "title": "Physically click + Video",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Save and inspect the new empty video track",
+          "phase": "verify"
+        },
+        {
+          "id": "restore",
+          "title": "Undo, save and inspect the original track identities",
+          "phase": "restore"
+        }
+      ],
+      "proof": {
+        "version": 1,
+        "mode": "physical",
+        "actions": [
+          {
+            "id": "add",
+            "checkpoint": "changed",
+            "stepId": "add",
+            "command": "click",
+            "target": {
+              "name": "panelChromeAction",
+              "text": "+ Video",
+              "enabled": true
+            }
+          },
+          {
+            "id": "save",
+            "checkpoint": "changed",
+            "stepId": "verify",
+            "command": "key",
+            "key": "cmd+s",
+            "target": {
+              "class": "TimelineWidget"
+            }
+          },
+          {
+            "id": "undo",
+            "checkpoint": "restored",
+            "stepId": "restore",
+            "command": "key",
+            "key": "cmd+z",
+            "target": {
+              "class": "TimelineWidget"
+            }
+          },
+          {
+            "id": "restore-save",
+            "checkpoint": "restored",
+            "stepId": "restore",
+            "command": "key",
+            "key": "cmd+s",
+            "target": {
+              "class": "TimelineWidget"
+            }
+          }
+        ],
+        "checkpoints": [
+          {
+            "id": "changed",
+            "verifier": "track-added",
+            "actions": [
+              "add",
+              "save"
+            ],
+            "capture": "presented"
+          },
+          {
+            "id": "restored",
+            "verifier": "timeline-restored",
+            "actions": [
+              "undo",
+              "restore-save"
+            ],
+            "capture": "presented"
+          }
+        ]
+      }
     }
   ]
 }

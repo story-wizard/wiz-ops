@@ -1,5 +1,7 @@
 # Spot testing with an agent
 
+For scoped UI observations, physical gestures, condition waits and evidence-backed agent session reports, use the [computer-use toolkit](computer-use-agent.md). It builds on the atomic operations described below.
+
 The CLI, application adapter and native adapter work without the dashboard. They use the same installed desktop tools, ownership checks and operation receipts as the automated courses.
 
 For a focused explanation and edit prompt, run `node scripts/smoke.mjs context --check D-EDIT-DELETE --server URL`. Add `--export` for a curated reference folder, or `--run ID` for the frozen source and result of a previous run. See [test evidence](test-evidence.md) for readable steps, evidence declarations and acceptance after editing. These commands do not execute a test.
@@ -23,7 +25,7 @@ node scripts/smoke.mjs run --plan /tmp/track-check-plan.json --operator "Agent s
 node scripts/smoke.mjs status --request-id track-check-001 --server "$ATHANOR_URL"
 ```
 
-`setup` returns known builds, courses and the automatic desktop-tool selection. `list` returns accepted and candidate definitions with their operations and requirements. `plan` adds the declared prerequisites and freezes the exact selection; it does not execute the check. `run` executes only that selection and its prerequisites. The resulting verdict and evidence appear in Results. See [agent-friendly courses](agent-courses.md) for wait, cancel, report and request recovery.
+`setup` returns known builds, courses and the automatic desktop-tool selection. `list` returns course-catalog definitions with their operations and requirements. The default `smoke-full` also includes explicit physical qualification candidates; unlinked exploratory checks remain in an owned session's context; see [computer-use testing](computer-use-agent.md). `plan` adds the declared prerequisites and freezes the exact selection; it does not execute the check. `run` executes only that selection and its prerequisites. The resulting verdict and evidence appear in Results. See [agent-friendly courses](agent-courses.md) for wait, cancel, report and request recovery.
 
 Desktop/service plans automatically prepare an external adapter for the selected package and its shipped CLI. They never substitute a separate test app. Use `prepare` and poll `preparation --id ID` for step progress and a repair prompt; see [desktop setup](desktop-tools-setup.md). Packaged-only plans do not need the desktop adapter.
 
@@ -50,7 +52,7 @@ node desktop/session.mjs stop SESSION.json
 
 Application calls retain requests, responses and observed revisions in `operations.jsonl`. Native calls retain requests and responses in `native-events.jsonl`. Resolve returned identities, query the resulting state, and assert the behavior you intended. A dispatch receipt or success envelope is not a passing check. An ambiguous action remains Unknown and must not be replayed automatically.
 
-Atomic probes keep their evidence in the owned session directory. They do not create dashboard Pass records. Use a focused course when a probe needs a durable verdict in Results.
+Atomic probes keep their evidence in the owned session directory. During a tracked toolkit attempt, raw call/native commands share its admission boundary. Unqualified mutations invalidate its proof. They do not create dashboard Pass records. Use a focused course when a probe needs a durable verdict in Results.
 
 ## Compose tools in JavaScript
 

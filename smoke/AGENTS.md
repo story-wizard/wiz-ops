@@ -18,9 +18,11 @@ Use Find a build in New run, or the `builds` / `build` agent commands. Read `doc
 
 Read `docs/demo-guide.md` for the short team walkthrough and `examples/agent-onboarding.txt` for the complete setup prompt.
 
-## Start from a checkout
+Read `docs/changes-2026-10-02.md` for the current update. Use the maintained course and catalog as the authority for counts; historical pilot sections describe earlier tooling.
 
-Use Node.js 24 or newer, then run these commands from `smoke/`:
+## Start from a checkout or bundle
+
+Use Node.js 24 or newer. The command root is `smoke/` in a repository checkout and `workspace/` in a delivered bundle. It contains `package.json`, `scripts/`, `desktop/` and `docs/`; guidance paths below are relative to that root. Run:
 
 ```sh
 npm test
@@ -36,7 +38,13 @@ Run `setup`, `list`, and `courses` first. Ask for the build and intended selecti
 
 Read `docs/agent-tools.md` for single-check execution and atomic app/native tools. The dashboard is optional. Start with `node scripts/smoke.mjs setup --server URL` and `list --server URL`; both return JSON without executing tests.
 
+For computer-use testing, read `docs/computer-use-agent.md`. Start an owned session with `desktop/session.mjs start --plan FILE`, then use `desktop/session.mjs tool SESSION.json OP JSON`. Ready prints the session and `agent-context.json` paths. Run `preflight` before gestures. Physically click and verify the editable field before native Unicode `type`; use bounded physical `scroll` for offscreen controls. Inspect the actual key window and focused control when keys are blocked. Use scoped `observe` and exact `find` selectors, `geometry` for clip bodies/edges, `physical` for the action being tested, `wait` for read-only conditions, and `verify` plus `capture` before recording Pass. Repeated checks have separate attempts. An Unknown mutation requires inspection, current verification and explicit `resolve`; stop can close its owned app without a new save/edit. Foreground attachment holds an OS lease across workspaces. Bundle delivery includes the compiled native driver; source checkouts compile it once with Swift from macOS Command Line Tools. Agent reports reuse the interactive report viewer and remain outside Git.
+
+Attached adapters advertise versioned capabilities, supported native commands, capture methods and inspection limits. Read the session receipt or use `desktop/session.mjs native SESSION.json capabilities '{}'` before choosing a native route. Desktop execution isolates independent script groups in fresh projects and sessions, while persistence steps keep their own fixture. Preserve group failures, require confirmed owned-process cleanup before another launch, and never replay an uncertain action. Shared check helpers retain failure-state JSON and owned-window screenshots automatically; label observation waits with the condition being checked. Repeated captures must keep distinct filenames.
+
 Use `node scripts/smoke.mjs context --check ID --server URL` for a test definition, source pointers and edit prompt. Add `--export` to retain a curated context folder outside Git, or `--run ID` to use a run's frozen definition and source. Read `docs/test-evidence.md` when changing checks, step recording or evidence collection.
+
+Treat checks as reusable examples: keep fixture setup, tested action, pure independent assertions, evidence and cleanup separable. Read the composition and authoring examples in `docs/test-evidence.md`; that guide is included in exported agent packs. A check should run alone with explicit identities and declared prerequisites. Reuse the existing adapters and helpers, isolate mutable fixtures, and demonstrate a representative wrong result that its assertion rejects. Keep application-specific transports separate from state comparison logic. Course membership does not imply full checklist coverage or runtime qualification.
 
 Use `plan --checks ID` for a focused check, then `run` for an evidence-backed verdict in the dashboard. Desktop tools attach to a byte-identical disposable copy of the selected build, using its shipped CLI and bundled Qt. For exploratory calls, prepare a desktop selection and use `desktop/session.mjs start --plan FILE`, `call`, `native`, and `stop`. Resolve identities from current observations. Operation success alone is not a behavioral pass.
 
@@ -46,6 +54,13 @@ Run only when the user has authorized testing on that machine. Foreground sessio
 
 For new-build preparation failures or feature changes, read `docs/build-repair.md`. Context packs include a build-repair prompt, mapped contracts and qualification records. Qualify exact reviewed schemas, update affected assertions for behavioral changes, and keep new feature checks behind lead acceptance. For source or runtime updates, follow `docs/maintaining-harness.md`. Keep bundles, models, projects and evidence outside Git. Preserve existing run evidence and installed runtime versions.
 
-Build discovery displays 50 records per page by default. Filters search all retained metadata before pagination. Agents can use `builds --author me --page 2`, `--page-size all` for the cached catalog, and `--github-page N` to load older metadata in batches of 50. Inspect `nextGitHubPage` and `hasMoreGitHub` before requesting the next provider page.
+Build discovery displays 10 records per page by default. Filters search all retained metadata before pagination. Agents can use `builds --author me --page 2`, `--page-size all` for the cached catalog, and `--github-page N` to load older metadata in batches of 10. Inspect `nextGitHubPage` and `hasMoreGitHub` before requesting the next provider page.
 
 For lost course-start responses, query the original request ID first. If the service returns 404, an explicitly requested retry may use the exact same request ID, plan hash and operator; admission is idempotent. Do not retry application mutations through this mechanism. Changed downloaded caches are blocked from reuse; reimport legacy archives to establish their package fingerprint, or explicitly register a modified app as a local build.
+
+
+## Default checklist and qualification
+
+A fresh launcher defaults to `smoke-full`: accepted core checks plus the maintained allowlist of physical/checklist qualification candidates. `automated-full` remains accepted-only; custom courses cannot promote candidates. Read `docs/agent-courses.md` for current composition. New physical groups must expose their selected definitions in `agent-context.json`, execute in fresh owned projects, preserve failures and retain native-input receipts in the course report. Stage executors run from the retained source snapshot. Keep the Mac unlocked for desktop checks; never attempt to bypass the lock screen or change system security settings.
+
+The default `smoke-full` revision 2 excludes `S-PF-IDLE`. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.

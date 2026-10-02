@@ -2,7 +2,7 @@ import {openBuildFinder} from './build-finder.js';
 import {progressBar} from './run-display.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let saved={};try{saved=JSON.parse(localStorage.getItem('wizard-smoke-launcher')||'{}');}catch{}
-let draft={app:saved.app||'',courseId:saved.courseId||'automated-full',name:'',operator:saved.operator||'Local tester',prepared:saved.prepared||null,preparation:saved.preparation||null,request:saved.request||null};
+let draft={app:saved.app||'',courseId:saved.courseId||'smoke-full',name:'',operator:saved.operator||'Local tester',prepared:saved.prepared||null,preparation:saved.preparation||null,request:saved.request||null};
 let data={builds:[],courses:[],runtimes:[]},busy='',error='',requestMissing=false;
 let api,render,toast,onStarted;
 const remember=()=>localStorage.setItem('wizard-smoke-launcher',JSON.stringify({...draft,name:''}));
@@ -21,7 +21,7 @@ export function configureRunSetup(deps){({api,render,toast,onStarted}=deps);}
 export async function refreshRunSetup(){
  data=await api('/run-setup');
  if(!draft.app)draft.app=data.builds.find(b=>b.available)?.app||'';
- if(!data.courses.some(c=>c.id===draft.courseId&&!c.error))draft.courseId='automated-full';
+ if(!data.courses.some(c=>c.id===draft.courseId&&!c.error))draft.courseId=data.courses.find(c=>!c.error)?.id||'';
  if(draft.preparation?.state==='Preparing'&&!busy){busy='Preparing your selected build…';void watchPreparation(draft.preparation.id);}
  remember();
 }
@@ -79,7 +79,7 @@ document.addEventListener('click',async e=>{
  const b=e.target.closest('[data-setup]');if(!b||busy)return;
  try{
   if(b.dataset.setup==='copy-repair'){await navigator.clipboard.writeText(draft.preparation.repairPrompt);toast('Repair prompt copied.');return;}
-  if(b.dataset.setup==='find-build')return await openBuildFinder({api,local:data.builds,onSelected:async build=>{draft.app=build.app;invalidate();await refreshRunSetup();if(!data.builds.some(b=>b.app===build.app))data.builds.push(build);remember();render();toast('Build selected.');}});
+  if(b.dataset.setup==='find-build')return await openBuildFinder({api,local:data.builds,onSelected:build=>{draft.app=build.app;invalidate();if(!data.builds.some(b=>b.app===build.app))data.builds.push(build);remember();render();toast('Build selected.');void refreshRunSetup().then(render).catch(e=>toast(e.message));}});
   if(b.dataset.setup==='active'){const r=await api('/runner');if(r.active)await onStarted(r.active.run_id);}
   if(b.dataset.setup==='recover'&&draft.request){busy='Checking start status…';requestMissing=false;render();try{const r=await api('/requests/'+draft.request.requestId);await openRun(r.id);error='';}catch(e){if(e.status!==404)throw e;requestMissing=true;error='This request has not been admitted. Retry the original start to reconcile it safely.';}}
   if(b.dataset.setup==='retry'&&draft.request&&requestMissing){busy='Retrying the original start…';requestMissing=false;error='';render();const r=await api('/runner/start','POST',draft.request);await openRun(r.runId);toast('Tests started.');}

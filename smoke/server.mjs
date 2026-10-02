@@ -17,7 +17,7 @@ import {readJSON,writeJSON,digest,dataDirectory,fingerprint} from './runner/file
 import {checklistCoverage} from './coverage.mjs';
 import {desktopState,desktopCourse,serviceCourse,startDesktopJob,requestJob,jobDetails,initializeDesktopCatalog,ownedDesktopSessions} from './desktop/hub.mjs';
 import {checkPrepared,sourceIdentity,prepare} from './runner/prepare.mjs';
-import {checkRegistry,courseList,getCourse,saveCourse,resolveSelection} from './runner/catalog.mjs';
+import {checkRegistry,physicalChecks,courseList,getCourse,saveCourse,resolveSelection} from './runner/catalog.mjs';
 import {runtimeList,saveRuntime,installedRuntime} from './runner/runtime.mjs';
 import {exportRunKit} from './kits.mjs';
 import {exportLocalReport,reportScriptHash} from './reports.mjs';
@@ -53,6 +53,16 @@ const checkpoint=JSON.parse(readFileSync(path.join(root,'catalog/checkpoints/log
 const enums={execution:['Automated','Human','Unassigned'],course:['First automated','Local desktop','Local services','Human','Later','Backlog'],readiness:['Needs mapping','Needs capability','In development','Ready for pilot','Ready','Human checklist','Draft'],priority:['P0','P1','P2'],environment:['Local','NAS'],gpScope:['GP v0','Extension','Review']};
 const statuses=['Not run','Running','Pass','Fail','Blocked','N/A','Unknown'];
 let preparing=false,importingBuild=false;
+const buildProgress=new Map();
+function buildReporter(id){
+ if(id===undefined||id===null)return ()=>{};
+ if(typeof id!=='string'||!/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id))fail(400,'Invalid build progress ID.');
+ if(buildProgress.has(id))fail(409,'Build progress ID already used; inspect the original import before retrying.');
+ for(const [key,value] of buildProgress)if(Date.now()-value.updatedAt>3600000)buildProgress.delete(key);
+ while(buildProgress.size>=32)buildProgress.delete(buildProgress.keys().next().value);
+ buildProgress.set(id,{id,stage:'Starting import',bytes:0,totalBytes:null,complete:false,updatedAt:Date.now()});
+ return update=>buildProgress.set(id,{...buildProgress.get(id),...update,updatedAt:Date.now()});
+}
 const catalog=()=>db.prepare('SELECT definition FROM tests ORDER BY rowid').all().map(r=>JSON.parse(r.definition));
 const getRun=(id)=>{
   const run=db.prepare('SELECT * FROM runs WHERE id=?').get(id); if(!run)return null;
@@ -80,7 +90,7 @@ async function runSetup(){
   const runtime=r.runtime;
   r.available=['app','cli','qtPlugin'].every(k=>typeof runtime[k]==='string'&&path.isAbsolute(runtime[k])&&existsSync(runtime[k]))&&existsSync(path.join(runtime.app,'Contents/MacOS/wizard'))&&existsSync(runtime.bridge||path.join(dataDir,'native/styles/libwizard_smoke.dylib'))&&(!runtime.libraries||existsSync(runtime.libraries));
  }
- for(const b of await localBuilds(dataDir)){const current=builds.find(p=>p.app===b.app),value={...b,label:b.label||b.asset||path.basename(b.app)};if(current)Object.assign(current,value);else builds.push(value);}
+ for(const b of await localBuilds(dataDir,{verify:false})){const current=builds.find(p=>p.app===b.app),value={...b,label:b.label||b.asset||path.basename(b.app)};if(current)Object.assign(current,value);else builds.push(value);}
  const defaultRuntimeId=runtimes.find(r=>r.available)?.id||'';
  const registry=checkRegistry(),courses=courseList(db).filter(c=>!c.checkpoint).map(c=>{try{const s=resolveSelection(db,{courseIds:[c.id]});return {...c,checkCount:s.effectiveIds.length,requirements:s.requirements,targets:Object.fromEntries(['packaged','desktop','service'].map(t=>[t,s.effectiveIds.filter(id=>registry.find(c=>c.id===id)?.target===t).length]))};}catch(e){return {...c,error:e.message};}});
  return {builds,courses,runtimes,defaultRuntimeId,runtimeSetupError,project:'fresh'};
@@ -100,7 +110,7 @@ async function runnerStatus(){
 async function catalogPayload(){
   const runner=await runnerStatus(),gp=structuredClone(seed.gp);gp.prepared=runner.prepared;
   if(runner.prepared){gp.status='Media prepared; project built during run';gp.components=gp.components.map(c=>c.id==='gp-media'?{...c,name:'Eight synthetic local fixtures',status:'Available',spec:'Eight generated files: pattern_24.mov (1080p24 ProRes + stereo, 12 s); motion_25.mp4 (1080p25 H.264, 8 s); tone.wav (48 kHz stereo, 8 s); still.png; sample.mxf (1080p25, 6 s); mask.png; comet_report.wav; comet_report.mov (matching synthetic speech audio/video). All have verified hashes and probe results.'}:c.id==='gp-speech'?{...c,status:'Available',spec:'Synthetic Samantha speech with known words and time ranges. Offline ASR uses a pinned cached Parakeet CoreML model. Transcript search uses the matching video asset; this package excludes audio-only assets from its search index.'}:c.id==='gp-project'||c.id==='gp-timelines'?{...c,status:'Built during run',spec:c.id==='gp-project'?'Fresh GP created through the packaged project operations for each independent test; no hand-authored .wiz files.':'Main at 24 fps and Secondary at 25 fps, with known source windows and exact whole-second clip positions. Additional tracks are created only by checks that need them.'}:c.id==='gp-graph'?{...c,name:'Small render graph',status:'Built during run',spec:'Insert a Gaussian blur into a clip graph, edit its radius, bypass it, then remove it. Verify topology and independently measured pixel changes.'}:c.id==='gp-mask'?{...c,status:'Available'}:{...c,status:'Deferred'});}
-  return {...seed,gp,historyUrl:historyUrl(),tests:catalog(),runner,checkpoint:{source:checkpoint.source,sha256:checkpoint.sha256,build:checkpoint.sourceBuild,comparison:checkpoint.comparison,rows:checklistCoverage(checkpoint,{cases:[...course.cases,...[desktopCourse,serviceCourse].flatMap(d=>d.cases.map(c=>({...c,scope:d.target+'; '+c.expected})))]})}};
+  return {...seed,gp,historyUrl:historyUrl(),tests:catalog(),runner,checkpoint:{source:checkpoint.source,sha256:checkpoint.sha256,build:checkpoint.sourceBuild,comparison:checkpoint.comparison,rows:checklistCoverage(checkpoint,{cases:[...course.cases,...physicalChecks,...[desktopCourse,serviceCourse].flatMap(d=>d.cases.map(c=>({...c,scope:d.target+'; '+c.expected})))]})}};
 }
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
 const str=(value,label,max=6000)=>{if(typeof value!=='string'||value.length>max)fail(400,`Invalid ${label}.`);return value.trim();};
@@ -124,9 +134,9 @@ const server=http.createServer(async(req,res)=>{
       if(url.pathname==='/api/builds/archive'&&req.method==='POST'){
         if(req.headers.origin&&req.headers.origin!==`http://${host}`)return send(403,{error:'Cross-origin writes are not accepted.'});
         if(req.headers['content-type']!=='application/zip')return send(415,{error:'ZIP is required.'});
-        if(importingBuild)fail(409,'Another build import is active.');importingBuild=true;let stage;
-        try{stage=await buildStage(dataDir);await receiveArchive(req,path.join(stage,'package.zip'));return send(201,await importBuild(dataDir,{path:path.join(stage,'package.zip')},{stage}));}
-        catch(e){fail(400,e.message);}finally{if(stage)await rm(stage,{recursive:true,force:true});importingBuild=false;}
+        if(importingBuild)fail(409,'Another build import is active.');const progress=buildReporter(url.searchParams.get('progressId'));importingBuild=true;let stage;
+        try{stage=await buildStage(dataDir);const total=Number(req.headers['content-length']);await receiveArchive(req,path.join(stage,'package.zip'),{onProgress:progress,totalBytes:Number.isSafeInteger(total)&&total>0?total:null,stage:'Receiving ZIP'});const build=await importBuild(dataDir,{path:path.join(stage,'package.zip')},{stage,onProgress:progress});progress({stage:'Ready',complete:true});return send(201,build);}
+        catch(e){progress({stage:'Failed',complete:true,error:e.message});fail(400,e.message);}finally{if(stage)await rm(stage,{recursive:true,force:true});importingBuild=false;}
       }
       let body={};
       if(['POST','PATCH'].includes(req.method)){
@@ -195,9 +205,10 @@ const server=http.createServer(async(req,res)=>{
         try{return send(200,buildCatalogPage(builds,url.searchParams));}catch(e){fail(400,e.message);}
       }
       if(req.method==='POST'&&url.pathname==='/api/builds/import'){
-        if(importingBuild)fail(409,'Another build import is active.');importingBuild=true;
-        try{return send(201,await importBuild(dataDir,body));}catch(e){fail(400,e.message);}finally{importingBuild=false;}
+        if(importingBuild)fail(409,'Another build import is active.');const progress=buildReporter(body.progressId);importingBuild=true;
+        try{const build=await importBuild(dataDir,body,{onProgress:progress});progress({stage:'Ready',complete:true});return send(201,build);}catch(e){progress({stage:'Failed',complete:true,error:e.message});fail(400,e.message);}finally{importingBuild=false;}
       }
+      if(req.method==='GET'&&parts[1]==='builds'&&parts[2]==='progress'&&parts.length===4){const progress=buildProgress.get(parts[3]);if(!progress)fail(404,'Build progress unavailable.');return send(200,progress);}
       if(req.method==='GET'&&url.pathname==='/api/run-setup')return send(200,await runSetup());
       if(req.method==='GET'&&parts[1]==='preparations'&&parts.length===3){try{return send(200,await readPreparation(dataDir,parts[2]));}catch(e){fail(404,e.message);}}
       if(req.method==='POST'&&url.pathname==='/api/preparations'){
@@ -328,7 +339,8 @@ const server=http.createServer(async(req,res)=>{
       const content=readFileSync(path.join(dataDir,'history.html'));
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'self'; sandbox"});return res.end(req.method==='HEAD'?undefined:content);
     }
-    if(parts[0]==='exports'&&/^smoke-report-[a-f0-9-]{36}-[a-f0-9]{12}$/.test(parts[1]||'')&&((parts.length===3&&['index.html','report.json'].includes(parts[2]))||(parts.length===4&&parts[2]==='evidence'&&(['plan.json','course.json','report.json','operations.jsonl','media-manifest.json','scope.json','execution-context.json','checkpoint.json','test-specifications.json','steps.jsonl'].includes(parts[3])||/^computer-use-(pass\.json|[a-f0-9]{12}-[a-zA-Z0-9_-]+\.(png|jpg|jpeg|gif|mp4|mov|webm|wav|mp3|m4a|json|txt))$/.test(parts[3]))))){
+    const agentExport=parts[0]==='exports'&&/^agent-report-[a-f0-9-]{36}$/.test(parts[1]||'')&&((parts.length===3&&['index.html','report.json'].includes(parts[2]))||(parts.length===4&&parts[2]==='evidence'&&/^agent-[a-f0-9-]{36}\.(png|json)$/.test(parts[3])));
+    if(agentExport||parts[0]==='exports'&&/^smoke-report-[a-f0-9-]{36}-[a-f0-9]{12}$/.test(parts[1]||'')&&((parts.length===3&&['index.html','report.json'].includes(parts[2]))||(parts.length===4&&parts[2]==='evidence'&&(['plan.json','course.json','report.json','operations.jsonl','media-manifest.json','scope.json','execution-context.json','checkpoint.json','test-specifications.json','steps.jsonl'].includes(parts[3])||/^computer-use-(pass\.json|[a-f0-9]{12}-[a-zA-Z0-9_-]+\.(png|jpg|jpeg|gif|mp4|mov|webm|wav|mp3|m4a|json|txt))$/.test(parts[3]))))){
       let content;try{content=readFileSync(path.join(dataDir,...parts));}catch{fail(404,'Report file not found.');}
       const html=parts.at(-1)==='index.html',scriptHash=html?createHash('sha256').update(content.toString().match(/<script>([\s\S]*?)<\/script>/)?.[1]||'').digest('base64'):reportScriptHash;res.writeHead(200,{'Content-Type':html?'text/html; charset=utf-8':parts.at(-1).endsWith('.png')?'image/png':parts.at(-1).endsWith('.jpg')?'image/jpeg':({'gif':'image/gif','mp4':'video/mp4','mov':'video/quicktime','webm':'video/webm','wav':'audio/wav','mp3':'audio/mpeg','m4a':'audio/mp4','json':'application/json'})[path.extname(parts.at(-1)).slice(1)]||'text/plain; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':`default-src 'none'; img-src http://${host} data:; media-src http://${host}; script-src 'sha256-${scriptHash}'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'self'; sandbox allow-scripts allow-popups`});return res.end(req.method==='HEAD'?undefined:content);
     }

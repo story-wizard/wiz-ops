@@ -1,9 +1,9 @@
 import path from 'node:path';
 import {writeFileSync} from 'node:fs';
 import {appendFile} from 'node:fs/promises';
-import {desktopCall,nativeCall} from './adapter.mjs';
+import {desktopCall,nativeCall,captureDesktopFailure} from './adapter.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
-import {assert,pause,OutcomeError,clips,bounds} from '../runner/engine.mjs';
+import {assert,pause,OutcomeError,clips,bounds,near} from '../runner/engine.mjs';
 
 // A normal finish is required: a prior Fail cannot explain a later script crash.
 // Exit 1 with that receipt retains ordinary non-Pass verdicts and permits independent checks.
@@ -16,10 +16,29 @@ export function requirePassed(results,ids){
  const missing=ids.filter(id=>results.find(r=>r.id===id)?.status!=='Pass');
  if(missing.length)throw new OutcomeError('Required checks did not pass: '+missing.map(id=>id+' ('+(results.find(r=>r.id===id)?.status||'not executed')+')').join(', '),'Blocked');
 }
+export async function waitForObservation(fn,{description='Expected observation',timeoutMs=5000,intervalMs=100}={}){
+ assert(Number.isFinite(timeoutMs)&&timeoutMs>0&&timeoutMs<=60000&&Number.isFinite(intervalMs)&&intervalMs>0,'Observation wait must be bounded');
+ const started=Date.now();let attempts=0,last;
+ do{attempts++;last=await fn();if(last)return last;await pause(Math.min(intervalMs,Math.max(0,timeoutMs-(Date.now()-started))));}while(Date.now()-started<timeoutMs);
+ const e=new OutcomeError(description+' did not arrive within '+timeoutMs+'ms ('+attempts+' observations).');e.diagnostics={expected:description,elapsedMs:Date.now()-started,attempts,lastObservation:last??null};throw e;
+}
 export function requireExactTimingFixture(snapshot){
  const timed=clips(snapshot).filter(c=>c.source?.timing==='timed');
  const rejected=timed.filter(c=>c.source.projection_status!=='exact');
  if(!timed.length||rejected.length)throw new OutcomeError('Source timing fixture is not exact: '+JSON.stringify(rejected.map(c=>({clip:c.clip_id,status:c.source.projection_status,diagnostics:c.source.projection_diagnostics}))),'Blocked');
+}
+export function verifyTrimmedClip(before,after,timelineFps){
+ // Same-clock Fresh fixture; cross-rate trimming needs its own rational timing oracle.
+ assert(before.clip_id===after.clip_id&&before.source.asset_id===after.source.asset_id,'Trim identity changed');
+ near(after.timeline_range.start_seconds,before.timeline_range.start_seconds,'Trim left edge preserved');
+ assert(after.timeline_range.end_seconds>after.timeline_range.start_seconds&&after.timeline_range.end_seconds<before.timeline_range.end_seconds,'Right trim did not shorten the intended edge');
+ const source=after.source,range=source.source_range;
+ assert(['exact','carrier'].includes(source.projection_status)&&source.projection_diagnostics?.length===0&&source.source_availability==='bounded','Trim source projection is rejected or unavailable');
+ near(range.start_seconds,before.source.source_range.start_seconds,'Source start preserved');
+ near(range.end_seconds-range.start_seconds,after.timeline_range.end_seconds-after.timeline_range.start_seconds,'Trim source duration');
+ assert(Number.isFinite(source.fps)&&source.fps>0&&Number.isFinite(timelineFps)&&timelineFps>0,'Trim clocks are absent');
+ for(const [value,rate] of [[range.start_seconds,source.fps],[range.end_seconds,source.fps],[after.timeline_range.start_seconds,timelineFps],[after.timeline_range.end_seconds,timelineFps]])near(value*rate,Math.round(value*rate),'Trim frame alignment');
+ return {projection:source.projection_status,sourceRange:range,timelineRange:after.timeline_range};
 }
 export async function gapFixture(c,assets,name){
  try{
@@ -55,6 +74,12 @@ export function widgetPixelDifference(a,b){
   const rgb=v=>{assert(v.sampleWidth===64&&v.sampleHeight===32&&typeof v.sampleRgb==='string','Invalid widget raster');const bytes=Buffer.from(v.sampleRgb,'base64');assert(bytes.length===64*32*3,'Incomplete widget pixels');return bytes;};
   const x=rgb(a),y=rgb(b);return x.reduce((sum,v,i)=>sum+Math.abs(v-y[i]),0)/x.length;
 }
+export function requireRedGraphic(image){
+ widgetPixelDifference(image,image);const rgb=Buffer.from(image.sampleRgb,'base64');let red=0,total=0;
+ // The local fixture has a red background. Sample away from its central title and letterboxing.
+ for(let y=8;y<24;y++)for(let x=8;x<24;x++){const i=(y*64+x)*3;total++;if(rgb[i]>160&&rgb[i]>rgb[i+1]*1.8&&rgb[i]>rgb[i+2]*1.8)red++;}
+ assert(red/total>.75,'Preview does not show the known red graphic fixture');return {redFraction:red/total};
+}
 export function livePreviewEvidence(baseline,samples,receipt){
  const held=samples.filter(x=>x.startedAt>=receipt.pointerDownAt&&x.finishedAt<=receipt.pointerUpAt),changed=held.filter(x=>widgetPixelDifference(x.image,baseline)>1.5);
  assert(held.length>=3,'Insufficient preview samples during the held gesture');assert(changed.length>=3,'Displayed preview did not update during the held gesture');
@@ -66,11 +91,11 @@ export function livePreviewEvidence(baseline,samples,receipt){
 export async function checks(file,name){
   const s=await readJSON(file),report={scope:s.scope,inputMode:s.inputMode||'desktop',pid:s.pid,generation:s.generation,results:[]};
   const output=path.join(s.root,name),n=(op,p)=>nativeCall(file,op,p),c=(op,p,e)=>desktopCall(file,op,p,e),ui=()=>n('inspect');
-  async function until(fn){for(let i=0;i<50;i++){const v=await fn();if(v)return v;await pause(100);}throw Error('Expected observation did not arrive within five seconds');}
-  async function check(id,fn,requires=[]){if(!await beginCheck(file,id))return;try{requirePassed(report.results,requires);report.results.push({id,status:'Pass',evidence:await fn()});}catch(e){report.results.push({id,status:e.status||'Fail',error:e.message});if(e.status==='Unknown'||e.fatal){report.fatal=e.message;await writeJSON(output,report);throw e;}}finally{if(report.results.at(-1)?.id===id)await endCheck(file,report.results.at(-1));}await writeJSON(output,report);}
+  const until=waitForObservation;
+  async function check(id,fn,requires=[]){if(!await beginCheck(file,id))return;try{requirePassed(report.results,requires);report.results.push({id,status:'Pass',evidence:await fn()});}catch(e){report.results.push({id,status:e.status||'Fail',error:e.message,diagnostics:e.diagnostics||null,evidence:await captureDesktopFailure(file,e,id)});if(e.status==='Unknown'||e.fatal){report.fatal=e.message;await writeJSON(output,report);throw e;}}finally{if(report.results.at(-1)?.id===id)await endCheck(file,report.results.at(-1));}await writeJSON(output,report);}
   async function activate(w){for(let i=0;i<10;i++){await n('activate',{target:w.window});await pause(100);if((await ui()).widgets.some(a=>a.id===w.window&&a.active))return;}const e=new OutcomeError('The owned smoke window could not retain keyboard focus; unlock the desktop before retrying','Blocked');e.fatal=true;throw e;}
   async function action(text){const matches=(await ui()).actions.filter(a=>a.text===text&&a.enabled);assert(matches.length===1,`Expected one enabled action: ${text}`);await n('action',{target:matches[0].id});}
-  async function mediaItem(name){return until(async()=>(await ui()).widgets.find(w=>w.class==='QTreeView'&&w.model?.some(r=>r[0]===name)));}
+  async function mediaItem(name){return until(async()=>(await ui()).widgets.find(w=>w.class==='QTreeView'&&w.model?.some(r=>r[0]===name)),{description:'Media item '+name});}
   async function mediaMenu(name,label){
     const view=await mediaItem(name);await activate(view);await n('item-click',{target:view.id,text:name,context:true});
     const menu=await until(async()=>(await ui()).widgets.find(w=>w.class==='QMenu'&&w.menuItems?.some(a=>a.text===label&&a.enabled)));

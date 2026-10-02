@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
 import {fileURLToPath} from 'node:url';
+import {physicalChecks} from '../runner/catalog.mjs';
 import {createExplainer} from '../explainer/model.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 test('explainer preserves evidence scope and only resolves registered artifacts',()=>{
@@ -19,7 +20,7 @@ test('explainer preserves evidence scope and only resolves registered artifacts'
  fs.writeFileSync(path.join(data,'desktop-runs/desktop-m19ncl/capture.png'),Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=','base64'));
  save('desktop-runs/desktop-kp2OdB/desktop-course-report.json',{...report([{id:'D-PREVIEW-SCRUB',status:'Blocked'}]),error:'Fixture interruption'});
  const model=createExplainer(root,data),catalog=model.build();
- const definitions=['runner/course.json','desktop/course.json','desktop/service-course.json'].flatMap(f=>JSON.parse(fs.readFileSync(path.join(root,f))).cases);
+ const definitions=['runner/course.json','desktop/course.json','desktop/service-course.json'].flatMap(f=>JSON.parse(fs.readFileSync(path.join(root,f))).cases).concat(physicalChecks);
  assert.deepEqual(catalog.rows.map(r=>r.id),definitions.map(r=>r.id));
  assert.equal(new Set(catalog.rows.map(r=>r.id)).size,definitions.length);
  for(const row of catalog.rows){assert.ok(row.method&&row.expected,row.id);assert.ok(row.locations.length,row.id);for(const loc of row.locations){assert.ok(loc.excerpt.includes(row.id),row.id);assert.equal(model.file(loc.link.id),path.join(root,loc.file));}}
