@@ -1,7 +1,7 @@
 {
   "id": "physical-editor-candidate",
   "title": "Physical editor paths \u00b7 candidate qualification",
-  "revision": 5,
+  "revision": 6,
   "target": "Instrumented isolated desktop with native macOS input",
   "status": "Candidate",
   "cases": [
@@ -367,6 +367,96 @@
           "id": "restore",
           "title": "Undo and check that the graph and displayed frame are restored",
           "phase": "cleanup"
+        }
+      ]
+    },
+    {
+      "id": "P-TL-TRIM",
+      "sourceId": "TL-03",
+      "area": "Timeline editing",
+      "title": "Physical right-edge trim and undo",
+      "expected": "Physically drag the right edge of the Fresh fixture clip; preserve source and clip identity, shorten matching source/timeline ranges, and restore exact original timing with Undo.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Physical input receipts and independent timeline observations."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Displayed timeline after the tested action."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Create and open a four-second clip",
+          "phase": "prepare"
+        },
+        {
+          "id": "trim",
+          "title": "Physically drag the right edge left",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Check clip identity and matching source/timeline durations",
+          "phase": "verify"
+        },
+        {
+          "id": "restore",
+          "title": "Undo and verify the original clip timing",
+          "phase": "restore"
+        }
+      ]
+    },
+    {
+      "id": "P-TRACK-ADD",
+      "sourceId": null,
+      "area": "Timeline editing",
+      "title": "Physical Add Video Track and save",
+      "expected": "Physically click + Video and Save; independently observe one new empty video track, then Undo and Save to restore the original track identities.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Physical input receipts and independent timeline observations."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Displayed timeline after the tested action."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Open a fresh empty timeline",
+          "phase": "prepare"
+        },
+        {
+          "id": "add",
+          "title": "Physically click + Video",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Save and inspect the new empty video track",
+          "phase": "verify"
+        },
+        {
+          "id": "restore",
+          "title": "Undo, save and inspect the original track identities",
+          "phase": "restore"
         }
       ]
     }

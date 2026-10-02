@@ -10,6 +10,8 @@ The first release supports automated testing of a selected Wizard build and agen
 
 Start with the [two-page getting-started guide (PDF)](docs/athanor-getting-started.pdf), or use [demo and first run](docs/demo-guide.md) for a short team walkthrough. The [agent onboarding prompt](examples/agent-onboarding.txt) hands the checkout to a user’s agent.
 
+For agents driving Wizard with mouse and keyboard, use the [computer-use toolkit](docs/computer-use-agent.md). It supplies a prepared test session, scoped Qt observations, physical gestures, independent verification and an interactive evidence report.
+
 ## Install a bundled harness
 
 Double-click `Install Athanor.command` in a supplied bundle. On first opening, choose your browser; Athanor remembers it. Later, use `Open Athanor.command` in the external workspace. For terminal or agent use, from the bundle's `workspace` directory:

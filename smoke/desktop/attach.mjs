@@ -7,6 +7,7 @@ import {dataDirectory,fingerprint,readJSON,writeJSON,sha,inside} from '../runner
 import {assert,pause} from '../runner/engine.mjs';
 import {nativeCall,verifyDesktopOwner,verifyNativeCapabilities} from './adapter.mjs';
 import {setupAttachmentTools,verifyAttachmentTools} from './attachment-tools.mjs';
+import {acquireDesktopLease} from './desktop-lease.mjs';
 
 const run=(command,args,options={})=>execFileSync(command,args,{encoding:'utf8',timeout:120000,...options});
 
@@ -28,10 +29,12 @@ export async function attachSelectedBuild({app,dataDir=dataDirectory(),preparedS
  const session={...preparedSession,format:'wizard-smoke-attachment/v1',dataDir,root,bundle:preparedSession?.bundle||path.join(root,'projects'),app:copy,sourceApp:app,executableName,executable:path.join(copy,'Contents/MacOS',executableName),guiHash:source.sha256,sourcePackageHash:source.sha256,native,harnessId:path.basename(root),generation,inputMode:'desktop',state:'Preparing',scope:'Selected packaged build with an external Qt test plugin; original app and bundled Qt unchanged',toolHash:await sha(bridge),qtVersion:version};
  const file=path.join(root,'session.json');await writeJSON(file,session);
  const stdout=await open(path.join(root,'stdout.log'),'a'),stderr=await open(path.join(root,'stderr.log'),'a');
+ let lease;try{lease=await acquireDesktopLease(dataDir);}catch(e){await stdout.close();await stderr.close();throw e;}
+ session.desktopLease=lease.receipt;
  const env={PATH:path.join(copy,'Contents/MacOS')+':/usr/bin:/bin',HOME:home,LANG:'en_US.UTF-8',WIZARD_SETTINGS:settings,XDG_CONFIG_HOME:settings,QT_PLUGIN_PATH:plugins,WIZ_SMOKE_CONTROL_DIR:native,WIZ_SMOKE_SETTINGS_DIR:settings,WIZ_HARNESS_RUN_ID:session.harnessId,WIZSERVER_RUNTIME_DIR:path.join(root,'gui-runtime-'+generation),WIZSERVER_SANDBOX_ROOT:root,HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1'};
  // Use the shipped launcher so its packaged configuration bootstrap runs.
  const child=spawn(path.join(copy,'Contents/MacOS/wizard'),['-style','Basic'],{cwd:root,env,stdio:['ignore',stdout.fd,stderr.fd]});await stdout.close();await stderr.close();
- const closed=new Promise(resolve=>child.once('close',resolve));let spawnError;child.once('error',e=>spawnError=e);
+ const closed=new Promise(resolve=>child.once('close',async()=>{await lease.release();resolve();}));let spawnError;child.once('error',e=>spawnError=e);
  try{
   let ready;const deadline=Date.now()+30000;
   while(Date.now()<deadline){if(spawnError)throw spawnError;assert(child.exitCode===null&&!child.signalCode,'Selected build exited before attachment.');try{ready=await readJSON(path.join(native,'ready.json'));break;}catch(e){if(e.code!=='ENOENT')throw e;}await pause(100);}

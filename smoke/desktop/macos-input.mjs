@@ -3,12 +3,13 @@ import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {mkdir,open,unlink,rename,mkdtemp,rm,appendFile} from 'node:fs/promises';
+import {mkdir,open,unlink,rename,mkdtemp,rm,appendFile,copyFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
-import {verifyDesktopOwner} from './adapter.mjs';
+import {verifyDesktopOwner,markAgentMutation} from './adapter.mjs';
 import {OutcomeError} from '../runner/engine.mjs';
 import {uiRoot,retainedUI} from './computer-use.mjs';
-import {dataDirectory,writeJSON,readJSON,sha,fingerprint,inside} from '../runner/files.mjs';
+import {ROOT,dataDirectory,writeJSON,readJSON,sha,fingerprint,inside} from '../runner/files.mjs';
+import {verifyDesktopLease} from './desktop-lease.mjs';
 
 export function validateNativeRequest(request){
  const allowed=['command','pid','started','window','frame','depth','limit','path','identifier','role','title','action','value','x','y','toX','toY','key','button','toWindow','toFrame','mode','durationMs'];
@@ -39,20 +40,9 @@ export async function nativeUIInput(dataDir,runId,request){
 async function nativeInput(dataDir,root,executable,packageHash,request,context={}){
  await mkdir(path.join(root,'evidence'),{recursive:true});
  const held=await open(path.join(root,'native-input.lock'),'wx'),id=randomUUID(),requestFile=path.join(root,'evidence',`native-${id}-request.txt`),receiptFile=path.join(root,'evidence',`native-${id}-receipt.txt`);
- let receipt,driver;
+ let receipt;
  try{
-  const source=new URL('./macos-input.swift',import.meta.url),sourceHash=await sha(source),cache=path.join(dataDirectory(dataDir),'native',`macos-input-${process.arch}-${sourceHash}`);
-  await mkdir(cache,{recursive:true});driver=path.join(cache,'macos-input');const manifestFile=path.join(cache,'manifest.json');
-  let manifest;try{manifest=await readJSON(manifestFile);}catch(e){if(e.code!=='ENOENT')throw e;}
-  if(!manifest){
-   const staging=await mkdtemp(path.join(cache,'compile-'));
-   try{
-    execFileSync('/usr/bin/swiftc',['-parse-as-library','-module-cache-path',path.join(dataDirectory(dataDir),'native','swift-module-cache'),'-o',path.join(staging,'macos-input'),fileURLToPath(source)],{timeout:60000,maxBuffer:1024*1024});
-    const driverHash=await sha(path.join(staging,'macos-input'));await rename(path.join(staging,'macos-input'),driver);
-    manifest={sourceHash,driverHash};await writeJSON(manifestFile,manifest);
-   }finally{await rm(staging,{recursive:true,force:true});}
-  }
-  if(manifest.sourceHash!==sourceHash||await sha(driver)!==manifest.driverHash)throw Error('Native input driver changed since compilation.');
+  const {driver,manifest,sourceHash}=await nativeInputDriver(dataDir);
   const input={...request};if(request.command==='screenshot')input.output=path.join(root,'evidence',`native-${id}.png`);
   await writeJSON(requestFile,input);
   const args=['--executable',executable,'--request',requestFile];
@@ -66,11 +56,36 @@ async function nativeInput(dataDir,root,executable,packageHash,request,context={
 }
 
 export async function nativeDesktopInput(file,request){
- const session=await readJSON(file);verifyDesktopOwner(session);
+ const session=await readJSON(file);verifyDesktopOwner(session);verifyDesktopLease(session);
  if(session.inputMode!=='desktop')throw new OutcomeError('Physical input requires a foreground desktop session','Blocked');
  validateNativeRequest(request);
+ if(!['inspect','screenshot'].includes(request.command))await markAgentMutation(file,session);
  const receipt=await nativeInput(session.dataDir,session.root,session.executable,session.guiHash,request,{caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null});
  if(receipt.status==='Unknown'||receipt.status==='Blocked')throw new OutcomeError(receipt.error,receipt.status);
  if(receipt.pid!==session.pid||receipt.started!==session.processStart)throw new OutcomeError('Native input receipt differs from the owned desktop process','Unknown');
  verifyDesktopOwner(session);return receipt;
+}
+
+export async function nativeInputDriver(dataDir){
+  const source=new URL('./macos-input.swift',import.meta.url),sourceHash=await sha(source),cache=path.join(dataDirectory(dataDir),'native',`macos-input-${process.arch}-${sourceHash}`);
+  await mkdir(cache,{recursive:true});const driver=path.join(cache,'macos-input');const manifestFile=path.join(cache,'manifest.json');
+  let manifest;try{manifest=await readJSON(manifestFile);}catch(e){if(e.code!=='ENOENT')throw e;}
+  if(!manifest){
+   const bundled=path.join(ROOT,'native-input',path.basename(cache));let candidate;
+   try{candidate=await readJSON(path.join(bundled,'manifest.json'));}catch(e){if(e.code!=='ENOENT')throw e;}
+   if(candidate){
+    if(candidate.sourceHash!==sourceHash||await sha(path.join(bundled,'macos-input'))!==candidate.driverHash)throw Error('Bundled native input driver differs from its source or manifest');
+    await copyFile(path.join(bundled,'macos-input'),driver);manifest=candidate;await writeJSON(manifestFile,manifest);
+   }
+  }
+  if(!manifest){
+   const staging=await mkdtemp(path.join(cache,'compile-'));
+   try{
+    execFileSync('/usr/bin/swiftc',['-parse-as-library','-module-cache-path',path.join(dataDirectory(dataDir),'native','swift-module-cache'),'-o',path.join(staging,'macos-input'),fileURLToPath(source)],{timeout:60000,maxBuffer:1024*1024});
+    const driverHash=await sha(path.join(staging,'macos-input'));await rename(path.join(staging,'macos-input'),driver);
+    manifest={sourceHash,driverHash};await writeJSON(manifestFile,manifest);
+   }finally{await rm(staging,{recursive:true,force:true});}
+  }
+  if(manifest.sourceHash!==sourceHash||await sha(driver)!==manifest.driverHash)throw Error('Native input driver changed since compilation.');
+  return {driver,manifest,sourceHash};
 }

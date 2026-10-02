@@ -1,5 +1,7 @@
 # Spot testing with an agent
 
+For scoped UI observations, physical gestures, condition waits and evidence-backed agent session reports, use the [computer-use toolkit](computer-use-agent.md). It builds on the atomic operations described below.
+
 The CLI, application adapter and native adapter work without the dashboard. They use the same installed desktop tools, ownership checks and operation receipts as the automated courses.
 
 For a focused explanation and edit prompt, run `node scripts/smoke.mjs context --check D-EDIT-DELETE --server URL`. Add `--export` for a curated reference folder, or `--run ID` for the frozen source and result of a previous run. See [test evidence](test-evidence.md) for readable steps, evidence declarations and acceptance after editing. These commands do not execute a test.

@@ -14,7 +14,8 @@ export async function physicalInput(file,command,params={}){
  let u,widget,window;
  for(let i=0;i<5;i++){u=await nativeCall(file,'inspect');widget=u.widgets.find(w=>w.id===params.target);window=u.widgets.find(w=>w.id===widget?.window);if(widget&&window)break;await pause(100);}
  if(!widget||!window)throw new OutcomeError(`Physical input target ${params.target} (${widget?.class||'absent'}; window ${widget?.window||'absent'}) is not observable`,'Blocked');
- await nativeCall(file,'activate',{target:window.id});
+ if(params.expected)assert(['id','window','x','y','width','height'].every(k=>widget[k]===params.expected[k]),'Target geometry changed after resolution; observe again before input');
+ if(command!=='screenshot')await nativeCall(file,'activate',{target:window.id});
  const native=await nativeDesktopInput(file,{command:'inspect',depth:0,mode:'window-server'});
  const matches=native.windows.filter(w=>w.title===window.title&&Math.abs(w.frame.width-window.width)<=1&&Math.abs(w.frame.height-window.height)<=80);
  assert(matches.length===1,'Native window title/geometry is absent or ambiguous');

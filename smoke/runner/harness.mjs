@@ -6,6 +6,7 @@ import {execFileSync} from 'node:child_process';
 import {ROOT,dataDirectory,externalPath,fingerprint,digest,readJSON,writeJSON,inside} from './files.mjs';
 import {runtimeIdentity} from './runtime.mjs';
 import {setupAttachmentTools,verifyAttachmentTools} from '../desktop/attachment-tools.mjs';
+import {nativeInputDriver} from '../desktop/macos-input.mjs';
 import {retainLibraries} from './libraries.mjs';
 import {snapshotSource} from '../kits.mjs';
 import {activeStates} from './store.mjs';
@@ -52,8 +53,10 @@ export async function bundleHarness({runtime,app,dataDir,destination}){
   if(app){
    const key=path.basename(path.dirname(identity.directory)),attachmentTools='workspace/attachment-tools/'+key;
    await cp(identity.directory,path.join(temp,attachmentTools,'tools'),copyOptions);await writeJSON(path.join(temp,attachmentTools,'tools.json'),{...identity,directory:'tools'});
+   const native=await nativeInputDriver(dataDir),nativeInput='workspace/native-input/'+path.basename(path.dirname(native.driver));
+   await mkdir(path.join(temp,nativeInput),{recursive:true});await cp(native.driver,path.join(temp,nativeInput,'macos-input'));await writeJSON(path.join(temp,nativeInput,'manifest.json'),native.manifest);
    const sourceHash=(await fingerprint(path.join(temp,'workspace'))).sha256,inventory=(await fingerprint(temp)).entries;
-   const content={format:'wizard-smoke-harness/v2',createdAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,node:'>=24',sourceCommit,sourceDirty,sourceHash,attachmentTools,qtVersion:identity.qtVersion,inventory,inventoryHash:digest(inventory)};
+   const content={format:'wizard-smoke-harness/v2',createdAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,node:'>=24',sourceCommit,sourceDirty,sourceHash,attachmentTools,nativeInput,qtVersion:identity.qtVersion,inventory,inventoryHash:digest(inventory)};
    await writeJSON(path.join(temp,'harness.json'),{...content,id:digest(content)});await checkHarnessBundle(temp);await rename(temp,output);
    return {path:output,id:digest(content),sourceHash,files:inventory.length,qtVersion:identity.qtVersion,wizardLaunched:false};
   }

@@ -3,6 +3,7 @@ import ApplicationServices
 import ScreenCaptureKit
 import ImageIO
 import UniformTypeIdentifiers
+import Darwin
 
 // Resolve the Unix process on every invocation. NSRunningApplication is diagnostic only.
 struct InputError: Error { let message: String }
@@ -35,6 +36,15 @@ func emit(_ value: [String: Any]) { if let data = try? JSONSerialization.data(wi
         var dispatched = false, pointerCleanupReleased = false
         do {
             let args = CommandLine.arguments
+            if args.count == 2 && args[1] == "--desktop-lease" {
+                let file="/private/tmp/athanor-desktop-\(getuid()).lock", fd=open(file,O_CREAT|O_RDWR|O_NOFOLLOW,mode_t(0o600))
+                try require(fd>=0,"Cannot open the shared foreground lease")
+                defer { close(fd) }
+                var info=stat();try require(fstat(fd,&info)==0 && info.st_uid==getuid() && (info.st_mode & S_IFMT)==S_IFREG,"Foreground lease must be an owned regular file")
+                try require(flock(fd,LOCK_EX|LOCK_NB)==0,"Another Athanor session owns the desktop. Stop or finish that session first.")
+                emit(["status":"Acquired","pid":getpid(),"started":try ps(["-p",String(getpid()),"-o","lstart="]),"file":file]);fflush(stdout)
+                _=FileHandle.standardInput.readDataToEndOfFile();return
+            }
             try require(args.count == 5 && args[1] == "--executable" && args[3] == "--request", "Use --executable PATH --request JSON_FILE")
             let executable = URL(fileURLWithPath: args[2]).resolvingSymlinksInPath().path
             try require(executable.hasPrefix("/") && [".app/Contents/MacOS/wizard-bin",".app/Contents/MacOS/wizard"].contains(where:executable.hasSuffix), "Select the exact packaged Wizard executable")
@@ -83,6 +93,8 @@ func emit(_ value: [String: Any]) { if let data = try? JSONSerialization.data(wi
             for (index,window) in windows.enumerated() { walk(window,[index],0) }
             var result: [String:Any] = ["id":UUID().uuidString,"pid":pid,"started":started,"executable":executable,"command":command,"driver":"macos-verified-pid","status":"Observed","inspection":windowServer ? "window-server" : "accessibility"]
             if command == "inspect" {
+                result["permissions"]=["input":CGPreflightPostEventAccess(),"screenCapture":CGPreflightScreenCaptureAccess(),"accessibility":AXIsProcessTrusted()]
+                result["frontmost"]=foreground()
                 result["elements"] = rows; result["truncated"] = elements.count >= limit
                 result["windows"] = owned.compactMap { entry -> [String:Any]? in
                     guard let bounds = entry[kCGWindowBounds as String] as? [String:Any], let rectangle = CGRect(dictionaryRepresentation: bounds as CFDictionary), let number = entry[kCGWindowNumber as String] else { return nil }

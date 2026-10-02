@@ -1,0 +1,71 @@
+# Test Wizard with your agent
+
+Athanor prepares the selected Wizard build and a disposable project, then gives your agent three ways to work: application calls, Qt controls, and physical mouse/keyboard input. Use application calls to set up a fixture and inspect its state. Use physical input for the gesture being tested.
+
+## Open a test session
+
+Start Athanor from `smoke/` with `npm run open -- --no-open`. Use its printed URL for the plan command:
+
+```sh
+node scripts/smoke.mjs plan --app /path/to/Wizard.app --checks D-CLI-01 --out /tmp/agent-plan.json --server URL
+node desktop/session.mjs start --plan /tmp/agent-plan.json
+```
+
+Keep the second command running. It prints a Ready receipt with the session file and `agent-context.json`. Give those paths to your agent. The context contains the selected package identity, project and media identities, adapter capabilities, available checks, expected outcomes, and tool instructions. Each session starts with a fresh Golden Project fixture.
+
+Preparation attaches an external adapter to a byte-identical disposable copy of the build. The session holds a shared foreground lease across Athanor workspaces. A competing session receives a Blocked response. The operating system releases the lease when the launcher ends; an uncertain orphan app still needs inspection and cleanup.
+
+## Use the toolkit
+
+Every command below returns JSON. Replace `SESSION.json` with the Ready receipt's absolute session path:
+
+```sh
+node desktop/session.mjs tool SESSION.json preflight '{}'
+node desktop/session.mjs tool SESSION.json observe '{"selector":{"class":"MainWindow"}}'
+node desktop/session.mjs tool SESSION.json find '{"selector":{"name":"panelChromeAction","text":"+ Video","enabled":true}}'
+node desktop/session.mjs tool SESSION.json physical '{"command":"click","target":{"name":"panelChromeAction","text":"+ Video","enabled":true},"title":"Click Add Video Track"}'
+```
+
+`preflight` reports physical input and screen-capture permissions, the verified PID, visible windows and focus. It does not change permissions. If access is missing, let the user handle the macOS prompt and rerun preflight.
+
+Selectors match exactly by default. Use `contains:true` for substring matching. Available fields are `id`, `class`, `name`, `text`, `tooltip`, `title`, `window`, `parent`, `enabled`, and `active`. `kind:"actions"` queries QAction entries. Find and physical input require exactly one match. Narrow ambiguous matches using the observed window, parent, or control name.
+
+Observe returns at most 20 matches by default, with a configurable limit up to 100. It reports the full match count and truncation. Add `details:true` for media rows, graph nodes/ports, tab rectangles or menu entries. The Qt adapter currently inspects at most 64 model rows, 128 selectable scene items and 256 scene labels; inspect the truncation fields before choosing a target.
+
+Physical input supports `click`, `drag`, `key`, and `screenshot`. Points are local to the observed widget in macOS points. A click defaults to its center. A drag accepts `toTarget`, `toX`, and `toY`; `xRatio`, `yRatio`, `toXRatio`, and `toYRatio` can address fractions of the current widget. Geometry is checked again before dispatch. The native driver verifies the actual Unix PID, start time, native window frame and pointer ownership.
+
+```sh
+node desktop/session.mjs tool SESSION.json physical '{"command":"drag","target":{"id":"OBSERVED_VIEWPORT"},"x":100,"y":50,"toX":180,"toY":90,"durationMs":1000,"title":"Drag the clip right"}'
+node desktop/session.mjs tool SESSION.json physical '{"command":"key","target":{"class":"TimelineWidget"},"key":"cmd+z","title":"Undo the edit"}'
+node desktop/session.mjs tool SESSION.json wait '{"selector":{"title":"Export"},"condition":"exists","timeoutMs":5000}'
+```
+
+Wait supports `exists`, `absent`, `enabled`, `value`, `text`, and `checked`. Supply `expected` for the last three. It polls observations locally, with a maximum timeout of 60 seconds. It dispatches no edits. Available physical keys and adapter operations are listed in the context; native typing and scrolling are not part of this first toolkit.
+
+## Record a check with evidence
+
+Begin a check listed in the context before executing it. Give actions a short `title` explaining their purpose. Existing application and native escape hatches remain available through toolkit `call` and `native`.
+
+```sh
+node desktop/session.mjs tool SESSION.json begin '{"id":"D-CLI-01"}'
+node desktop/session.mjs tool SESSION.json call '{"operation":"project.get_name","params":{}}'
+node desktop/session.mjs tool SESSION.json verify '{"read":{"operation":"project.get_name","params":{}},"expect":{"path":["name"],"equals":"EXPECTED_PROJECT_NAME"},"title":"Verify the opened project name"}'
+node desktop/session.mjs tool SESSION.json capture '{"target":{"class":"MainWindow"},"title":"The selected project open in Wizard"}'
+node desktop/session.mjs tool SESSION.json record '{"status":"Pass","note":"The selected app opened the expected fixture project."}'
+node desktop/session.mjs tool SESSION.json report '{}'
+node desktop/session.mjs stop SESSION.json
+```
+
+Choose verification criteria that establish the test's expected outcome. `verify` accepts a declared read-only application operation or an exact UI selector. Expectations use a property/index path plus `equals`, `notEquals`, `length`, or `includes`. A missing path fails. For adding a track, verify the new track's identity, type and contents; the project-name example only tests connection.
+
+Pass requires both a successful independent verification and a captured result for the current check attempt, GUI generation and last toolkit/shared-adapter mutation. Physical candidate checks also require an actual dispatched physical-input receipt. Use `mode:"physical"` in Begin to require that route for another check. A later edit invalidates earlier verification. A repeated check starts a new attempt and cannot inherit its previous verdict. The agent chooses assertions that establish the check's expected behavior and reviews its visual result.
+
+Capture defaults to displayed native-window pixels, including GPU preview content. `kind:"widget"` collects a Qt widget raster; `kind:"window"` captures the owned native window. Keep the source labels in the report. Captures and failures retain their images and diagnostics outside Git.
+
+Record Fail, Blocked or Unknown with the observed reason. An Unknown edit is not replayed. Inspect the UI and application state, verify what actually happened, then use `resolve` with an explanation before further edits. Stop preserves an uncertain session's autosaved fixture and terminates only its owned app.
+
+Report exports the existing Athanor interactive table and detail drawer, with actions, evidence and selected-build identity. It creates a new immutable export directory for each request. Agent session reports are local qualification evidence; they do not change canonical test acceptance or replace earlier course results.
+
+## Give this to another agent
+
+> Read smoke/AGENTS.md and smoke/docs/computer-use-agent.md. Prepare the Wizard build I selected, start an owned session, and read its agent-context.json. Check physical readiness. Use CLI/Qt calls for setup and physical input for the action under test. Resolve targets from current observations, verify the expected behavior independently, capture the result, and record the outcome. Export the report and stop your session. Preserve failed and uncertain attempts.

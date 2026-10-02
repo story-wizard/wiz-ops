@@ -9,6 +9,15 @@ import {checkPrepared} from '../runner/prepare.mjs';
 import {ROOT,dataDirectory,externalPath,readJSON,writeJSON,fingerprint,inside,sha} from '../runner/files.mjs';
 import {runtimeEnvironment} from '../runner/runtime.mjs';
 import {attachSelectedBuild} from './attach.mjs';
+import {verifyDesktopLease} from './desktop-lease.mjs';
+
+export const agentReadOperations=['project.get_name','timeline.inspect','graph.get_clip_graph','media.list_assets','media.resolve_path','media.probe','spellbook.inspect','spellbook.list'];
+export const agentReadNative=['capabilities','inspect','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview'];
+export async function markAgentMutation(file,session){
+  if(!session.agentTracking)return;
+  if(session.agentUncertain)throw new OutcomeError('An earlier mutation is Unknown. Inspect, verify and explicitly resolve it before another edit.','Blocked');
+  session.agentRevision=(session.agentRevision||0)+1;await writeJSON(file,session);
+}
 
 export function verifyDesktopPaths(session,configuredDataDir){
   const base=realpathSync(dataDirectory(configuredDataDir));
@@ -153,11 +162,12 @@ export async function desktopCall(file,operation,params={},expectedError){
   try{
     session=await readJSON(file);verifyDesktopOwner(session);
     if(session.plan.runtime?.kind==='selected-build-attachment'&&!session.schema.operations[operation])throw new OutcomeError('The selected build does not expose '+operation+'. This check needs a supported UI path.','Blocked');
+    if(!agentReadOperations.includes(operation))await markAgentMutation(file,session);
     const engine=new PackagedEngine(session.plan,session.root,session.harnessId,session.schema);
     if(session.desktopCli){assert(await sha(session.desktopCli)===session.desktopCliHash,'Paired CLI changed.');engine.macos=path.dirname(session.desktopCli);}
     engine.child={pid:session.pid,exitCode:null,signalCode:null};engine.url=session.url;engine.env=session.env;engine.counter=session.counter;engine.caseId=session.currentCheck||'desktop-agent';engine.stepId=session.currentStep||null;
     await engine.call(session.bundle,'project.get_name');
-    let result;try{result=await engine.call(session.bundle,operation,params,expectedError);}finally{session.counter=engine.counter;await writeJSON(file,session);}
+    let result;try{result=await engine.call(session.bundle,operation,params,expectedError);}catch(e){if(session.agentTracking&&e.status==='Unknown'&&!agentReadOperations.includes(operation))session.agentUncertain=true;throw e;}finally{session.counter=engine.counter;await writeJSON(file,session);}
     return result;
   }finally{await held.close();await unlink(lock);}
 }
@@ -195,6 +205,8 @@ export async function terminateOwnedDesktop(file,live){
 }
 export async function nativeCall(file,op,params={}){
   const session=await readJSON(file);verifyDesktopOwner(session);
+  if(session.plan?.runtime?.kind==='selected-build-attachment'&&!['capabilities','inspect','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview'].includes(op))verifyDesktopLease(session);
+  if(!agentReadNative.includes(op))await markAgentMutation(file,session);
   assert(session.inputMode!=='service'||['capabilities','inspect','screenshot','snapshot-widget'].includes(op),'Background service sessions cannot dispatch UI input. Run the foreground desktop course for UI evidence.');
   if(op==='spellbook-run-local'){
     const graph=await desktopCall(file,'spellbook.inspect',{document_id:params.documentId,view:'overview',limit:100});assertLocalPreviewGraph(graph,session.root);
@@ -215,7 +227,7 @@ export async function nativeCall(file,op,params={}){
     }
     await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,status:'Unknown',error:'No native response within five seconds.'})+'\n');
     throw new OutcomeError('Native action outcome is unknown; inspect before continuing and do not replay.','Unknown');
-  }finally{await held.close();await unlink(lock);}
+  }catch(e){if(session.agentTracking&&e.status==='Unknown'&&!agentReadNative.includes(op)){const latest=await readJSON(file);latest.agentUncertain=true;await writeJSON(file,latest);}throw e;}finally{await held.close();await unlink(lock);}
 }
 
 export function assertQuitEvidence(receipt,observed,ready){
@@ -224,6 +236,11 @@ export function assertQuitEvidence(receipt,observed,ready){
 }
 export async function stopDesktop(file,{quit=false}={}){
   const session=await readJSON(file);verifyDesktopOwner(session);
+  if(session.agentUncertain){
+    process.kill(session.pid,'SIGTERM');
+    for(let i=0;i<100;i++){try{process.kill(session.pid,0);}catch(e){if(e.code==='ESRCH'){session.state='Stopped';await writeJSON(file,session);return;}throw e;}await pause(100);}
+    throw new OutcomeError('Uncertain owned session did not stop; inspect it before starting another.','Unknown');
+  }
   assert(!quit||session.inputMode==='desktop','Native Quit requires a foreground desktop session.');
   // Keep the owned test project's evidence and clear Wizard's unsaved-change dialog.
   if(session.inputMode==='service')await desktopCall(file,'project.checkpoint');
