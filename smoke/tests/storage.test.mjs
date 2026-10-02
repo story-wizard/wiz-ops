@@ -5,8 +5,8 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {spawnSync,spawn} from 'node:child_process';
 import {once} from 'node:events';
-import {ROOT,dataDirectory,externalPath} from '../runner/files.mjs';
-import {verifyDesktopPaths,assertLocalPreviewGraph,assertQuitEvidence} from '../desktop/adapter.mjs';
+import {ROOT,dataDirectory,externalPath,sha} from '../runner/files.mjs';
+import {verifyDesktopPaths,assertLocalPreviewGraph,assertQuitEvidence,preparedRelinkContinueButton} from '../desktop/adapter.mjs';
 import {cleanupInterrupted} from '../runner/store.mjs';
 import {retainProcess} from '../runner/engine.mjs';
 
@@ -17,6 +17,34 @@ test('normal Quit requires menu dispatch and the owned generation shutdown event
  assert.throws(()=>assertQuitEvidence(receipt,{...observed,pid:43},ready),/owned GUI/);
  assert.throws(()=>assertQuitEvidence(receipt,{...observed,generation:'previous'},ready),/owned GUI/);
  assert.throws(()=>assertQuitEvidence(receipt,null,ready),/owned GUI/);
+});
+
+test('startup continues offline only for the owned prepared relink fixture',async()=>{
+ const workspace=dataDirectory(mkdtempSync(path.join(tmpdir(),'smoke-relink-'))),root=path.join(workspace,'desktop-run');
+ const bundle=path.join(root,'projects','Golden.wiz'),media=path.join(root,'media'),relocated=path.join(root,'relocated-media');
+ for(const dir of [bundle,media,relocated])mkdirSync(dir,{recursive:true});
+ const original=path.join(media,'plate.mov'),moved=path.join(relocated,'plate.mov'),file=path.join(root,'relink-prepared.json');
+ writeFileSync(moved,'owned media');
+ const session={dataDir:workspace,root,bundle,executable:path.join(root,'Wizard Smoke.app/Contents/MacOS/wizard'),pid:43,assets:{plate:'plate'},currentCheck:'D-MEDIA-RELINK'};
+ const record={asset:'plate',original,moved,digest:await sha(moved),pid:42};
+ const main={class:'MainWindow',id:'main'},dialog={class:'QDialog',id:'missing',parent:'main',title:'Missing Media'};
+ const button={class:'QPushButton',id:'offline',window:'missing',enabled:true,text:'Continue Offline'};
+ const ui={widgets:[main,dialog,button]},save=r=>writeFileSync(file,JSON.stringify(r));
+ try{
+  save(record);assert.equal(await preparedRelinkContinueButton(session,ui),'offline');
+  await assert.rejects(()=>preparedRelinkContinueButton({...session,currentCheck:'other'},ui),/declared relink/);
+  for(const bad of [{...record,asset:'other'},{...record,pid:43},{...record,digest:'changed'},{...record,original:path.join(workspace,'plate.mov')}]){
+   save(bad);await assert.rejects(()=>preparedRelinkContinueButton(session,ui));
+  }
+  save(record);writeFileSync(original,'unexpected restored source');
+  await assert.rejects(()=>preparedRelinkContinueButton(session,ui),/must be missing/);rmSync(original);
+  for(const widgets of [[main,{...dialog,parent:'foreign'},button],[main,dialog,button,{...button,id:'duplicate'}],[main,dialog,{...button,enabled:false}],[main,dialog,button,{class:'QMessageBox',id:'unrelated'}]]){
+   await assert.rejects(()=>preparedRelinkContinueButton(session,{widgets}));
+  }
+  const foreign=path.join(workspace,'foreign.mov');writeFileSync(foreign,'owned media');
+  rmSync(moved);symlinkSync(foreign,moved);
+  await assert.rejects(()=>preparedRelinkContinueButton(session,ui),/owned fixture directories/);
+ }finally{rmSync(workspace,{recursive:true,force:true});}
 });
 
 test('interruption cleanup stops registered engines and ingest groups but rejects changed process identity',{timeout:5000},async()=>{

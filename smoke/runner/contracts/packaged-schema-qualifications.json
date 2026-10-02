@@ -10,6 +10,17 @@
         "render.set_render_mode.properties.mode.description clarifies preview resolution"
       ],
       "basis": "All 161 operation definitions were compared. These are the only differences; the existing mode values and all other operation signatures are unchanged."
+    },
+    {
+      "schemaHash": "8101d764dd009be634926b8029e5d4082264f5573a25c20befb9ba88b83eb03b",
+      "reviewedAt": "2026-10-02",
+      "changes": [
+        "Adds clip_effects.enable_time_remap, disable_time_remap, freeze_frame and graph.analyze_node; no existing operation removed",
+        "Clip add/move keyframes accept exact time alongside time_sec; clip times now measure seconds from the clip left edge and retain subframes",
+        "Track add_keyframe_at_time accepts optional exact timeline time alongside time_sec",
+        "render.set_render_mode adds eighth and clarifies its description"
+      ],
+      "basis": "Compared all 161 baseline operations against all 165 packaged operations, including root, errors and results: exactly four added operations and ten field differences. Existing time_sec requests remain accepted; clip coordinate semantics deliberately change to placement time. Searched all runner and desktop check implementations and course mappings: none call the changed keyframe operations, so no accepted behavioral assertion requires remapping. Existing render mode values remain accepted. No baseline replacement, canonical check change, or additional feature coverage is claimed; targeted temporal validation is recorded separately."
     }
   ]
 }

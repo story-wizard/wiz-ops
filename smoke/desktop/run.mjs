@@ -53,7 +53,7 @@ try{
   if(ids.includes('D-SB-TAB-RENAME')){await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file));await script('check-spell-ui.mjs','desktop-spell-ui-reopen-report.json',1,['verify'],true);}
   if(ids.includes('D-MEDIA-RELINK')){const relinkPrep=await command(process.execPath,[path.join(here,'check-relink.mjs'),file,'prepare'],{timeout:120000});
   await writeJSON(path.join(session.root,'relink-prepare-execution.json'),relinkPrep);assert(relinkPrep.code===0,'Local relink fixture preparation failed');
-  await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file));
+  await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file),{pendingRelink:true});
   await script('check-relink.mjs','desktop-relink-report.json',1);
   await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file));
   await script('check-relink.mjs','desktop-relink-reopen-report.json',1,['verify'],true);}

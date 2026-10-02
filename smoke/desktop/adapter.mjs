@@ -1,6 +1,6 @@
 import path from 'node:path';
 import {spawn,execFileSync} from 'node:child_process';
-import {mkdir,readFile,open,cp,mkdtemp,unlink,appendFile} from 'node:fs/promises';
+import {mkdir,readFile,open,cp,mkdtemp,unlink,appendFile,access} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {realpathSync,appendFileSync,constants} from 'node:fs';
 import {PackagedEngine,assert,pause,OutcomeError} from '../runner/engine.mjs';
@@ -57,7 +57,30 @@ export async function prepareDesktop(sourceApp,qtCocoaPlugin,pairedCli,prepared)
   await pairDesktopCli(session,pairedCli);return session;
 }
 
-async function openAttachedProject(file,bundle){
+export async function preparedRelinkContinueButton(session,ui){
+  verifyDesktopPaths(session,session.dataDir);
+  assert(session.currentCheck==='D-MEDIA-RELINK','Only the declared relink fixture may continue offline.');
+  const file=path.join(session.root,'relink-prepared.json');
+  assert(inside(session.root,realpathSync(file)),'Relink record must belong to the owned session.');
+  const record=await readJSON(file);
+  assert(typeof record.asset==='string'&&record.asset===session.assets?.plate&&Number.isInteger(record.pid)&&record.pid>1&&record.pid!==session.pid,'Relink record must identify the owned asset and a prior process.');
+  assert(inside(path.join(session.root,'media'),externalPath(record.original))&&
+    inside(path.join(session.root,'relocated-media'),realpathSync(record.moved))&&
+    path.basename(record.original)===path.basename(record.moved),'Relink media must stay in its owned fixture directories.');
+  let missing=false;
+  try{await access(record.original);}catch(e){if(e.code!=='ENOENT')throw e;missing=true;}
+  assert(missing,'Relink fixture source must be missing.');
+  assert(await sha(record.moved)===record.digest,'Relocated fixture bytes changed.');
+  const main=ui.widgets.filter(w=>w.class==='MainWindow');
+  const dialogs=ui.widgets.filter(w=>['QDialog','QMessageBox','QFileDialog'].includes(w.class));
+  assert(main.length===1&&dialogs.length===1&&dialogs[0].class==='QDialog'&&
+    dialogs[0].title==='Missing Media'&&dialogs[0].parent===main[0].id,'Expected the owned startup Missing Media dialog only.');
+  const buttons=ui.widgets.filter(w=>w.window===dialogs[0].id&&w.class==='QPushButton'&&w.enabled&&w.text==='Continue Offline');
+  assert(buttons.length===1,'Missing Media must expose one enabled Continue Offline button.');
+  return buttons[0].id;
+}
+
+async function openAttachedProject(file,bundle,{pendingRelink=false}={}){
   const session=await readJSON(file);assert(inside(session.root,bundle),'Startup must open the owned fixture project.');
   const observed=await nativeCall(file,'inspect'),startup=observed.widgets.filter(w=>w.name==='startupOpenButton'&&w.enabled);
   if(startup.length===1)await nativeCall(file,'click',{target:startup[0].id});
@@ -66,11 +89,19 @@ async function openAttachedProject(file,bundle){
   for(let i=0;i<50;i++){const ui=await nativeCall(file,'inspect');field=ui.widgets.find(w=>w.name==='fileNameEdit'&&w.class==='QLineEdit'&&w.enabled);if(field)break;await pause(100);}
   assert(field,'Selected build did not expose the project file selector.');
   await nativeCall(file,'text',{target:field.id,text:bundle});await nativeCall(file,'key',{target:field.id,key:'Return'});
-  for(let i=0;i<100;i++){const ui=await nativeCall(file,'inspect');if(ui.widgets.some(w=>w.class==='MainWindow'&&w.title.startsWith(path.basename(bundle)+' — Wizard'))&&ui.widgets.some(w=>w.name==='panelSubtabSelector'))return;await pause(100);}
+  for(let i=0;i<100;i++){
+    const ui=await nativeCall(file,'inspect');
+    if(pendingRelink&&ui.widgets.some(w=>w.class==='QDialog'&&w.title==='Missing Media')){
+      const target=await preparedRelinkContinueButton(await readJSON(file),ui);
+      await nativeCall(file,'click',{target});pendingRelink=false;
+    }
+    if(ui.widgets.some(w=>w.class==='MainWindow'&&w.title.startsWith(path.basename(bundle)+' — Wizard'))&&ui.widgets.some(w=>w.name==='panelSubtabSelector'))return;
+    await pause(100);
+  }
   throw new OutcomeError('The selected build did not open the prepared project.','Blocked');
 }
 
-export async function launchDesktop(session,{foreground=true}={}){
+export async function launchDesktop(session,{foreground=true,pendingRelink=false}={}){
   verifyDesktopPaths(session);
   if(session.pid){let alive=true;try{process.kill(session.pid,0);}catch(e){if(e.code!=='ESRCH')throw e;alive=false;}assert(!alive,'Recorded desktop PID is still alive; stop or inspect it before relaunch.');}
   assert((await fingerprint(session.app,{packageTree:true})).sha256===session.guiHash,'Desktop build changed since preparation.');
@@ -81,7 +112,7 @@ export async function launchDesktop(session,{foreground=true}={}){
       const deadline=Date.now()+30000;let endpoint;
       while(Date.now()<deadline){try{endpoint=await readJSON(path.join(session.env.WIZSERVER_RUNTIME_DIR,'gui.json'));break;}catch(e){if(e.code!=='ENOENT')throw e;}await pause(100);}
       assert(endpoint?.pid===session.pid&&endpoint.kind==='gui','Selected GUI endpoint did not match the owned process.');session.endpoint=endpoint;session.url='http://127.0.0.1:'+endpoint.port;await writeJSON(file,session);
-      await openAttachedProject(file,session.bundle);
+      await openAttachedProject(file,session.bundle,{pendingRelink});
       if(foreground){const ui=await nativeCall(file,'inspect'),main=ui.widgets.filter(w=>w.class==='MainWindow');assert(main.length===1,'Selected build has no unique main window.');await nativeCall(file,'activate',{target:main[0].id});}
       session.inputMode=foreground?'desktop':'service';session.state='Running';await writeJSON(file,session);return live;
     }catch(e){live.child.kill('SIGTERM');const force=setTimeout(()=>live.child.kill('SIGKILL'),3000);await live.closed;clearTimeout(force);throw e;}
