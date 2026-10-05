@@ -3,8 +3,8 @@ import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
-import {mkdir,open,unlink,rename,mkdtemp,rm,appendFile,copyFile} from 'node:fs/promises';
-import {randomUUID} from 'node:crypto';
+import {mkdir,open,unlink,rename,mkdtemp,rm,appendFile,copyFile,readFile,writeFile} from 'node:fs/promises';
+import {randomUUID,createHash} from 'node:crypto';
 import {verifyDesktopOwner,markAgentMutation,nativeCall} from './adapter.mjs';
 import {OutcomeError} from '../runner/engine.mjs';
 import {uiRoot,retainedUI} from './computer-use.mjs';
@@ -12,8 +12,16 @@ import {ROOT,dataDirectory,writeJSON,readJSON,sha,fingerprint,inside} from '../r
 import {verifyDesktopLease} from './desktop-lease.mjs';
 import {withAdapterAction,markUnknown} from './agent-proof.mjs';
 
+export const physicalKeys=Object.freeze(['escape','return','tab','space','delete','k','n','s','a','z','d','c','v','b','g','j','l','i','o','left','right','up','down','home','end','pageup','pagedown','forwarddelete','comma','period',...Array.from({length:10},(_,i)=>String(i)),...Array.from({length:12},(_,i)=>'f'+(i+1))]);
+export const physicalKeyAliases=Object.freeze({backspace:'delete',enter:'return',esc:'escape',super:'cmd',option:'alt'});
+export function normalizePhysicalKey(key){
+ const parts=typeof key==='string'?key.toLowerCase().split('+').map(p=>physicalKeyAliases[p]||p):[];
+ if(!physicalKeys.includes(parts.at(-1))||!parts.slice(0,-1).every(m=>['cmd','shift','alt','ctrl'].includes(m))||new Set(parts).size!==parts.length)throw Error('Unsupported key chord.');
+ return parts.join('+');
+}
+
 export function validateNativeRequest(request){
- const allowed=['command','pid','started','window','frame','depth','limit','path','identifier','role','title','action','value','x','y','toX','toY','key','text','deltaX','deltaY','button','toWindow','toFrame','mode','durationMs','captureRect','focusTarget'];
+ const allowed=['command','pid','started','window','frame','depth','limit','path','identifier','role','title','action','value','x','y','toX','toY','key','text','deltaX','deltaY','button','toWindow','toFrame','mode','durationMs','captureRect','focusTarget','modifiers','clickCount'];
  if(request&&Object.keys(request).some(k=>!allowed.includes(k)))throw Error('Unknown native input request field. Screenshot outputs are assigned inside the run.');
  if(request.mode!==undefined&&!['accessibility','window-server'].includes(request.mode))throw Error('Unsupported native inspection mode.');
  const commands=['inspect','screenshot','action','set-value','click','drag','key','type','scroll'];
@@ -30,7 +38,15 @@ export function validateNativeRequest(request){
  if(request.command==='scroll'&&(!['deltaX','deltaY'].every(k=>Number.isInteger(request[k]??0)&&Math.abs(request[k]??0)<=2000)||!(request.deltaX||request.deltaY)))throw Error('Supply a nonzero scroll of at most 2000 pixels per axis');
  if(request.button!==undefined&&!['left','middle','right'].includes(request.button))throw Error('Unsupported pointer button.');
  if(request.durationMs!==undefined&&(request.command!=='drag'||!Number.isInteger(request.durationMs)||request.durationMs<300||request.durationMs>10000))throw Error('Drag duration must be 300–10000 milliseconds.');
- if(request.command==='key'&&(typeof request.key!=='string'||! /^(?:(?:cmd|super|shift|alt|option|ctrl)\+)*(?:escape|return|tab|space|delete|k|n|s|a|z|d|c|v)$/i.test(request.key)))throw Error('Unsupported key chord.');
+ if(request.modifiers!==undefined&&(!['click','drag'].includes(request.command)||!Array.isArray(request.modifiers)||request.modifiers.length>4||new Set(request.modifiers).size!==request.modifiers.length||!request.modifiers.every(m=>['cmd','shift','alt','ctrl'].includes(m))))throw Error('Pointer modifiers must be unique cmd/shift/alt/ctrl names.');
+ if(request.clickCount!==undefined&&(request.command!=='click'||![1,2].includes(request.clickCount)))throw Error('Click count must be one or two.');
+ if(request.command==='drag'&&request.path!==undefined){
+  const points=request.path;
+  if(request.toWindow!==undefined&&request.toWindow!==request.window||!Array.isArray(points)||points.length<2||points.length>128||!points.every(p=>p&&Object.keys(p).length===2&&['x','y'].every(k=>Number.isFinite(p[k]))&&p.x>=0&&p.y>=0&&p.x<request.frame.width&&p.y<request.frame.height)||points[0].x!==request.x||points[0].y!==request.y||points.at(-1).x!==request.toX||points.at(-1).y!==request.toY)throw Error('Drag path must have 2–128 bounded points in one window and match its endpoints.');
+ }
+ if(request.command==='key'){
+  normalizePhysicalKey(request.key);
+ }
 }
 
 export async function nativeUIInput(dataDir,runId,request){
@@ -49,7 +65,7 @@ async function nativeInput(dataDir,root,executable,packageHash,request,context={
  let receipt;
  try{
   const {driver,manifest,sourceHash}=await nativeInputDriver(dataDir);
-  const input={...request};if(request.command==='screenshot')input.output=path.join(root,'evidence',`native-${id}.png`);
+  const input={...request};if(request.command==='key')input.key=normalizePhysicalKey(request.key);if(request.command==='screenshot')input.output=path.join(root,'evidence',`native-${id}.png`);
   await writeJSON(requestFile,input);
   const args=['--executable',executable,'--request',requestFile];
   try{const {stdout}=await promisify(execFile)(driver,args,{encoding:'utf8',timeout:15000+(request.durationMs||0),maxBuffer:8*1024*1024});receipt=JSON.parse(stdout);}
@@ -76,7 +92,7 @@ async function nativeDesktopInputOwned(file,request){
  }
  if(!['inspect','screenshot'].includes(request.command))await markAgentMutation(file,session);
  const receipt=await nativeInput(session.dataDir,session.root,session.executable,session.guiHash,request,{caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null});
- if(receipt.status==='Unknown'||receipt.status==='Blocked'){const e=new OutcomeError(receipt.error,receipt.status);if(e.status==='Unknown'&&!['inspect','screenshot'].includes(request.command))await markUnknown(file,e);throw e;}
+ if(receipt.status==='Unknown'||receipt.status==='Blocked'){const e=new OutcomeError(receipt.error,receipt.status);e.code=receipt.code||'native_input_failed';e.diagnostics={...receipt.diagnostics,receipt};e.nextActions=receipt.status==='Unknown'?['observe','verify_resolution','resolve']:['inspect_occluder','clear_target','begin_new_attempt'];if(e.status==='Unknown'&&!['inspect','screenshot'].includes(request.command))await markUnknown(file,e);throw e;}
  if(receipt.pid!==session.pid||receipt.started!==session.processStart){const e=new OutcomeError('Native input receipt differs from the owned desktop process','Unknown');if(!['inspect','screenshot'].includes(request.command))await markUnknown(file,e);throw e;}
  verifyDesktopOwner(session);return receipt;
 }
@@ -93,7 +109,7 @@ export function keyboardWindowProof(ui,request){
 }
 
 export async function nativeInputDriver(dataDir){
-  const source=new URL('./macos-input.swift',import.meta.url),sourceHash=await sha(source),cache=path.join(dataDirectory(dataDir),'native',`macos-input-${process.arch}-${sourceHash}`);
+  const sourceBytes=await readFile(new URL('./macos-input.swift',import.meta.url)),sourceHash=createHash('sha256').update(sourceBytes).digest('hex'),cache=path.join(dataDirectory(dataDir),'native',`macos-input-${process.arch}-${sourceHash}`);
   await mkdir(cache,{recursive:true});const driver=path.join(cache,'macos-input');const manifestFile=path.join(cache,'manifest.json');
   let manifest;try{manifest=await readJSON(manifestFile);}catch(e){if(e.code!=='ENOENT')throw e;}
   if(!manifest){
@@ -107,7 +123,8 @@ export async function nativeInputDriver(dataDir){
   if(!manifest){
    const staging=await mkdtemp(path.join(cache,'compile-'));
    try{
-    execFileSync('/usr/bin/swiftc',['-parse-as-library','-module-cache-path',path.join(dataDirectory(dataDir),'native','swift-module-cache'),'-o',path.join(staging,'macos-input'),fileURLToPath(source)],{timeout:60000,maxBuffer:1024*1024});
+    const frozenSource=path.join(staging,'macos-input.swift');await writeFile(frozenSource,sourceBytes);
+    execFileSync('/usr/bin/swiftc',['-parse-as-library','-module-cache-path',path.join(dataDirectory(dataDir),'native','swift-module-cache'),'-o',path.join(staging,'macos-input'),frozenSource],{timeout:60000,maxBuffer:1024*1024});
     const driverHash=await sha(path.join(staging,'macos-input'));await rename(path.join(staging,'macos-input'),driver);
     manifest={sourceHash,driverHash};await writeJSON(manifestFile,manifest);
    }finally{await rm(staging,{recursive:true,force:true});}

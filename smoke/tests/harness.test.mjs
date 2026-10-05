@@ -124,3 +124,12 @@ test('agents resolve installed tools without a runtime argument and validate the
 test('source snapshots include Build finder backend, browser controls and ZIP validation',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'smoke source finder '));try{await snapshotSource(root);for(const file of ['builds.mjs','build-catalog.mjs','public/build-finder.js','public/filters.js','scripts/validate-build-zip.py'])assert.ok((await readFile(path.join(root,file))).length);}finally{await rm(root,{recursive:true,force:true});}
 });
+
+test('a frozen source snapshot starts the investigation service with its full dependency closure',async()=>{
+ const directory=await mkdtemp(path.join(tmpdir(),'athanor frozen investigation ')),workspace=path.join(directory,'workspace'),data=path.join(directory,'data');let child,exited,output='';
+ try{
+  await snapshotSource(workspace);child=spawn(process.execPath,[path.join(workspace,'server.mjs')],{cwd:workspace,env:{...process.env,SMOKE_DATA_DIR:data,PORT:'0'},stdio:['ignore','pipe','pipe']});exited=new Promise(resolve=>child.once('exit',resolve));child.stderr.on('data',bytes=>output+=bytes);
+  const url=await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Frozen service did not start: '+output)),15000);child.stdout.on('data',bytes=>{output+=bytes;const match=output.match(/http:\/\/127\.0\.0\.1:\d+\//);if(match){clearTimeout(timer);resolve(match[0]);}});child.once('exit',code=>{clearTimeout(timer);reject(Error('Frozen service exited '+code+': '+output));});});
+  assert.deepEqual(await (await fetch(url+'api/investigations')).json(),[]);const page=await fetch(url+'investigation?id=example');assert.equal(page.status,200);assert.match(await page.text(),/Investigation · Athanor/);assert.equal((await fetch(url+'investigation.js')).status,200);assert.equal((await fetch(url+'investigation.css')).status,200);child.kill('SIGTERM');assert.equal(await exited,0);
+ }finally{child?.kill('SIGTERM');await exited;await rm(directory,{recursive:true,force:true});}
+});

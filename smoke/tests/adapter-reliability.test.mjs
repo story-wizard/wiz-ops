@@ -2,14 +2,34 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
-import {mkdtemp,rm,mkdir,readFile,writeFile,realpath} from 'node:fs/promises';
+import {mkdtemp,rm,mkdir,readFile,writeFile,realpath,open,unlink} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 import {generatedPlacement,createLocalGraphic} from '../desktop/generated-fixture.mjs';
-import {verifyNativeCapabilities,parseNativeResponse} from '../desktop/adapter.mjs';
-import {waitForObservation} from '../desktop/check-support.mjs';
+import {verifyNativeCapabilities,parseNativeResponse,acquireNativeLock} from '../desktop/adapter.mjs';
+import {waitForObservation,recordStep,endCheck} from '../desktop/check-support.mjs';
 import {executeDesktop} from '../desktop/run.mjs';
 import {writeJSON} from '../runner/files.mjs';
 import {stageObservation} from '../runner/stages.mjs';
+import {failureStatus} from '../runner/engine.mjs';
+import {withAdapterAction} from '../desktop/agent-proof.mjs';
+test('overlapping native observations wait for the mailbox and never remove a busy lock',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-native-mailbox-')),lock=path.join(root,'native-call.lock');let held;
+ try{held=await open(lock,'wx');await assert.rejects(()=>acquireNativeLock(lock,{timeoutMs:20}),e=>e.status==='Blocked');await readFile(lock);
+  const queued=acquireNativeLock(lock,{timeoutMs:1000});await held.close();held=null;await unlink(lock);const next=await queued;await next.close();await unlink(lock);
+  await assert.rejects(()=>acquireNativeLock(path.join(root,'missing','lock')),e=>e.code==='ENOENT');
+ }finally{await held?.close();await rm(root,{recursive:true,force:true});}
+});
+
+test('scripted mutations with an unknown outcome prohibit further writes but allow inspection',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-script-uncertainty-')),file=path.join(root,'session.json');
+ try{
+  await writeJSON(file,{root,currentCheck:'D-PROJECT-NEW',generation:1});let writes=0;
+  await assert.rejects(()=>withAdapterAction(file,true,'action',{target:'create'},async()=>{writes++;throw Object.assign(Error('Lost response'),{status:'Unknown'});}),e=>e.status==='Unknown');
+  assert.equal(JSON.parse(await readFile(file)).agentUncertain,true);
+  await assert.rejects(()=>withAdapterAction(file,true,'action',{target:'create'},async()=>{writes++;}),e=>e.status==='Blocked');assert.equal(writes,1);
+  assert.equal(await withAdapterAction(file,false,'inspect',{},async()=>'observed'),'observed');
+ }finally{await rm(root,{recursive:true,force:true});}
+});
 
 test('lost or mismatched native replies remain Unknown rather than a retryable failure',()=>{
  const identity={id:'request',pid:123,generation:2},reply={...identity,ok:true,result:{done:true}};
@@ -34,11 +54,13 @@ test('failure collection keeps the original error, observed UI and actual captur
   const prefix=`import path from 'node:path';import {randomUUID} from 'node:crypto';import {cp} from 'node:fs/promises';import {readJSON,writeJSON,inside} from '${new URL('../runner/files.mjs',import.meta.url).href}';import {assert} from '${new URL('../runner/engine.mjs',import.meta.url).href}';const nativeCall=async(file,op)=>op==='inspect'?{widgets:[{id:'window',window:'window',class:'MainWindow',active:true,title:'Golden.wiz — Wizard'}]}:{path:${JSON.stringify(image)},width:100,height:80};\n`;
   const module=path.join(root,'capture.mjs');await writeFile(module,prefix+source.slice(start,end));
   const file=path.join(root,'session.json');await writeJSON(file,{root});
-  const {captureDesktopFailure}=await import(pathToFileURL(module).href),error=Object.assign(Error('Expected two tracks'),{status:'Fail',diagnostics:{attempts:5}});
+  const {captureDesktopFailure}=await import(pathToFileURL(module).href),error=Object.assign(Error('Expected two tracks'),{status:'Fail',diagnostics:{expected:'Two tracks present',attempts:5}});
   const evidence=await captureDesktopFailure(file,error,'D-TRACK');
   assert.deepEqual(await readFile(evidence.failureScreenshot),await readFile(image));
   const state=JSON.parse(await readFile(evidence.failureState));assert.equal(state.error,error.message);assert.equal(state.ui.widgets[0].title,'Golden.wiz — Wizard');assert.equal(state.wait.attempts,5);assert.equal(state.image.source,'Qt widget raster');
   const next=await captureDesktopFailure(file,error,'D-TRACK');assert.notEqual(next.failureState,evidence.failureState);assert.deepEqual(await readFile(evidence.failureScreenshot),await readFile(image),'A later capture must preserve the first evidence');
+  const blocked=await captureDesktopFailure(file,Object.assign(Error('Covered pointer'),{status:'Blocked',code:'pointer_occluded',nextActions:['clear_target'],diagnostics:{occluder:{pid:77,owner:'NotificationCenter'}}}),'P-TRACK');
+  const diagnostic=JSON.parse(await readFile(blocked.failureState));assert.equal(diagnostic.code,'pointer_occluded');assert.equal(diagnostic.diagnostics.occluder.pid,77);assert.deepEqual(diagnostic.nextActions,['clear_target']);assert.equal(diagnostic.wait,null);
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
@@ -83,6 +105,18 @@ test('a failed reopen preserves its result and later independent groups get a fr
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
+test('check identities retain their hash delimiter while new renderer fixture paths do not',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-url-fixture-'));
+ try{
+  const result=await executeDesktop({directory:root,ids:['D-SOURCE-COLOR']},{executeGroup:async p=>{
+   assert.ok(!p.directory.includes('#'));assert.ok(p.directory.includes('D-SOURCE-COLOR'));
+   const owned=path.join(p.directory,'owned');await mkdir(owned);
+   return {root:owned,report:{status:'Pass',results:p.ids.map(id=>({id,status:'Pass'}))}};
+  }});
+  assert.equal(result.report.results[0].id,'D-SOURCE-COLOR');assert.ok(result.report.groups[0].name.includes('#D-SOURCE-COLOR'));
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('unconfirmed cleanup blocks later groups instead of launching another desktop',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'athanor-group-cleanup-'));let calls=0;
  try{
@@ -105,4 +139,15 @@ test('standalone desktop execution retains external workspace defaults after gro
   const result=await executeDesktop(undefined,{isCancelled:()=>calls>0,executeGroup:async(p)=>{calls++;assert.ok(p.directory.startsWith(path.join(root,'desktop-runs')));assert.ok(p.runtime);const owned=path.join(p.directory,'owned');await mkdir(owned);return {root:owned,report:{status:'Pass',results:p.ids.map(id=>({id,status:'Pass'}))}};}});
   assert.equal(calls,1);assert.ok(result.root.startsWith(path.join(root,'desktop-runs')));assert.equal(result.report.completed,false);
  }finally{if(previous===undefined)delete process.env.SMOKE_DATA_DIR;else process.env.SMOKE_DATA_DIR=previous;await rm(root,{recursive:true,force:true});}
+});
+
+test('process exit codes stay diagnostics rather than test or step verdicts',async()=>{
+ const error=Object.assign(Error('process exited'),{status:1});
+ assert.equal(failureStatus(error),'Fail');for(const status of ['Fail','Blocked','Unknown'])assert.equal(failureStatus({status}),status);
+ assert.equal(stageObservation('D-X',{results:[{id:'D-X',status:1,error:error.message}]},[]).status,'Fail');
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-step-exit-')),file=path.join(root,'session.json');
+ try{await writeJSON(file,{root,currentCheck:'D-X'});await assert.rejects(()=>recordStep(file,{id:'reopen',title:'Reopen'},async()=>{throw error;}),error);
+ const entries=(await readFile(path.join(root,'steps.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);assert.equal(entries.at(-1).status,'Fail');assert.equal(entries.at(-1).observation,error.message);
+ const result={id:'D-X',status:1,error:error.message};await endCheck(file,result);assert.equal(result.status,'Fail');const event=JSON.parse((await readFile(path.join(root,'check-events.jsonl'),'utf8')).trim());assert.equal(event.status,'Fail');
+ }finally{await rm(root,{recursive:true,force:true});}
 });

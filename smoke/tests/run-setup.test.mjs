@@ -32,9 +32,9 @@ test('tab navigation refreshes setup before switching and preserves the current 
 });
 test('guide links open the requested workspace view and preserve run deep links',async()=>{
  const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
- const boot=app.slice(app.indexOf('try{[catalog,runs]='),app.indexOf('setInterval(async()=>'));
+ const boot=app.slice(app.indexOf('try{[catalog,runs,investigations]='),app.indexOf('setInterval(async()=>'));
  const run='11111111-1111-4111-8111-111111111111';
- for(const [hash,expected] of [['#setup','setup'],['#runs','runs'],['#catalog','catalog'],['#gp','gp'],['#coverage','coverage'],['#checklist','checklist'],['#desktop','desktop'],['#run/'+run,'runs'],['#invalid','setup']]){
+ for(const [hash,expected] of [['#setup','setup'],['#runs','runs'],['#investigations','investigations'],['#catalog','catalog'],['#gp','gp'],['#coverage','coverage'],['#checklist','checklist'],['#desktop','desktop'],['#run/'+run,'runs'],['#invalid','setup']]){
   const state={tab:'setup',selectedRun:null},context={state,location:{hash},api:async()=>({}),refreshRunSetup:async()=>{},refreshDesktop:async()=>{},render(){}};
   await runInNewContext('(async()=>{'+boot+'})()',context);
   assert.equal(state.tab,expected,hash);assert.equal(state.selectedRun,hash.startsWith('#run/')?run:null);
@@ -86,7 +86,7 @@ test('results expose Stop only for the active run and bind it to that run identi
  const app=await readFile(new URL('../public/app.js',import.meta.url),'utf8');
  const view=app.slice(app.indexOf('function runsView()'),app.indexOf('function render()'));
  const run={id:'owned-run',name:'Friday release',build:'Test build',created_at:'2026-09-30',execution:{state:'Running',message:''},results:[]};
- const context={runs:[run],state:{selectedRun:run.id},catalog:{runner:{active:{run_id:run.id}}},statuses:[],esc:String,runCounts:()=>({}),tag:String,progress:()=>'',runTimeView:()=>'',checkpointView:()=>'',options:()=>''};
+ const context={investigations:[],runs:[run],state:{selectedRun:run.id},catalog:{runner:{active:{run_id:run.id}}},statuses:[],esc:String,runCounts:()=>({}),tag:String,progress:()=>'',runTimeView:()=>'',checkpointView:()=>'',options:()=>''};
  runInNewContext(view,context);
  assert.match(context.runsView(),/data-action="stop-run" data-stop-id="owned-run"/);
  context.catalog.runner.active={run_id:'different-run'};

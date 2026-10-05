@@ -35,6 +35,14 @@ test('report retains exact outcomes, detects missing or mismatched evidence and 
   const journal=[{caseId:'CHECK',operation:'physical.screenshot',command:'screenshot',status:'Observed',input:{command:'screenshot'},request:'evidence/native-request.txt',receipt:'evidence/native-receipt.txt',source:path.join(group,'native-input.jsonl')},{caseId:'CHECK',operation:'check.observation',source:path.join(group,'desktop-course-report.json'),evidence:{capture:{artifacts:['evidence/native-shot.png']}}}];
   await writeFile(path.join(root,'operations.jsonl'),journal.map(JSON.stringify).join('\n')+'\n');
   const grouped=(await localReport(run,data)).report;assert.deepEqual(grouped.acceptance.gaps,[]);assert.equal(grouped.artifacts.filter(a=>a.source.includes('/evidence/')).length,3);assert.equal(grouped.cases[0].actions[0].channel,'macOS input');
+  await writeFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:'CHECK',operation:'native.inspect',response:{result:{widgets:[{text:path.join(group,'Main.mp4')},{model:[[path.join(group,'source.mov')]]}]}}})+'\n');
+  const incidental=(await localReport(run,data)).report;assert.deepEqual(incidental.acceptance.gaps,[],'UI filenames are not declared artifacts');
+  await writeFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:'CHECK',operation:'project.read',source:path.join(group,'operations.jsonl'),evidence:{original:path.join(group,'media/pattern_24.mov'),moved:path.join(group,'relocated-media/pattern_24.mov')}})+'\n');
+  assert.deepEqual((await localReport(run,data)).report.acceptance.gaps,[],'Deliberately moved fixture paths are observations, not missing report outputs');
+  await writeFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:'CHECK',operation:'project.read',evidence:{output:path.join(group,'missing.mp4')}})+'\n');
+  assert.ok((await localReport(run,data)).report.acceptance.gaps.some(g=>g.includes('ENOENT')),'An explicitly declared missing output remains an evidence gap');
+  await writeFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:'CHECK',operation:'project.read',source:path.join(group,'operations.jsonl'),evidence:{artifacts:[path.join(group,'media/missing-capture.png')]}})+'\n');
+  assert.ok((await localReport(run,data)).report.acceptance.gaps.some(g=>g.includes('ENOENT')),'Explicit captures cannot disappear merely because they were placed in a fixture folder');
   await writeFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:'CHECK',operation:'project.read',durationMs:12})+'\n');
   const patchedHTML=renderReport({...report,computerUse:{state:'Partial',createdAt:'2026-09-30',cases:[{id:'UI',title:'Project UI',target:'computer-use-patched',area:'Release UI pilot',status:'Pass',observation:'Visible editor',expected:'Created project',operations:['Mouse and accessibility']}]}});
   assert.match(patchedHTML,/Smoke copy · patched Cocoa plugin/);assert.match(patchedHTML,/data-target="computer-use-patched"/);

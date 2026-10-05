@@ -5,9 +5,35 @@ import ImageIO
 import UniformTypeIdentifiers
 import CoreImage
 import Darwin
+import Carbon
+nonisolated(unsafe) var inputInterrupted=false
+
+func gestureModifiers(_ request:[String:Any]) throws -> [(String,CGKeyCode,CGEventFlags)] {
+    guard request["modifiers"] == nil || request["modifiers"] is [String] else { throw InputError(message:"Invalid pointer modifiers") }
+    let names=request["modifiers"] as? [String] ?? []
+    try require(names.isEmpty || ["click","drag"].contains(request["command"] as? String ?? ""),"Modifiers require a pointer click or drag")
+    try require(names.count<=4 && Set(names).count==names.count,"Pointer modifiers must be unique")
+    return try names.map { name in
+        switch name { case "cmd":return (name,55,.maskCommand);case "shift":return (name,56,.maskShift);case "alt":return (name,58,.maskAlternate);case "ctrl":return (name,59,.maskControl);default:throw InputError(message:"Unsupported pointer modifier") }
+    }
+}
+func gesturePath(_ request:[String:Any],_ bounds:CGRect) throws -> [CGPoint]? {
+    guard let value=request["path"] else { return nil }
+    guard let points=value as? [[String:Double]],points.count>=2,points.count<=128 else { throw InputError(message:"Drag path needs 2–128 points") }
+    try require(request["command"] as? String == "drag" && (request["toWindow"] as? Int == nil || request["toWindow"] as? Int == request["window"] as? Int),"Path must stay in one owned window")
+    let result=try points.map { p -> CGPoint in
+        guard p.count==2,let x=p["x"],let y=p["y"],x.isFinite,y.isFinite,x>=0,y>=0,x<bounds.width,y<bounds.height else { throw InputError(message:"Path point escaped the owned window") }
+        return CGPoint(x:x,y:y)
+    }
+    try require(points.first?["x"] == request["x"] as? Double && points.first?["y"] == request["y"] as? Double && points.last?["x"] == request["toX"] as? Double && points.last?["y"] == request["toY"] as? Double,"Path endpoints differ from the gesture")
+    return result
+}
 
 // Resolve the Unix process on every invocation. NSRunningApplication is diagnostic only.
-struct InputError: Error { let message: String }
+struct InputError: Error {
+    let message: String, code: String, diagnostics: [String:Any]
+    init(message:String,code:String="native_input_blocked",diagnostics:[String:Any]=[:]) { self.message=message;self.code=code;self.diagnostics=diagnostics }
+}
 func require(_ condition: Bool, _ message: String) throws { if !condition { throw InputError(message: message) } }
 func ps(_ arguments: [String]) throws -> String {
     let process = Process(), pipe = Pipe()
@@ -28,9 +54,33 @@ func frame(_ element: AXUIElement) -> CGRect? {
     return CGRect(origin: position, size: size)
 }
 func rectangle(_ value: CGRect) -> [String: Double] { ["x":value.minX,"y":value.minY,"width":value.width,"height":value.height] }
+func pointerOverlay(_ entry:[String:Any]) -> Bool {
+    // The compositor reports the mouse cursor itself above the clicked point.
+    // Exclude only its reserved system layer, never arbitrary Window Server UI.
+    (entry[kCGWindowOwnerName as String] as? String) == "Window Server" &&
+    (entry[kCGWindowLayer as String] as? NSNumber)?.int32Value == CGWindowLevelForKey(.cursorWindow)
+}
+func requirePointerWindow(_ top:[String:Any]?,at point:CGPoint,pid:pid_t,window:NSNumber,starting:Bool) throws {
+    var facts:[String:Any]=["point":[point.x,point.y],"expectedPid":pid,"expectedWindow":window]
+    guard let top=top else { throw InputError(message:"Pointer target has no visible window",code:"pointer_target_unavailable",diagnostics:facts) }
+    // Identify the covering window without retaining another app's document title.
+    facts["occluder"]=["pid":top[kCGWindowOwnerPID as String] ?? 0,"window":top[kCGWindowNumber as String] ?? 0,"owner":top[kCGWindowOwnerName as String] ?? "","layer":top[kCGWindowLayer as String] ?? 0,"frame":top[kCGWindowBounds as String] ?? [String:Any]()]
+    if (top[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value != pid { throw InputError(message:"Another application covers the pointer target",code:"pointer_occluded",diagnostics:facts) }
+    if starting && (top[kCGWindowNumber as String] as? NSNumber) != window { throw InputError(message:"Another Wizard window covers the pointer target",code:"pointer_window_obscured",diagnostics:facts) }
+}
 func children(_ element: AXUIElement) -> [AXUIElement] { attribute(element, kAXChildrenAttribute) as? [AXUIElement] ?? [] }
 func actions(_ element: AXUIElement) -> [String] { var names: CFArray?; AXUIElementCopyActionNames(element, &names); return names as? [String] ?? [] }
-let keyCodes: [String:CGKeyCode] = ["escape":53,"return":36,"tab":48,"space":49,"delete":51,"k":40,"n":45,"s":1,"a":0,"z":6,"d":2,"c":8,"v":9]
+let keyCodes: [String:CGKeyCode] = [
+    "escape":53,"return":36,"tab":48,"space":49,"delete":51,"k":40,"n":45,"s":1,"a":0,"z":6,"d":2,"c":8,"v":9,
+    "b":CGKeyCode(kVK_ANSI_B),"g":CGKeyCode(kVK_ANSI_G),"j":CGKeyCode(kVK_ANSI_J),"l":CGKeyCode(kVK_ANSI_L),"i":CGKeyCode(kVK_ANSI_I),"o":CGKeyCode(kVK_ANSI_O),
+    "left":CGKeyCode(kVK_LeftArrow),"right":CGKeyCode(kVK_RightArrow),"up":CGKeyCode(kVK_UpArrow),"down":CGKeyCode(kVK_DownArrow),
+    "home":CGKeyCode(kVK_Home),"end":CGKeyCode(kVK_End),"pageup":CGKeyCode(kVK_PageUp),"pagedown":CGKeyCode(kVK_PageDown),"forwarddelete":CGKeyCode(kVK_ForwardDelete),
+    "comma":CGKeyCode(kVK_ANSI_Comma),"period":CGKeyCode(kVK_ANSI_Period),
+    "0":CGKeyCode(kVK_ANSI_0),"1":CGKeyCode(kVK_ANSI_1),"2":CGKeyCode(kVK_ANSI_2),"3":CGKeyCode(kVK_ANSI_3),"4":CGKeyCode(kVK_ANSI_4),
+    "5":CGKeyCode(kVK_ANSI_5),"6":CGKeyCode(kVK_ANSI_6),"7":CGKeyCode(kVK_ANSI_7),"8":CGKeyCode(kVK_ANSI_8),"9":CGKeyCode(kVK_ANSI_9),
+    "f1":CGKeyCode(kVK_F1),"f2":CGKeyCode(kVK_F2),"f3":CGKeyCode(kVK_F3),"f4":CGKeyCode(kVK_F4),"f5":CGKeyCode(kVK_F5),"f6":CGKeyCode(kVK_F6),
+    "f7":CGKeyCode(kVK_F7),"f8":CGKeyCode(kVK_F8),"f9":CGKeyCode(kVK_F9),"f10":CGKeyCode(kVK_F10),"f11":CGKeyCode(kVK_F11),"f12":CGKeyCode(kVK_F12)
+]
 func scrollEvent(at point:CGPoint,deltaX:Int32,deltaY:Int32) -> CGEvent? {
     guard let event=CGEvent(scrollWheelEvent2Source:nil,units:.pixel,wheelCount:2,wheel1:-deltaY,wheel2:-deltaX,wheel3:0) else { return nil }
     // The event otherwise retains the cursor location from before mouseMoved is posted.
@@ -86,7 +136,7 @@ func sampleRGB(_ image: CGImage) throws -> Data {
 }
 @main struct NativeInput {
     static func main() async {
-        var dispatched = false, pointerCleanupReleased = false
+        var dispatched = false, pointerCleanupReleased = false, modifierCleanupReleased=false
         do {
             let args = CommandLine.arguments
             if args.count == 2 && args[1] == "--desktop-lease" {
@@ -99,6 +149,7 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                 _=FileHandle.standardInput.readDataToEndOfFile();return
             }
             try require(args.count == 5 && args[1] == "--executable" && args[3] == "--request", "Use --executable PATH --request JSON_FILE")
+            signal(SIGTERM){_ in inputInterrupted=true};signal(SIGINT){_ in inputInterrupted=true}
             let executable = canonicalExecutable(args[2])
             try require(executable.hasPrefix("/") && [".app/Contents/MacOS/wizard-bin",".app/Contents/MacOS/wizard"].contains(where:executable.hasSuffix), "Select the exact packaged Wizard executable")
             let data = try Data(contentsOf: URL(fileURLWithPath: args[4])); try require(data.count <= 131072, "Input request exceeds the size limit")
@@ -125,6 +176,7 @@ func sampleRGB(_ image: CGImage) throws -> Data {
             func topWindow(_ at: CGPoint? = nil) -> [String:Any]? {
                 let entries=CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]] ?? []
                 return entries.first { entry in
+                    if pointerOverlay(entry) { return false }
                     guard (at != nil || (entry[kCGWindowLayer as String] as? NSNumber)?.intValue==0), (entry[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1 > 0,let b=entry[kCGWindowBounds as String] as? [String:Any],let r=CGRect(dictionaryRepresentation:b as CFDictionary) else { return false }
                     return at.map(r.contains) ?? true
                 }
@@ -205,6 +257,10 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                         guard let text=request["text"] as? String,text.utf16.count>0,text.utf16.count<=4096 else { throw InputError(message:"Supply 1–4096 text characters") }
                         try require(!text.unicodeScalars.contains { ($0.value<32 && ![9,10,13].contains($0.value)) || $0.value==127 },"Text contains unsupported control codes")
                     } else {
+                        let modifiers=try gestureModifiers(request);_ = try gesturePath(request,bounds)
+                        try require(!modifiers.contains{CGEventSource.flagsState(.hidSystemState).contains($0.2)},"A requested modifier is already held; release it before testing")
+                        let clicks=request["clickCount"] as? Int ?? 1
+                        try require(request["clickCount"] == nil || command=="click" && [1,2].contains(clicks),"Click count must be one or two")
                         try require(["left","middle","right"].contains(request["button"] as? String ?? "left"),"Unsupported pointer button")
                         for names in command == "drag" ? [["x","y"],["toX","toY"]] : [["x","y"]] {
                             guard let x=request[names[0]] as? Double,let y=request[names[1]] as? Double else { throw InputError(message:"Supply window-relative point coordinates") }
@@ -230,7 +286,7 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                         try require(keyboardWindowMatches(),"Another Wizard window owns keyboard focus; physically click the intended control first")
                     }
                     if ["key","type"].contains(command) && !windowServer { guard let focused = attribute(app,kAXFocusedWindowAttribute) else { throw InputError(message:"No focused Wizard window") }; try require(frame(focused as! AXUIElement) == bounds,"Another Wizard window owns keyboard focus") }
-                    func post(_ event: CGEvent) throws { try verifyOwner(); event.setIntegerValueField(.eventSourceUserData,value:42); dispatched = true; event.postToPid(pid) }
+                    func post(_ event: CGEvent) throws { try verifyOwner();try require(!inputInterrupted,"Keyboard input interrupted");event.setIntegerValueField(.eventSourceUserData,value:42); dispatched = true; event.postToPid(pid) }
                     if command == "key" {
                         guard let key = request["key"] as? String else { throw InputError(message:"Supply a key chord") }
                         let parts = key.lowercased().split(separator:"+").map(String.init)
@@ -238,7 +294,9 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                         var flags: CGEventFlags = []
                         for modifier in parts.dropLast() { switch modifier { case "cmd","super":flags.insert(.maskCommand); case "shift":flags.insert(.maskShift); case "alt","option":flags.insert(.maskAlternate); case "ctrl":flags.insert(.maskControl); default:throw InputError(message:"Unsupported key modifier") } }
                         guard let down = CGEvent(keyboardEventSource:nil,virtualKey:code,keyDown:true), let up = CGEvent(keyboardEventSource:nil,virtualKey:code,keyDown:false) else { throw InputError(message:"Unable to create keyboard events") }
-                        down.flags = flags; up.flags = flags; try post(down); try await Task.sleep(nanoseconds:50_000_000); try post(up)
+                        var heldKey=false
+                        defer {if heldKey {up.postToPid(pid)}}
+                        down.flags = flags; up.flags = flags; try post(down);heldKey=true; try await Task.sleep(nanoseconds:50_000_000); try post(up);heldKey=false
                         result["key"] = key; result["eventsPosted"] = 2
                     } else if command == "type" {
                         let text=request["text"] as! String
@@ -254,8 +312,7 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                         result["utf16Units"]=text.utf16.count;result["eventsPosted"]=batches.count*2
                     } else if command == "scroll" {
                         let point=CGPoint(x:bounds.minX+(request["x"] as! Double),y:bounds.minY+(request["y"] as! Double))
-                        guard let top=topWindow(point) else { throw InputError(message:"Scroll target has no visible window") }
-                        try require((top[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==pid && (top[kCGWindowNumber as String] as? NSNumber)==number,"Another window covers the scroll target")
+                        try requirePointerWindow(topWindow(point),at:point,pid:pid,window:number,starting:true)
                         guard let move=CGEvent(mouseEventSource:nil,mouseType:.mouseMoved,mouseCursorPosition:point,mouseButton:.left),let wheel=scrollEvent(at:point,deltaX:Int32(request["deltaX"] as? Int ?? 0),deltaY:Int32(request["deltaY"] as? Int ?? 0)) else { throw InputError(message:"Unable to create physical scroll events") }
                         try verifyOwner();dispatched=true;move.post(tap:.cghidEventTap);try await Task.sleep(nanoseconds:50_000_000);try verifyOwner();try require(foreground() && (topWindow(point)?[kCGWindowNumber as String] as? NSNumber)==number,"Scroll lost target ownership");wheel.post(tap:.cghidEventTap);result["eventsPosted"]=2;result["deltaX"]=request["deltaX"] ?? 0;result["deltaY"]=request["deltaY"] ?? 0
                     } else {
@@ -270,24 +327,32 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                             return CGPoint(x:within.minX+a,y:within.minY+b)
                         }
                         let from = try point("x","y",bounds), to = command == "drag" ? try point("toX","toY",destinationBounds) : from
+                        let path=try gesturePath(request,bounds)?.map{CGPoint(x:bounds.minX+$0.x,y:bounds.minY+$0.y)} ?? [from,to]
+                        let modifiers=try gestureModifiers(request),originalFlags=CGEventSource.flagsState(.hidSystemState)
+                        var flags=originalFlags,heldModifiers=[(CGEvent,CGEventFlags)]()
+                        let modifierEvents=try modifiers.map { modifier -> (CGEvent,CGEvent,CGEventFlags) in
+                            guard let down=CGEvent(keyboardEventSource:nil,virtualKey:modifier.1,keyDown:true),let up=CGEvent(keyboardEventSource:nil,virtualKey:modifier.1,keyDown:false) else { throw InputError(message:"Cannot allocate modifier cleanup events") }
+                            down.type = .flagsChanged;up.type = .flagsChanged;return (down,up,modifier.2)
+                        }
+                        defer { for (up,flag) in heldModifiers.reversed(){flags.remove(flag);up.flags=flags;up.post(tap:.cghidEventTap);modifierCleanupReleased=true} }
+                        for (down,up,flag) in modifierEvents {try verifyOwner();try require(!inputInterrupted && foreground(),"Gesture interrupted before modifier dispatch");flags.insert(flag);down.flags=flags;dispatched=true;down.post(tap:.cghidEventTap);heldModifiers.append((up,flag))}
+                        result["modifiers"]=modifiers.map{$0.0};result["pathPoints"]=path.count
                         let buttonName=request["button"] as? String ?? "left"
                         let button: CGMouseButton=buttonName=="middle" ? .center : buttonName=="right" ? .right : .left
                         let downType: CGEventType=buttonName=="middle" ? .otherMouseDown : buttonName=="right" ? .rightMouseDown : .leftMouseDown
                         let dragType: CGEventType=buttonName=="middle" ? .otherMouseDragged : buttonName=="right" ? .rightMouseDragged : .leftMouseDragged
                         let upType: CGEventType=buttonName=="middle" ? .otherMouseUp : buttonName=="right" ? .rightMouseUp : .leftMouseUp
-                        var held=false,lastPoint=from
+                        var held=false,lastPoint=from,clickState=1
                         // Allocate the balancing event before dispatch. Ownership guards still
                         // protect every new gesture; losing ownership must not leave our HID button held.
                         guard let release=CGEvent(mouseEventSource:nil,mouseType:upType,mouseCursorPosition:from,mouseButton:button) else { throw InputError(message:"Unable to create pointer cleanup event") }
                         defer { if held { release.location=lastPoint; release.setIntegerValueField(.eventSourceUserData,value:42); release.post(tap:.cghidEventTap); held=false; pointerCleanupReleased=true } }
                         func mouse(_ type: CGEventType,_ location: CGPoint) throws {
                             guard let event = CGEvent(mouseEventSource:nil,mouseType:type,mouseCursorPosition:location,mouseButton:button) else { throw InputError(message:"Unable to create mouse event") }
-                            event.setIntegerValueField(.mouseEventClickState,value:1)
-                            try verifyOwner(); try require(foreground(),"Verified PID lost foreground input ownership")
+                            event.setIntegerValueField(.mouseEventClickState,value:Int64(clickState));event.flags=flags
+                            try verifyOwner(); try require(!inputInterrupted && foreground(),"Gesture interrupted or verified PID lost foreground input ownership")
                             if windowServer {
-                                guard let top=topWindow(location) else { throw InputError(message:"Pointer target has no visible window") }
-                                try require((top[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value==pid,"Another application covers the pointer target")
-                                if type==downType { try require((top[kCGWindowNumber as String] as? NSNumber)==number,"Another Wizard window covers the pointer target") }
+                                try requirePointerWindow(topWindow(location),at:location,pid:pid,window:number,starting:type==downType)
                             } else {
                                 var hit: AXUIElement?; try require(AXUIElementCopyElementAtPosition(AXUIElementCreateSystemWide(),Float(location.x),Float(location.y),&hit) == .success,"Pointer hit test failed")
                                 guard let hit=hit else { throw InputError(message:"Pointer target disappeared") };var hitPID:pid_t=0;AXUIElementGetPid(hit,&hitPID);try require(hitPID==pid,"Another application covers the pointer target")
@@ -299,12 +364,17 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                         try require(request["durationMs"] == nil || (command=="drag" && duration>=300 && duration<=10000),"Drag duration must be 300–10000 milliseconds")
                         try mouse(downType,from);result["pointerDownAt"]=Date().timeIntervalSince1970*1000;try await Task.sleep(nanoseconds:50_000_000)
                         let steps=max(10,duration/33)
-                        if command == "drag" { let began=ProcessInfo.processInfo.systemUptime;for step in 1...steps { try mouse(dragType,CGPoint(x:from.x+(to.x-from.x)*Double(step)/Double(steps),y:from.y+(to.y-from.y)*Double(step)/Double(steps)));let remaining=Double(duration)*Double(step)/Double(steps)/1000-(ProcessInfo.processInfo.systemUptime-began);if remaining>0 { try await Task.sleep(nanoseconds:UInt64(remaining*1_000_000_000)) } } }
+                        if command == "drag" { let began=ProcessInfo.processInfo.systemUptime;for step in 1...steps {
+                            let progress=Double(step)/Double(steps)*Double(path.count-1),index=min(path.count-2,Int(progress)),fraction=progress-Double(index),a=path[index],b=path[index+1]
+                            try mouse(dragType,CGPoint(x:a.x+(b.x-a.x)*fraction,y:a.y+(b.y-a.y)*fraction));let remaining=Double(duration)*Double(step)/Double(steps)/1000-(ProcessInfo.processInfo.systemUptime-began);if remaining>0 { try await Task.sleep(nanoseconds:UInt64(remaining*1_000_000_000)) }
+                        } }
                         try mouse(upType,to);result["pointerUpAt"]=Date().timeIntervalSince1970*1000;result["button"]=buttonName; result["eventsPosted"] = command == "drag" ? steps+2 : 2; result["from"] = [from.x,from.y]; result["to"] = [to.x,to.y]
+                        if command=="click" && request["clickCount"] as? Int == 2 {clickState=2;try await Task.sleep(nanoseconds:50_000_000);try mouse(downType,from);try mouse(upType,to);result["eventsPosted"]=4}
                     }
                     result["dispatch"] = ["key","type"].contains(command) ? "coregraphics-pid-keyboard" : "coregraphics-hid-pointer"
                     try await Task.sleep(nanoseconds:100_000_000);try verifyOwner()
                     try require(foreground(),"Verified PID lost foreground ownership after input; inspect before continuing")
+                    result["modifierCleanupReleased"]=modifierCleanupReleased
                     result["postInput"]=["frontmost":true,"observedAt":Date().timeIntervalSince1970*1000,"frontWindow":topWindow()?[kCGWindowNumber as String] ?? 0]
                     if ["click","drag","scroll"].contains(command),let cursor=CGEvent(source:nil)?.location {
                         let expected=result["to"] as? [Double] ?? [bounds.minX+(request["x"] as! Double),bounds.minY+(request["y"] as! Double)]
@@ -317,7 +387,8 @@ func sampleRGB(_ image: CGImage) throws -> Data {
             }
             try verifyOwner(); emit(result)
         } catch {
-            emit(["status":dispatched ? "Unknown":"Blocked","error":(error as? InputError)?.message ?? String(describing:error),"driver":"macos-verified-pid","pointerCleanupReleased":pointerCleanupReleased]); exit(1)
+            let failure=error as? InputError
+            emit(["status":dispatched ? "Unknown":"Blocked","error":failure?.message ?? String(describing:error),"code":failure?.code ?? "native_input_failed","diagnostics":failure?.diagnostics ?? [:],"driver":"macos-verified-pid","pointerCleanupReleased":pointerCleanupReleased,"modifierCleanupReleased":modifierCleanupReleased]); exit(1)
         }
     }
     static func selfRectangle(_ value: CGRect) -> [String:Double] { rectangle(value) }

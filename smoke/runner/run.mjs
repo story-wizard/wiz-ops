@@ -40,7 +40,7 @@ async function run(dataDir,runId){
     await writeJSON(path.join(root,'test-specifications.json'),specifications);
     await cp(path.join(ROOT,'scope/v1-candidate.json'),path.join(root,'scope.json'));
     const sourceHash=await snapshotSource(path.join(root,'source'));
-    await writeJSON(path.join(root,'execution-context.json'),{startedAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,node:process.version,osRelease:os.release(),operator:db.prepare('SELECT operator FROM runs WHERE id=?').get(runId).operator,sourceHash,testSpecificationsHash:digest(specifications),evidenceMode:course.target,runtime:plan.runtime||null,runnerHash:plan.runnerHash});
+    await writeJSON(path.join(root,'execution-context.json'),{startedAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,node:process.version,osRelease:os.release(),operator:db.prepare('SELECT operator FROM runs WHERE id=?').get(runId).operator,sourceHash,testSpecificationsHash:digest(specifications),evidenceMode:course.target,diagnostics:course.selection?.diagnostics||'standard',runtime:plan.runtime||null,runnerHash:plan.runnerHash});
     await cp(plan.fixtureRoot,path.join(root,'media'),{recursive:true,errorOnExist:true,force:false});
     engine=new PackagedEngine(plan,root,runId,schema);await engine.start();
     updateExecution(db,runId,'Running','Running the local packaged-engine course.',process.pid);

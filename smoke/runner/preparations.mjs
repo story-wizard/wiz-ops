@@ -1,6 +1,6 @@
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
-import {mkdir} from 'node:fs/promises';
+import {mkdir,writeFile} from 'node:fs/promises';
 import {dataDirectory,writeJSON,readJSON} from './files.mjs';
 import {prepare} from './prepare.mjs';
 
@@ -8,9 +8,9 @@ const live=new Set();
 const phases=[['tools','Set up matching desktop instrumentation'],['fixtures','Prepare project media and local tools'],['build','Verify selected build and command interface'],['attach','Attach and verify the selected desktop build'],['ready','Freeze the ready workspace']];
 const location=(data,id)=>{if(!/^[a-f0-9-]{36}$/.test(id))throw Error('Invalid preparation ID.');return path.join(dataDirectory(data),'preparations',id+'.json');};
 export async function startPreparation(options,{execute=prepare,onFinished=()=>{}}={}){
- const data=dataDirectory(options.dataDir),id=randomUUID(),file=location(data,id);await mkdir(path.dirname(file),{recursive:true});
+ const data=dataDirectory(options.dataDir),id=options.preparationId||randomUUID(),file=location(data,id);await mkdir(path.dirname(file),{recursive:true});
  const job={id,state:'Preparing',app:options.app,selection:options.selection,startedAt:new Date().toISOString(),steps:phases.map(([id,title])=>({id,title,status:'Not run'}))};
- await writeJSON(file,job);live.add(id);
+ try{await writeFile(file,JSON.stringify(job,null,2)+'\n',{flag:'wx',mode:0o600});}catch(e){if(e.code==='EEXIST')throw Error('Preparation ID is already retained. Inspect it instead of repeating setup.');throw e;}live.add(id);
  const progress=async phase=>{
   const index=job.steps.findIndex(s=>s.id===phase);if(index<0)throw Error('Unknown preparation phase.');
   for(let i=0;i<index;i++)job.steps[i].status='Pass';job.steps[index].status='Running';await writeJSON(file,job);

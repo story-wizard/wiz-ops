@@ -26,8 +26,8 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
   try{
     await start();
     const setup=(await request('/run-setup')).data;
-    assert.equal(setup.courses[0].id,'smoke-full');assert.equal(setup.courses[0].checkCount,153);
-    assert.deepEqual(setup.courses[0].targets,{packaged:57,desktop:89,service:7});
+    assert.equal(setup.courses[0].id,'smoke-full');assert.equal(setup.courses[0].checkCount,177);
+    assert.deepEqual(setup.courses[0].targets,{packaged:57,desktop:113,service:7});
     assert.ok(setup.courses.every(c=>!c.checkpoint));assert.deepEqual(setup.runtimes,[]);
     assert.equal((await fetch(base+'/run-setup.js')).status,200);assert.equal((await fetch(base+'/wizard-tokens.css')).status,200);
     assert.deepEqual((await request('/runs')).data,[],'Opening run setup must not launch tests');
@@ -77,9 +77,9 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     const history=await fetch(base+'/history');assert.equal(history.status,200);assert.match(history.headers.get('Content-Security-Policy'),/sandbox/);
     assert.match(await history.text(),/Retained history fixture/);assert.equal((await fetch(base+'/history',{method:'POST'})).status,405);
     const {data:catalog}=await request('/catalog');
-    assert.equal(catalog.tests.length,291);
+    assert.equal(catalog.tests.length,315);
     assert.equal(catalog.checkpoint.rows.length,137);
-    assert.equal(catalog.tests.filter(t=>t.course==='Local desktop').length,81);
+    assert.equal(catalog.tests.filter(t=>t.course==='Local desktop').length,105);
     assert.equal(catalog.tests.filter(t=>t.course==='Local services').length,8);
     assert.equal((await request('/desktop')).data.serviceCourse.cases.length,8);
     assert.ok(catalog.checkpoint.rows.find(r=>r.id==='EX-02').checks.some(c=>c.id==='S-EXPORT-UNSET-RATE'));
@@ -89,7 +89,7 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     assert.equal(tower.status,200);
     assert.equal(tower.data.format,'wizard-smoke-tower/v1');
     assert.equal(tower.data.historyUrl,'/history');
-    assert.equal(tower.data.checks.length,159);
+    assert.equal(tower.data.checks.length,183);
     assert.deepEqual(tower.data.runs,[]);
     assert.equal(tower.data.runner.prepared,false);
     assert.equal((await request('/desktop/start','POST',{kind:'handoff',sourceRun:'../../other',caseId:'D-TRACK-ADD'})).status,409);
@@ -100,8 +100,8 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     assert.equal(catalog.checkpoint.rows.find(r=>r.id==='RG-03').sourceIssue,'WIZ-475');
     assert.ok(catalog.checkpoint.rows.every(r=>r.remaining&&r.nextAdapter));
     assert.ok(catalog.checkpoint.rows.filter(r=>r.environment==='NAS').every(r=>r.coverage==='Deferred'&&r.checks.length===0));
-    assert.equal(new Set(catalog.tests.map(t=>t.id)).size,291);
-    assert.equal(catalog.tests.filter(t=>t.kind==='Automated counterpart').length,149);
+    assert.equal(new Set(catalog.tests.map(t=>t.id)).size,315);
+    assert.equal(catalog.tests.filter(t=>t.kind==='Automated counterpart').length,173);
     assert.equal(catalog.tests.filter(t=>t.course==='First automated').length,71);
     assert.equal(catalog.tests.filter(t=>t.readiness==='Ready').length,0);
     assert.deepEqual((await request('/runs')).data,[],'imported source Pass must not create passing runs');
@@ -126,9 +126,9 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     assert.equal(added.status,201);assert.equal(added.data.id,'CT-001');assert.equal(added.data.course,'Backlog');
     await stop();await start();
     const reopened=(await request('/catalog')).data;
-    assert.equal(reopened.tests.find(t=>t.id==='LP-02').notes,'Saved across restart');assert.equal(reopened.tests.length,292);
+    assert.equal(reopened.tests.find(t=>t.id==='LP-02').notes,'Saved across restart');assert.equal(reopened.tests.length,catalog.tests.length+1);
     const persisted=(await request('/runs')).data[0];assert.equal(persisted.results.find(r=>r.test_id==='LP-02').status,'Blocked');
-    const backup=(await request('/export')).data;assert.equal(backup.tests.length,292);assert.equal(backup.runs.length,1);
+    const backup=(await request('/export')).data;assert.equal(backup.tests.length,catalog.tests.length+1);assert.equal(backup.runs.length,1);
     const exported=await request('/exports','POST',{format:'csv',ids:['LP-02','CT-001']});assert.equal(exported.status,201);
     const csv=await (await fetch(base+exported.data.url)).text();assert.ok(csv.includes('Updated project lifecycle'));assert.ok(csv.includes('A new team test'));assert.ok(!csv.includes('A-TL-01'));
     const exportedJSON=await request('/exports','POST',{format:'json'});assert.equal(exportedJSON.status,201);assert.equal((await(await fetch(base+exportedJSON.data.url)).json()).runs.length,1);

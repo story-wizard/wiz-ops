@@ -1,4 +1,4 @@
-import {beginCheck,endCheck,waitForObservation} from './check-support.mjs';
+import {beginCheck,endCheck,waitForObservation,visiblePlayhead} from './check-support.mjs';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {desktopCall,nativeCall,captureDesktopFailure} from './adapter.mjs';
@@ -8,7 +8,6 @@ const file=process.argv[2],s=await readJSON(file),report={scope:s.scope,pid:s.pi
 async function check(id,fn){if(!await beginCheck(file,id))return;try{const evidence=await fn();report.results.push({id,status:'Pass',evidence});}catch(e){report.results.push({id,status:e.status||'Fail',error:e.message,diagnostics:e.diagnostics||null,evidence:await captureDesktopFailure(file,e,id)});if(e.status==='Unknown'){await writeJSON(path.join(s.root,'desktop-core-report.json'),report);await endCheck(file,report.results.at(-1));throw e;}}await writeJSON(path.join(s.root,'desktop-core-report.json'),report);await endCheck(file,report.results.at(-1));}
 const until=waitForObservation;
 const ui=()=>nativeCall(file,'inspect');
-const tc=state=>state.widgets.find(w=>w.name==='previewCurrentTimecode')?.text;
 await check('D-CLI-01',async()=>{const state=await ui();assert(state.widgets.some(w=>w.class==='MainWindow'&&/^Golden\.wiz — Wizard(?: [•*])?$/.test(w.title)),'Owned project window is absent.');const failed=state.widgets.filter(w=>w.text?.includes('failed to load'));assert(!failed.length,'Panel startup failed: '+failed.map(w=>w.text).join('; '));return {endpoint:s.endpoint,window:state.widgets.find(w=>w.class==='MainWindow')};});
 await check('D-CLI-02',async()=>{
   const name=`Smoke GUI ${s.harnessId} ${Date.now()}`;await desktopCall(file,'timeline.update',{id:'gui-rename',timeline_id:s.main.id,changes:{name}});
@@ -17,13 +16,16 @@ await check('D-CLI-02',async()=>{
 });
 await check('D-PB-01',async()=>{
   await desktopCall(file,'render.bind_timeline',{timeline_id:s.main.id,playhead_frame:0});await desktopCall(file,'playback.seek',{time:1.25});
-  const sought=await until(async()=>{const state=await ui();return tc(state)==='00:00:01:06'?state:null;});
+  const sought=await until(async()=>{const readout=visiblePlayhead(await ui());return Math.abs(readout.seconds-1.25)<.001?readout:null;},{description:'Visible playhead at frame 30'});
   const before=await desktopCall(file,'playback.query_transport');assert(before.frame===30&&!before.playing,'Seek missed frame 30.');
-  await desktopCall(file,'playback.play');await pause(600);const playing=await desktopCall(file,'playback.query_transport');const visiblePlaying=await ui();
-  await desktopCall(file,'playback.pause');const paused=await desktopCall(file,'playback.query_transport');await pause(250);const settled=await desktopCall(file,'playback.query_transport');
-  assert(playing.playing&&playing.frame>before.frame,'Live transport did not advance.');assert(tc(visiblePlaying)!==tc(sought),'GUI timecode did not advance.');assert(!paused.playing&&settled.frame===paused.frame,'Pause did not hold the playhead.');
-  await desktopCall(file,'playback.seek',{time:2});await until(async()=>tc(await ui())==='00:00:02:00');
-  return {before,playing,paused,settled,visibleTimecode:tc(visiblePlaying),scope:'Live transport and visible timecode; no dropped-frame or audible-sync claim'};
+  let playing,visiblePlaying,paused,settled,uncertain=false;
+  try{await desktopCall(file,'playback.play');await pause(600);playing=await desktopCall(file,'playback.query_transport');visiblePlaying=await until(async()=>{const readout=visiblePlayhead(await ui());return readout.seconds>sought.seconds?readout:null;},{description:'Visible playhead advances during playback'});}
+  catch(e){uncertain=e.status==='Unknown';throw e;}
+  finally{if(!uncertain)await desktopCall(file,'playback.pause');}
+  paused=await desktopCall(file,'playback.query_transport');await pause(250);settled=await desktopCall(file,'playback.query_transport');
+  assert(playing.playing&&playing.frame>before.frame,'Live transport did not advance.');assert(!paused.playing&&settled.frame===paused.frame,'Pause did not hold the playhead.');
+  await desktopCall(file,'playback.seek',{time:2});await until(async()=>Math.abs(visiblePlayhead(await ui()).seconds-2)<.001,{description:'Visible playhead at two seconds'});
+  return {before,playing,paused,settled,visibleReadout:visiblePlaying,scope:'Live transport and visible timecode or scrubber position; no dropped-frame or audible-sync claim'};
 });
 await check('D-LP-02-SAVE',async()=>{
   const expected=snapshotState(await desktopCall(file,'timeline.inspect',{timeline_id:s.main.id}));

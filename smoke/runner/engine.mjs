@@ -6,6 +6,7 @@ import path from 'node:path';
 import {inside,writeJSON} from './files.mjs';
 
 export class OutcomeError extends Error{constructor(message,status='Fail'){super(message);this.status=status;}}
+export function failureStatus(error){return ['Fail','Blocked','Unknown'].includes(error?.status)?error.status:'Fail';}
 export function assert(condition,message){if(!condition)throw new OutcomeError(message);}
 export function near(actual,expected,label){assert(Number.isFinite(actual)&&Math.abs(actual-expected)<1e-6,`${label}: expected ${expected}, observed ${actual}`);}
 export const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));

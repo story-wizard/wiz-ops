@@ -1,4 +1,4 @@
-import {checks} from './check-support.mjs';
+import {checks,visiblePlayhead} from './check-support.mjs';
 import {assert,same,pause,snapshotState,clips} from '../runner/engine.mjs';
 const {s,n,c,ui,until,check:runCheck,activate,action,finish}=await checks(process.argv[2],'desktop-workspace-report.json');
 const timeline=()=>c('timeline.inspect',{timeline_id:s.main.id});
@@ -35,9 +35,10 @@ await check('D-CROSSRATE-CLIPBOARD',async()=>{
   finally{assert((await n('clipboard-restore')).restored,'Clipboard restoration failed');await openTimeline(main.timeline.name);}
 });
 await check('D-PLAYBACK-SWITCH',async()=>{
-  const main=await timeline(),secondary=await c('timeline.inspect',{timeline_id:s.alternate.id});
-  try{const v=await openTimeline(secondary.timeline.name);await c('playback.seek',{time:0});await n('key',{target:v.id,key:'Space'});const playing=await until(async()=>{const t=await c('playback.query_transport');return t.playing&&t.frame>0?t:null;});assert((await ui()).widgets.some(w=>w.name==='previewCurrentTimecode'&&w.text!=='00:00:00:00'),'Secondary visible playhead did not advance');await openTimeline(main.timeline.name);await c('playback.pause');const current=(await ui()).widgets.find(w=>w.name==='panelSubtabSelector').text;assert(current.startsWith(main.timeline.name),'Switch did not activate Main');await c('playback.seek',{time:1});await until(async()=>(await ui()).widgets.some(w=>w.name==='previewCurrentTimecode'&&w.text==='00:00:01:00'));return {startedIn:secondary.timeline.name,advancedFrame:playing.frame,switchedTo:main.timeline.name,scope:'Transport and visible selection; seamless audio/video continuity not implied'};}
-  finally{await c('playback.pause');await openTimeline(main.timeline.name);}
+  const main=await timeline(),secondary=await c('timeline.inspect',{timeline_id:s.alternate.id});let uncertain=false;
+  try{const v=await openTimeline(secondary.timeline.name);await c('playback.seek',{time:0});await n('key',{target:v.id,key:'Space'});const playing=await until(async()=>{const t=await c('playback.query_transport');return t.playing&&t.frame>0?t:null;});const visible=await until(async()=>{const readout=visiblePlayhead(await ui(),25);return readout.seconds>0?readout:null;},{description:'Secondary visible playhead advances'});await openTimeline(main.timeline.name);await c('playback.pause');const current=(await ui()).widgets.find(w=>w.name==='panelSubtabSelector').text;assert(current.startsWith(main.timeline.name),'Switch did not activate Main');await c('playback.seek',{time:1});await until(async()=>Math.abs(visiblePlayhead(await ui()).seconds-1)<.001,{description:'Main visible playhead at one second'});return {startedIn:secondary.timeline.name,advancedFrame:playing.frame,visibleReadout:visible,switchedTo:main.timeline.name,scope:'Transport and visible selection; seamless audio/video continuity not implied'};}
+  catch(e){uncertain=e.status==='Unknown';throw e;}
+  finally{if(!uncertain){await c('playback.pause');await openTimeline(main.timeline.name);}}
 });
 await check('D-SHORTCUT-REBIND',async()=>{
   await focus();await action('Keyboard Shortcuts');let u=await until(async()=>{const a=await ui();return a.widgets.some(w=>w.class==='ShortcutsDialog')?a:null;});const dialog=u.widgets.find(w=>w.class==='ShortcutsDialog'),line=u.widgets.find(w=>w.window===dialog.id&&w.name==='qt_keysequenceedit_lineedit'&&w.text==='Space');assert(line,'Play/pause default shortcut unavailable');const editor=u.widgets.find(w=>w.id===line.parent);await n('key',{target:editor.id,key:'F6'});await pause(1200);await n('close-window',{target:dialog.id});await until(async()=>!(await ui()).widgets.some(w=>w.class==='ShortcutsDialog'));

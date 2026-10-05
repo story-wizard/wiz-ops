@@ -1,0 +1,99 @@
+/* Investigation workbench: a compact case index and one steady evidence surface. */
+#investigation{padding:28px 0 64px;color:#dbe3eb}
+#investigation>.back{display:inline-block;margin-bottom:18px;text-decoration:none;color:#a8cbe2}
+.investigation-top{display:flex;justify-content:space-between;align-items:flex-start;gap:28px;margin-bottom:22px}
+.investigation-top h2{margin:0 0 8px;font-size:26px;font-weight:600;letter-spacing:-.025em}
+.investigation-top p,.editor-note{color:#9ba9b8;font-size:13px;line-height:1.6}
+.operator-field{min-width:210px;max-width:240px}
+.case-stage-filters,.case-tabs{display:flex;gap:5px;flex-wrap:wrap}
+.case-stage-filters{padding-bottom:20px;border-bottom:1px solid #34404a;margin-bottom:18px}
+.case-stage-filters button,.case-tabs button{font:inherit;color:#aebdca;background:transparent;border:1px solid transparent;border-radius:5px;cursor:pointer;padding:9px 12px;box-shadow:none;font-size:13px}
+.case-stage-filters button[aria-pressed=true]{background:#2a3c4b;color:#dbeefa;border-color:#4c718d}
+.case-stage-filters button:hover,.case-tabs button:hover{color:#e7f2fa;background:#25313d}
+.investigation-error{color:#efb29e;padding:12px 15px;border:1px solid #8b604b;background:#322820;border-radius:6px;overflow-wrap:anywhere}
+.investigation-error:empty{display:none}
+.investigation-layout{display:grid;grid-template-columns:minmax(330px,.82fr) minmax(0,1.4fr);gap:24px;margin:22px 0 30px;align-items:start}
+.case-list>.field{margin-bottom:14px}
+.investigation-layout .table-wrap{max-height:68vh;overflow:auto;border:1px solid #34424e;border-radius:7px}
+.investigation-layout table{margin:0;width:100%}
+.investigation-layout th{position:sticky;top:0;z-index:1;background:#27323c;color:#aebfd0;font-size:12px;font-weight:600;padding:12px 10px}
+.investigation-layout td{padding:15px 10px;font-size:12px;vertical-align:top}
+.investigation-layout td:first-child{width:58%}
+.investigation-layout td small{display:block;color:#8999a8;font-size:11px;margin-top:5px}
+.investigation-layout tr{cursor:pointer}
+.investigation-layout tr[aria-selected=true]{background:#2a3b49;box-shadow:inset 3px 0 #8fc3e3}
+.investigation-layout tr:hover{background:#253540}
+.investigation-layout .row-button{border:0;background:none;padding:0;text-align:left;color:#d9e3ed;cursor:pointer;font:inherit;font-size:13px;font-weight:500;line-height:1.5;box-shadow:none}
+.investigation-layout aside{background:linear-gradient(135deg,#222b33,#1c232b);border:1px solid #40515e;border-radius:8px;padding:24px;position:sticky;top:90px;max-height:calc(100vh - 115px);overflow:auto;min-width:0;box-shadow:0 14px 38px #0002}
+.case-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
+.case-heading h3{font-size:20px;line-height:1.4;letter-spacing:-.015em;margin:0;overflow-wrap:anywhere}
+.case-heading p{font-size:12px;color:#9bafbf;margin:8px 0 20px}
+.case-next{display:flex;align-items:center;justify-content:space-between;gap:18px;border:1px solid #3e5262;background:#26364366;border-radius:6px;padding:14px;margin-bottom:20px}
+.case-next strong{font-size:12px;color:#aacee4}
+.case-next p{font-size:13px;line-height:1.55;margin:5px 0 0;color:#bac8d3}
+.case-next .button{flex-shrink:0;font-size:12px;padding:9px 11px}
+.case-tabs{border-bottom:1px solid #3b4955;margin-bottom:22px;gap:0}
+.case-tabs button{border-radius:0;padding:12px 13px}
+.case-tabs button[aria-pressed=true]{border-bottom:2px solid #98c8eb;color:#e0f0fa}
+.case-detail-body{font-size:14px;line-height:1.65;overflow-wrap:anywhere}
+.case-detail-body h4{font-size:12px;color:#a8bfce;font-weight:600;margin:22px 0 8px}
+.case-detail-body p{margin:6px 0 14px}
+.case-detail-body ol{padding-left:21px}
+.case-detail-body li{margin:8px 0}
+.case-brief{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.case-brief section{border-left:2px solid #56758a;padding-left:14px}
+.case-brief h4{margin-top:0}
+.investigation-layout form,#agent-work form{display:grid;gap:15px;margin-top:16px}
+.investigation-layout .field{gap:7px}
+.investigation-layout label input,.investigation-layout label select,.investigation-layout textarea{width:100%;box-sizing:border-box}
+.investigation-layout textarea,#agent-work textarea{min-height:110px;resize:vertical;line-height:1.55;width:100%;box-sizing:border-box;font:inherit}
+.investigation-layout form .button{justify-self:start}
+.form-pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.investigation-layout details{border-top:1px solid #354550;margin-top:20px;padding-top:14px}
+#investigation summary{cursor:pointer;color:#b7cbd9;font-size:13px}
+.investigation-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:14px 0}
+.investigation-actions .button{text-decoration:none;font-size:13px}
+#diagnostic-course,#agent-work{background:#202931a6;border:1px solid #354653;padding:18px 20px;border-radius:7px;scroll-margin-top:90px}
+#diagnostic-course>.field{margin:18px 0;max-width:900px}
+#diagnostic-course>p,#agent-work>p{font-size:13px;color:#b6c3cf}
+#diagnostic-course .run-progress{margin:18px 0 24px}
+#agent-work{margin-top:28px}
+#agent-work h4{font-size:14px;font-weight:500}
+#agent-work>form{max-width:900px}
+#agent-work>label{max-width:500px;margin-top:20px}
+.attempt-picker{display:flex;align-items:end;gap:16px;justify-content:space-between;margin-bottom:18px}
+.attempt-picker label{display:grid;gap:7px;font-size:12px;color:#a7b9c8}
+.capture-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.capture-grid figure{margin:0 0 16px;border:1px solid #3c4e5c;border-radius:6px;overflow:hidden;background:#141b22}
+.capture-grid img,.capture-grid video{display:block;width:100%;height:auto;max-height:310px;object-fit:contain}
+.capture-grid audio{display:block;width:100%;margin:10px 0}
+.capture-grid figcaption{padding:11px 13px;color:#bdcdda;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.capture-grid small{display:block;font-size:11px;color:#8ba2b4;margin-top:4px}
+.evidence-list{padding-left:18px}.evidence-list small{display:block;color:#91a2b2}
+.evidence-gaps{border-left:2px solid #c39a61;padding:10px 14px;background:#302c2480;font-size:12px}
+.attempt-list{list-style:none!important;padding:0!important;margin:0}
+.attempt-list>li{border-left:2px solid #496276;padding:0 0 18px 16px;margin:0 0 18px}
+.attempt-list h4{margin:0 0 10px}
+.attempt-list small{color:#96aabb;font-size:11px}
+.attempt-comparison{display:grid;grid-template-columns:120px 1fr;gap:7px 13px;font-size:12px;margin:18px 0}
+.attempt-comparison dt{color:#9baebd}.attempt-comparison dd{margin:0;color:#d2dfe9}
+.draft-heading{display:flex;gap:15px;align-items:baseline}
+.draft-heading p{font-size:13px;color:#b8c9d5}
+.human-review{border-top:1px solid #3c4b57;margin-top:24px;padding-top:6px}
+.proposal-review{border:1px solid #486477;background:#25364388;padding:18px;border-radius:6px;margin-top:20px}
+.proposal-review>div{border-bottom:1px solid #3a5262;padding:12px 0;font-size:13px}
+.investigation-log{margin:24px 0}.investigation-log li{margin:14px 0;font-size:13px}.investigation-log small{display:block;color:#8fa6b8}
+.export-path,#investigation pre{overflow:auto;max-width:100%;font-size:12px;line-height:1.6}
+#investigation :focus-visible{outline:2px solid #9ec6df;outline-offset:3px}
+#investigation .tag{white-space:nowrap;font-size:11px;padding:4px 7px}
+#investigation [hidden]{display:none!important}
+@media(min-width:1700px){.investigation-layout{grid-template-columns:minmax(400px,.9fr) minmax(0,1.45fr)}}
+@media(max-width:1000px){.investigation-layout{grid-template-columns:1fr}.investigation-layout aside{position:static;max-height:none}.investigation-layout .table-wrap{max-height:340px}.case-next{flex-wrap:wrap}}
+@media(prefers-reduced-motion:no-preference){.case-stage-filters button,.case-tabs button,.investigation-layout tr{transition:background-color .12s ease,color .12s ease}}
+
+.preparation-steps{list-style:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:0;margin:16px 0}
+.preparation-steps li{padding:10px 12px;border-left:1px solid #486073;font-size:12px;line-height:1.6;color:#bac9d5}
+.preparation-steps small{display:block;color:#8daabd;font-size:11px;margin-top:5px}
+@media(max-width:1100px){.preparation-steps{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+.investigation-notice{font-size:13px;color:#b9d4df;padding:10px 14px;border-left:2px solid #83b4ce;background:#24354066}.investigation-notice:empty{display:none}

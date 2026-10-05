@@ -12,11 +12,11 @@ For atomic calls and exploratory sessions, see [agent tools](agent-tools.md).
 - Run that plan, observe status, wait, cancel and obtain a local report.
 - Recover a lost start response using its request ID without duplicating execution.
 
-Each selected course adds its connection checks and any declared shared-fixture sequence. The plan lists those additions. Execution is serial: packaged checks, background services, then foreground desktop. Packaged checks own disposable projects. Desktop checks run in isolated script groups; only an authored setup/persistence sequence shares its fixture. Groups organize the report and do not create parallel execution.
+Each selected course adds its connection checks and any declared shared-fixture sequence. The plan lists those additions. Selection/bin checks prepare their own fixtures: choosing bin duplication adds only the packaged and desktop connection checks, while retaining its rename and save/reopen assertions. Neighboring selection, lock, targeting, gap, rename, delete and graphic checks run only when selected. Execution is serial: packaged checks, background services, then foreground desktop. Packaged checks own disposable projects. Desktop checks run in isolated script groups; only an authored setup/persistence sequence shares its fixture. Groups organize the report and do not create parallel execution.
 
 ## Default mixed course
 
-`smoke-full` is the default course: 153 checks, comprising the 137 accepted definitions plus 16 explicit qualification candidates. It runs 57 engine, 7 service and 89 desktop checks, including 13 physical computer-use paths. Candidate results stay labeled by their definition and retained verdict; inclusion does not approve them for custom courses.
+`smoke-full` is the default course. It combines accepted definitions with explicitly allowed qualification candidates across engine, service and desktop targets, including physical computer use. Run `courses --server URL` and `list --server URL` for current membership and counts. Candidate results retain their definition and verdict; inclusion does not approve them for custom courses.
 
 ```sh
 node scripts/smoke.mjs plan --app /path/to/Wizard.app --course smoke-full --out /tmp/full-plan.json --server URL
@@ -25,13 +25,13 @@ node scripts/smoke.mjs run --plan /tmp/full-plan.json --operator "Your name" --w
 
 Preparation attaches the adapter to a disposable copy of that exact package. Keep the Mac unlocked and available for foreground stages. Every independent physical/checklist check gets a fresh project and owned session. Fail and Blocked continue into unrelated groups after confirmed cleanup; an uncertain action stops its session. A package missing required operations retains a Blocked result instead of substituting another build.
 
-`automated-full` remains the accepted-only course. User-created courses remain accepted-only. Warm live-grade sampling stays outside the default because it does not establish Logan's cold-cache criterion. Idle CPU measurement is retained as a separate candidate probe; see [idle candidate](idle-candidate.md). The default revision is now 2. NAS remains deferred.
+`automated-full` remains the accepted-only course. User-created courses remain accepted-only. Warm live-grade sampling stays outside the default because it does not establish Logan's cold-cache criterion. Idle CPU measurement is retained as a separate candidate probe; see [idle candidate](idle-candidate.md). The default revision is now 6. NAS remains deferred.
 
 ## Acceptance boundary
 
 Custom courses can reference only accepted check definitions. A positive acceptance entry binds a check ID to the digest of its executable definition. Changed definitions become ineligible until reviewed again. Saving a course cannot change test definitions, acceptance or the maintained full course.
 
-Charles accepted all existing checks linked to Logan’s checklist on September 27: 137 definitions. The current execution lanes contain 57 packaged, 73 desktop and 7 service checks: unset-rate export moved to the desktop lane because its valid fixture uses New Project. Five unlinked team additions and the subsequent idle CPU candidate remain outside that decision. The CLI can compose all 137 accepted definitions. Acceptance does not require a current passing outcome. Runtime failures and broader checklist coverage are unchanged.
+Charles accepted all existing checks linked to Logan’s checklist on September 27: 137 definitions. That dated decision remains in `scope/accepted-checks.json`. Current lane membership and eligibility come from `list` and `courses`; unset-rate export uses the desktop lane because its valid fixture uses New Project. Unlinked team additions and later candidates remain outside that decision. Acceptance does not require a current passing outcome. Runtime failures and broader checklist coverage are unchanged.
 
 Acceptance is read from `scope/accepted-checks.json`. It is a lead-reviewed source record, not an agent-callable approval operation. Without that record, discovery still works but saving/planning custom courses is blocked. A prior passing run alone does not create acceptance.
 
@@ -88,6 +88,14 @@ A one-off selection file can contain:
 
 Pass it with `plan --app PATH --file selection.json`. Do not combine a selection file with selector flags.
 
+For a focused rerun within one existing course, use `courseIds` with `subsetIds` instead of `checkIds`:
+
+```json
+{"courseIds":["smoke-full"],"subsetIds":["D-SOURCE-COLOR","D-MGFX-BIN-DROP"],"project":"fresh","title":"Focused repair rerun"}
+```
+
+Only members of that course can be selected. Its revision and qualification labels remain in the frozen plan; prerequisites are added explicitly. This does not accept candidates or add them to custom courses. Additional selectors cannot be mixed with a course subset.
+
 Check categories include both the declared runner stage and the original checklist category. The color/colour selector therefore includes the rendered clip-disable check even though its runner stage is Render. Selection does not infer categories from ID prefixes.
 
 Overlapping checks run once, while their group memberships remain in the frozen plan and report. The packaged connection check runs first. Other packaged checks preserve first-selected order; desktop/service stages preserve their authored setup and reopen order. Unavailable variants, unknown checks, unaccepted definitions and empty selections fail explicitly.
@@ -116,7 +124,7 @@ GUI search uses the search worker bundled in that selected package, covered by i
 
 `list --target desktop` filters discovery. Category selection defaults to packaged checks for compatibility; `plan --category color --target all` includes corresponding checks across targets. Explicit check IDs and saved courses can mix targets without this flag.
 
-The `examples/accepted-automated.json` course groups all 137 accepted definitions. It does not accept qualification candidates or the broader scope inventory.
+The `examples/accepted-automated.json` course groups the accepted definitions retained in that example. It does not accept qualification candidates or the broader scope inventory.
 
 Fresh is the available empty starting project. A check's setup populates it as required. Story-user and Large are reserved future inputs and currently fail readiness explicitly.
 
@@ -124,11 +132,11 @@ Color-only plans use the six-file synthetic core pack and no speech model. Speec
 
 Current package compatibility remains conservative: the selected package must match the mapped operation schema. A local run kit retains the exact runtime inputs and lists required external libraries. It does not automatically qualify arbitrary new schemas. The separate [harness bundle](maintaining-harness.md) includes desktop libraries and an installation/update path.
 
-The canonical full Smoke Test course and V1 scope remain distinct from a custom course. The maintained `packaged-full` selection represents all 57 packaged checks, not the entire mixed course or every behavior in Logan's checklist.
+The canonical full Smoke Test course and V1 scope remain distinct from a custom course. The maintained `packaged-full` selection represents the packaged engine checks, not the entire mixed course or every behavior in Logan's checklist.
 
 ## Friday release testing
 
-Choose the downloaded Friday package explicitly. Use the maintained 57-check
+Choose the downloaded Friday package explicitly. Use the maintained
 packaged engine course first:
 
 ```sh
@@ -291,7 +299,7 @@ search shortcuts and glossary drag/drop (SB-02), wire connection with Undo/Redo
 (SB-03), D bypass (SB-05), node-move Undo boundaries (SB-11), and float/redock
 with retained canvas content (SB-09).
 
-These definitions live in `desktop/physical-course.json`. They are included as qualification candidates in `smoke-full`, while remaining outside the accepted 137-check set. Use an existing prepared plan with the
+These definitions live in `desktop/physical-course.json`. They are included as qualification candidates in `smoke-full`, while remaining outside the accepted set. Use an existing prepared plan with the
 isolated desktop runtime and the current runner fingerprint. Execution exports
 an interactive report automatically:
 
@@ -392,3 +400,15 @@ Do not allow a submitter or execution agent to self-approve merely because tests
 - WIZ-512: selection-aware local reporting; external delivery remains deferred.
 
 No Jira records or external services were changed.
+
+## Investigate outcomes
+
+Use `investigation create/show/triage/link/review/export` and `investigations --run ID` to package a completed course, record agent triage, prepare a focused diagnostic selection and retain Report a Bug drafts for human review. See `docs/investigations.md` for the exact sequence and payloads. Exported `repro-selection.json` works with the existing prepare/plan commands; results and local notes remain separate.
+
+## October 3 checklist expansion
+
+`smoke-full` revision 3 adds four independent candidates: `D-SEARCH-FOCUS`, `D-INSPECTOR-BLUR-PHYSICAL`, `D-MASK-CLIPBOARD-PHYSICAL` and `D-SCOPES-VECTOR`. They remain outside the accepted registry until reviewed. Use a focused selection file with `courseIds: ["smoke-full"]` and `subsetIds` containing the desired candidate IDs. Each gets its own desktop group and owned fixture. Context packs for these maintained candidates supply that selection and the normal plan/run commands. On the selected October 2 nightly, search focus and physical blur/Undo passed. Mask paste retained an unexpected wiring failure, and vectorscope Post IDT retained a response failure. Read [Harness control](harness-control.md) for the three control layers and examples.
+
+## Project lifecycle candidates
+
+`smoke-full` revision 4 adds `D-PROJECT-NEW`, `D-PROJECT-SAVE-AS` and `D-PREFERENCES-PROJECTLESS`. Select each independently with a maintained-course subset. Each starts in its own owned project and uses Qt controls for the user action, CLI/file readbacks for content, normal Quit acknowledgments and a fresh process for reopening. They remain candidates until lead review. The original project is compared after creating or editing a separate bundle.

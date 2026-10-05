@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateNativeRequest} from '../desktop/macos-input.mjs';
+import {validateNativeRequest,physicalKeys,normalizePhysicalKey} from '../desktop/macos-input.mjs';
 import {mkdtemp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 
@@ -24,6 +24,31 @@ test('screenshot admission confines a crop to its observed owned window',()=>{
  for(const change of [{window:0},{frame:null},{command:'inspect'},{captureRect:{x:-1,y:0,width:2,height:2}},{captureRect:{x:0,y:0,width:201,height:10}},{captureRect:{x:0,y:0,width:10,height:NaN}},{captureRect:{...shot.captureRect,extra:true}}])assert.throws(()=>validateNativeRequest({...shot,...change}));
 });
 
+test('editing chords share the advertised keys and reject malformed or unsupported input',()=>{
+ const request={command:'key',pid:123,started:'observed',window:10,frame:{x:0,y:0,width:200,height:100}};
+ for(const key of physicalKeys)assert.doesNotThrow(()=>validateNativeRequest({...request,key:'cmd+shift+'+key}));
+ for(const key of ['j','l','i','o','cmd+shift+g','shift+right','cmd+1','f12','period'])assert.doesNotThrow(()=>validateNativeRequest({...request,key}));
+ for(const key of ['','cmd++left','left+shift','meta+j','cmd+q','f13','arrowright','cmd+'])assert.throws(()=>validateNativeRequest({...request,key}));
+ assert.throws(()=>validateNativeRequest({...request,key:'right',window:0}));assert.throws(()=>validateNativeRequest({...request,key:'right',started:''}));
+});
+
+test('common agent key names become actual driver keys while unsupported chords stay rejected',()=>{
+ for(const [given,expected] of [['backspace','delete'],['ENTER','return'],['esc','escape'],['super+shift+backspace','cmd+shift+delete'],['option+left','alt+left']])assert.equal(normalizePhysicalKey(given),expected);
+ for(const given of ['cmd+cmd+z','super+cmd+z','cmd++z','backspace+shift','cmd+q',{},null,'command+z'])assert.throws(()=>normalizePhysicalKey(given));
+ const request={command:'key',pid:123,started:'observed',window:10,frame:{x:0,y:0,width:200,height:100},key:'backspace'};assert.doesNotThrow(()=>validateNativeRequest(request));assert.equal(request.key,'backspace','Admission does not mutate the caller request');
+});
+
+test('native key codes agree with advertised controls without posting keyboard events',{skip:process.platform!=='darwin'},async()=>{
+ const root=await mkdtemp('/private/tmp/athanor-key-contract-');
+ try{
+  const source=await readFile(new URL('../desktop/macos-input.swift',import.meta.url),'utf8'),start=source.indexOf('let keyCodes:'),end=source.indexOf('func scrollEvent(',start);assert.ok(start>=0&&end>start);
+  await writeFile(root+'/keys.swift','import Foundation\nimport CoreGraphics\nimport Carbon\n'+source.slice(start,end)+'\nlet data=try JSONSerialization.data(withJSONObject:keyCodes)\nprint(String(decoding:data,as:UTF8.self))\n');
+  execFileSync('/usr/bin/swiftc',['-module-cache-path',root+'/module-cache',root+'/keys.swift','-o',root+'/keys'],{timeout:60000});
+  const codes=JSON.parse(execFileSync(root+'/keys',{encoding:'utf8',timeout:5000}));assert.deepEqual(new Set(Object.keys(codes)),new Set(physicalKeys));
+  for(const [key,code] of Object.entries({j:38,l:37,i:34,o:31,left:123,right:124,up:126,down:125,'0':29,'1':18,f1:122,f12:111,period:47,comma:43}))assert.equal(codes[key],code,key);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('native identity treats path aliases equally and rejects idle or pre-request capture frames',{skip:process.platform!=='darwin'},async()=>{
  const root=await mkdtemp('/private/tmp/athanor-frame-contract-');
  try{
@@ -33,4 +58,11 @@ test('native identity treats path aliases equally and rejects idle or pre-reques
   execFileSync('/usr/bin/swiftc',['-module-cache-path',root+'/module-cache',root+'/probe.swift','-o',root+'/probe'],{timeout:60000});
   assert.match(execFileSync(root+'/probe',{encoding:'utf8',timeout:5000}),/Native identity and frame admission verified/);
  }finally{await rm(root,{recursive:true,force:true});}
+});
+test('native paths and held modifiers are bounded before any event is dispatched',()=>{
+ const base={command:'drag',pid:123,started:'observed',window:10,frame:{x:0,y:0,width:200,height:100},x:10,y:10,toX:80,toY:20,path:[{x:10,y:10},{x:40,y:50},{x:80,y:20}],modifiers:['shift'],durationMs:1000};
+ assert.doesNotThrow(()=>validateNativeRequest(base));
+ for(const change of [{modifiers:['shift','shift']},{modifiers:['unknown']},{modifiers:'shift'},{command:'key',key:'j'},{path:[]},{path:[{x:10,y:10},{x:201,y:20},{x:80,y:20}]},{path:[{x:11,y:10},{x:80,y:20}]},{path:[{x:10,y:10},{x:80,y:21}]},{toWindow:11,toFrame:base.frame},{path:[{x:10,y:10,t:0},{x:80,y:20}]}])assert.throws(()=>validateNativeRequest({...base,...change}));
+ assert.doesNotThrow(()=>validateNativeRequest({...base,command:'click',path:undefined,modifiers:[],durationMs:undefined,clickCount:2}));
+ assert.throws(()=>validateNativeRequest({...base,clickCount:2}));
 });

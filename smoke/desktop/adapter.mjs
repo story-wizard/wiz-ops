@@ -1,6 +1,6 @@
 import path from 'node:path';
 import {spawn,execFileSync} from 'node:child_process';
-import {mkdir,readFile,open,cp,mkdtemp,unlink,appendFile} from 'node:fs/promises';
+import {mkdir,readFile,open,cp,mkdtemp,unlink,appendFile,access} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
 import {realpathSync,appendFileSync,constants} from 'node:fs';
 import {PackagedEngine,assert,pause,OutcomeError} from '../runner/engine.mjs';
@@ -12,9 +12,9 @@ import {attachSelectedBuild} from './attach.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
 import {currentAction,withAgentAction,withAdapterAction,validateApplicationParams,validateNativeParams,markUnknown,requireProof,jsonLines,terminalResult} from './agent-proof.mjs';
 
-export const agentReadOperations=['project.get_name','timeline.inspect','graph.get_clip_graph','media.list_assets','media.resolve_path','media.probe','spellbook.inspect','spellbook.list'];
+export const agentReadOperations=['project.get_name','timeline.inspect','playback.query_transport','graph.get_clip_graph','media.list_assets','media.resolve_path','media.probe','spellbook.inspect','spellbook.list'];
 // Observations and ownership-checked clipboard bookkeeping do not edit the test project.
-export const agentReadNative=['capabilities','inspect','timeline-clip-rect','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview','clipboard-save','clipboard-mark','clipboard-restore'];
+export const agentReadNative=['capabilities','inspect','model-page','model-value','timeline-clip-rect','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview','clipboard-save','clipboard-mark','clipboard-restore'];
 export async function markAgentMutation(file,session){
   if(!session.agentTracking)return;
   if(currentAction(file)?.purpose==='shutdown')return;
@@ -73,10 +73,27 @@ export async function prepareDesktop(sourceApp,qtCocoaPlugin,pairedCli,prepared)
   await pairDesktopCli(session,pairedCli);return session;
 }
 
-export async function openAttachedProject(file,bundle){
+export async function missingMediaContinuation(session,ui,fixtureFile){
+  const blocked=message=>{throw new OutcomeError(message,'Blocked');};
+  if(!session.selectedChecks?.includes('D-MEDIA-RELINK')||fixtureFile!==path.join(session.root,'relink-prepared.json'))blocked('Offline continuation requires the selected relink check and its owned fixture.');
+  const root=realpathSync(session.root);
+  if(root!==session.root||realpathSync(fixtureFile)!==fixtureFile)blocked('Relink fixture paths must remain in the owned workspace without redirected parents.');
+  const e=await readJSON(fixtureFile);
+  if(typeof e.original!=='string'||typeof e.moved!=='string'||realpathSync(path.dirname(e.original))!==path.dirname(e.original))blocked('Relink media paths are invalid or redirected.');
+  if(e.asset!==session.assets.plate||e.pid===session.pid||!inside(path.join(root,'media'),e.original)||!inside(path.join(root,'relocated-media'),e.moved)||realpathSync(e.moved)!==e.moved||await sha(e.moved)!==e.digest)blocked('Relink media identity, ownership or bytes changed before reopening.');
+  const index=await readJSON(path.join(session.bundle,'assets/index.json')),project=await readJSON(path.join(session.bundle,'project.json')),missing=[];
+  for(const a of index.assets){const source=a.local_path||path.join(project.media_roots.find(r=>r.id===a.media_root_id)?.path||'',a.asset_url);try{await access(source);}catch(error){if(error.code!=='ENOENT')throw error;missing.push({asset:a.asset_id,path:source});}}
+  if(missing.length!==1||missing[0].asset!==e.asset||missing[0].path!==e.original)blocked('Missing media does not match the single deliberately moved relink asset.');
+  const dialogs=ui.widgets.filter(w=>w.title==='Missing Media'&&w.window===w.id);
+  const buttons=ui.widgets.filter(w=>dialogs.length===1&&w.window===dialogs[0].id&&w.class==='QPushButton'&&w.text==='Continue Offline'&&w.enabled);
+  if(buttons.length!==1)blocked('The known relink fixture has no unique Continue Offline action.');
+  return {target:buttons[0].id,asset:e.asset,original:e.original,moved:e.moved,sha256:e.digest};
+}
+export async function openAttachedProject(file,bundle,{missingMediaFixture}={}){
   const session=await readJSON(file);assert(inside(session.root,bundle),'Startup must open the owned fixture project.');
   const visible=ui=>ui.widgets.some(w=>w.class==='MainWindow'&&w.title.startsWith(path.basename(bundle)+' — Wizard'))&&ui.widgets.some(w=>w.name==='panelSubtabSelector');
-  const observed=await nativeCall(file,'inspect');if(visible(observed))return;
+  const observed=await nativeCall(file,'inspect');if(visible(observed)&&!observed.widgets.some(w=>w.title==='Missing Media'))return;
+  if(!observed.widgets.some(w=>w.title==='Missing Media')){
   const startup=observed.widgets.filter(w=>w.name==='startupOpenButton'&&w.enabled);
   if(startup.length===1)await nativeCall(file,'click',{target:startup[0].id});
   else{const actions=observed.actions.filter(a=>a.text==='Open...'&&a.enabled);assert(actions.length===1,'No unique Open Project action.');await nativeCall(file,'action',{target:actions[0].id});}
@@ -84,17 +101,24 @@ export async function openAttachedProject(file,bundle){
   for(let i=0;i<50;i++){const ui=await nativeCall(file,'inspect');field=ui.widgets.find(w=>w.name==='fileNameEdit'&&w.class==='QLineEdit'&&w.enabled);if(field)break;await pause(100);}
   assert(field,'Selected build did not expose the project file selector.');
   await nativeCall(file,'text',{target:field.id,text:bundle});await nativeCall(file,'key',{target:field.id,key:'Return'});
-  let last;
-  for(let i=0;i<100;i++){last=await nativeCall(file,'inspect');if(visible(last))return;
+  }
+  let last,continuedOffline=false;
+  for(let i=0;i<100;i++){last=await nativeCall(file,'inspect');
     const missing=last.widgets.find(w=>w.title==='Missing Media');
-    if(missing)throw new OutcomeError('Project reopening is blocked by Missing Media. Preserve the fixture and inspect its source paths; do not continue offline.','Blocked');
+    if(missing){
+      if(continuedOffline){await pause(100);continue;}
+      if(!missingMediaFixture)throw new OutcomeError('Project reopening is blocked by Missing Media. Preserve the fixture and inspect its source paths; do not continue offline.','Blocked');
+      const proof=await missingMediaContinuation(session,last,missingMediaFixture);await writeJSON(path.join(session.root,'missing-media-continuation.json'),proof);
+      await nativeCall(file,'click',{target:proof.target});missingMediaFixture=null;continuedOffline=true;
+    }else if(visible(last))return;
     await pause(100);
   }
   const dialogs=last?.widgets.filter(w=>w.window===w.id).map(w=>({class:w.class,title:w.title}));
   throw new OutcomeError('The selected build did not open '+bundle+' within ten seconds. Last windows: '+JSON.stringify(dialogs),'Blocked');
 }
 
-export async function launchDesktop(session,{foreground=true}={}){
+export async function launchDesktop(session,{foreground=true,missingMediaFixture}={}){
+  assert(!missingMediaFixture||foreground,'Intentional missing-media reopening requires the foreground relink course.');
   verifyDesktopPaths(session);
   if(session.pid){let alive=true;try{process.kill(session.pid,0);}catch(e){if(e.code!=='ESRCH')throw e;alive=false;}assert(!alive,'Recorded desktop PID is still alive; stop or inspect it before relaunch.');}
   assert((await fingerprint(session.app,{packageTree:true})).sha256===session.guiHash,'Desktop build changed since preparation.');
@@ -105,7 +129,7 @@ export async function launchDesktop(session,{foreground=true}={}){
       const deadline=Date.now()+30000;let endpoint;
       while(Date.now()<deadline){try{endpoint=await readJSON(path.join(session.env.WIZSERVER_RUNTIME_DIR,'gui.json'));break;}catch(e){if(e.code!=='ENOENT')throw e;}await pause(100);}
       assert(endpoint?.pid===session.pid&&endpoint.kind==='gui','Selected GUI endpoint did not match the owned process.');session.endpoint=endpoint;session.url='http://127.0.0.1:'+endpoint.port;await writeJSON(file,session);
-      await openAttachedProject(file,session.bundle);
+      await openAttachedProject(file,session.bundle,{missingMediaFixture});
       const opened=await desktopCall(file,'project.get_name');assert(typeof opened.name==='string'&&opened.name.length>0,'Opened project has no observed name');
       const timeline=await desktopCall(file,'timeline.inspect',{timeline_id:session.main.id});assert(timeline.timeline?.timeline_id===session.main.id,'Opened project did not restore the prepared timeline identity');
       if(foreground){const ui=await nativeCall(file,'inspect'),main=ui.widgets.filter(w=>w.class==='MainWindow');assert(main.length===1,'Selected build has no unique main window.');await nativeCall(file,'activate',{target:main[0].id});}
@@ -198,7 +222,7 @@ export function verifyNativeCapabilities(ready,required=['inspect']){
 export async function captureDesktopFailure(file,error,label='check'){
   let session;try{session=await readJSON(file);}catch(e){return {captureError:e.message};}
   const prefix=String(label).replace(/[^a-zA-Z0-9_-]/g,'_').slice(0,80)+'-g'+(session.generation||0)+'-'+randomUUID().slice(0,8);
-  const evidence={failureState:path.join(session.root,prefix+'-failure-state.json')},diagnostic={error:error.message,status:error.status||'Fail',wait:error.diagnostics||null,captureErrors:[]};
+  const evidence={failureState:path.join(session.root,prefix+'-failure-state.json')},diagnostic={error:error.message,status:error.status||'Fail',code:error.code||null,nextActions:error.nextActions||[],wait:error.diagnostics?.expected?error.diagnostics:null,diagnostics:error.diagnostics||null,captureErrors:[]};
   try{
     diagnostic.ui=await nativeCall(file,'inspect');
     const windows=diagnostic.ui.widgets.filter(w=>w.window===w.id),window=windows.find(w=>w.active)||windows.find(w=>w.class==='MainWindow');
@@ -218,6 +242,12 @@ export async function nativeCall(file,op,params={}){
  validateNativeParams(op,params);
  return withAdapterAction(file,!agentReadNative.includes(op),op,params,()=>nativeCallOwned(file,op,params));
 }
+// Readback may overlap a physical gesture's preflight. Serialize requests to
+// the bridge mailbox; never remove an existing lock or replay a dispatch.
+export async function acquireNativeLock(lock,{timeoutMs=6000}={}){
+ const deadline=performance.now()+timeoutMs;
+ for(;;){try{return await open(lock,'wx');}catch(e){if(e.code!=='EEXIST')throw e;if(performance.now()>=deadline)throw new OutcomeError('Native bridge is busy; no request was dispatched','Blocked');await pause(15);}}
+}
 async function nativeCallOwned(file,op,params={}){
   const session=await readJSON(file);verifyDesktopOwner(session);
   assert(session.inputMode!=='service'||['capabilities','inspect','screenshot','snapshot-widget'].includes(op),'Background service sessions cannot dispatch UI input. Run the foreground desktop course for UI evidence.');
@@ -232,9 +262,10 @@ async function nativeCallOwned(file,op,params={}){
   const capabilities=verifyNativeCapabilities(ready);
   if(!capabilities.operations.includes(op))throw new OutcomeError('Unsupported native operation: '+op,'Blocked');
   if(op==='timeline-clip-rect'&&!capabilities.timelineGeometry)throw new OutcomeError('This package does not export clip geometry; inspect the visible timeline before choosing another input route','Blocked');
-  const lock=path.join(session.root,'native-call.lock'),held=await open(lock,'wx'),id=randomUUID();
+  const lock=path.join(session.root,'native-call.lock'),held=await acquireNativeLock(lock),id=randomUUID();
   const request={...params,id,generation:ready.generation,op};
   try{
+    verifyDesktopOwner(session);
     await writeJSON(path.join(session.native,'request.json'),request);
     for(let i=0;i<100;i++){
       let response;try{response=parseNativeResponse(await readFile(path.join(session.native,`response-${id}.json`),'utf8'),{id,pid:session.pid,generation:ready.generation});}catch(e){if(e.code!=='ENOENT')throw e.status==='Unknown'?e:new OutcomeError('Cannot read the dispatched native response; outcome unknown. Inspect before continuing.','Unknown');}

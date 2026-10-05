@@ -75,9 +75,9 @@
     },
     {
       "file": "desktop/course.json",
-      "sha256": "190ed4ed512c2787f11b09ff630d635c61fb9fc6bb189044fe022173e30bf174",
+      "sha256": "1c609542dcb2319b66cac9d7097ed18efe8880d678dfff4c8c2a33d868a8240c",
       "id": "local-desktop-v1",
-      "revision": 11,
+      "revision": 23,
       "target": "Instrumented local GUI with isolated Qt runtime",
       "requiredCheckIds": [
         "D-CLI-01",
@@ -160,7 +160,31 @@
         "S-EXPORT-UNSET-RATE",
         "D-EXTERNAL-RELOAD",
         "D-SOURCE-COLOR",
-        "D-MGFX-BIN-DROP"
+        "D-MGFX-BIN-DROP",
+        "D-SEARCH-FOCUS",
+        "D-INSPECTOR-BLUR-PHYSICAL",
+        "D-MASK-CLIPBOARD-PHYSICAL",
+        "D-SCOPES-VECTOR",
+        "D-PROJECT-NEW",
+        "D-PROJECT-SAVE-AS",
+        "D-PREFERENCES-PROJECTLESS",
+        "D-SEARCH-EMPTY",
+        "D-CLIPBOARD-LARGE",
+        "D-HISTORY-50",
+        "D-IMPORT-DIALOG",
+        "D-MEDIA-THUMBNAIL",
+        "D-MEDIA-COLOR-COLUMN",
+        "D-TRANSCRIPT-SEARCH",
+        "D-INGEST-SEARCH-LIVE",
+        "D-PRIMARY-PANEL",
+        "D-TONE-ZONES",
+        "D-BALANCE-PANEL",
+        "D-SHORTCUT-CONFLICT",
+        "D-DOCK-MODIFIER",
+        "D-MIXER-UI",
+        "D-METER-PLAYBACK",
+        "D-INSPECTOR-PLAYBACK",
+        "D-INGEST-PLAYBACK"
       ]
     },
     {
@@ -318,7 +342,9 @@
         "A-LP-02",
         "A-LP-02-S",
         "D-LP-02-SAVE",
-        "D-LP-02-RELAUNCH"
+        "D-LP-02-RELAUNCH",
+        "D-PROJECT-NEW",
+        "D-PROJECT-SAVE-AS"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -326,7 +352,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Save and real GUI relaunch are exercised. New-project and Save As dialogs remain."
+      "remaining": "New Project and Save As passed on the October 2 nightly with independent content, normal Quit, fresh-process reopening and unchanged original checks. Older-format input and representative project variants remain."
     },
     {
       "id": "LP-03",
@@ -392,7 +418,8 @@
       "area": "Ingestion / media bin",
       "disposition": "Partial",
       "checkIds": [
-        "IN-03"
+        "IN-03",
+        "D-IMPORT-DIALOG"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -400,7 +427,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+      "remaining": "October 3 physical UI cohort authored; runtime qualification pending. The physical Import Files path registers exactly one synthetic source outside the project parent, preserves the source bytes and displays its exact asset identity. Broader paths in the original criterion remain."
     },
     {
       "id": "IN-04",
@@ -408,7 +435,8 @@
       "disposition": "Partial",
       "checkIds": [
         "A-IN-04-T",
-        "A-IN-04-W"
+        "A-IN-04-W",
+        "D-MEDIA-THUMBNAIL"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -416,14 +444,15 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+      "remaining": "October 3 physical UI cohort authored; runtime qualification pending. The known colour-plate asset has its own decoded thumbnail with usable dimensions and remains bound to the media row. Timeline filmstrips and waveforms are additional coverage. Broader paths in the original criterion remain."
     },
     {
       "id": "IN-05",
       "area": "Ingestion / media bin",
       "disposition": "Partial",
       "checkIds": [
-        "A-IN-05"
+        "A-IN-05",
+        "D-MEDIA-COLOR-COLUMN"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -431,7 +460,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+      "remaining": "October 3 physical UI cohort authored; runtime qualification pending. The observed Color Space model column for the exact fixture asset shows Rec.709, consistent with its ingested sidecar. Broader paths in the original criterion remain."
     },
     {
       "id": "IN-06",
@@ -488,7 +517,8 @@
       "area": "Semantic search",
       "disposition": "Partial",
       "checkIds": [
-        "SS-01"
+        "SS-01",
+        "D-TRANSCRIPT-SEARCH"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -496,7 +526,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+      "remaining": "October 3 physical UI cohort authored; runtime qualification pending. A physical silver camera query finds the known speech clip with the correct asset identity and independent word-time evidence in the same Wizard process. Broader paths in the original criterion remain."
     },
     {
       "id": "SS-02",
@@ -525,14 +555,15 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "A GUI filename-search check exists but search is unavailable in the local build. Resolve setup and verify actual matches."
+      "remaining": "Filename search executes through the selected package search worker and has retained local passing evidence. Other modes and representative fixtures remain."
     },
     {
       "id": "SS-04",
       "area": "Semantic search",
       "disposition": "Partial",
       "checkIds": [
-        "SS-04"
+        "SS-04",
+        "D-SEARCH-EMPTY"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -540,14 +571,15 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+      "remaining": "Physical filename search now has known-match / no-match / restored-match controls. Other search modes and query forms remain."
     },
     {
       "id": "SS-05",
       "area": "Semantic search",
       "disposition": "Partial",
       "checkIds": [
-        "SS-05"
+        "SS-05",
+        "D-INGEST-SEARCH-LIVE"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -555,7 +587,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+      "remaining": "October 3 physical UI cohort authored; runtime qualification pending. An absent unique filename becomes a physical Name search result after import and local ingest; the displayed asset identity and Wizard PID are preserved. Transcript live indexing is additional coverage. Broader paths in the original criterion remain."
     },
     {
       "id": "SS-06",
@@ -575,7 +607,8 @@
       "area": "Semantic search",
       "disposition": "Partial",
       "checkIds": [
-        "A-SS-07"
+        "A-SS-07",
+        "D-SEARCH-FOCUS"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -583,7 +616,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Project/asset/bin search scope is covered. Needs focus changes in the visible editor and an independent result observation."
+      "remaining": "Project search while physically focusing A/B/A passed on the October 2 nightly with independent result and preserved timeline observations. Broader queries and representative fixtures remain."
     },
     {
       "id": "TL-01",
@@ -797,7 +830,8 @@
       "area": "Colour",
       "disposition": "Partial",
       "checkIds": [
-        "A-CO-01"
+        "A-CO-01",
+        "D-PRIMARY-PANEL"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -805,14 +839,15 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+      "remaining": "October 3 physical UI cohort authored; runtime qualification pending. Gamma wheel, pivot with a nonneutral grade, and the explicit Linear model change their intended graph parameters. Independent pixels respond and Undo restores exact graphs. Broader paths in the original criterion remain."
     },
     {
       "id": "CO-02",
       "area": "Colour",
       "disposition": "Partial",
       "checkIds": [
-        "A-CO-02"
+        "A-CO-02",
+        "D-TONE-ZONES"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -820,7 +855,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+      "remaining": "October 3 physical UI cohort authored; runtime qualification pending. Each of the five Tone zone wheels changes grade parameters and rendered/displayed pixels; resetting the selected zone restores the baseline image and preserves clip timing. Broader paths in the original criterion remain."
     },
     {
       "id": "CO-03",
@@ -846,7 +881,8 @@
       "disposition": "Partial",
       "checkIds": [
         "A-CO-04",
-        "A-CO-04-W"
+        "A-CO-04-W",
+        "D-BALANCE-PANEL"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -854,7 +890,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+      "remaining": "October 3 physical UI cohort authored; runtime qualification pending. Each physical Balance control changes its own parameter and rendered/displayed pixels. Undo independently restores the exact graph and reference image without changing timing. Broader paths in the original criterion remain."
     },
     {
       "id": "CO-05",
@@ -926,7 +962,8 @@
       "area": "Colour",
       "disposition": "Partial",
       "checkIds": [
-        "D-SCOPES-01"
+        "D-SCOPES-01",
+        "D-SCOPES-VECTOR"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -934,7 +971,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Histogram, luma/RGB waveform and RGB parade image response is exercised at Post IDT, Post Primary and Pre DVT. Vectorscope, value readout, graded-tap equivalence and numerical colour calibration remain."
+      "remaining": "New hybrid candidate D-SCOPES-VECTOR is implemented with independent state/image assertions. Focused selected-build runtime qualification and lead acceptance are pending; retain the original broader criterion."
     },
     {
       "id": "RG-01",
@@ -959,7 +996,8 @@
       "area": "Render graph / Inspector",
       "disposition": "Partial",
       "checkIds": [
-        "D-INSPECTOR-01"
+        "D-INSPECTOR-01",
+        "D-INSPECTOR-BLUR-PHYSICAL"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -967,14 +1005,15 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Inspector Position X and reset change graph values and pixels. Expand to other controls and node types."
+      "remaining": "New hybrid candidate D-INSPECTOR-BLUR-PHYSICAL is implemented with independent state/image assertions. Focused selected-build runtime qualification and lead acceptance are pending; retain the original broader criterion."
     },
     {
       "id": "RG-03",
       "area": "Render graph / Inspector",
       "disposition": "Partial",
       "checkIds": [
-        "RG-03"
+        "RG-03",
+        "D-MASK-CLIPBOARD-PHYSICAL"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -982,7 +1021,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Matte connection and rendered pixels are covered. WIZ-475 concerns copying/pasting a mask node; the current connection test does not prove that clipboard path."
+      "remaining": "New hybrid candidate D-MASK-CLIPBOARD-PHYSICAL is implemented with independent state/image assertions. Focused selected-build runtime qualification and lead acceptance are pending; retain the original broader criterion."
     },
     {
       "id": "RG-04",
@@ -1413,7 +1452,8 @@
       "checkIds": [
         "A-AU-01",
         "A-AU-01-C",
-        "A-AU-01-EQ"
+        "A-AU-01-EQ",
+        "D-MIXER-UI"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -1421,7 +1461,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+      "remaining": "October 3 physical UI cohort authored; runtime qualification pending. Exact track-strip input changes real rendered loudness. Fader reset and unmute restore it; soloing an empty track suppresses the populated track, and clearing Solo restores output. Broader paths in the original criterion remain."
     },
     {
       "id": "AU-02",
@@ -1441,7 +1481,8 @@
       "area": "Audio",
       "disposition": "Partial",
       "checkIds": [
-        "A-AU-03"
+        "A-AU-03",
+        "D-METER-PLAYBACK"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -1449,7 +1490,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+      "remaining": "October 3 physical UI cohort authored; runtime qualification pending. Known non-silent audio advances during physical playback; the visible stereo meter repeatedly responds, then decays after a physical pause. This is level response, not calibrated loudness. Broader paths in the original criterion remain."
     },
     {
       "id": "EX-01",
@@ -1531,22 +1572,25 @@
     {
       "id": "UI-02",
       "area": "Panels / shortcuts / UI",
-      "disposition": "Not automated",
-      "checkIds": [],
+      "disposition": "Partial",
+      "checkIds": [
+        "D-DOCK-MODIFIER"
+      ],
       "originalProjectVariants": [
         "Fresh",
         "Story-user",
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs visible controls/shortcuts and independent UI observations for the original checklist path."
+      "remaining": "October 3 physical UI cohort authored; runtime qualification pending. Dock overlays appear during the unmodified positive-control drag and are absent in at least three held-Alt observations during the same docking path. Timeline content is preserved. Broader paths in the original criterion remain."
     },
     {
       "id": "UI-03",
       "area": "Panels / shortcuts / UI",
       "disposition": "Partial",
       "checkIds": [
-        "D-SHORTCUT-REBIND"
+        "D-SHORTCUT-REBIND",
+        "D-SHORTCUT-CONFLICT"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -1554,7 +1598,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Play/pause is rebound, exercised, reset and exercised again. Conflict handling and other command contexts remain."
+      "remaining": "October 3 physical UI cohort authored; runtime qualification pending. Assigning Cmd+Z to Play/Pause names its Undo collision. The latest available binding controls playback and preserves timeline content; per-row reset restores Space. Broader paths in the original criterion remain."
     },
     {
       "id": "UI-04",
@@ -1577,7 +1621,8 @@
       "area": "Panels / shortcuts / UI",
       "disposition": "Partial",
       "checkIds": [
-        "D-UI-PREFERENCES"
+        "D-UI-PREFERENCES",
+        "D-PREFERENCES-PROJECTLESS"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -1585,7 +1630,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Application and Current Project preferences pages open with a project loaded. Projectless Preferences and setting-specific behavior remain."
+      "remaining": "Projectless Application preference pages, Cancel and unchanged original project passed on the October 2 nightly. Setting-specific behavior and additional contexts remain."
     },
     {
       "id": "CLI-01",
@@ -1848,15 +1893,17 @@
     {
       "id": "PB-17",
       "area": "Playback",
-      "disposition": "Not automated",
-      "checkIds": [],
+      "disposition": "Partial",
+      "checkIds": [
+        "D-INGEST-PLAYBACK"
+      ],
       "originalProjectVariants": [
         "Fresh",
         "Story-user",
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs an owned GUI/session host, transport control and independent frame/audio observations. Offline still checks cover only their stated frames."
+      "remaining": "Candidate packaged offline source ingest alongside physical playback requires at least three complete overlapping samples. Oz conversation dispatch and model-analysis workloads remain."
     },
     {
       "id": "PB-18",
@@ -2040,15 +2087,17 @@
     {
       "id": "PF-11",
       "area": "Performance",
-      "disposition": "Not automated",
-      "checkIds": [],
+      "disposition": "Partial",
+      "checkIds": [
+        "D-INSPECTOR-PLAYBACK"
+      ],
       "originalProjectVariants": [
         "Fresh",
         "Story-user",
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+      "remaining": "Candidate physical playback with a visible Inspector on six-node graded graphs. Timed compositor frames, transport and process resources are retained. Every-frame/drop counters and comparison baselines remain."
     },
     {
       "id": "PF-12",
@@ -2124,7 +2173,8 @@
       "area": "Performance",
       "disposition": "Partial",
       "checkIds": [
-        "A-PF-17"
+        "A-PF-17",
+        "D-HISTORY-50"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -2132,7 +2182,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+      "remaining": "The October 2 nightly passed 50 physical edits, 50 Undo and 50 Redo states after fifty setup rename commands. Per-step latency is retained; performance thresholds and comparative baselines remain undefined."
     },
     {
       "id": "PF-18",
@@ -2152,7 +2202,8 @@
       "area": "Performance",
       "disposition": "Partial",
       "checkIds": [
-        "A-PF-19"
+        "A-PF-19",
+        "D-CLIPBOARD-LARGE"
       ],
       "originalProjectVariants": [
         "Fresh",
@@ -2160,7 +2211,7 @@
         "Large"
       ],
       "representativeVariantAcceptance": "Not established by synthetic fixtures",
-      "remaining": "Needs the specified live workload, retained time-series metrics and a comparison baseline. Bounded headless checks cover content and retain timings only."
+      "remaining": "Candidate physically copies/pastes 100 same-clock video clips with independent IDs, sources, ordering, exact timing and one Undo/Redo. Linked audio, mixed rates and larger selections remain."
     },
     {
       "id": "PF-20",

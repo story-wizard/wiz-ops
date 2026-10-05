@@ -45,3 +45,12 @@ test('a live preparation attachment blocks another launch even after its coordin
   assert.equal(ownedDesktopSessions(data)[0]?.pid,child.pid);child.kill('SIGTERM');await closed;assert.equal(ownedDesktopSessions(data).length,0);
  }finally{child?.kill('SIGTERM');await closed;await rm(data,{recursive:true,force:true});}
 });
+
+test('an explicit preparation ID is admitted once and cannot overwrite retained progress',async()=>{
+ const data=await mkdtemp(path.join(tmpdir(),'athanor-preparation-id-')),preparationId='11111111-1111-4111-8111-111111111111';let calls=0;
+ try{
+  const options={app:'/Selected.app',dataDir:data,selection:{checkIds:['D-CLI-01']},preparationId},execute=async()=>{calls++;return {planHash:'test-plan',packageHash:'test-package'};};
+  const first=await startPreparation(options,{execute});await first.completion;assert.equal(first.job.id,preparationId);
+  await assert.rejects(()=>startPreparation(options,{execute}),/already retained/);assert.equal(calls,1);assert.equal((await readPreparation(data,preparationId)).state,'Ready');
+ }finally{await rm(data,{recursive:true,force:true});}
+});

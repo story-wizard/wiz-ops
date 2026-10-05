@@ -49,10 +49,11 @@ test('gap checks create independent timelines and reject incomplete or wrong-sou
 test('background native input is denied before foreground lease or mutation admission',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'athanor-service-admission-'));
  try{
-  const source=await readFile(new URL('../desktop/adapter.mjs',import.meta.url),'utf8'),start=source.indexOf('export async function nativeCall('),end=source.indexOf('\nexport ',start+1);assert.ok(start>=0&&end>start);
+  const source=await readFile(new URL('../desktop/adapter.mjs',import.meta.url),'utf8'),start=source.indexOf('export async function nativeCall('),end=source.indexOf('\nexport function parseNativeResponse(',start+1);assert.ok(start>=0&&end>start);
   const {pathToFileURL}=await import('node:url'),{writeFile}=await import('node:fs/promises');
   const module=path.join(root,'admission.mjs');await writeFile(module,`import {assert} from '${new URL('../runner/engine.mjs',import.meta.url).href}';import {validateNativeParams} from '${new URL('../desktop/agent-proof.mjs',import.meta.url).href}';const readJSON=async()=>({inputMode:'service',plan:{runtime:{kind:'selected-build-attachment'}}});const verifyDesktopOwner=()=>{};const verifyDesktopLease=()=>{throw Error('Foreground lease must not be requested');};const markAgentMutation=()=>{throw Error('Denied input must not mutate admission state');};const agentReadNative=['inspect','capabilities','screenshot','snapshot-widget'];const withAdapterAction=async(f,m,o,p,fn)=>fn();\n`+source.slice(start,end));
   const {nativeCall}=await import(pathToFileURL(module).href);
   for(const op of ['context-click','drop-model-item','snapshot-presented','type-text','key','click','action','activate','text','select','drag','item-click','close-window','clipboard-save','spellbook-run-local','snapshot-node-preview'])await assert.rejects(()=>nativeCall('fixture',op,{}),/cannot dispatch UI input/);
+  await assert.rejects(()=>nativeCall('fixture','resize-window',{target:'window',width:800,height:600}),/cannot dispatch UI input/);
  }finally{await rm(root,{recursive:true,force:true});}
 });

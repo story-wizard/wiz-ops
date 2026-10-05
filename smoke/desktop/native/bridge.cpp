@@ -1,11 +1,14 @@
 // Test-only Qt plugin. The style factory provides a startup hook; Wizard replaces
 // the returned style with its normal WizStyle. No macOS accessibility calls.
 #include <QtWidgets>
+#include "bug-report-prefill.h"
 #include <QtTest/QTest>
 #include <QStylePlugin>
+#include <QScreen>
 #include <QSaveFile>
 #include <QUuid>
 #include <dlfcn.h>
+#include <algorithm>
 #include <objc/runtime.h>
 #include <objc/message.h>
 #include <ApplicationServices/ApplicationServices.h>
@@ -26,6 +29,17 @@ class SmokeBridge : public QObject {
         previousClipboard.reset();ownedClipboardHash.clear();return owned;
     }
     int sequence=0;
+    QJsonArray menuItems(QMenu* menu,int depth,int& remaining){
+        QJsonArray entries;
+        for(auto* a:menu->actions()){
+            if(remaining--<=0)break;
+            const auto r=menu->actionGeometry(a);
+            QJsonObject item{{"id",id(a)},{"text",a->text()},{"value",QJsonValue::fromVariant(a->data())},{"enabled",a->isEnabled()},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}};
+            if(a->menu()){item["submenu"]=id(a->menu());if(depth<4)item["items"]=menuItems(a->menu(),depth+1,remaining);}
+            entries.append(item);
+        }
+        return entries;
+    }
     static NSArray<NSMenuItem*>* quitItems(NSMenu* menu){
         NSMutableArray<NSMenuItem*>* found=[NSMutableArray array];
         for(NSMenuItem* item in menu.itemArray){
@@ -77,17 +91,51 @@ class SmokeBridge : public QObject {
         output.write(QJsonDocument(value).toJson());output.commit();
     }
     static QJsonObject capabilities(){
-        return {{"protocol",1},{"version",4},{"operations",QJsonArray{"capabilities","inspect","timeline-clip-rect","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
+        return {{"protocol",1},{"version",8},{"operations",QJsonArray{"capabilities","inspect","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
                 {"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
-                {"limits",QJsonObject{{"modelRows",64},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
+                {"limits",QJsonObject{{"modelRows",64},{"modelPageRows",64},{"timelineClipIds",1024},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
                 {"captures",QJsonObject{{"screenshot","Qt widget raster"},{"snapshot-presented","Owned native window pixels"},{"snapshot-node-preview","Rendered graph preview"}}}};
     }
-    QJsonObject inspect(){
+    QJsonObject modelPage(QWidget* widget,const QJsonObject& request){
+        auto* view=qobject_cast<QAbstractItemView*>(widget);
+        if(!view||!view->isVisible()||!view->model())throw QString("Choose an observed visible model view");
+        const auto offsetValue=request.value("offset"),limitValue=request.value("limit");
+        const int offset=offsetValue.isUndefined()?0:offsetValue.toInt(-1);
+        const int limit=limitValue.isUndefined()?32:limitValue.toInt(-1);
+        if((!offsetValue.isUndefined()&&(!offsetValue.isDouble()||offsetValue.toDouble()!=offset))||offset<0||
+           (!limitValue.isUndefined()&&(!limitValue.isDouble()||limitValue.toDouble()!=limit))||limit<1||limit>64)
+            throw QString("Model page needs an integer offset >= 0 and limit from 1 to 64");
+        auto* model=view->model();const auto root=view->rootIndex();const int count=model->rowCount(root);
+        if(!model->property("_smoke_model_watched").toBool()){
+            model->setProperty("_smoke_model_watched",true);model->setProperty("_smoke_model_revision",0);
+            auto changed=[model]{model->setProperty("_smoke_model_revision",model->property("_smoke_model_revision").toULongLong()+1);};
+            QObject::connect(model,&QAbstractItemModel::dataChanged,model,changed);QObject::connect(model,&QAbstractItemModel::rowsInserted,model,changed);
+            QObject::connect(model,&QAbstractItemModel::rowsRemoved,model,changed);QObject::connect(model,&QAbstractItemModel::rowsMoved,model,changed);
+            QObject::connect(model,&QAbstractItemModel::columnsInserted,model,changed);QObject::connect(model,&QAbstractItemModel::columnsRemoved,model,changed);
+            QObject::connect(model,&QAbstractItemModel::modelReset,model,changed);QObject::connect(model,&QAbstractItemModel::layoutChanged,model,changed);
+        }
+        QJsonArray rootPath;for(auto index=root;index.isValid();index=index.parent()){if(rootPath.size()>=32)throw QString("Model root exceeds the inspection limit");rootPath.prepend(index.row());}
+        const QJsonObject cursor{{"modelIdentity",id(model)},{"revision",double(model->property("_smoke_model_revision").toULongLong())},{"root",rootPath}};
+        if(request.contains("cursor")&&request["cursor"].toObject()!=cursor)throw QString("Model changed between pages; restart inspection");
+        QJsonArray headers;for(int col=0;col<qMin(64,model->columnCount(root));col++)headers.append(model->headerData(col,Qt::Horizontal).toString());
+        if(offset>count)throw QString("Model offset exceeds the current row count; observe again");
+        const int end=offset+qMin(limit,count-offset);QJsonArray rows,rects;
+        for(int r=offset;r<end;r++){
+            QJsonArray cols;for(int col=0;col<qMin(6,model->columnCount(root));col++)cols.append(model->data(model->index(r,col,root)).toString());
+            rows.append(cols);const auto rect=view->visualRect(model->index(r,0,root));
+            const auto visible=rect.intersected(view->viewport()->rect());
+            rects.append(QJsonObject{{"row",r},{"x",rect.x()},{"y",rect.y()},{"width",rect.width()},{"height",rect.height()},{"visible",!visible.isEmpty()}});
+        }
+        return {{"target",id(view)},{"viewport",id(view->viewport())},{"rows",count},{"offset",offset},{"limit",limit},{"model",rows},{"itemRects",rects},
+                {"nextOffset",end<count?QJsonValue(end):QJsonValue(QJsonValue::Null)},{"hasMore",end<count},{"cursor",cursor},{"headers",headers},{"columns",model->columnCount(root)}};
+    }
+    QJsonObject inspect(QWidget* scope=nullptr){
         QJsonArray widgets,actions;QSet<QAction*> seen;
         for(auto* w:QApplication::allWidgets()){
-            if(!w->isVisible())continue;
+            if(!w->isVisible()||(scope&&w!=scope&&!scope->isAncestorOf(w)&&!w->isAncestorOf(scope)))continue;
             QJsonObject item{{"active",w->isActiveWindow()},{"id",id(w)},{"class",w->metaObject()->className()},{"name",w->objectName()},{"tooltip",w->toolTip()},{"parent",w->parentWidget()?id(w->parentWidget()):QString()},{"enabled",w->isEnabled()},{"title",w->windowTitle()},{"window",id(w->window())},{"width",w->width()},{"height",w->height()}};
             const auto pos=w->mapTo(w->window(),QPoint{});item["x"]=pos.x();item["y"]=pos.y();
+            item["accessibleName"]=w->accessibleName();item["accessibleDescription"]=w->accessibleDescription();
             const auto visible=w->visibleRegion().boundingRect();item["visibleRect"]=QJsonObject{{"x",visible.x()},{"y",visible.y()},{"width",visible.width()},{"height",visible.height()}};
             item["focused"]=w==qApp->focusWidget();
             if(w->isWindow()){NSView* view=(__bridge NSView*)reinterpret_cast<void*>(w->winId());item["nativeWindow"]=qint64(view.window.windowNumber);item["keyWindow"]=view.window.isKeyWindow;}
@@ -96,6 +144,7 @@ class SmokeBridge : public QObject {
             if(auto* p=qobject_cast<QAbstractButton*>(w)){item["text"]=p->text();item["checked"]=p->isChecked();}
             if(auto* p=qobject_cast<QLineEdit*>(w);p&&p->echoMode()==QLineEdit::Normal)item["text"]=p->text();
             if(auto* p=qobject_cast<QLineEdit*>(w))item["editableText"]=p->echoMode()==QLineEdit::Normal&&!p->isReadOnly()&&p->isEnabled();
+            if(auto* p=qobject_cast<QKeySequenceEdit*>(w)){item["text"]=p->keySequence().toString();item["keySequenceCapture"]=true;}
             if(auto* p=qobject_cast<QPlainTextEdit*>(w))item["editableText"]=!p->isReadOnly()&&p->isEnabled();
             if(auto* p=qobject_cast<QTextEdit*>(w))item["editableText"]=!p->isReadOnly()&&p->isEnabled();
             if(auto* p=qobject_cast<QPlainTextEdit*>(w);p&&p->isReadOnly())item["text"]=p->toPlainText().right(32768);
@@ -103,8 +152,15 @@ class SmokeBridge : public QObject {
             if(auto* p=qobject_cast<QAbstractSlider*>(w)){item["value"]=p->value();item["minimum"]=p->minimum();item["maximum"]=p->maximum();item["orientation"]=p->orientation()==Qt::Horizontal?"horizontal":"vertical";}
             if(auto* p=qobject_cast<QSlider*>(w)){QStyleOptionSlider opt;opt.initFrom(p);opt.orientation=p->orientation();opt.minimum=p->minimum();opt.maximum=p->maximum();opt.upsideDown=p->invertedAppearance();auto center=[&](int value){opt.sliderPosition=value;opt.sliderValue=value;return p->style()->subControlRect(QStyle::CC_Slider,&opt,QStyle::SC_SliderHandle,p).center();};auto point=[](QPoint v){return QJsonArray{v.x(),v.y()};};item["handle"]=point(center(p->value()));item["minHandle"]=point(center(p->minimum()));item["maxHandle"]=point(center(p->maximum()));const auto groove=p->style()->subControlRect(QStyle::CC_Slider,&opt,QStyle::SC_SliderGroove,p);item["groove"]=QJsonArray{groove.x(),groove.y(),groove.width(),groove.height()};}
             if(auto* p=qobject_cast<QTextEdit*>(w)){item["text"]=p->toPlainText().left(32768);item["html"]=p->toHtml().left(65536);}
-            if(auto* p=qobject_cast<QGraphicsView*>(w);p&&p->scene()){QJsonArray entries;for(auto* g:p->scene()->items()){if(entries.size()>=256)break;QString text;if(auto* t=qgraphicsitem_cast<QGraphicsTextItem*>(g))text=t->toPlainText();if(auto* t=qgraphicsitem_cast<QGraphicsSimpleTextItem*>(g))text=t->text();if(text.isEmpty())continue;auto r=p->mapFromScene(g->sceneBoundingRect()).boundingRect();entries.append(QJsonObject{{"text",text},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}});}item["sceneText"]=entries;item["viewport"]=id(p->viewport());}
+            if(auto* p=qobject_cast<QGraphicsView*>(w);p&&p->scene()){QJsonArray entries;item["sceneTextTruncated"]=false;for(auto* g:p->scene()->items()){QString text;if(auto* t=qgraphicsitem_cast<QGraphicsTextItem*>(g))text=t->toPlainText();if(auto* t=qgraphicsitem_cast<QGraphicsSimpleTextItem*>(g))text=t->text();if(text.isEmpty())continue;if(entries.size()>=256){item["sceneTextTruncated"]=true;break;}auto r=p->mapFromScene(g->sceneBoundingRect()).boundingRect();entries.append(QJsonObject{{"text",text},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}});}item["sceneText"]=entries;item["viewport"]=id(p->viewport());}
 
+            if(QString(w->metaObject()->className())=="TimelineWidget"){
+                using Getter=QSet<QString>(*)(const QWidget*);
+                auto getter=reinterpret_cast<Getter>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget10allClipIdsEv"));
+                if(getter){auto ids=getter(w).values();std::sort(ids.begin(),ids.end());QJsonArray clips;
+                    for(int i=0;i<qMin<qsizetype>(1024,ids.size());i++)clips.append(ids[i]);
+                    item["clipIds"]=clips;item["clipIdsTruncated"]=ids.size()>1024;}
+            }
             // Read the packaged public getters; missing symbols leave identity unavailable.
             if(QString(w->metaObject()->className())=="RenderGraphView"){
                 using Getter=QString(*)(const QWidget*);
@@ -115,7 +171,7 @@ class SmokeBridge : public QObject {
                 }
             }
             if(auto* p=qobject_cast<QComboBox*>(w)){QJsonArray entries,values;for(int i=0;i<p->count();i++){entries.append(p->itemText(i));values.append(QJsonValue::fromVariant(p->itemData(i)));}item["items"]=entries;item["itemValues"]=values;item["index"]=p->currentIndex();}
-            if(auto* p=qobject_cast<QGraphicsView*>(w);p&&p->scene()){QJsonArray entries;for(auto* g:p->scene()->items()){if(entries.size()>=128)break;if(!(g->flags()&QGraphicsItem::ItemIsSelectable))continue;QJsonArray labels;for(auto* child:g->childItems())if(auto* proxy=qgraphicsitem_cast<QGraphicsProxyWidget*>(child);proxy&&proxy->widget())for(auto* label:proxy->widget()->findChildren<QLabel*>())labels.append(label->text());const auto r=p->mapFromScene(g->sceneBoundingRect()).boundingRect();QJsonArray ports;
+            if(auto* p=qobject_cast<QGraphicsView*>(w);p&&p->scene()){QJsonArray entries;item["sceneItemsTruncated"]=false;for(auto* g:p->scene()->items()){if(!(g->flags()&QGraphicsItem::ItemIsSelectable))continue;if(entries.size()>=128){item["sceneItemsTruncated"]=true;break;}QJsonArray labels;for(auto* child:g->childItems())if(auto* proxy=qgraphicsitem_cast<QGraphicsProxyWidget*>(child);proxy&&proxy->widget())for(auto* label:proxy->widget()->findChildren<QLabel*>())labels.append(label->text());const auto r=p->mapFromScene(g->sceneBoundingRect()).boundingRect();QJsonArray ports;
                 for(auto* child:g->childItems())if(child->isVisible()&&(qgraphicsitem_cast<QGraphicsEllipseItem*>(child)||(QString(p->metaObject()->className())=="RenderGraphView"&&child->type()==QGraphicsItem::UserType+1&&child->boundingRect()==QRectF(-6,-6,12,12)))){
                     const auto center=p->mapFromScene(child->mapToScene(child->boundingRect().center()));
                     ports.append(QJsonObject{{"x",center.x()},{"y",center.y()},{"side",child->pos().x()<g->boundingRect().center().x()?"input":"output"},{"tooltip",child->toolTip()}});
@@ -127,23 +183,86 @@ class SmokeBridge : public QObject {
                 }
                 entries.append(node);}item["sceneItems"]=entries;}
             if(auto* p=qobject_cast<QTabBar*>(w)){QJsonArray entries;for(int i=0;i<p->count();i++)entries.append(p->tabText(i));item["tabs"]=entries;item["index"]=p->currentIndex();QJsonArray rects;for(int i=0;i<p->count();i++){const auto r=p->tabRect(i);QWidget* close=p->tabButton(i,QTabBar::RightSide);if(!close)close=p->tabButton(i,QTabBar::LeftSide);rects.append(QJsonObject{{"text",p->tabText(i)},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()},{"close",close&&close->isVisible()?id(close):QString()}});}item["tabRects"]=rects;}
-            if(auto* p=qobject_cast<QMenu*>(w)){QJsonArray entries;for(auto* a:p->actions()){const auto r=p->actionGeometry(a);entries.append(QJsonObject{{"text",a->text()},{"enabled",a->isEnabled()},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}});}item["menuItems"]=entries;}
+            if(auto* p=qobject_cast<QMenu*>(w)){int remaining=256;item["menuItems"]=menuItems(p,0,remaining);item["menuTruncated"]=remaining<=0;}
             if(auto* p=qobject_cast<QAbstractItemView*>(w);p&&p->model()){
                 QJsonArray rows;auto* m=p->model();item["rows"]=m->rowCount(p->rootIndex());
                 for(int r=0;r<qMin(64,m->rowCount(p->rootIndex()));r++){QJsonArray cols;for(int col=0;col<qMin(6,m->columnCount(p->rootIndex()));col++)cols.append(m->data(m->index(r,col,p->rootIndex())).toString());rows.append(cols);}item["model"]=rows;item["viewport"]=id(p->viewport());item["currentRow"]=p->currentIndex().row();QJsonArray selected;for(const auto& index:p->selectionModel()->selectedRows())selected.append(index.row());item["selectedRows"]=selected;
                 QJsonArray rects;for(int r=0;r<qMin(64,m->rowCount(p->rootIndex()));r++){auto rect=p->visualRect(m->index(r,0,p->rootIndex()));rects.append(QJsonObject{{"row",r},{"x",rect.x()},{"y",rect.y()},{"width",rect.width()},{"height",rect.height()}});}item["itemRects"]=rects;
             }
             widgets.append(item);
-            for(auto* a:w->findChildren<QAction*>())if(!seen.contains(a)){seen.insert(a);actions.append(QJsonObject{{"id",id(a)},{"text",a->text()},{"name",a->objectName()},{"enabled",a->isEnabled()},{"shortcut",a->shortcut().toString()}});}
+            for(auto* a:w->findChildren<QAction*>(QString{},scope?Qt::FindDirectChildrenOnly:Qt::FindChildrenRecursively))if(!seen.contains(a)){seen.insert(a);actions.append(QJsonObject{{"id",id(a)},{"text",a->text()},{"name",a->objectName()},{"enabled",a->isEnabled()},{"checked",a->isChecked()},{"checkable",a->isCheckable()},{"shortcut",a->shortcut().toString()}});}
         }
-        return {{"widgets",widgets},{"actions",actions},{"focus",qApp->focusWidget()?id(qApp->focusWidget()):QString()}};
+        QString focus=qApp->focusWidget()?id(qApp->focusWidget()):QString();
+        // Native file panels are AppKit surfaces. Read public view/window APIs;
+        // do not traverse Qt's macOS accessibility implementation.
+        if(!scope)for(NSWindow* window in NSApp.windows){
+            if(!window.visible||!window.contentView)continue;
+            bool represented=false;for(const auto& value:widgets)if(value.toObject()["nativeWindow"].toInteger()==window.windowNumber){represented=true;break;}
+            if(represented)continue;
+            const QString windowId="native-window-"+QString::number(window.windowNumber);const NSRect bounds=window.contentView.bounds;
+            const QString klass=[window isKindOfClass:[NSOpenPanel class]]?"NSOpenPanel":"NSPanel";
+            const int nativeWindowIndex=widgets.size();
+            widgets.append(QJsonObject{{"id",windowId},{"window",windowId},{"class",klass},{"title",QString::fromNSString(window.title)},{"nativeWindow",qint64(window.windowNumber)},{"keyWindow",window.keyWindow},{"active",window.keyWindow},{"enabled",true},{"x",0},{"y",0},{"width",bounds.size.width},{"height",bounds.size.height}});
+            NSMutableArray<NSView*>* pending=[NSMutableArray arrayWithObject:window.contentView];int count=0;
+            while(pending.count&&count++<512){
+                NSView* view=pending.lastObject;[pending removeLastObject];if([view isHiddenOrHasHiddenAncestor])continue;[pending addObjectsFromArray:view.subviews];
+                if(![view isKindOfClass:[NSButton class]]&&![view isKindOfClass:[NSTextField class]])continue;
+                const NSRect rect=[view convertRect:view.bounds toView:window.contentView];
+                const QString viewId=QString("native-view-%1").arg(quintptr((__bridge void*)view),0,16);
+                QJsonObject item{{"id",viewId},{"window",windowId},{"nativeWindow",qint64(window.windowNumber)},{"class",[view isKindOfClass:[NSButton class]]?"NSButton":"NSTextField"},{"x",rect.origin.x},{"y",bounds.size.height-NSMaxY(rect)},{"width",rect.size.width},{"height",rect.size.height},{"enabled",[(NSControl*)view isEnabled]}};
+                if([view isKindOfClass:[NSButton class]])item["text"]=QString::fromNSString([(NSButton*)view title]);
+                else if(![view isKindOfClass:[NSSecureTextField class]]){
+                    NSTextField* field=(NSTextField*)view;item["text"]=QString::fromNSString(field.stringValue).left(4096);item["editableText"]=field.editable&&field.enabled;
+                    const bool focused=window.keyWindow&&[field currentEditor]&&window.firstResponder==[field currentEditor];item["focused"]=focused;if(focused)focus=viewId;
+                }
+                widgets.append(item);
+            }
+            auto nativeWindow=widgets[nativeWindowIndex].toObject();nativeWindow["nativeViewsTruncated"]=pending.count>0;widgets[nativeWindowIndex]=nativeWindow;
+        }
+        return {{"widgets",widgets},{"actions",actions},{"focus",focus},{"scope",scope?QJsonValue(id(scope)):QJsonValue(QJsonValue::Null)},
+                {"modalWindow",QApplication::activeModalWidget()?QJsonValue(id(QApplication::activeModalWidget())):QJsonValue(QJsonValue::Null)},
+                {"popupWindow",QApplication::activePopupWidget()?QJsonValue(id(QApplication::activePopupWidget())):QJsonValue(QJsonValue::Null)},
+                {"mouseGrabber",QWidget::mouseGrabber()?QJsonValue(id(QWidget::mouseGrabber())):QJsonValue(QJsonValue::Null)}};
     }
     QJsonObject perform(const QJsonObject& request){
         if(request["generation"].toString()!=generation)throw QString("Stale GUI generation");
         const auto op=request["op"].toString(),key=request["target"].toString();
         QObject* target=objects.value(key);auto* widget=qobject_cast<QWidget*>(target);
         if(op=="capabilities")return capabilities();
-        if(op=="inspect")return inspect();
+        if(op=="inspect"){if(request.contains("target")&&(!widget||!widget->isVisible()))throw QString("Scoped target is unavailable; observe again");return inspect(widget);}
+        if(op=="model-page")return modelPage(widget,request);
+        if(op=="model-value"){
+            const auto page=modelPage(widget,request);auto* view=qobject_cast<QAbstractItemView*>(widget);
+            const int column=request["column"].toInt(-1),role=request["role"].toInt(-1);
+            if(page["model"].toArray().isEmpty()||!request["column"].isDouble()||request["column"].toDouble()!=column||column<0||column>=view->model()->columnCount(view->rootIndex())||!request["role"].isDouble()||request["role"].toDouble()!=role||role<0||role>Qt::UserRole+1024)throw QString("Use an observed row, column and bounded Qt data role");
+            const auto value=view->model()->data(view->model()->index(page["offset"].toInt(),column,view->rootIndex()),role);
+            QJsonObject result{{"target",id(view)},{"cursor",page["cursor"]},{"row",page["offset"]},{"column",column},{"role",role},{"available",value.isValid()},{"type",QString(value.typeName()?value.typeName():"invalid")}};
+            if(value.metaType().id()==QMetaType::QPixmap||value.metaType().id()==QMetaType::QImage){
+                const auto image=value.metaType().id()==QMetaType::QPixmap?value.value<QPixmap>().toImage():value.value<QImage>();
+                if(image.isNull()){result["available"]=false;return result;}
+                if(image.width()>8192||image.height()>8192)throw QString("Model image exceeds capture bounds");
+                const QString file=root+"/model-"+QUuid::createUuid().toString(QUuid::WithoutBraces)+".png";
+                if(!image.scaled(512,512,Qt::KeepAspectRatio,Qt::SmoothTransformation).save(file))throw QString("Model image capture failed");
+                result["path"]=file;result["width"]=image.width();result["height"]=image.height();
+                const auto sample=image.scaled(64,32,Qt::IgnoreAspectRatio,Qt::SmoothTransformation).convertToFormat(QImage::Format_RGB888);QByteArray bytes;
+                for(int row=0;row<sample.height();row++)bytes.append(reinterpret_cast<const char*>(sample.constScanLine(row)),sample.width()*3);
+                result["sampleWidth"]=64;result["sampleHeight"]=32;result["sampleRgb"]=QString::fromLatin1(bytes.toBase64());
+            }else{
+                const auto json=QJsonValue::fromVariant(value);if(QJsonDocument(QJsonObject{{"value",json}}).toJson().size()>16384)throw QString("Model value exceeds observation bounds");result["value"]=json;
+            }
+            return result;
+        }
+        if(op=="model-reveal"){
+            auto page=modelPage(widget,request);auto* view=qobject_cast<QAbstractItemView*>(widget);
+            if(page["model"].toArray().isEmpty())throw QString("No row exists at the requested offset");
+            view->scrollTo(view->model()->index(page["offset"].toInt(),0,view->rootIndex()),QAbstractItemView::PositionAtCenter);
+            return modelPage(widget,request);
+        }
+        if(op=="activate"&&key.startsWith("native-window-")){
+            for(NSWindow* window in NSApp.windows)if(window.visible&&window.windowNumber==key.mid(14).toLongLong()){[window makeKeyAndOrderFront:nil];return {{"activated",key}};}
+            throw QString("Native panel window is unavailable");
+        }
+        if(op=="bug-report-prefill")return prefillBugReport(widget,request);
         if(op=="timeline-clip-rect"){
             using ClipRect=QRect(*)(const QWidget*,const QString&);
             auto geometry=reinterpret_cast<ClipRect>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"));
@@ -216,6 +335,12 @@ class SmokeBridge : public QObject {
             QTimer::singleShot(0,widget,[widget,from,to]{QTest::mousePress(widget,Qt::LeftButton,Qt::NoModifier,from);for(int n=1;n<=10;n++){const auto pos=from+(to-from)*n/10;QMouseEvent event(QEvent::MouseMove,QPointF(pos),QPointF(widget->mapToGlobal(pos)),Qt::NoButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(widget,&event);}QTest::mouseRelease(widget,Qt::LeftButton,Qt::NoModifier,to);});
         }else if(op=="close-window"){
             if(!widget||!widget->isWindow()||!widget->isVisible())throw QString("Choose a visible top-level window");QTimer::singleShot(0,widget,[widget]{widget->close();});
+        }else if(op=="resize-window"){
+            if(!widget||!widget->isWindow()||!widget->isVisible()||!widget->screen())throw QString("Choose a visible owned top-level window");
+            const int width=request["width"].toInt(-1),height=request["height"].toInt(-1);const auto area=widget->screen()->availableGeometry();
+            if(width<200||height<200||width>4096||height>4096||width>area.width()-40||height>area.height()-80||width<widget->minimumWidth()||height<widget->minimumHeight())throw QString("Window size exceeds the observed display or minimum control size");
+            widget->resize(width,height);const auto frame=widget->frameGeometry();widget->move(qBound(area.left(),frame.x(),area.right()-frame.width()+1),qBound(area.top(),frame.y(),area.bottom()-frame.height()+1));
+            return {{"width",widget->width()},{"height",widget->height()},{"scope","Public QWidget setup; inspect fresh geometry before input"}};
         }else if(op=="activate"){
             if(!widget||!widget->isWindow())throw QString("Choose an observed top-level window");[NSApp activateIgnoringOtherApps:YES];widget->raise();widget->activateWindow();NSView* view=(__bridge NSView*)reinterpret_cast<void*>(widget->winId());[view.window makeKeyAndOrderFront:nil];
         }else if(op=="action"){

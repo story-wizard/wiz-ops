@@ -1,6 +1,6 @@
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
-import {checks,widgetPixelDifference,requireRedGraphic} from './check-support.mjs';
+import {checks,widgetPixelDifference,requireRedGraphic,sourceColorControl,selectMenuValue,hasAuthoredSourceColor} from './check-support.mjs';
 import {physicalInput} from './physical-input.mjs';
 import {createLocalGraphic} from './generated-fixture.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
@@ -15,7 +15,9 @@ await check('D-EXTERNAL-RELOAD',async()=>{
  await c('timeline.update',{id:randomUUID(),timeline_id:f.id,changes:{name:'Unsaved reload smoke'}});await until(async()=>(await ui()).widgets.some(w=>w.name==='panelSubtabSelector'&&w.text.startsWith('Unsaved reload smoke')));
  const before=await inspect(f.id),external=await readJSON(disk),name='External disk '+randomUUID();external.name=name;
  await step({id:'external-edit',title:'Edit the owned timeline on disk while the editor is dirty',phase:'execute'},()=>writeJSON(disk,external));
- const toast=await until(async()=>{const a=await ui();return a.widgets.find(w=>w.text?.includes('External edit detected')&&w.text.includes('reload from disk'));},{description:'External-edit reload notification',timeoutMs:15000});
+ await writeJSON(path.join(s.root,'external-reload-before.json'),{before,external});
+ let toast;try{toast=await until(async()=>{const a=await ui();return a.widgets.find(w=>w.text?.includes('External edit detected')&&w.text.includes('reload from disk'));},{description:'External-edit reload notification',timeoutMs:15000});}
+ finally{const observed={reloadShortcutSent:false};try{observed.timeline=await inspect(f.id);observed.ui=await ui();}catch(e){observed.captureError=e.message;}await writeJSON(path.join(s.root,'external-reload-observed.json'),observed);}
  assert((await inspect(f.id)).timeline.name===before.timeline.name,'External edit silently overwrote the dirty live timeline');
  await writeJSON(path.join(s.root,'external-reload-before.json'),{before,external,toast});
  await step({id:'reload',title:'Use the Reload Timeline shortcut and inspect the adopted content',phase:'execute'},()=>n('key',{target:f.view.id,key:'Ctrl+Shift+R'}));
@@ -26,13 +28,21 @@ await check('D-EXTERNAL-RELOAD',async()=>{
 await check('D-SOURCE-COLOR',async()=>{
  const f=await fixture('Source colour override');await select(f);if(!(await ui()).widgets.some(w=>w.class==='RenderGraphView'))await action('Render Graph');
  const before=await graph(f.scope),source=before.nodes.find(n=>n.type==='wiz.color.input_color_space_transform');assert(source,'Source colour transform absent');const original=source.params['input.cst.src'];
- const view=await until(async()=>(await ui()).widgets.find(w=>w.class==='RenderGraphView'&&w.timelineId===f.id)),choices=(await ui()).widgets.filter(w=>w.class==='QComboBox'&&w.graphView===view.id&&w.items?.some(t=>/auto|detect/i.test(t))&&w.items.some(t=>/sRGB|ACEScg|Rec\.709/i.test(t)));
- if(choices.length!==1)throw new OutcomeError('Source colour override control is absent or ambiguous in this package; bind its current UI before retrying','Blocked');
- const combo=choices[0],index=combo.items.findIndex((text,i)=>i!==combo.index&&!/auto|detect/i.test(text)&&text!==original&&/sRGB|ACEScg|Rec\.709/i.test(text));assert(index>=0,'No alternate source colour choice');
- const selected=combo.itemValues?.[index];if(typeof selected!=='string'||!selected||selected===original)throw new OutcomeError('Source colour choice has no distinct semantic value in this package','Blocked');
- const baseline=await displayed('source-colour-before');await step({id:'override',title:'Choose a different source colour space',phase:'execute'},()=>n('select',{target:combo.id,index}));
- const changed=await until(async()=>{const g=await graph(f.scope),n=g.nodes.find(n=>n.node_id===source.node_id);return n?.params['input.cst.src']===selected&&n.params['input.cst.src.provenance']==='manual'?g:null;},{description:'Manual source colour override'});await pause(300);const image=await displayed('source-colour-changed');assert(widgetPixelDifference(baseline,image)>.5,'Colour override did not change the displayed pixels');
- await n('select',{target:combo.id,index:combo.index});const restored=await until(async()=>{const g=await graph(f.scope);return JSON.stringify(g.nodes)===JSON.stringify(before.nodes)&&JSON.stringify(g.edges)===JSON.stringify(before.edges)?g:null;},{description:'Original source colour restored'});await pause(300);assert(widgetPixelDifference(baseline,await displayed('source-colour-restored'))<1.5,'Reverting source colour did not restore the displayed image');same(snapshotState(await inspect(f.id)),snapshotState(f.before),'Colour override preserves timeline identity and timing');return {original,choice:combo.items[index],selected,before,changed,restored,baseline:baseline.path,image:image.path};
+ const view=await until(async()=>(await ui()).widgets.find(w=>w.class==='RenderGraphView'&&w.timelineId===f.id)),control=sourceColorControl(await ui(),view.id);
+ const baseline=await displayed('source-colour-before');let selected,choice;
+ await step({id:'override',title:'Choose a different source colour space',phase:'execute'},async()=>{
+  if(control.class==='QComboBox'){
+   const index=control.itemValues?.findIndex((value,i)=>typeof value==='string'&&value&&value!==original&&!/auto|detect/i.test(control.items[i])&&/sRGB|ACEScg|Rec\.709/.test(control.items[i]));
+   if(!(index>=0))throw new OutcomeError('Source colour picker has no distinct semantic choice','Blocked');selected=control.itemValues[index];choice=control.items[index];await n('select',{target:control.id,index});
+  }else{
+   selected=original==='ACEScg'?'sRGB - Texture':'ACEScg';await n('click',{target:control.id});
+   const menu=await until(async()=>{const menus=(await ui()).widgets.filter(w=>w.class==='QMenu');return menus.length===1?menus[0]:null;},{description:'Source colour options menu'});
+   await writeJSON(path.join(s.root,'source-colour-menu.json'),menu);choice=await selectMenuValue({n,ui,until},menu,selected);
+  }
+ });
+ const changed=await until(async()=>{const g=await graph(f.scope);return hasAuthoredSourceColor(g,source.type,selected)?g:null;},{description:'Authored source colour override'});await pause(300);const image=await displayed('source-colour-changed');assert(widgetPixelDifference(baseline,image)>.5,'Colour override did not change the displayed pixels');
+ await n('activate',{target:view.window});await n('key',{target:view.id,key:'Ctrl+Z'});
+ const restored=await until(async()=>{const g=await graph(f.scope);return JSON.stringify(g.nodes)===JSON.stringify(before.nodes)&&JSON.stringify(g.edges)===JSON.stringify(before.edges)?g:null;},{description:'Undo restores original source colour and provenance'});await pause(300);assert(widgetPixelDifference(baseline,await displayed('source-colour-restored'))<1.5,'Reverting source colour did not restore the displayed image');same(snapshotState(await inspect(f.id)),snapshotState(f.before),'Colour override preserves timeline identity and timing');return {original,choice,selected,before,changed,restored,baseline:baseline.path,image:image.path};
 });
 await check('D-MGFX-BIN-DROP',async()=>{
  let g;try{g=await createLocalGraphic(c,s,{groupLabel:'Title',label:'Drag graphic'});}catch(e){throw new OutcomeError('Local graphic fixture unavailable: '+e.message,e.status==='Unknown'?'Unknown':'Blocked');}

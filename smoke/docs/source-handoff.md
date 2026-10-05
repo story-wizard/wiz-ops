@@ -39,13 +39,13 @@ For the team walkthrough and first run, use [demo guide](demo-guide.md).
 
 ## Give this checkout to an agent
 
-Give the agent [the onboarding prompt](../examples/agent-onboarding.txt). Start with the repository's `AGENTS.md`, which points to `smoke/AGENTS.md`. The agent can validate the framework, launch the dashboard, discover builds and accepted checks, compose a course, prepare the selected build, run it and return its report. Use the same `SMOKE_DATA_DIR` and printed service URL throughout.
+Give the agent [the onboarding prompt](../examples/agent-onboarding.txt). Start with the repository's `AGENTS.md`, which points to `smoke/AGENTS.md`. The task table routes the agent to courses, computer use, investigations or harness maintenance. Start with live setup/catalog discovery; framework checks belong to the harness-edit path. The agent can launch the dashboard, discover builds, prepare the selected build and return a report for the authorized course. Use the same `SMOKE_DATA_DIR` and printed service URL throughout.
 
 A source clone supplies code and definitions. A testing station still needs the compatible build and media tools listed in the automated build guide. For desktop/service checks, use the matching SDK bootstrap described in [desktop setup](desktop-tools-setup.md). Do not substitute a legacy instrumented app for the selected package. Use an engine-only selection while the desktop prerequisites are unavailable.
 
 ## First actual smoke execution on another machine
 
-Use the [automated build guide](automated-build-testing.md) for a small first run and the full 57-check packaged course. Both complete without a human checkpoint.
+Use the [automated build guide](automated-build-testing.md) for a small first run and the full packaged-engine course. Both complete without a human checkpoint.
 
 1. Select a retained package whose operation schema matches the checked contract.
 2. Configure local media tools and only the model prerequisites needed by the chosen checks.

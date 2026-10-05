@@ -30,7 +30,8 @@ test('a lost mutation response stays Unknown, later steps remain unexecuted and 
 test('evidence collection is independent of verdict and an expected rejection is not a successful edit',()=>{
  const check={id:'CHECK',title:'Edit',expected:'Readback',evidence:[{id:'operations',kind:'json',when:'during',required:true,caption:'State readback'},{id:'preview',kind:'image',when:'after',required:true,caption:'Displayed frame'},{id:'audio',kind:'audio',when:'during',required:false,caption:'Playback audio'}]};
  const spec=testSpecification(check),actions=actionHistory([{operation:'graph.edit',stdout:JSON.stringify({ok:false,error:{code:'stale'}}),expectedError:'stale'}]);
- assert.equal(actions[0].status,'Expected rejection');assert.deepEqual(evidenceCoverage(spec,[],actions).map(e=>e.status),['Collected','Missing','Optional']);
+  assert.equal(actions[0].status,'Expected rejection');assert.deepEqual(evidenceCoverage(spec,[],actions).map(e=>e.status),['Collected','Missing','Optional']);
+ assert.equal(actionHistory([{operation:'worker.export',status:'Rejected',code:1}])[0].status,'Rejected');
  assert.equal(evidenceCoverage(spec,evidenceItems(['CHECK-before.png'],spec),actions)[1].status,'Missing','A before image cannot satisfy an after capture');
  assert.equal(evidenceCoverage(spec,evidenceItems(['CHECK-after.png'],spec),actions)[1].status,'Collected');
  const graphSpec=testSpecification({...check,evidence:[{id:'graph-state',kind:'json',when:'after',required:true,caption:'Before and after node state'}]});

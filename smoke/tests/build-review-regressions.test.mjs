@@ -64,9 +64,9 @@ test('a refreshed first page reopens older-build discovery when release history 
  };
  try{
   const first=await findBuilds(root,{get});assert.equal(first.hasMoreGitHub,false);
-  count=11;const refreshed=await findBuilds(root,{get,refresh:true});
+  count=51;const refreshed=await findBuilds(root,{get,refresh:true});
   assert.equal(refreshed.hasMoreGitHub,true,'Reaching the old end of history must not hide new provider pages');
   const older=await findBuilds(root,{get,githubPage:refreshed.nextGitHubPage});
-  assert.equal(older.builds.length,11);assert.ok(older.builds.some(b=>b.assetId===11));assert.equal(older.hasMoreGitHub,false);
+  assert.equal(older.builds.length,51);assert.ok(older.builds.some(b=>b.assetId===51));assert.equal(older.hasMoreGitHub,false);
  }finally{await rm(root,{recursive:true,force:true});}
 });

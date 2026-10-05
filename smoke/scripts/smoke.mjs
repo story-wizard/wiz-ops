@@ -3,6 +3,7 @@ import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {externalPath} from '../runner/files.mjs';
+import {inspectGoldenProject,goldenRoleCandidates} from '../runner/golden-project.mjs';
 
 export function resultSummary(run){
  const state=run.execution?.state;if(!state)throw Error('This is not an automated run.');
@@ -25,13 +26,42 @@ export async function waitForRun(call,id,{timeout=300,pollMs=1000}={}){
  while(true){const summary=resultSummary(await call('/api/runs/'+encodeURIComponent(id)));if(summary.complete||summary.needsHuman)return summary;if(Date.now()>=deadline)return {...summary,waitTimedOut:true};await new Promise(resolve=>setTimeout(resolve,Math.min(pollMs,Math.max(1,deadline-Date.now()))));}
 }
 export async function main(args){
- const command=args.shift(),sub=command==='course'?args.shift():null,flags={};
+ const command=args.shift(),sub=['course','investigation','golden'].includes(command)?args.shift():null,flags={};
  const boolean=new Set(['--wait','--json','--export','--refresh']);
  for(let i=0;i<args.length;i++){const key=args[i];if(!key.startsWith('--')||Object.hasOwn(flags,key))throw Error('Invalid or duplicate option: '+key);if(boolean.has(key))flags[key]=true;else{const value=args[++i];if(!value||value.startsWith('--'))throw Error('Missing value for '+key);flags[key]=value;}}
- const options={context:['--check','--run','--export'],setup:[],builds:['--author','--refresh','--page','--page-size','--github-page'],build:['--path','--url','--tag','--asset'],list:['--category','--target'],checkpoints:[],checkpoint:['--run','--action','--file'],runtimes:[],runtime:['--file'],courses:[],course:sub==='save'?['--file']:['--id','--revision'],prepare:['--app','--course','--checks','--category','--project','--file','--title','--target','--checkpoint'],preparation:['--id'],plan:['--app','--course','--checks','--category','--project','--file','--out','--title','--runtime','--target','--checkpoint'],run:['--plan-hash','--plan','--operator','--request-id','--wait','--timeout'],status:['--run','--request-id'],wait:['--run','--timeout'],cancel:['--run'],report:['--run'],kit:['--run']};
- if(!options[command]||Object.keys(flags).some(k=>!['--server','--json',...options[command]].includes(k)))throw Error('Usage: smoke setup | builds | build | list | context | courses | course show/save | prepare | preparation | plan | run | status | wait | cancel | report | kit | runtimes | runtime | checkpoints | checkpoint. See docs/agent-courses.md.');
+ const options={golden:sub==='inspect'?['--path','--out']:['--file','--requirements','--out'],investigation:sub==='create'?['--run','--actor','--title']:sub==='link'?['--id','--run','--revision','--actor']:sub==='reporter'||sub==='evidence'?['--id','--case']:sub==='task'?['--id','--case','--task']:sub==='prepare'?['--id','--revision','--actor','--app','--request-id']:sub==='start'?['--id','--repro','--actor']:sub==='close-repro'?['--id','--repro','--actor','--revision']:['triage','review','proposal','draft'].includes(sub)?['--id','--file']:['--id'],investigations:['--run'],context:['--check','--run','--export'],setup:[],builds:['--author','--refresh','--page','--page-size','--github-page'],build:['--path','--url','--tag','--asset'],list:['--category','--target'],checkpoints:[],checkpoint:['--run','--action','--file'],runtimes:[],runtime:['--file'],courses:[],course:sub==='save'?['--file']:['--id','--revision'],prepare:['--app','--course','--checks','--category','--project','--file','--title','--target','--checkpoint'],preparation:['--id'],plan:['--app','--course','--checks','--category','--project','--file','--out','--title','--runtime','--target','--checkpoint'],run:['--plan-hash','--plan','--operator','--request-id','--wait','--timeout'],status:['--run','--request-id'],wait:['--run','--timeout'],cancel:['--run'],report:['--run'],kit:['--run']};
+ if(!options[command]||Object.keys(flags).some(k=>!['--server','--json',...options[command]].includes(k)))throw Error('Usage: smoke golden inspect/roles | setup | builds | build | list | context | courses | course show/save | prepare | preparation | plan | run | status | wait | cancel | report | kit | investigations | investigation create/show/task/evidence/proposal/triage/selection/prepare/start/close-repro/link/draft/review/export/reporter | runtimes | runtime | checkpoints | checkpoint. See docs/agent-courses.md.');
  const call=client(flags['--server']),required=key=>{if(!flags[key])throw Error('Required option: '+key);return flags[key];},split=k=>(flags[k]||'').split(',').map(s=>s.trim()).filter(Boolean),runID=()=>required('--run');
  let result;
+ if(command==='golden'){
+  if(sub==='inspect')result=await inspectGoldenProject(required('--path'));
+  else if(sub==='roles')result=goldenRoleCandidates(JSON.parse(await readFile(required('--file'),'utf8')),JSON.parse(await readFile(required('--requirements'),'utf8')));
+  else throw Error('Use golden inspect or golden roles.');
+  if(flags['--out']){
+   const output=externalPath(path.resolve(flags['--out'])),source=result.source?.path;
+   if(source&&(output===source||output.startsWith(source+path.sep)))throw Error('Intake output must not be written inside the supplied project.');
+   await writeFile(output,JSON.stringify(result,null,2)+'\n',{flag:'wx'});
+  }
+ }
+ if(command==='investigations')result=await call('/api/investigations'+(flags['--run']?'?run='+encodeURIComponent(flags['--run']):''));
+ if(command==='investigation'){
+  if(sub==='create')result=await call('/api/runs/'+encodeURIComponent(runID())+'/investigation',{actor:required('--actor'),...(flags['--title']?{title:flags['--title']}:{})});
+  else{
+   const route='/api/investigations/'+encodeURIComponent(required('--id'));
+   if(sub==='show')result=await call(route);
+   else if(sub==='selection')result=await call(route+'/selection');
+   else if(sub==='evidence')result=await call(route+'/evidence?case='+encodeURIComponent(required('--case')));
+   else if(sub==='task'){const params=new URLSearchParams({task:flags['--task']||'triage'});if(flags['--case'])params.set('case',flags['--case']);result=await call(route+'/task?'+params);}
+   else if(sub==='prepare')result=await call(route+'/prepare',{revision:Number(required('--revision')),actor:required('--actor'),app:required('--app'),requestId:required('--request-id')});
+   else if(sub==='start')result=await call(route+'/start',{reproId:required('--repro'),actor:required('--actor')});
+   else if(sub==='close-repro')result=await call(route+'/close-repro',{revision:Number(required('--revision')),reproId:required('--repro'),actor:required('--actor')});
+   else if(['triage','review','proposal','draft'].includes(sub))result=await call(route+'/'+sub,JSON.parse(await readFile(required('--file'),'utf8')));
+   else if(sub==='reporter')result=await call(route+'/reporter',{caseId:required('--case')});
+   else if(sub==='export')result=await call(route+'/export',{});
+   else if(sub==='link')result=await call(route+'/link',{runId:runID(),revision:Number(required('--revision')),actor:required('--actor')});
+   else throw Error('Use investigation create, show, task, evidence, proposal, triage, selection, prepare, start, close-repro, link, draft, review, export or reporter.');
+  }
+ }
  if(command==='context'){const route='/api/checks/'+encodeURIComponent(required('--check'))+'/context';result=flags['--export']?await call(route,{runId:flags['--run']||null}):await call(route+(flags['--run']?'?run='+encodeURIComponent(flags['--run']):''));}
  if(command==='builds'){
   const params=new URLSearchParams();if(flags['--refresh'])params.set('refresh','1');if(flags['--page'])params.set('page',flags['--page']);if(flags['--page-size'])params.set('pageSize',flags['--page-size']);if(flags['--github-page'])params.set('githubPage',flags['--github-page']);for(const author of split('--author'))params.append('author',author);

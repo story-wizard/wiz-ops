@@ -1,11 +1,11 @@
 import path from 'node:path';
-import {checks} from './check-support.mjs';
+import {checks,requirePassed} from './check-support.mjs';
 import {createLocalGraphic,generatedPlacement} from './generated-fixture.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
-import {assert,same,clips,snapshotState} from '../runner/engine.mjs';
+import {assert,same,clips,snapshotState,OutcomeError} from '../runner/engine.mjs';
 import {readPPM,pixelDifference} from '../runner/pixels.mjs';
 const verify=process.argv[3]==='verify';
-const {s,c,check,finish}=await checks(process.argv[2],verify?'service-generated-reopen-report.json':'service-generated-report.json');
+const {s,c,check,finish,report}=await checks(process.argv[2],verify?'service-generated-reopen-report.json':'service-generated-report.json');
 const inspect=generation_id=>c('generate.inspect',{target:{kind:'generation',generation_id}});
 const timeline=timeline_id=>c('timeline.inspect',{timeline_id});
 const values=g=>({generation_id:g.generation_id,content_id:g.content_id,parameters:g.parameters.map(p=>({path:p.descriptor.param_path,value:p.value}))});
@@ -14,7 +14,7 @@ let frameSequence=0;
 async function frame(id,seconds=1){const output=path.join(s.root,`generated-frame-${++frameSequence}-${Date.now()}.ppm`);await c('render.export_still',{timeline_id:id,time:{value:seconds*24,rate:24},output});const image=await readPPM(output);assert(image.width===1920&&image.height===1080,'Wrong MGFX raster');return image;}
 async function title(generation_id,value){const g=await inspect(generation_id);await c('generate.set_params',{target:{kind:'generation',generation_id},expected_owner_revision:g.owner_revision,expected_params_revision:g.params_rev,values:{'title.text':value},reset:[]});}
 if(verify){
-  await check('S-MGFX-PERSIST',async()=>{const expected=await readJSON(expectedFile);assert(expected.generations.length>=2,'Missing independent-generation fixture');for(const g of expected.generations)same(values(await inspect(g.generation_id)),g,'Reopened generation identity and values');for(const t of expected.timelines)same(snapshotState(await timeline(t.timeline.timeline_id)),t,'Reopened generated timeline');const image=await frame(expected.renderTimeline);assert(pixelDifference(await readPPM(expected.reference),image)<=1,'Reopened MGFX pixels changed');return {generations:expected.generations.map(g=>g.generation_id),newProcess:s.pid,pixelsRestored:true};});finish();
+  await check('S-MGFX-PERSIST',async()=>{requirePassed((await readJSON(path.join(s.root,'service-generated-report.json'))).results,['S-MGFX-DUPLICATE']);const expected=await readJSON(expectedFile).catch(e=>{if(e.code==='ENOENT')throw new OutcomeError('MGFX persistence setup did not retain its expected state','Blocked');throw e;});assert(expected.generations.length>=2,'Missing independent-generation fixture');for(const g of expected.generations)same(values(await inspect(g.generation_id)),g,'Reopened generation identity and values');for(const t of expected.timelines)same(snapshotState(await timeline(t.timeline.timeline_id)),t,'Reopened generated timeline');const image=await frame(expected.renderTimeline);assert(pixelDifference(await readPPM(expected.reference),image)<=1,'Reopened MGFX pixels changed');return {generations:expected.generations.map(g=>g.generation_id),newProcess:s.pid,pixelsRestored:true};});finish();
 }else{
   let valid,copy,copyTimeline,copyFrame;
   await check('S-MGFX-DUPLICATE-DEFAULT',async()=>{const g=await createLocalGraphic(c,s),before=values(await inspect(g.generation.generation_id));const result=await c('generate.duplicate',{source_generation_id:g.generation.generation_id,label_suffix:' default descriptor copy'});assert(result.generation_id!==g.generation.generation_id,'Duplicate reused source identity');same(values(await inspect(g.generation.generation_id)),before,'Duplication preserves source');return {source:g.generation.generation_id,copy:result.generation_id,scope:'Copy must accept an optional group label omitted during successful admission'};});
@@ -25,7 +25,7 @@ if(verify){
     await title(copy.generation_id,'INDEPENDENT COPY HAS ITS OWN TITLE 12345');same(values(await inspect(source)),before,'Copy edit preserves original generation');assert(pixelDifference(original,await frame(valid.timeline))<=1,'Copy edit changed original pixels');copyFrame=await frame(copyTimeline);assert(pixelDifference(original,copyFrame)>.01,'Copy title did not change copied pixels');return {source,copy:copy.generation_id,sourcePlacement:valid.placement,copyPlacement:placement,independentValuesAndPixels:true,scope:'Application duplicate operation; bin context-menu gesture is separate'};
   });
   await check('S-MGFX-CLIP-COPY',async()=>{
-    assert(valid,'MGFX fixture prerequisite failed');const before=await timeline(valid.timeline),original=await frame(valid.timeline),source=values(await inspect(valid.generation.generation_id));
+    requirePassed(report.results,['S-MGFX-DUPLICATE']);const before=await timeline(valid.timeline),original=await frame(valid.timeline),source=values(await inspect(valid.generation.generation_id));
     // The application's MGFX clipboard route uses generate.duplicate. Generic
     // timeline.move_clips(copy=true) deliberately retains the referenced material.
     await c('generate.duplicate',{source_generation_id:valid.generation.generation_id,label_suffix:' placed copy',destination:{kind:'timeline',timeline_id:valid.timeline,at:{offset_seconds:2},track:{id:valid.destination.parent.track_id},fit:{mode:'fit_to_timeline'},overlap:'reject'}});
@@ -35,6 +35,6 @@ if(verify){
   await check('S-MGFX-UNDO-PUBLISH',async()=>{
     const g=await createLocalGraphic(c,s,{groupLabel:'Title',label:'Undo publish fixture'}),before=await timeline(g.timeline),original=await frame(g.timeline);assert(clips(before).length===1,'Unexpected publication fixture');assert((await c('undo.undo')).moved,'Undo publish was a no-op');assert(clips(await timeline(g.timeline)).length===0,'Undo publish left a placed clip');assert((await c('undo.redo')).moved,'Redo publish was a no-op');same(snapshotState(await timeline(g.timeline)),snapshotState(before),'Redo restores published identities');assert(pixelDifference(original,await frame(g.timeline))<=1,'Redo publish did not restore pixels');return {generation:g.generation.generation_id,placement:g.placement,undoRemovesPlacement:true,redoRestoresPixels:true,scope:'Placement history; retained undo assets are not classified as orphaned files'};
   });
-  if(valid&&copy){const reference=path.join(s.root,'generated-persistence-reference.ppm');await c('render.export_still',{timeline_id:copyTimeline,time:{value:24,rate:24},output:reference});await writeJSON(expectedFile,{generations:[values(await inspect(valid.generation.generation_id)),values(await inspect(copy.generation_id))],timelines:[snapshotState(await timeline(valid.timeline)),snapshotState(await timeline(copyTimeline))],reference,renderTimeline:copyTimeline});}
+  if(report.results.find(r=>r.id==='S-MGFX-DUPLICATE')?.status==='Pass'){const reference=path.join(s.root,'generated-persistence-reference.ppm');await c('render.export_still',{timeline_id:copyTimeline,time:{value:24,rate:24},output:reference});await writeJSON(expectedFile,{generations:[values(await inspect(valid.generation.generation_id)),values(await inspect(copy.generation_id))],timelines:[snapshotState(await timeline(valid.timeline)),snapshotState(await timeline(copyTimeline))],reference,renderTimeline:copyTimeline});}
   await c('project.checkpoint');finish();
 }

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import {checks} from './check-support.mjs';
+import {checks,visiblePlayhead} from './check-support.mjs';
 import {createLocalGraphic} from './generated-fixture.mjs';
 import {exportDialog,exportStillDialog} from './export-dialog.mjs';
 import {writeJSON} from '../runner/files.mjs';
@@ -55,7 +55,7 @@ await check('D-COMPOUND-DISSOLVE',async()=>{
   const dissolved=await until(async()=>{const a=await inspect(parent);return !clips(a).some(x=>x.source.kind==='timeline_ref')?a:null;});assert(clips(dissolved).length===clips(baseline).length,'Dissolve changed clip count');assert(pixelDifference(original,await frame(parent))<=1,'Dissolve changed pixels');await restore(async()=>{await n('key',{target:v.id,key:'Ctrl+Z'});await until(async()=>JSON.stringify(snapshotState(await inspect(parent)))===JSON.stringify(snapshotState(before)));});return {dissolved:true,undoRestored:true,pixelsPreserved:true};
 });
 await check('D-EXPORT-STILL',async()=>{
-  const main=await inspect(s.main.id);await open(main.timeline.name);await c('playback.seek',{time:1});await until(async()=>(await ui()).widgets.some(w=>w.name==='previewCurrentTimecode'&&w.text==='00:00:01:00'));
-  const expected=await frame(s.main.id,1),other=await frame(s.main.id,7),result=await exportStillDialog(context,path.join(s.root,'playhead.jpg')),actual=await readPPM(result.decoded),delta=pixelDifference(actual,expected);assert(delta+.5<pixelDifference(actual,other),'Dialog still does not correspond to the selected playhead frame');return {...result,playhead:'00:00:01:00',pixelDelta:delta,scope:'Actual Still at Playhead dialog; correspondence, not calibrated colour matching'};
+  const main=await inspect(s.main.id);await open(main.timeline.name);await c('playback.seek',{time:1});const readout=await until(async()=>{const observed=visiblePlayhead(await ui());return Math.abs(observed.seconds-1)<.001?observed:null;},{description:'Still-export playhead at one second'});
+  const expected=await frame(s.main.id,1),other=await frame(s.main.id,7),result=await exportStillDialog(context,path.join(s.root,'playhead.jpg')),actual=await readPPM(result.decoded),delta=pixelDifference(actual,expected);assert(delta+.5<pixelDifference(actual,other),'Dialog still does not correspond to the selected playhead frame');return {...result,playheadFrame:24,visibleReadout:readout,pixelDelta:delta,scope:'Actual Still at Playhead dialog; correspondence, not calibrated colour matching'};
 });
 await open((await inspect(s.main.id)).timeline.name);await c('project.checkpoint');finish();
