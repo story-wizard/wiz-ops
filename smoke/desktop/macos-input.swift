@@ -54,6 +54,8 @@ func frame(_ element: AXUIElement) -> CGRect? {
     return CGRect(origin: position, size: size)
 }
 func rectangle(_ value: CGRect) -> [String: Double] { ["x":value.minX,"y":value.minY,"width":value.width,"height":value.height] }
+func windowIntersectsDisplay(_ frame: CGRect, _ displays: [CGRect]) -> Bool { frame.width > 0 && frame.height > 0 && displays.contains { frame.intersects($0) } }
+func dockHitBlocksPointer(_ error: AXError) -> Bool { error != .noValue }
 func pointerOverlay(_ entry:[String:Any]) -> Bool {
     // The compositor reports the mouse cursor itself above the clicked point.
     // Exclude only its reserved system layer, never arbitrary Window Server UI.
@@ -173,12 +175,27 @@ func sampleRGB(_ image: CGImage) throws -> Data {
             let app = AXUIElementCreateApplication(pid)
             let windows=windowServer ? [] : attribute(app,kAXWindowsAttribute) as? [AXUIElement] ?? []
             try require(windowServer || !windows.isEmpty,"The verified PID did not expose AXWindows")
+            var displayCount: UInt32 = 0
+            try require(CGGetActiveDisplayList(0,nil,&displayCount) == .success,"Unable to inspect active displays")
+            var displayIds=[CGDirectDisplayID](repeating:0,count:Int(displayCount))
+            try require(CGGetActiveDisplayList(displayCount,&displayIds,&displayCount) == .success,"Unable to inspect active display bounds")
+            let displayBounds=displayIds.prefix(Int(displayCount)).map { CGDisplayBounds($0) }
             func topWindow(_ at: CGPoint? = nil) -> [String:Any]? {
                 let entries=CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]] ?? []
                 return entries.first { entry in
                     if pointerOverlay(entry) { return false }
                     guard (at != nil || (entry[kCGWindowLayer as String] as? NSNumber)?.intValue==0), (entry[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1 > 0,let b=entry[kCGWindowBounds as String] as? [String:Any],let r=CGRect(dictionaryRepresentation:b as CFDictionary) else { return false }
-                    return at.map(r.contains) ?? true
+                    // Dock can expose a full-display transparent hosting window.
+                    // Query only the verified system Dock (never Wizard's Qt AX tree).
+                    // A real Dock hit or any inspection error remains an occluder.
+                    if let at, entry[kCGWindowOwnerName as String] as? String == "Dock",
+                       let owner=(entry[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value,
+                       (try? ps(["-p",String(owner),"-o","comm="])) == "/System/Library/CoreServices/Dock.app/Contents/MacOS/Dock" {
+                        var hit: AXUIElement?
+                        let result=AXUIElementCopyElementAtPosition(AXUIElementCreateApplication(owner),Float(at.x),Float(at.y),&hit)
+                        if !dockHitBlocksPointer(result) { return false }
+                    }
+                    return windowIntersectsDisplay(r,displayBounds) && (at.map(r.contains) ?? true)
                 }
             }
             func foreground() -> Bool { windowServer ? (topWindow()?[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == pid : attribute(app,kAXFrontmostAttribute) as? Bool == true }

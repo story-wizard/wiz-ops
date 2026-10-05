@@ -6,7 +6,7 @@ import {realpathSync,appendFileSync,constants} from 'node:fs';
 import {PackagedEngine,assert,pause,OutcomeError} from '../runner/engine.mjs';
 import {ProjectSession} from '../runner/interactions.mjs';
 import {checkPrepared} from '../runner/prepare.mjs';
-import {ROOT,dataDirectory,externalPath,readJSON,writeJSON,fingerprint,inside,sha} from '../runner/files.mjs';
+import {ROOT,dataDirectory,externalPath,readJSON,writeJSON,fingerprint,inside,sha,copySelectedPackage} from '../runner/files.mjs';
 import {runtimeEnvironment} from '../runner/runtime.mjs';
 import {attachSelectedBuild} from './attach.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
@@ -64,7 +64,7 @@ export async function prepareDesktop(sourceApp,qtCocoaPlugin,pairedCli,prepared)
   else throw new OutcomeError('Desktop tests require attachment to the selected build. Prepare a new selected-build plan.','Blocked');
   const dataDir=dataDirectory(prepared?.dataDir);assert(dataDir===dataDirectory(),'Configure SMOKE_DATA_DIR to match desktop preparation.');
   const directory=externalPath(prepared?.directory||path.join(dataDir,'desktop-runs'));assert(inside(dataDir,directory),'Desktop destination must be inside the configured workspace.');await mkdir(directory,{recursive:true});const root=await mkdtemp(path.join(directory,'desktop-'));
-  const app=path.join(root,'Wizard Smoke.app');await cp(sourceApp,app,{recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE});
+  const app=path.join(root,'Wizard Smoke.app');await copySelectedPackage(sourceApp,app,{mode:constants.COPYFILE_FICLONE});
   const identity=await fingerprint(app,{packageTree:true});await cp(plan.fixtureRoot,path.join(root,'media'),{recursive:true});
   const engine=new PackagedEngine(plan,root,path.basename(root),schema),c=new ProjectSession(engine,path.basename(root),fixtures);
   try{await engine.start();await c.setup();await c.call('project.checkpoint');}finally{await engine.stop();}

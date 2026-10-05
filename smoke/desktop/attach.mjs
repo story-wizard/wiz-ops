@@ -3,7 +3,7 @@ import {spawn,execFileSync} from 'node:child_process';
 import {constants,existsSync} from 'node:fs';
 import {mkdir,mkdtemp,cp,open,realpath} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
-import {dataDirectory,fingerprint,readJSON,writeJSON,sha,inside} from '../runner/files.mjs';
+import {dataDirectory,fingerprint,readJSON,writeJSON,sha,inside,copySelectedPackage} from '../runner/files.mjs';
 import {assert,pause,OutcomeError} from '../runner/engine.mjs';
 import {nativeCall,verifyDesktopOwner,verifyNativeCapabilities} from './adapter.mjs';
 import {setupAttachmentTools,verifyAttachmentTools} from './attachment-tools.mjs';
@@ -20,8 +20,10 @@ export async function attachSelectedBuild({app,dataDir=dataDirectory(),preparedS
  await mkdir(path.join(dataDir,'attachments'),{recursive:true});
  const root=preparedSession?.root||await mkdtemp(path.join(dataDir,'attachments','attach-')),copy=path.join(root,'Wizard Smoke.app');
  assert(inside(dataDir,root),'Attachment root must stay in the owned workspace.');
- if(!existsSync(copy))await cp(app,copy,{recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE});
+ if(!existsSync(copy))await copySelectedPackage(app,copy,{mode:constants.COPYFILE_FICLONE});
  assert((await fingerprint(copy,{packageTree:true})).sha256===source.sha256,'Attachment copy differs from the selected build.');
+ // Reject an invalid copy before macOS presents a "damaged" launch dialog.
+ run('/usr/bin/codesign',['--verify','--deep','--strict',copy]);
  const generation=(preparedSession?.generation||0)+1,native=path.join(root,'native-'+generation),settings=path.join(root,'settings'),home=path.join(root,'home'),plugins=path.join(root,'plugins');
  for(const dir of [native,settings,home,path.join(root,'projects'),path.join(plugins,'styles')])await mkdir(dir,{recursive:true});
  await cp(tools.directory,plugins,{recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE});

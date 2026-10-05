@@ -1,7 +1,7 @@
 import {createHash} from 'node:crypto';
 import {createReadStream,existsSync,lstatSync,realpathSync} from 'node:fs';
 import {homedir} from 'node:os';
-import {readFile,writeFile,rename,readdir,lstat,readlink,stat as fileStat} from 'node:fs/promises';
+import {readFile,writeFile,rename,readdir,lstat,readlink,stat as fileStat,cp} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 export const ROOT=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -26,12 +26,22 @@ export const readJSON=async file=>JSON.parse(await readFile(file,'utf8'));
 export async function writeJSON(file,value){const temporary=`${file}.${process.pid}.tmp`;await writeFile(temporary,JSON.stringify(value,null,2)+'\n');await rename(temporary,file);}
 export const digest=value=>createHash('sha256').update(typeof value==='string'?value:JSON.stringify(value)).digest('hex');
 export async function sha(file){const hash=createHash('sha256');for await(const chunk of createReadStream(file))hash.update(chunk);return hash.digest('hex');}
+function packageRuntimeEntry(relative){
+ const name=path.basename(relative);
+ return name==='__pycache__'||name==='.DS_Store'||name.endsWith('.pyc')||relative==='Contents/MacOS/logs';
+}
+// Omit the application's unsealed runtime log directory from owned copies.
+// Preserve shipped Python caches: some packages include them in their seal,
+// even though package fingerprinting ignores those files.
+export async function copySelectedPackage(source,destination,options={}){
+ await cp(source,destination,{...options,recursive:true,verbatimSymlinks:true,filter:file=>path.relative(source,file)!=='Contents/MacOS/logs'});
+}
 export async function fingerprint(directory,{packageTree=false,followFileLinks=false}={}){
   const entries=[];
   async function walk(relative=''){
     const names=(await readdir(path.join(directory,relative))).sort();
     for(const name of names){const rel=path.join(relative,name),file=path.join(directory,rel);
-      if(packageTree&&(name==='__pycache__'||name==='.DS_Store'||name.endsWith('.pyc')||rel==='Contents/MacOS/logs'))continue;
+      if(packageTree&&packageRuntimeEntry(rel))continue;
       const stat=await lstat(file);
       if(stat.isSymbolicLink()){
         if(followFileLinks){const target=await fileStat(file);if(!target.isFile())throw new Error('Model links must target files: '+file);entries.push([rel,target.size,await sha(file)]);}

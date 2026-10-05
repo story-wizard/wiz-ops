@@ -1,7 +1,7 @@
 import path from 'node:path';
 import {mkdir,cp,copyFile,realpath,readFile,writeFile,open,unlink} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
-import {readJSON,writeJSON,fingerprint,digest,sha,inside,dataDirectory} from '../runner/files.mjs';
+import {readJSON,writeJSON,fingerprint,digest,sha,inside,dataDirectory,copySelectedPackage} from '../runner/files.mjs';
 
 export const uiCourse=await readJSON(new URL('./computer-use-course.json',import.meta.url));
 const uuid=/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
@@ -30,7 +30,7 @@ export async function prepareUI(dataDir,runId,{checks,cocoaPlugin,cocoaSha256}={
  const source=await fingerprint(plan.app,{packageTree:true});if(source.sha256!==plan.packageHash)throw Error('Selected package changed; prepare and run the intended build first.');
  await mkdir(root); // One companion per run; existing observations are never replaced.
  try{
-  const app=path.join(root,'Wizard Release UI.app');await cp(plan.app,app,{recursive:true,verbatimSymlinks:true});
+  const app=path.join(root,'Wizard Release UI.app');await copySelectedPackage(plan.app,app);
   verifyUICopy(source,await fingerprint(app,{packageTree:true}));
   let runtimeOverride=null;
   if(cocoaPlugin){
