@@ -91,21 +91,21 @@ test('every accepted definition resolves and every desktop/service check has an 
  try{
   const accepted=acceptance();assert.equal(accepted.checks.length,137);
   for(const c of accepted.checks){const s=resolveSelection(db,{checkIds:[c.id]},accepted);validateRecipe(selectedRecipe(s),accepted);if(c.target!=='packaged')assert.ok(bound.has(c.id),'Unbound check '+c.id);}
-  const all=resolveSelection(db,{checkIds:accepted.checks.map(c=>c.id)},accepted);assert.equal(all.effectiveIds.length,137);assert.equal(all.notSelected.length,22);
+  const all=resolveSelection(db,{checkIds:accepted.checks.map(c=>c.id)},accepted);assert.equal(all.effectiveIds.length,137);assert.equal(all.notSelected.length,46);
   const maintained=resolveSelection(db,{courseIds:['automated-full']},accepted);
   assert.deepEqual(new Set(maintained.effectiveIds),new Set(all.effectiveIds));
   assert.equal(maintained.checkpoint,undefined);assert.equal(maintained.requirements.foreground,true);
   assert.equal(courseList(db)[0].id,'smoke-full');
   assert.throws(()=>saveCourse(db,{...draft,id:'automated-full'},accepted),/reserved/);
   validateRecipe(selectedRecipe(maintained),accepted);
-  assert.equal(rawChecks.length,159);
+  assert.equal(rawChecks.length,183);
  }finally{db.close();}
 });
 
  test('maintained full course qualifies only its explicit candidates; custom courses cannot promote them',()=>{
  const db=new DatabaseSync(':memory:');initializeCourses(db);
  try{
-  const s=resolveSelection(db,{courseIds:['smoke-full']});assert.equal(s.effectiveIds.length,153);assert.equal(s.qualificationIds.length,16);assert.equal(s.courseRevisions[0].revision,2);
+  const s=resolveSelection(db,{courseIds:['smoke-full']});assert.equal(s.effectiveIds.length,177);assert.equal(s.qualificationIds.length,40);assert.equal(s.courseRevisions[0].revision,8);
   assert.equal(s.effectiveIds.filter(id=>id.startsWith('P-')).length,13);assert.ok(s.effectiveIds.includes('D-EXTERNAL-RELOAD'));assert.ok(!s.effectiveIds.includes('S-PF-IDLE'));assert.ok(checkRegistry().some(c=>c.id==='S-PF-IDLE'),'Idle candidate remains available for its separate probe');
   validateRecipe(selectedRecipe(s));assert.throws(()=>resolveSelection(db,{checkIds:['P-RG-WIRE']}),/not accepted/);
   assert.throws(()=>saveCourse(db,{...draft,id:'candidate',groups:[{id:'g',title:'g',checks:['P-RG-WIRE']}]}),/not accepted/);
@@ -113,3 +113,25 @@ test('every accepted definition resolves and every desktop/service check has an 
   assert.throws(()=>resolveSelection(db,{courseIds:['smoke-full'],checkIds:['D-TRACK-ADD']}),/not accepted/);
  }finally{db.close();}
  });
+
+test('a course subset preserves candidate qualification and explicit fixture closure without widening membership',()=>{
+ const db=new DatabaseSync(':memory:');initializeCourses(db);
+ try{
+  const input={courseIds:['smoke-full'],subsetIds:['D-SOURCE-COLOR','D-MGFX-BIN-DROP','S-MGFX-PERSIST']},s=resolveSelection(db,input);
+  assert.deepEqual(new Set(s.requestedIds),new Set(input.subsetIds));assert.deepEqual(new Set(s.qualificationIds),new Set(['D-SOURCE-COLOR','D-MGFX-BIN-DROP']));assert.ok(s.effectiveIds.includes('S-MGFX-DUPLICATE'));assert.ok(!s.effectiveIds.includes('S-PF-IDLE'));assert.ok(!s.effectiveIds.includes('P-RG-WIRE'));validateRecipe(selectedRecipe(s));
+  for(const bad of [{subsetIds:['D-SOURCE-COLOR']},{...input,subsetIds:[]},{...input,subsetIds:['D-TRACK-ADD']},{...input,checkIds:['A-CO-01']},{...input,courseIds:['automated-full'],subsetIds:['D-SOURCE-COLOR']},{...input,subsetIds:'D-SOURCE-COLOR'}])assert.throws(()=>resolveSelection(db,bad));
+  assert.throws(()=>resolveSelection(db,{checkIds:['D-SOURCE-COLOR']}),/not accepted/);
+ }finally{db.close();}
+});
+
+test('selection and bin checks do not require neighboring product assertions',()=>{
+ const db=new DatabaseSync(':memory:');initializeCourses(db);
+ try{
+  for(const id of ['D-LINKED-SELECTION','D-TRACK-LOCK-UI','D-TRACK-TARGETING','D-RIPPLE-GAP','D-BIN-RENAME','D-BIN-DUPLICATE','D-BIN-DELETE','D-BIN-MGFX']){
+   const s=resolveSelection(db,{checkIds:[id]});
+   assert.deepEqual(new Set(s.effectiveIds),new Set(['A-CLI-01','D-CLI-01',id]));validateRecipe(selectedRecipe(s));
+  }
+  const s=resolveSelection(db,{courseIds:['smoke-full'],subsetIds:['D-BIN-DUPLICATE'],diagnostics:'investigation'});
+  assert.deepEqual(s.requestedIds,['D-BIN-DUPLICATE']);assert.deepEqual(new Set(s.effectiveIds),new Set(['A-CLI-01','D-CLI-01','D-BIN-DUPLICATE']));assert.equal(s.diagnostics,'investigation');
+ }finally{db.close();}
+});

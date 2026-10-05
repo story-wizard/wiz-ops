@@ -1,3 +1,4 @@
+import {initializeInvestigations,investigation,investigationList,createInvestigation,triageInvestigation,linkReproduction,reproSelection,bugDraft,reviewDraft,exportInvestigation,agentInvestigationPrompt,readInvestigationFile,reporterHandoff,previewTriage,editBugDraft,investigationTask,investigationEvidence,caseNextAction,recordRepro,updateRepro,reconcileRepros,closeRepro,readInvestigationArtifact,verifyReviewEvidence} from './investigations.mjs';
 import {buildCatalogPage} from './build-catalog.mjs';
 import {findBuilds,localBuilds,importBuild,buildStage,receiveArchive} from './builds.mjs';
 import {rm} from 'node:fs/promises';
@@ -17,7 +18,7 @@ import {readJSON,writeJSON,digest,dataDirectory,fingerprint} from './runner/file
 import {checklistCoverage} from './coverage.mjs';
 import {desktopState,desktopCourse,serviceCourse,startDesktopJob,requestJob,jobDetails,initializeDesktopCatalog,ownedDesktopSessions} from './desktop/hub.mjs';
 import {checkPrepared,sourceIdentity,prepare} from './runner/prepare.mjs';
-import {checkRegistry,physicalChecks,courseList,getCourse,saveCourse,resolveSelection} from './runner/catalog.mjs';
+import {checkRegistry,physicalChecks,courseList,getCourse,saveCourse,resolveSelection,selectedRecipe} from './runner/catalog.mjs';
 import {runtimeList,saveRuntime,installedRuntime} from './runner/runtime.mjs';
 import {exportRunKit} from './kits.mjs';
 import {exportLocalReport,reportScriptHash} from './reports.mjs';
@@ -47,6 +48,7 @@ if (!db.prepare('SELECT value FROM metadata WHERE key=?').get('seeded')) {
   } catch(error) {db.exec('ROLLBACK');throw error;}
 }
 initializeAutomation(db);
+initializeInvestigations(db);
 initializeDesktopCatalog(db);
 recoverInterrupted(db);
 const checkpoint=JSON.parse(readFileSync(path.join(root,'catalog/checkpoints/logan-2026-09-25-2.json')));
@@ -124,6 +126,51 @@ function validateTest(input,previous){
   if(input.fixtureIds!==undefined){if(!Array.isArray(input.fixtureIds)||!input.fixtureIds.every(id=>seed.gp.components.some(c=>c.id===id)))fail(400,'Unknown GP component.');t.fixtureIds=[...new Set(input.fixtureIds)];}
   return t;
 }
+async function admitRun(body){
+        const operator=str(body.operator||'Local runner','operator',120),requestId=body.requestId;
+        if(!operator)fail(400,'An operator is required.');
+        if(requestId!==undefined){
+          if(typeof requestId!=='string'||!requestId.match(/^[A-Za-z0-9-]{1,100}$/))fail(400,'Invalid request ID.');
+          const previous=db.prepare('SELECT * FROM execution_requests WHERE request_id=?').get(requestId);
+          if(previous){if(previous.plan_hash!==body.planHash||previous.operator!==operator)fail(409,'Request ID was already used with different inputs.');return {status:200,result:{runId:previous.run_id,requestId,reused:true}};}
+        }
+        if(preparing)fail(409,'A plan is being prepared.');
+        if(ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'A desktop course or human setup is active.');
+        recoverInterrupted(db);let plan;
+        if(typeof body.planHash==='string'&&/^[a-f0-9]{64}$/.test(body.planHash))try{plan=await readJSON(path.join(dataDir,'plans',body.planHash+'.json'));}catch(e){if(e.code!=='ENOENT')fail(409,'Stored plan cannot be read.');}
+        if(plan){const {planHash,...content}=plan;if(planHash!==body.planHash||digest(content)!==planHash||await sourceIdentity()!==plan.runnerHash)fail(409,'Plan or runner changed. Prepare the selected course again.');}
+        else{const status=await runnerStatus();if(!status.prepared)fail(409,'Prepare the fixture pack and current runner before starting.');if(body.planHash!==status.plan.planHash)fail(409,'Prepared plan changed. Review the run setup again.');plan=status.plan;}
+        // Recheck after asynchronous identity reads, before synchronous admission/spawn.
+        if(preparing||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'Another preparation or desktop setup became active.');
+        if(requestId){const previous=db.prepare('SELECT * FROM execution_requests WHERE request_id=?').get(requestId);if(previous){if(previous.plan_hash!==body.planHash||previous.operator!==operator)fail(409,'Request ID was already used with different inputs.');return {status:200,result:{runId:previous.run_id,requestId,reused:true}};}}
+        let id;try{id=createExecution(db,plan,dataDir,operator,requestId);}catch(error){fail(409,error.message);}
+        const blocked=error=>{for(const r of db.prepare('SELECT test_id FROM results WHERE run_id=?').all(id))record(db,id,r.test_id,'Blocked',error.message,'');updateExecution(db,id,'Blocked',error.message);};
+        let log;
+        try{
+          // Keep admission and PID registration in one event-loop turn so polling cannot recover a worker still being launched.
+          const job=execution(db,id);mkdirSync(job.artifact_root,{recursive:true,mode:0o700});log=openSync(path.join(job.artifact_root,'runner.log'),'a');
+          const worker=spawn(process.execPath,[path.join(root,'runner/run.mjs'),'--execute','--data-dir',dataDir,'--run-id',id],{cwd:root,env:{...process.env,SMOKE_DATA_DIR:dataDir},detached:true,stdio:['ignore',log,log]});
+          if(worker.pid)db.prepare('UPDATE executions SET pid=? WHERE run_id=?').run(worker.pid,id);
+          worker.on('error',blocked);worker.unref();
+        }catch(error){blocked(error);throw error;}finally{if(log!==undefined)closeSync(log);}
+        return {status:202,result:{runId:id,requestId,reused:false}};
+}
+
+async function beginPreparation(body,preparationId){
+ if(preparing||(await runnerStatus()).active||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'A course, desktop setup or preparation is active.');
+ if(typeof body.app!=='string'||!path.isAbsolute(body.app))fail(400,'Choose an explicit absolute app path.');
+ let selection;try{selection=resolveSelection(db,body.selection);}catch(e){fail(409,e.message);}
+ if(preparing)fail(409,'Another preparation became active.');preparing=true;
+ try{const {job}=await startPreparation({app:body.app,dataDir,selection,preparationId},{onFinished:()=>{preparing=false;}});return job;}catch(e){preparing=false;throw e;}
+}
+const reproServices={preparation:id=>readPreparation(dataDir,id),request:id=>db.prepare('SELECT * FROM execution_requests WHERE request_id=?').get(id),getRun};
+const reconciling=new Map();
+async function investigationView(id){
+ recoverInterrupted(db);let pending=reconciling.get(id);if(!pending){pending=reconcileRepros(db,id,dataDir,reproServices);reconciling.set(id,pending);}
+ let value;try{value=await pending;}finally{if(reconciling.get(id)===pending)reconciling.delete(id);}let selection=null;try{selection=reproSelection(value);}catch{}
+ return {...value,prompt:agentInvestigationPrompt(value),selection,drafts:value.cases.filter(c=>c.classification==='App'&&!c.duplicateOf).map(c=>bugDraft(value,c)),nextActions:Object.fromEntries(value.cases.map(c=>[c.id,caseNextAction(value,c)]))};
+}
+
 const server=http.createServer(async(req,res)=>{
   const send=(status,value)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(value));};
   try{
@@ -211,13 +258,7 @@ const server=http.createServer(async(req,res)=>{
       if(req.method==='GET'&&parts[1]==='builds'&&parts[2]==='progress'&&parts.length===4){const progress=buildProgress.get(parts[3]);if(!progress)fail(404,'Build progress unavailable.');return send(200,progress);}
       if(req.method==='GET'&&url.pathname==='/api/run-setup')return send(200,await runSetup());
       if(req.method==='GET'&&parts[1]==='preparations'&&parts.length===3){try{return send(200,await readPreparation(dataDir,parts[2]));}catch(e){fail(404,e.message);}}
-      if(req.method==='POST'&&url.pathname==='/api/preparations'){
-        if(preparing||(await runnerStatus()).active||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'A course, desktop setup or preparation is active.');
-        if(typeof body.app!=='string'||!path.isAbsolute(body.app))fail(400,'Choose an explicit absolute app path.');
-        let selection;try{selection=resolveSelection(db,body.selection);}catch(e){fail(409,e.message);}
-        if(preparing)fail(409,'Another preparation became active.');preparing=true;
-        try{const {job}=await startPreparation({app:body.app,dataDir,selection},{onFinished:()=>{preparing=false;}});return send(202,job);}catch(e){preparing=false;fail(409,e.message);}
-      }
+      if(req.method==='POST'&&url.pathname==='/api/preparations'){try{return send(202,await beginPreparation(body));}catch(e){fail(e.status||409,e.message);}}
       if(req.method==='GET'&&parts[1]==='plans'&&parts.length===3){try{return send(200,await storedPlan(parts[2]));}catch(e){fail(409,e.message);}}
       if(req.method==='GET'&&url.pathname==='/api/courses')return send(200,courseList(db));
       if(req.method==='GET'&&parts[1]==='courses'&&parts.length===3){try{return send(200,getCourse(db,parts[2],url.searchParams.has('revision')?Number(url.searchParams.get('revision')):undefined));}catch(e){fail(404,e.message);}}
@@ -242,37 +283,55 @@ const server=http.createServer(async(req,res)=>{
         }catch(error){const result={ok:false,checkedAt:new Date().toISOString(),wizardLaunched:false,error:error.message};if(body.planHash===undefined)await writeJSON(path.join(dataDir,'preflight.json'),result);return send(200,result);}
 
       }
-      if(req.method==='POST'&&url.pathname==='/api/runner/start'){
-        const operator=str(body.operator||'Local runner','operator',120),requestId=body.requestId;
-        if(!operator)fail(400,'An operator is required.');
-        if(requestId!==undefined){
-          if(typeof requestId!=='string'||!requestId.match(/^[A-Za-z0-9-]{1,100}$/))fail(400,'Invalid request ID.');
-          const previous=db.prepare('SELECT * FROM execution_requests WHERE request_id=?').get(requestId);
-          if(previous){if(previous.plan_hash!==body.planHash||previous.operator!==operator)fail(409,'Request ID was already used with different inputs.');return send(200,{runId:previous.run_id,requestId,reused:true});}
-        }
-        if(preparing)fail(409,'A plan is being prepared.');
-        if(ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'A desktop course or human setup is active.');
-        recoverInterrupted(db);let plan;
-        if(typeof body.planHash==='string'&&/^[a-f0-9]{64}$/.test(body.planHash))try{plan=await readJSON(path.join(dataDir,'plans',body.planHash+'.json'));}catch(e){if(e.code!=='ENOENT')fail(409,'Stored plan cannot be read.');}
-        if(plan){const {planHash,...content}=plan;if(planHash!==body.planHash||digest(content)!==planHash||await sourceIdentity()!==plan.runnerHash)fail(409,'Plan or runner changed. Prepare the selected course again.');}
-        else{const status=await runnerStatus();if(!status.prepared)fail(409,'Prepare the fixture pack and current runner before starting.');if(body.planHash!==status.plan.planHash)fail(409,'Prepared plan changed. Review the run setup again.');plan=status.plan;}
-        // Recheck after asynchronous identity reads, before synchronous admission/spawn.
-        if(preparing||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'Another preparation or desktop setup became active.');
-        if(requestId){const previous=db.prepare('SELECT * FROM execution_requests WHERE request_id=?').get(requestId);if(previous){if(previous.plan_hash!==body.planHash||previous.operator!==operator)fail(409,'Request ID was already used with different inputs.');return send(200,{runId:previous.run_id,requestId,reused:true});}}
-        let id;try{id=createExecution(db,plan,dataDir,operator,requestId);}catch(error){fail(409,error.message);}
-        const blocked=error=>{for(const r of db.prepare('SELECT test_id FROM results WHERE run_id=?').all(id))record(db,id,r.test_id,'Blocked',error.message,'');updateExecution(db,id,'Blocked',error.message);};
-        let log;
-        try{
-          // Keep admission and PID registration in one event-loop turn so polling cannot recover a worker still being launched.
-          const job=execution(db,id);mkdirSync(job.artifact_root,{recursive:true,mode:0o700});log=openSync(path.join(job.artifact_root,'runner.log'),'a');
-          const worker=spawn(process.execPath,[path.join(root,'runner/run.mjs'),'--execute','--data-dir',dataDir,'--run-id',id],{cwd:root,env:{...process.env,SMOKE_DATA_DIR:dataDir},detached:true,stdio:['ignore',log,log]});
-          if(worker.pid)db.prepare('UPDATE executions SET pid=? WHERE run_id=?').run(worker.pid,id);
-          worker.on('error',blocked);worker.unref();
-        }catch(error){blocked(error);throw error;}finally{if(log!==undefined)closeSync(log);}
-        return send(202,{runId:id,requestId,reused:false});
-      }
+      if(req.method==='POST'&&url.pathname==='/api/runner/start'){const admitted=await admitRun(body);return send(admitted.status,admitted.result);}
       if(req.method==='POST'&&url.pathname==='/api/runner/stop'){
         const job=execution(db,str(body.runId,'run ID',60));if(!job||!runnerAlive(job))fail(409,'No owned runner is active for this record.');process.kill(job.pid,'SIGTERM');return send(202,{message:'Stop requested. Pending work will be blocked and uncertain mutations retained as unknown.'});
+      }
+      if(url.pathname==='/api/investigations'&&req.method==='GET'){
+        const runId=url.searchParams.get('run'),errors=new Map();
+        for(const item of investigationList(db,runId)){if(investigation(db,item.id).repros?.some(r=>['Requested','Preparing','Starting','Running'].includes(r.state)))try{await investigationView(item.id);}catch(e){errors.set(item.id,e.message);}}
+        return send(200,investigationList(db,runId).map(item=>({...item,...(errors.has(item.id)?{reconciliationError:errors.get(item.id)}:{})})));
+      }
+      if(parts[1]==='runs'&&parts[3]==='investigation'&&parts.length===4&&req.method==='POST'){
+        const run=getRun(parts[2]);if(!run)fail(404,'Run not found.');
+        try{return send(201,await createInvestigation(db,run,dataDir,body));}catch(e){fail(409,e.message);}
+      }
+      if(parts[1]==='investigations'&&parts.length>=3&&parts.length<=4){
+        try{
+          const id=parts[2];
+          if(req.method==='GET'&&parts.length===3)return send(200,await investigationView(id));
+          if(req.method==='GET'&&parts[3]==='selection')return send(200,resolveSelection(db,reproSelection(investigation(db,id))));
+          if(req.method==='POST'&&parts[3]==='close-repro')return send(200,closeRepro(db,id,body));
+          if(req.method==='GET'&&parts[3]==='evidence')return send(200,await investigationEvidence(investigation(db,id),url.searchParams.get('case'),dataDir));
+          if(req.method==='GET'&&parts[3]==='artifact'){const file=url.searchParams.get('file'),bytes=await readInvestigationArtifact(investigation(db,id),url.searchParams.get('case'),url.searchParams.get('run'),file,dataDir),ext=path.extname(file).slice(1);res.writeHead(200,{'Content-Type':({png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',mp4:'video/mp4',mov:'video/quicktime',webm:'video/webm',wav:'audio/wav',mp3:'audio/mpeg',m4a:'audio/mp4',json:'application/json'})[ext]||'text/plain; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"});return res.end(bytes);}
+          if(req.method==='GET'&&parts[3]==='task')return send(200,investigationTask(investigation(db,id),{task:url.searchParams.get('task')||'triage',caseId:url.searchParams.get('case')||undefined}));
+          if(req.method==='POST'&&parts[3]==='proposal')return send(200,{revision:investigation(db,id).revision,...previewTriage(investigation(db,id),body),proposal:body});
+          if(req.method==='POST'&&parts[3]==='draft')return send(200,editBugDraft(db,id,body));
+          if(req.method==='POST'&&parts[3]==='prepare'){
+            const intent=recordRepro(db,id,body);if(intent.reused)return send(200,await investigationView(id));
+            try{const job=await beginPreparation({app:intent.repro.app,selection:intent.repro.selection},intent.repro.preparationId);updateRepro(db,id,intent.repro.id,{state:'Preparing',preparation:job});}
+            catch(e){updateRepro(db,id,intent.repro.id,{state:'Failed',error:e.message});throw e;}
+            return send(202,await investigationView(id));
+          }
+          if(req.method==='POST'&&parts[3]==='start'){
+            if(Object.keys(body).some(k=>!['reproId','actor'].includes(k)))throw Error('Unknown repro start field.');
+            const value=await investigationView(id),repro=value.repros?.find(r=>r.id===body.reproId);
+            if(!repro||repro.actor!==body.actor)throw Error('Choose the recorded operator and repro attempt.');
+            if(!['Ready','Starting','Running','Linked'].includes(repro.state))throw Error('Prepare this diagnostic repro before starting.');
+            if(repro.runId)return send(200,{runId:repro.runId,reused:true});
+            if(digest(repro.selection)!==digest(reproSelection(value)))throw Error('Repro selection changed. Close the unstarted preparation and prepare a new attempt.');
+            const plan=await storedPlan(repro.planHash);if(plan.packageHash!==value.baseline.identities.packageHash)throw Error('The prepared build differs from the investigation package.');
+            if(plan.recipe?.selection?.diagnostics!=='investigation'||digest(plan.recipe)!==plan.courseHash||digest(selectedRecipe(resolveSelection(db,repro.selection)))!==plan.courseHash)throw Error('The prepared course differs from the diagnostic repro intent. Close the unstarted selection and prepare again.');
+            updateRepro(db,id,repro.id,{state:'Starting'});
+            const admitted=await admitRun({planHash:repro.planHash,operator:repro.actor,requestId:repro.requestId});
+            updateRepro(db,id,repro.id,{state:'Running',runId:admitted.result.runId});return send(admitted.status,admitted.result);
+          }
+          if(req.method==='POST'&&parts[3]==='triage')return send(200,triageInvestigation(db,id,body));
+          if(req.method==='POST'&&parts[3]==='link'){const run=getRun(body.runId);if(!run)fail(404,'Reproduction run not found.');return send(200,await linkReproduction(db,id,run,dataDir,body));}
+          if(req.method==='POST'&&parts[3]==='review'){if(body.decision==='Confirmed')await verifyReviewEvidence(investigation(db,id),body.caseId,dataDir);return send(200,reviewDraft(db,id,body));}
+          if(req.method==='POST'&&parts[3]==='reporter')return send(201,await reporterHandoff(db,id,dataDir,body));
+          if(req.method==='POST'&&parts[3]==='export')return send(201,await exportInvestigation(db,id,dataDir));
+        }catch(e){fail(e.status||409,e.message);}
       }
       if(req.method==='GET'&&url.pathname==='/api/runs')return send(200,db.prepare('SELECT id FROM runs ORDER BY created_at DESC').all().map(r=>getRun(r.id)));
       if(req.method==='POST'&&parts[1]==='runs'&&parts[3]==='kit'&&parts.length===4){recoverInterrupted(db);const run=getRun(parts[2]);if(!run)fail(404,'Run not found.');try{return send(201,await exportRunKit(run,dataDir));}catch(e){fail(409,e.message);}}
@@ -339,16 +398,17 @@ const server=http.createServer(async(req,res)=>{
       const content=readFileSync(path.join(dataDir,'history.html'));
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'self'; sandbox"});return res.end(req.method==='HEAD'?undefined:content);
     }
+    const investigationExport=parts[0]==='exports'&&/^investigation-[a-f0-9-]{36}-[a-f0-9]{12}$/.test(parts[1]||'')&&parts.length>=3;
     const agentExport=parts[0]==='exports'&&/^agent-report-[a-f0-9-]{36}$/.test(parts[1]||'')&&((parts.length===3&&['index.html','report.json'].includes(parts[2]))||(parts.length===4&&parts[2]==='evidence'&&/^agent-[a-f0-9-]{36}\.(png|json)$/.test(parts[3])));
-    if(agentExport||parts[0]==='exports'&&/^smoke-report-[a-f0-9-]{36}-[a-f0-9]{12}$/.test(parts[1]||'')&&((parts.length===3&&['index.html','report.json'].includes(parts[2]))||(parts.length===4&&parts[2]==='evidence'&&(['plan.json','course.json','report.json','operations.jsonl','media-manifest.json','scope.json','execution-context.json','checkpoint.json','test-specifications.json','steps.jsonl'].includes(parts[3])||/^computer-use-(pass\.json|[a-f0-9]{12}-[a-zA-Z0-9_-]+\.(png|jpg|jpeg|gif|mp4|mov|webm|wav|mp3|m4a|json|txt))$/.test(parts[3]))))){
-      let content;try{content=readFileSync(path.join(dataDir,...parts));}catch{fail(404,'Report file not found.');}
+    if(investigationExport||agentExport||parts[0]==='exports'&&/^smoke-report-[a-f0-9-]{36}-[a-f0-9]{12}$/.test(parts[1]||'')&&((parts.length===3&&['index.html','report.json'].includes(parts[2]))||(parts.length===4&&parts[2]==='evidence'&&(['plan.json','course.json','report.json','operations.jsonl','media-manifest.json','scope.json','execution-context.json','checkpoint.json','test-specifications.json','steps.jsonl'].includes(parts[3])||/^computer-use-(pass\.json|[a-f0-9]{12}-[a-zA-Z0-9_-]+\.(png|jpg|jpeg|gif|mp4|mov|webm|wav|mp3|m4a|json|txt))$/.test(parts[3]))))){
+      let content;try{content=investigationExport?await readInvestigationFile(dataDir,parts[1],parts.slice(2).join('/')):readFileSync(path.join(dataDir,...parts));}catch{fail(404,'Report file not found.');}
       const html=parts.at(-1)==='index.html',scriptHash=html?createHash('sha256').update(content.toString().match(/<script>([\s\S]*?)<\/script>/)?.[1]||'').digest('base64'):reportScriptHash;res.writeHead(200,{'Content-Type':html?'text/html; charset=utf-8':parts.at(-1).endsWith('.png')?'image/png':parts.at(-1).endsWith('.jpg')?'image/jpeg':({'gif':'image/gif','mp4':'video/mp4','mov':'video/quicktime','webm':'video/webm','wav':'audio/wav','mp3':'audio/mpeg','m4a':'audio/mp4','json':'application/json'})[path.extname(parts.at(-1)).slice(1)]||'text/plain; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':`default-src 'none'; img-src http://${host} data:; media-src http://${host}; script-src 'sha256-${scriptHash}'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'self'; sandbox allow-scripts allow-popups`});return res.end(req.method==='HEAD'?undefined:content);
     }
     if(parts[0]==='exports'&&parts.length===2&&/^wizard-smoke-\d+-[a-f0-9]{8}\.(csv|json)$/.test(parts[1])){
       let content;try{content=readFileSync(path.join(dataDir,'exports',parts[1]));}catch{fail(404,'Export not found.');}
       res.writeHead(200,{'Content-Type':parts[1].endsWith('.csv')?'text/csv; charset=utf-8':'application/json','Content-Disposition':`attachment; filename="${parts[1]}"`,'X-Content-Type-Options':'nosniff'});return res.end(content);
     }
-    const assets={'/filters.js':['filters.js','text/javascript'],'/build-finder.js':['build-finder.js','text/javascript'],'/design-preview':['design-preview.html','text/html'],'/design-preview.js':['design-preview.js','text/javascript'],'/explainer':['explainer.html','text/html'],'/explainer.js':['explainer.js','text/javascript'],'/explainer.css':['explainer.css','text/css'],'/':['index.html','text/html'],'/desktop.js':['desktop.js','text/javascript'],'/run-setup.js':['run-setup.js','text/javascript'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css'],'/wizard-theme.css':['wizard-theme.css','text/css'],'/smoke-theme.css':['smoke-theme.css','text/css'],'/run-display.js':['run-display.js','text/javascript'],'/athanor-scene.jpg':['athanor-scene.jpg','image/jpeg'],'/brand-smoke.png':['brand-smoke.png','image/png'],'/athanor-wordmark.png':['athanor-wordmark.png','image/png'],'/wizard-logo.svg':['wizard-logo.svg','image/svg+xml'],'/wizard-tokens.css':['wizard-tokens.css','text/css'],'/favicon.svg':['favicon.svg','image/svg+xml']};
+    const assets={'/investigation':['investigation.html','text/html'],'/investigation.js':['investigation.js','text/javascript'],'/investigation.css':['investigation.css','text/css'],'/filters.js':['filters.js','text/javascript'],'/build-finder.js':['build-finder.js','text/javascript'],'/design-preview':['design-preview.html','text/html'],'/design-preview.js':['design-preview.js','text/javascript'],'/explainer':['explainer.html','text/html'],'/explainer.js':['explainer.js','text/javascript'],'/explainer.css':['explainer.css','text/css'],'/':['index.html','text/html'],'/desktop.js':['desktop.js','text/javascript'],'/run-setup.js':['run-setup.js','text/javascript'],'/app.js':['app.js','text/javascript'],'/style.css':['style.css','text/css'],'/wizard-theme.css':['wizard-theme.css','text/css'],'/smoke-theme.css':['smoke-theme.css','text/css'],'/run-display.js':['run-display.js','text/javascript'],'/smoke-progress.js':['smoke-progress.js','text/javascript'],'/athanor-scene.jpg':['athanor-scene.jpg','image/jpeg'],'/brand-smoke.png':['brand-smoke.png','image/png'],'/athanor-wordmark.png':['athanor-wordmark.png','image/png'],'/wizard-logo.svg':['wizard-logo.svg','image/svg+xml'],'/wizard-tokens.css':['wizard-tokens.css','text/css'],'/favicon.svg':['favicon.svg','image/svg+xml']};
     if(!assets[url.pathname])return send(404,{error:'File not found.'});
     const [file,type]=assets[url.pathname];const content=readFileSync(path.join(root,'public',file));
     res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'self'"});res.end(req.method==='HEAD'?undefined:content);

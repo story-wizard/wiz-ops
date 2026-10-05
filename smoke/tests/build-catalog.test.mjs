@@ -7,6 +7,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {parseGitHubResponse,githubCatalogClient,enrichPRAuthors,buildPRReferences,mergeCatalogBuilds,buildCatalogPage} from '../build-catalog.mjs';
 import {findBuilds} from '../builds.mjs';
+import {loadBuildHistory} from '../public/build-finder.js';
 
 test('GitHub validators retain unchanged metadata and reuse PR authors without downloading them again',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'build-etag-'));let requests=0;
@@ -33,10 +34,10 @@ test('durable catalog survives reopening, refreshes explicitly, and preserves pr
  let title='Original';
  const get=async endpoint=>{calls.push(endpoint);if(endpoint==='user')return {login:'app-author'};if(endpoint.includes('/releases?'))return [{tag_name:'vfeature-wizard-123',name:title,body:'<!-- wizard-build: abc123 run:101 -->',published_at:'2026-10-01',author:{login:'github-actions[bot]'},assets:[{id:1,name:'Wizard-macOS.zip',size:123}]}];if(endpoint.includes('/runs?'))return {workflow_runs:[{id:101,actor:{login:'automation-account'}}]};if(endpoint.endsWith('/pulls/123'))return {user:{login:'app-author'}};throw Error(endpoint);};
  try{
-  let result=await findBuilds(root,{get});assert.deepEqual(result.builds[0].prAuthors,['app-author']);assert.ok(calls.some(e=>e.endsWith('/releases?per_page=10&page=1')));assert.equal(result.hasMoreGitHub,false);assert.equal(result.currentUser,'app-author');assert.equal(result.builds[0].requestedBy,'automation-account');
+  let result=await findBuilds(root,{get});assert.deepEqual(result.builds[0].prAuthors,['app-author']);assert.ok(calls.some(e=>e.endsWith('/releases?per_page=50&page=1')));assert.equal(result.hasMoreGitHub,false);assert.equal(result.currentUser,'app-author');assert.equal(result.builds[0].requestedBy,'automation-account');
   const retained=JSON.parse(await readFile(result.catalogPath));assert.equal(retained.format,'wizard-build-catalog/v1');assert.equal(retained.currentUser,undefined);assert.equal(retained.builds[0].app,undefined,'Shared catalog must not store machine-local app paths');
-  retained.githubPageSize=50;retained.nextGitHubPage=4;await writeFile(result.catalogPath,JSON.stringify(retained));
-  result=await findBuilds(root,{get});assert.equal(result.nextGitHubPage,16);assert.equal(result.githubPageSize,10);
+  retained.githubPageSize=10;retained.nextGitHubPage=16;await writeFile(result.catalogPath,JSON.stringify(retained));
+  result=await findBuilds(root,{get});assert.equal(result.nextGitHubPage,2);assert.equal(result.githubPageSize,50);
   calls.length=0;result=await findBuilds(root,{get});assert.deepEqual(calls,['user']);assert.equal(result.builds[0].label,'Original');
   title='Updated';result=await findBuilds(root,{get,refresh:true});assert.equal(result.builds[0].label,'Updated');
   result=await findBuilds(root,{get:async()=>{throw Error('offline');},refresh:true});assert.equal(result.builds[0].label,'Updated');assert.match(result.refreshError,/retained/);
@@ -77,6 +78,29 @@ test('build filters search the whole catalog before configurable pagination',()=
 test('loading older GitHub pages merges history and preserves known workflow attribution',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'build-pages-')),calls=[];
  const get=async endpoint=>{calls.push(endpoint);if(endpoint==='user')return {login:'Me'};if(endpoint.includes('/runs?'))return {workflow_runs:[]};if(endpoint.includes('/releases?')){const page=Number(new URL('https://example.com/'+endpoint).searchParams.get('page'));return [{tag_name:'tag-'+page,name:'Build '+page,published_at:'2026-10-01',assets:[{id:page,name:'Wizard-macOS.zip',size:123}]}];}throw Error(endpoint);};
- try{await findBuilds(root,{get});const r=await findBuilds(root,{get,githubPage:2});assert.equal(r.builds.length,2);assert.equal(r.nextGitHubPage,3);assert.equal(r.hasMoreGitHub,false);assert.ok(calls.some(e=>e.endsWith('/releases?per_page=10&page=2')));await Promise.all([findBuilds(root,{get,githubPage:3}),findBuilds(root,{get,githubPage:4})]);const retained=await findBuilds(root,{get});assert.equal(retained.builds.length,4,'Concurrent history requests must retain both provider pages');}finally{await rm(root,{recursive:true,force:true});}
+ try{await findBuilds(root,{get});const r=await findBuilds(root,{get,githubPage:2});assert.equal(r.builds.length,2);assert.equal(r.nextGitHubPage,3);assert.equal(r.hasMoreGitHub,false);assert.ok(calls.some(e=>e.endsWith('/releases?per_page=50&page=2')));await Promise.all([findBuilds(root,{get,githubPage:3}),findBuilds(root,{get,githubPage:4})]);const retained=await findBuilds(root,{get});assert.equal(retained.builds.length,4,'Concurrent history requests must retain both provider pages');}finally{await rm(root,{recursive:true,force:true});}
  const old={assetId:1,channel:'Tagged',publishedAt:'2026-10-01',buildRunId:'101',requestedBy:'Known',buildEvent:'push',buildRunUrl:'run-url'};assert.equal(mergeCatalogBuilds([old],[{...old,requestedBy:null}])[0].requestedBy,'Known');assert.equal(mergeCatalogBuilds([old],[{...old,buildRunId:'102',requestedBy:null}])[0].requestedBy,null);
+});
+
+
+test('finder automatically searches releases beyond the first metadata page while preserving current filters',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'build-auto-history-')),pages=[],releases=Array.from({length:125},(_,i)=>({tag_name:'tag-'+(i+1),name:'Build '+(i+1),published_at:'2026-10-01',assets:[{id:i+1,name:'Wizard-macOS.zip',size:123}]}));
+ const get=async endpoint=>{
+  if(endpoint==='user')return {login:'Me'};
+  if(endpoint.includes('/runs?'))return {workflow_runs:[]};
+  const params=new URL('https://example.com/'+endpoint).searchParams,page=Number(params.get('page')),size=Number(params.get('per_page'));pages.push(page);return releases.slice((page-1)*size,page*size);
+ };
+ try{
+  const first=await findBuilds(root,{get});assert.equal(first.builds.length,50);
+  let query='Build 120',result=buildCatalogPage(first,new URLSearchParams({search:query,pageSize:'10'}));assert.equal(result.matching,0);
+  await loadBuildHistory(first,{active:()=>true,load:page=>findBuilds(root,{get,githubPage:page}),onPage:async catalog=>{query='Build 125';result=buildCatalogPage(catalog,new URLSearchParams({search:query,pageSize:'10'}));}});
+  assert.deepEqual(pages,[1,2,3]);assert.equal(result.total,125);assert.equal(result.pageSize,10);assert.deepEqual(result.builds.map(b=>b.assetId),[125]);
+  pages.length=0;await findBuilds(root,{get});assert.deepEqual(pages,[],'Reopening reuses retained metadata');
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+test('automatic history stops on close, provider failure or a nonadvancing cursor without discarding results',async()=>{
+ let active=true,requests=0,applied=0;const initial={hasMoreGitHub:true,nextGitHubPage:2};
+ await loadBuildHistory(initial,{active:()=>active,load:async()=>{requests++;active=false;return {hasMoreGitHub:true,nextGitHubPage:3};},onPage:()=>applied++});assert.equal(requests,1);assert.equal(applied,0);
+ await assert.rejects(()=>loadBuildHistory(initial,{active:()=>true,load:async()=>({refreshError:'offline',hasMoreGitHub:true,nextGitHubPage:2}),onPage:()=>applied++}),/offline/);
+ await assert.rejects(()=>loadBuildHistory(initial,{active:()=>true,load:async()=>initial,onPage:()=>applied++}),/did not advance/);assert.equal(applied,0);
 });

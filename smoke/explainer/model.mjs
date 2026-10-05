@@ -25,7 +25,8 @@ export function createExplainer(root,dataRoot){
    const matches=[...text.matchAll(/(?:\bcheck\(|\brunCheck\()\s*['"]([A-Z][A-Z0-9-]+)['"]|async\s+['"]([A-Z][A-Z0-9-]+)['"]\s*\(|['"]([A-Z][A-Z0-9-]+)['"]\s*:\s*\w+\s*=>/g)];
    for(let i=0;i<matches.length;i++){const m=matches[i],id=m[1]||m[2]||m[3],end=matches[i+1]?.index??Math.min(text.length,m.index+16000);const entry={file:path.relative(root,file),line:text.slice(0,m.index).split('\n').length,excerpt:text.slice(m.index,end).trim().slice(0,14000),link:register(file)};if(!found.has(id))found.set(id,[]);found.get(id).push(entry);}
   }
-  for(const [id,name] of [['D-LP-02-RELAUNCH','desktop/run.mjs'],['D-SAVE-DISCARD','desktop/check-lifecycle.mjs'],['S-EXPORT-UNSET-RATE','desktop/check-unset-rate.mjs'],['D-BIN-RENAME','desktop/check-selection-bin.mjs'],['D-BIN-DUPLICATE','desktop/check-selection-bin.mjs'],['D-BIN-DELETE','desktop/check-selection-bin.mjs'],['D-BIN-MGFX','desktop/check-selection-bin.mjs']])if(!found.has(id)){const file=path.join(root,name),text=fs.readFileSync(file,'utf8'),at=text.indexOf("'"+id+"'");found.set(id,[{file:name,line:text.slice(0,at).split('\n').length,excerpt:text.slice(Math.max(0,at-100),at+5500),link:register(file)}]);}
+  const bindings=Object.entries(read(path.join(root,'desktop/check-map.json'))).flatMap(([file,ids])=>ids.map(id=>[id,'desktop/'+file]));
+  for(const [id,name] of [['D-LP-02-RELAUNCH','desktop/run.mjs'],['D-SAVE-DISCARD','desktop/check-lifecycle.mjs'],...bindings])if(!found.has(id)){const file=path.join(root,name),text=fs.readFileSync(file,'utf8'),at=text.indexOf("'"+id+"'");if(at<0)continue;found.set(id,[{file:name,line:text.slice(0,at).split('\n').length,excerpt:text.slice(Math.max(0,at-100),at+5500),link:register(file)}]);}
   return found;
  }
  function record(file,id,kind,runId,session){

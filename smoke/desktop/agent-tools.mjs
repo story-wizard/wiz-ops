@@ -5,30 +5,35 @@ import {mkdir,appendFile,readFile,copyFile,realpath,stat,open,unlink} from 'node
 import {isDeepStrictEqual} from 'node:util';
 import {nativeCall,desktopCall,verifyDesktopOwner,verifyDesktopPaths,captureDesktopFailure,agentReadOperations,agentReadNative} from './adapter.mjs';
 import {physicalInput,clipPoint} from './physical-input.mjs';
-import {nativeDesktopInput} from './macos-input.mjs';
+import {nativeDesktopInput,physicalKeys,physicalKeyAliases} from './macos-input.mjs';
+import {retainObservation} from './observations.mjs';
+import {recordPresented,recordingOptions} from './recorder.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
-import {waitForObservation} from './check-support.mjs';
+import {waitForObservation,usableGeometry} from './check-support.mjs';
 import {ROOT,readJSON,writeJSON,inside,sha} from '../runner/files.mjs';
 import {OutcomeError,assert} from '../runner/engine.mjs';
 import {rawChecks} from '../runner/catalog.mjs';
 import {testSpecification,candidateChecks,actionHistory,stepHistory} from '../test-details.mjs';
-import {validateToolParams,validateApplicationParams,validateNativeParams,withAgentAction,currentAction,markUnknown,jsonLines,terminalResult,closeAttempt,beginProof,physicalAction,verifyCheckpoint,resolveUnknown,requirePassProof,requireProof,proofError,normalizeToolError} from './agent-proof.mjs';
+import {validateToolParams,validateApplicationParams,validateNativeParams,observationSelectors,withAgentAction,currentAction,markUnknown,jsonLines,terminalResult,closeAttempt,beginProof,physicalAction,verifyCheckpoint,resolveUnknown,requirePassProof,requireProof,proofError,normalizeToolError} from './agent-proof.mjs';
 export {requirePassProof} from './agent-proof.mjs';
 
 const readOps=agentReadOperations,readNative=agentReadNative;
-const selectorKeys=['id','class','name','text','tooltip','title','window','parent','enabled','active','focused','editableText','keyWindow','contains'];
-const operations=['context','schema','preflight','observe','find','geometry','physical','native','call','wait','capture','evidence','begin','verify','resolve','record','report'];
+const operations=['context','schema','preflight','observe','find','model','model_value','reveal','geometry','physical','native','call','wait','capture','recording','evidence','begin','verify','resolve','record','report'];
+export const agentSessionTimeoutMs=30*60*1000;
 
-export function selectUI(ui,{kind='widgets',selector={},limit=20,details=false}={}){
+export function selectUI(ui,{kind='widgets',selector,selectors,limit=20,details=false}={}){
  assert(['widgets','actions'].includes(kind)&&Number.isInteger(limit)&&limit>=1&&limit<=100,'Choose widgets/actions and a limit from 1 to 100');
- assert(selector&&typeof selector==='object'&&!Array.isArray(selector)&&Object.keys(selector).every(k=>selectorKeys.includes(k)),'Unsupported target selector');
- const keys=Object.keys(selector).filter(k=>k!=='contains');
- const matches=(ui[kind]||[]).filter(w=>keys.every(k=>selector.contains&&typeof selector[k]==='string'?typeof w[k]==='string'&&w[k].includes(selector[k]):w[k]===selector[k]));
- const summary=['id','class','name','text','tooltip','title','window','parent','enabled','active','focused','editableText','keyWindow','nativeWindow','visibleRect','x','y','width','height','value','minimum','maximum','checked','index','rows','graphId','timelineId','viewport','handle','minHandle','maxHandle','groove'];
- return {kind,matchCount:matches.length,truncated:matches.length>limit,limits:{modelRows:64,sceneItems:128,sceneText:256},matches:matches.slice(0,limit).map(w=>{
+ const queries=observationSelectors({selector,selectors});
+ const matches=(ui[kind]||[]).filter(w=>queries.some(query=>Object.keys(query).filter(k=>k!=='contains').every(k=>query.contains&&typeof query[k]==='string'?typeof w[k]==='string'&&w[k].includes(query[k]):w[k]===query[k])));
+ const summary=['id','class','name','text','tooltip','title','window','parent','enabled','active','focused','editableText','keySequenceCapture','keyWindow','nativeWindow','visibleRect','x','y','width','height','value','minimum','maximum','checked','index','rows','clipIds','clipIdsTruncated','graphId','timelineId','viewport','handle','minHandle','maxHandle','groove','accessibleName','accessibleDescription'];
+ const incomplete=w=>w.nativeViewsTruncated||w.clipIdsTruncated||w.rows>(w.model?.length||0)||w.menuTruncated||w.sceneItemsTruncated===true||w.sceneTextTruncated===true||w.sceneItemsTruncated===undefined&&w.sceneItems?.length>=128||w.sceneTextTruncated===undefined&&w.sceneText?.length>=256;
+ return {kind,scope:ui.scope||null,...Object.fromEntries(['modalWindow','popupWindow','mouseGrabber'].filter(k=>Object.hasOwn(ui,k)).map(k=>[k,ui[k]])),matchCount:matches.length,truncated:matches.length>limit,inspectionIncomplete:(ui.widgets||[]).some(w=>Boolean(incomplete(w))),limits:{modelRows:64,modelPageRows:64,timelineClipIds:1024,sceneItems:128,sceneText:256},matches:matches.slice(0,limit).map(w=>{
   const result=Object.fromEntries(summary.filter(k=>w[k]!==undefined).map(k=>[k,w[k]]));
   if(details)for(const k of ['model','itemRects','sceneItems','sceneText','tabs','tabRects','items','itemValues','menuItems','selectedRows'])if(w[k]!==undefined)result[k]=w[k];
   if(w.rows!==undefined)result.modelTruncated=w.rows>(w.model?.length||0);
+  if(w.sceneItems!==undefined)result.sceneItemsTruncated=w.sceneItemsTruncated??w.sceneItems.length>=128;
+  if(w.sceneText!==undefined)result.sceneTextTruncated=w.sceneTextTruncated??w.sceneText.length>=256;
+  if(w.menuTruncated!==undefined)result.menuTruncated=w.menuTruncated;
   return result;
  })};
 }
@@ -36,6 +41,17 @@ export function uniqueTarget(ui,selector,kind='widgets'){
  const selected=selectUI(ui,{kind,selector:typeof selector==='string'?{id:selector}:selector,details:true,limit:10});
  if(selected.matchCount!==1){const e=new OutcomeError('Target must match exactly one '+kind+' entry; found '+selected.matchCount+'. Narrow the selector.','Blocked');e.diagnostics=selected;throw e;}
  return selected.matches[0];
+}
+export function readyUI(ui,params={}){
+ const found=selectUI(ui,{selector:params.selector,kind:params.kind,details:true}),condition=params.condition||'exists';
+ if(condition==='absent'){
+  requireProof(!found.inspectionIncomplete&&!found.truncated,'incomplete_observation','Absence needs a complete inspection; narrow the scope or inspect the model',['observe']);
+  return found.matchCount===0?{absent:true,scope:found.scope}:false;
+ }
+ if(found.matchCount>1)throw new OutcomeError('Wait target is ambiguous; narrow the selector.','Blocked');
+ if(found.matchCount===0)return false;const target=found.matches[0];
+ if(condition==='geometry')return usableGeometry(ui,target);
+ return condition==='exists'||['enabled','focused','keyWindow'].includes(condition)&&target[condition]===true||['value','text','checked'].includes(condition)&&isDeepStrictEqual(target[condition],params.expected)?target:false;
 }
 export function compareObservation(value,{path:keys=[],equals,notEquals,length,includes}={}){
  assert(Array.isArray(keys)&&keys.length<=20&&keys.every(k=>(typeof k==='string'||Number.isInteger(k))&&!['__proto__','constructor','prototype'].includes(k)),'Use a bounded array of property names or indexes');
@@ -56,12 +72,16 @@ const definition=(s,id)=>definitions(s).find(c=>c.id===id);
 export async function sessionContext(file){
  const s=await readJSON(file);verifyDesktopPaths(s);
  const ready=await readJSON(path.join(s.native,'ready.json'));if(!s.agentDefinitions){s.agentDefinitions=sessionDefinitions(s);await writeJSON(file,s);}
- const result={format:'athanor-agent-session/v1',session:file,build:{app:s.sourceApp,packageHash:s.guiHash,version:s.plan?.version||null},process:{pid:s.pid,started:s.processStart,generation:s.generation},project:{bundle:s.bundle,main:s.main,alternate:s.alternate,assets:s.assets},adapter:ready.capabilities,physical:{commands:['click','drag','key','type','scroll','screenshot'],keys:['escape','return','tab','space','delete','k','n','s','a','z','d','c','v'],coordinates:'Widget-relative macOS points; target and destination geometry are rechecked before dispatch'},operations,checks:definitions(s).map(testSpecification),evidenceDirectory:path.join(s.root,'evidence'),guidance:[
+ const result={format:'athanor-agent-session/v1',session:file,build:{app:s.sourceApp,packageHash:s.guiHash,version:s.plan?.version||null},process:{pid:s.pid,started:s.processStart,generation:s.generation},lifetime:{deadlineAt:s.agentDeadlineAt||null,timeoutMs:s.agentDeadlineAt?agentSessionTimeoutMs:null,onExpiry:s.agentDeadlineAt?'Owned app receives SIGTERM; retain evidence and start a fresh session for further work':null},project:{bundle:s.bundle,main:s.main,alternate:s.alternate,assets:s.assets},adapter:ready.capabilities,physical:{commands:['click','drag','key','type','scroll','screenshot'],keys:physicalKeys,keyAliases:physicalKeyAliases,coordinates:'Widget-relative macOS points; target and destination geometry are rechecked before dispatch'},operations,checks:definitions(s).map(testSpecification),verdicts:{scripted:'Courses run their authored assertions; discover definitions with smoke.mjs list and courses',toolkitPassIds:definitions(s).filter(c=>c.proof).map(c=>c.id),exploration:'Observe, act and retain diagnostics; toolkit Pass requires a frozen proof contract'},evidenceDirectory:path.join(s.root,'evidence'),guidance:[
   'Use CLI/Qt operations to prepare a fixture; perform the action under test with physical input.',
+  'For a failed repro, read docs/bug-reporter-interop.md. The reporter helper only prefills an empty draft in the same build/project and never submits or imports historical attachments.',
   'Resolve targets from a fresh observation. An ambiguous target is Blocked.',
+  'Observe returns an observationId and encoding: full or delta. Repeat the same query with since: observationId; the smaller full selection (matches) or delta (changes) is returned. Use selectors: [selector, ...] for 1–8 related controls from one inspection. These retained diagnostics cannot qualify Pass. Omitted or truncated entries are not proof of deletion. Drop since for a full current observation.',
+  'Use scoped observe/find for a widget subtree. Scoped absence applies only there. Model pages return an identity/revision/root cursor: supply it on following pages and restart on model change. Reveal is setup scrolling; refresh geometry. Model_value reads observed columns or bounded roles; qualify role meanings against CLI identities. Respect clipIdsTruncated.',
+  'Inspect truncation and adapter limits. Missing data in an incomplete inspection does not establish absence. The adapter observes public AppKit file-panel controls; qualify each dialog path on the selected build. Outside applications remain outside the owned session.',
   'Physical input verifies foreground ownership after dispatch. Editable clicks and typing also verify the exact field and key window; lost focus remains Unknown and is not replayed.',
   'Capture presented or window uses a complete compositor frame newer than the capture request. Receipts retain frame timing, source, process and window. Keep the owned window fully on one display. Widget captures retain Qt raster source separately.',
-  'Use wait for read-only conditions. Never replay an Unknown mutation.',
+  'Use wait for read-only conditions: exists, absent, enabled, value, text, checked, focused, keyWindow or geometry. Geometry defaults to a 250ms unchanged interval; stableForMs can be 0–2000 within timeoutMs. Absence requires a complete inspection. Waits do not reserve targets: physical input still rechecks bindings. Never replay an Unknown mutation.',
   'Begin a check, describe actions with title, verify independently, capture the displayed result, then record.',
   'Pass requires the frozen definition’s named assertions, action-bound receipts and explicit captures after verification at each declared checkpoint. Arbitrary expectations and diagnostic images cannot qualify Pass.',
   'Physical mode cannot downgrade. Give tested actions their declared actionId. Use CLI/Qt for setup before baseline; unqualified later mutations invalidate the attempt. Raw call/native share admission and cannot supply physical proof.',
@@ -75,7 +95,8 @@ export async function sessionContext(file){
 
 async function retain(s,label,value,kind='json',imported=false,metadata={}){
  s=await readJSON(path.join(s.root,'session.json'));
- await mkdir(path.join(s.root,'evidence'),{recursive:true});const name='agent-'+randomUUID()+(kind==='json'?'.json':'.png'),file=path.join(s.root,'evidence',name);
+ assert(['json','image','video'].includes(kind),'Unsupported retained evidence kind');
+ await mkdir(path.join(s.root,'evidence'),{recursive:true});const name='agent-'+randomUUID()+(kind==='json'?'.json':kind==='video'?'.mp4':'.png'),file=path.join(s.root,'evidence',name);
  if(kind==='json')await writeJSON(file,value);else{assert(inside(s.root,await realpath(value)),'Capture escaped the session');await copyFile(value,file);}
  s.agentEvidenceSequence=(s.agentEvidenceSequence||0)+1;await writeJSON(path.join(s.root,'session.json'),s);
  const evidence={file:name,path:file,kind,caption:label,sha256:await sha(file),caseId:s.currentCheck||null,attempt:s.agentAttempt||null,generation:s.generation,revision:imported?null:s.agentRevision||0,sequence:s.agentEvidenceSequence,definitionHash:s.agentProof?.definitionHash||null,provenance:imported?'imported':'diagnostic',...metadata};
@@ -95,7 +116,7 @@ export async function agentTool(file,operation,params={}){
  if(operation==='native')validateNativeParams(params.operation,params.params||{});
  if(params.read)validateApplicationParams(s.schema,params.read.operation,params.read.params||{});
  // Reads can sample a held gesture; state admission and evidence capture must not race edits.
- if(['observe','find','wait','schema','preflight'].includes(operation))return await runAgentTool(file,operation,params);
+ if(['observe','find','model','model_value','wait','schema','preflight'].includes(operation))return await runAgentTool(file,operation,params);
  return await withAgentAction(file,()=>runAgentTool(file,operation,params),{operation,params});
  }catch(e){throw normalizeToolError(e);}
 }
@@ -105,7 +126,7 @@ async function runAgentTool(file,operation,params={}){
  if(operation==='context')return sessionContext(file);
  if(operation==='report')return exportAgentReport(file);
  const records=await jsonLines(path.join(s.root,'agent-results.jsonl')),terminal=s.agentAttempt?terminalResult(records,s.agentAttempt):null;
- const mutating=operation==='physical'&&params.command!=='screenshot'||operation==='call'&&!readOps.includes(params.operation)||operation==='native'&&!readNative.includes(params.operation);
+ const mutating=operation==='reveal'||operation==='physical'&&params.command!=='screenshot'||operation==='call'&&!readOps.includes(params.operation)||operation==='native'&&!readNative.includes(params.operation);
  if(operation==='record'&&terminal)return closeAttempt(records,{attempt:s.agentAttempt,status:params.status,observation:params.note?.trim()});
  requireProof(!(terminal&&mutating),'attempt_closed','Begin a new attempt before another edit',['begin_new_attempt','report']);
  if(operation==='begin')requireProof(!s.agentAttempt||terminal,'attempt_open','Close the current attempt before beginning another',['record','report']);
@@ -125,7 +146,18 @@ async function runAgentTool(file,operation,params={}){
    // Imported observations illustrate the attempt; they cannot satisfy its current capture gate.
    result=await retain(s,params.title,params.kind==='image'?params.file:await readJSON(params.file),params.kind==='image'?'image':'json',true);
   }else if(operation==='observe'||operation==='find'){
-   const ui=await nativeCall(file,'inspect');result=operation==='find'?uniqueTarget(ui,params.selector,params.kind):selectUI(ui,params);result={...result,observedAt:new Date().toISOString(),generation:s.generation,observationBytes:{full:Buffer.byteLength(JSON.stringify(ui)),selectedPayload:Buffer.byteLength(JSON.stringify(result))}};
+   const ui=await nativeCall(file,'inspect',params.scope?{target:params.scope}:{});result=operation==='find'?uniqueTarget(ui,params.selector,params.kind):selectUI(ui,params);result={...result,observedAt:new Date().toISOString(),generation:s.generation};if(operation==='observe')result=await retainObservation(s,params,result);result.observationBytes={full:Buffer.byteLength(JSON.stringify(ui)),selectedPayload:Buffer.byteLength(JSON.stringify(result))};
+  }else if(operation==='model'||operation==='reveal'){
+   const target=uniqueTarget(await nativeCall(file,'inspect'),params.target||params.selector);
+   result=await nativeCall(file,operation==='model'?'model-page':'model-reveal',{target:target.id,offset:params.offset??0,limit:operation==='reveal'?1:params.limit??32,...params.cursor?{cursor:params.cursor}:{}});
+   result={...result,observedAt:new Date().toISOString(),generation:s.generation};
+  }else if(operation==='model_value'){
+   const target=uniqueTarget(await nativeCall(file,'inspect'),params.target||params.selector);
+   result=await nativeCall(file,'model-value',{target:target.id,offset:params.offset??0,column:params.column,role:params.role,...(params.cursor?{cursor:params.cursor}:{})});
+  }else if(operation==='recording'){
+   recordingOptions({durationMs:params.durationMs,intervalMs:params.intervalMs,maxSamples:params.maxSamples});
+   const captured=await recordPresented(file,params);result={binding:captured.binding,samples:captured.samples.length,elapsedMs:captured.elapsedMs,totalObservationCostMs:captured.totalObservationCostMs,artifacts:captured.artifacts,scope:captured.scope};
+   if(s.currentCheck){await retain(s,params.title||'Timed playback observations',captured);for(const sample of captured.samples)await retain(s,'Presented playback sample',sample.image.output,'image');await retain(s,'Sampled playback with original capture intervals',captured.video.path,'video');}
   }else if(operation==='geometry'){
    const target=uniqueTarget(await nativeCall(file,'inspect'),params.target||params.selector);result=await nativeCall(file,'timeline-clip-rect',{target:target.id,clipId:params.clipId});result={...result,target:target.id,point:clipPoint(result,params.part)};
   }else if(operation==='physical'){
@@ -133,7 +165,7 @@ async function runAgentTool(file,operation,params={}){
    const ui=await nativeCall(file,'inspect'),target=uniqueTarget(ui,params.target||params.selector);
    const qualified=params.command==='screenshot'?null:physicalAction(s.agentProof,params,target);
    if(qualified)params={...params,stepId:qualified.stepId};
-   const p={target:target.id,expected:target};for(const k of ['button','durationMs','chrome','key','text','deltaX','deltaY'])if(params[k]!==undefined)p[k]=params[k];
+   const p={target:target.id,expected:target};for(const k of ['button','durationMs','chrome','key','text','deltaX','deltaY','modifiers','path','clickCount'])if(params[k]!==undefined)p[k]=params[k];
    if(!['key','type','screenshot'].includes(params.command)){p.x=params.x??target.width*(params.xRatio??.5);p.y=params.y??target.height*(params.yRatio??.5);}
    if(params.clipId){assert(['click','drag'].includes(params.command),'Clip targeting supports click and drag');const geometry=await nativeCall(file,'timeline-clip-rect',{target:target.id,clipId:params.clipId});Object.assign(p,clipPoint(geometry,params.part),{clipId:params.clipId,expectedClip:geometry.rect});}
    if(params.command==='drag'){const to=uniqueTarget(ui,params.toTarget||params.target||params.selector);p.toTarget=to.id;p.toX=params.toX??to.width*(params.toXRatio??.5);p.toY=params.toY??to.height*(params.toYRatio??.5);}
@@ -142,14 +174,7 @@ async function runAgentTool(file,operation,params={}){
    if(params.command==='screenshot')result.capture=await retain(s,params.title||'Owned native window',result.output,'image');
   }else if(operation==='call'||operation==='native')result=await (operation==='call'?desktopCall:nativeCall)(file,params.operation,params.params||{});
   else if(operation==='wait'){
-   assert(['exists','absent','enabled','value','text','checked'].includes(params.condition||'exists'),'Unsupported wait condition');
-   result=await waitForObservation(async()=>{
-    const found=selectUI(await nativeCall(file,'inspect'),{selector:params.selector,kind:params.kind,details:true});
-    if(params.condition==='absent')return found.matchCount===0?{absent:true}:false;
-    if(found.matchCount>1)throw new OutcomeError('Wait target is ambiguous; narrow the selector.','Blocked');
-    if(found.matchCount===0)return false;const target=found.matches[0],condition=params.condition||'exists';
-    return condition==='exists'||condition==='enabled'&&target.enabled===true||['value','text','checked'].includes(condition)&&isDeepStrictEqual(target[condition],params.expected)?target:false;
-   },{description:params.title||'Target '+(params.condition||'exists'),timeoutMs:params.timeoutMs||5000,intervalMs:params.intervalMs||150});
+   result=await waitForObservation(async()=>readyUI(await nativeCall(file,'inspect',params.scope?{target:params.scope}:{}),params),{description:params.title||'Target '+(params.condition||'exists'),timeoutMs:params.timeoutMs??5000,intervalMs:params.intervalMs??150,stableForMs:params.stableForMs??(params.condition==='geometry'?250:0)});
   }else if(operation==='capture'){
    const target=uniqueTarget(await nativeCall(file,'inspect'),params.target||params.selector),kind=params.kind||'presented';assert(['presented','widget','window'].includes(kind),'Choose presented, widget or window capture');
    const assertion=params.assertion,point=s.agentProof?.checkpoints?.[assertion];
@@ -162,7 +187,7 @@ async function runAgentTool(file,operation,params={}){
    requireProof(!s.agentUncertain,'unresolved_mutation','Resolve the Unknown action before beginning another attempt',['resolve','record_unknown']);requireProof(definition(s,params.id),'unknown_check','Choose a check from this session context',['context']);requireProof(params.mode===undefined||['physical','hybrid'].includes(params.mode),'invalid_params','Choose physical or hybrid mode',['correct_parameters']);
    if(!s.agentDefinitions)s.agentDefinitions=sessionDefinitions(s);
    requireProof(s.plan&&s.schema&&s.main,'prepared_fixture_required','Start a prepared owned fixture session before tracking a test',['prepare','start']);
-   s.agentProof=beginProof(definition(s,params.id),params.mode);s.currentCheck=params.id;s.currentStep=null;s.agentTracking=true;s.agentRequiredRoute=s.agentProof.mode;s.agentAttempt=randomUUID();s.agentRevision=(s.agentRevision||0)+1;await writeJSON(file,s);result={check:testSpecification(s.agentProof.definition),revision:s.agentRevision,attempt:s.agentAttempt,mode:s.agentRequiredRoute};
+   s.agentProof=beginProof(definition(s,params.id),params.mode);s.currentCheck=params.id;s.currentStep=null;s.agentTracking=true;s.agentRequiredRoute=s.agentProof.mode;s.agentAttempt=randomUUID();s.agentRevision=(s.agentRevision||0)+1;await writeJSON(file,s);result={check:testSpecification(s.agentProof.definition),contract:s.agentProof.contract,revision:s.agentRevision,attempt:s.agentAttempt,mode:s.agentRequiredRoute};
   }else if(operation==='verify'){
    assert(s.currentCheck,'Begin a check before verification');let observed;
    if(params.assertion){
@@ -172,9 +197,27 @@ async function runAgentTool(file,operation,params={}){
     requireProof(connection?!read||read.operation==='project.get_name':read?.operation===readOp,'wrong_verification_read','Use the read declared by this check',['context']);
     if(read)validateApplicationParams(s.schema,read.operation,read.params||{});
     requireProof(Object.keys(read?.params||{}).every(k=>!connection&&(k==='timeline_id'||readOp==='graph.get_clip_graph'&&k==='clip_id')),'definition_owned_read','Declared assertions require an unfiltered read of the owned fixture',['context']);
-    if(!connection&&params.assertion!=='baseline')requireProof(s.agentProof.binding.readParams?isDeepStrictEqual(read.params,s.agentProof.binding.readParams):read?.params?.timeline_id===s.agentProof?.binding?.timelineId,'wrong_fixture','Read the frozen baseline fixture',['context']);
-    requireProof(!params.target||params.assertion==='baseline','definition_owned_assertion','Only baseline verification accepts a target binding',['context']);
-    observed=await desktopCall(file,connection?'project.get_name':readOp,read?.params||{});if(connection)observed={...observed,bundleRevision:(await readJSON(file)).observedRevision};const ui=await nativeCall(file,'inspect'),proofTarget=params.target?uniqueTarget(ui,params.target).id:null,comparison=verifyCheckpoint(s.agentProof,params.assertion,observed,ui,{...s,proofTarget,proofRead:read?.params});
+    const volume=s.agentProof.contract.oracle==='volume-v1',clipboard=volume&&s.currentCheck==='D-CLIPBOARD-LARGE';
+    requireProof(!params.fixture||clipboard&&params.assertion==='baseline','wrong_fixture','Fixture binding is only available at the clipboard baseline',['context']);
+    if(!connection&&params.assertion!=='baseline'){
+     const expected=clipboard?{timeline_id:params.assertion==='copied'?s.agentProof.binding.timelineId:s.agentProof.binding.destinationId}:s.agentProof.binding.readParams;
+     requireProof(expected?isDeepStrictEqual(read.params,expected):read?.params?.timeline_id===s.agentProof?.binding?.timelineId,'wrong_fixture','Read the frozen baseline fixture',['context']);
+    }
+    const destinationBinding=clipboard&&params.assertion==='destination'&&!s.agentProof.binding?.destinationTarget;
+    requireProof(!params.target||params.assertion==='baseline'||destinationBinding,'definition_owned_assertion','Bind a target only at baseline or the declared empty destination checkpoint',['context']);
+    requireProof(!destinationBinding||params.target,'definition_owned_assertion','Bind the newly observed empty destination canvas',['find','verify']);
+    observed=await desktopCall(file,connection?'project.get_name':readOp,volume?{...read.params,page:{max_items:500}}:read?.params||{});
+    if(volume){
+     observed={timeline:observed};
+     if(clipboard){
+      if(params.assertion==='baseline'){
+       requireProof(typeof params.fixture?.destinationTimelineId==='string'&&params.fixture.destinationTimelineId,'wrong_fixture','Bind the prepared empty destination',['context']);
+       observed.empty=await desktopCall(file,'timeline.inspect',{timeline_id:params.fixture.destinationTimelineId,page:{max_items:500}});
+      }else observed.source=await desktopCall(file,'timeline.inspect',{timeline_id:s.agentProof.binding.timelineId,page:{max_items:500}});
+      if(params.assertion==='copied')observed.clipboard=await nativeCall(file,'clipboard-mark');
+     }
+    }
+    if(connection)observed={...observed,bundleRevision:(await readJSON(file)).observedRevision};const ui=await nativeCall(file,'inspect'),proofTarget=params.target?uniqueTarget(ui,params.target).id:null,comparison=verifyCheckpoint(s.agentProof,params.assertion,observed,ui,{...s,proofTarget,proofRead:read?.params});
     if(!comparison.matched)throw proofError('assertion_failed','The '+params.assertion+' outcome did not match the frozen definition',['inspect','record_fail'],'Fail');
     const evidence=await retain(s,params.title||'Verify '+params.assertion,{...comparison,matched:true,read:read||{operation:'project.get_name'},assertion:params.assertion,unknownAction:s.agentUnknown?.id||null},'json',false,{provenance:params.assertion.startsWith('resolve-')?'resolution':'verification',assertion:params.assertion,unknownAction:s.agentUnknown?.id||null});
     const latest=await readJSON(file);

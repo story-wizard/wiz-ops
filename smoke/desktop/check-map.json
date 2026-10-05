@@ -140,5 +140,43 @@
     "D-EXTERNAL-RELOAD",
     "D-SOURCE-COLOR",
     "D-MGFX-BIN-DROP"
+  ],
+  "check-checklist-expansion.mjs": [
+    "D-SEARCH-FOCUS",
+    "D-INSPECTOR-BLUR-PHYSICAL",
+    "D-MASK-CLIPBOARD-PHYSICAL",
+    "D-SCOPES-VECTOR"
+  ],
+  "check-projects.mjs": [
+    "D-PROJECT-NEW",
+    "D-PROJECT-SAVE-AS",
+    "D-PREFERENCES-PROJECTLESS"
+  ],
+  "check-volume-search.mjs": [
+    "D-SEARCH-EMPTY",
+    "D-CLIPBOARD-LARGE",
+    "D-HISTORY-50"
+  ],
+  "check-media-search-ui.mjs": [
+    "D-IMPORT-DIALOG",
+    "D-MEDIA-THUMBNAIL",
+    "D-MEDIA-COLOR-COLUMN",
+    "D-TRANSCRIPT-SEARCH",
+    "D-INGEST-SEARCH-LIVE"
+  ],
+  "check-colour-panels.mjs": [
+    "D-PRIMARY-PANEL",
+    "D-TONE-ZONES",
+    "D-BALANCE-PANEL"
+  ],
+  "check-controls-audio.mjs": [
+    "D-SHORTCUT-CONFLICT",
+    "D-DOCK-MODIFIER",
+    "D-MIXER-UI",
+    "D-METER-PLAYBACK"
+  ],
+  "check-recorded-playback.mjs": [
+    "D-INSPECTOR-PLAYBACK",
+    "D-INGEST-PLAYBACK"
   ]
 }

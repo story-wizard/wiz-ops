@@ -16,10 +16,9 @@ const families=[
  ['D-CLI-02','D-LP-02-SAVE','D-LP-02-RELAUNCH'],
  ['D-COMPOUND-CREATE','D-COMPOUND-EDIT','D-MGFX-CLIPBOARD','D-EXPORT-COMPOUND','D-COMPOUND-DISSOLVE','D-EXPORT-STILL'],
  ['D-SB-CREATE','D-SB-QUICK-SEARCH','D-SB-GRAPH','D-SB-PARAMS','D-SB-BYPASS','D-SB-UNDO','D-SB-INSTANCE','D-SB-PERSIST','D-SB-LOGGING'],
- ['D-LINKED-SELECTION','D-TRACK-LOCK-UI','D-TRACK-TARGETING','D-RIPPLE-GAP','D-BIN-RENAME','D-BIN-DUPLICATE','D-BIN-DELETE','D-BIN-MGFX'],
  ['S-MGFX-DUPLICATE','S-MGFX-CLIP-COPY','S-MGFX-PERSIST']
 ];
-const speechChecks=new Set(['IN-06','SS-01','SS-05']);
+const speechChecks=new Set(['IN-06','SS-01','SS-05','D-TRANSCRIPT-SEARCH']);
 const sourceAreas=new Map(JSON.parse(readFileSync(path.join(ROOT,'catalog/checkpoints/logan-2026-09-25-2.json'),'utf8')).rows.map(r=>[r.id,r.area]));
 export function acceptance(){
  try{return JSON.parse(readFileSync(path.join(ROOT,'scope/accepted-checks.json'),'utf8'));}
@@ -37,10 +36,10 @@ export function initializeCourses(db){
 }
 export const builtinCourse=()=>({id:'packaged-full',revision:baseCourse.revision,title:'Packaged engine — full course',project:'fresh',kind:'maintained',groups:[{id:'packaged',title:'Packaged engine',checks:baseCourse.cases.map(c=>c.id)}]});
 export const allAutomatedCourse=()=>({id:'automated-full',revision:1,title:'All automated checks',project:'fresh',kind:'maintained',groups:['packaged','service','desktop'].map(target=>({id:target,title:({packaged:'Build engine',service:'Background services',desktop:'Desktop editor'})[target],checks:checkRegistry().filter(c=>c.accepted&&c.target===target).map(c=>c.id)})).filter(g=>g.checks.length)});
-const qualificationChecks=()=>[...physicalChecks.map(c=>c.id),'D-EXTERNAL-RELOAD','D-SOURCE-COLOR','D-MGFX-BIN-DROP'];
+const qualificationChecks=()=>[...physicalChecks.map(c=>c.id),'D-EXTERNAL-RELOAD','D-SOURCE-COLOR','D-MGFX-BIN-DROP','D-SEARCH-FOCUS','D-INSPECTOR-BLUR-PHYSICAL','D-MASK-CLIPBOARD-PHYSICAL','D-SCOPES-VECTOR','D-PROJECT-NEW','D-PROJECT-SAVE-AS','D-PREFERENCES-PROJECTLESS','D-SEARCH-EMPTY','D-CLIPBOARD-LARGE','D-HISTORY-50',"D-IMPORT-DIALOG","D-MEDIA-THUMBNAIL","D-MEDIA-COLOR-COLUMN","D-TRANSCRIPT-SEARCH","D-INGEST-SEARCH-LIVE","D-PRIMARY-PANEL","D-TONE-ZONES","D-BALANCE-PANEL","D-SHORTCUT-CONFLICT","D-DOCK-MODIFIER","D-MIXER-UI","D-METER-PLAYBACK","D-INSPECTOR-PLAYBACK","D-INGEST-PLAYBACK"];
 export const fullSmokeCourse=()=>{
  const registry=checkRegistry(),allowed=qualificationChecks(),checks=registry.filter(c=>c.accepted||allowed.includes(c.id));
- return {id:'smoke-full',title:'Logan’s checklist — full automated course',revision:2,project:'fresh',kind:'maintained',qualificationChecks:checks.filter(c=>!c.accepted).map(c=>c.id),groups:[...['packaged','service','desktop'].map(target=>({id:target,title:({packaged:'Build engine',service:'Background services',desktop:'Desktop editor'})[target],checks:checks.filter(c=>c.target===target&&!c.id.startsWith('P-')).map(c=>c.id)})),{id:'physical',title:'Physical computer use',checks:checks.filter(c=>c.id.startsWith('P-')).map(c=>c.id)}].filter(g=>g.checks.length)};
+ return {id:'smoke-full',title:'Logan’s checklist — full automated course',revision:8,project:'fresh',kind:'maintained',qualificationChecks:checks.filter(c=>!c.accepted).map(c=>c.id),groups:[...['packaged','service','desktop'].map(target=>({id:target,title:({packaged:'Build engine',service:'Background services',desktop:'Desktop editor'})[target],checks:checks.filter(c=>c.target===target&&!c.id.startsWith('P-')).map(c=>c.id)})),{id:'physical',title:'Physical computer use',checks:checks.filter(c=>c.id.startsWith('P-')).map(c=>c.id)}].filter(g=>g.checks.length)};
 };
 export function courseList(db){return [fullSmokeCourse(),allAutomatedCourse(),builtinCourse(),...db.prepare('SELECT definition FROM user_courses c WHERE revision=(SELECT MAX(revision) FROM user_courses WHERE id=c.id) ORDER BY id').all().map(r=>JSON.parse(r.definition))];}
 export function getCourse(db,id,revision){
@@ -73,15 +72,21 @@ export function saveCourse(db,input,review=acceptance()){
  }catch(e){db.exec('ROLLBACK');throw e;}
 }
 export function resolveSelection(db,input,review=acceptance()){
- if(!input||Object.keys(input).some(k=>!['courseIds','checkIds','categories','groups','project','title','target','checkpoint'].includes(k)))throw Error('Unknown selection field.');
+ if(!input||Object.keys(input).some(k=>!['courseIds','checkIds','subsetIds','categories','groups','project','title','target','checkpoint','diagnostics'].includes(k)))throw Error('Unknown selection field.');
  if(input.target!==undefined&&!['packaged','desktop','service','all'].includes(input.target))throw Error('Unknown target');
+ if(input.diagnostics!==undefined&&input.diagnostics!=='investigation')throw Error('Unknown diagnostic profile.');
  const project=input.project===undefined?'fresh':input.project;if(project!=='fresh')throw Error('Project variant unavailable: '+project);
  const registry=checkRegistry(review),selectedGroups=[],origins=[],qualification=new Set();let checkpoint=checkpointID(input.checkpoint);
- for(const field of ['courseIds','checkIds','categories'])if(input[field]!==undefined&&(!Array.isArray(input[field])||input[field].length>500||input[field].some(v=>typeof v!=='string')))throw Error('Invalid '+field);
+ for(const field of ['courseIds','checkIds','subsetIds','categories'])if(input[field]!==undefined&&(!Array.isArray(input[field])||input[field].length>500||input[field].some(v=>typeof v!=='string')))throw Error('Invalid '+field);
  for(const id of input.courseIds||[]){
   const c=getCourse(db,id);if(c.project!==project)throw Error('Course project variant differs from the requested variant.');origins.push({id:c.id,revision:c.revision});if(c.checkpoint){checkpointID(c.checkpoint);checkpoint=c.checkpoint;}
   for(const id of c.qualificationChecks||[])qualification.add(id);
   selectedGroups.push(...c.groups.map(g=>({...g,id:c.id+'/'+g.id})));
+ }
+ if(input.subsetIds!==undefined){
+  if(input.courseIds?.length!==1||!input.subsetIds.length||input.checkIds?.length||input.categories?.length||input.groups)throw Error('Choose a nonempty subset of one course without additional selectors.');
+  const members=new Set(selectedGroups.flatMap(g=>g.checks));if(input.subsetIds.some(id=>!members.has(id)))throw Error('Subset check is not a member of the selected course.');
+  const wanted=new Set(input.subsetIds);selectedGroups.splice(0,selectedGroups.length,...selectedGroups.map(g=>({...g,checks:g.checks.filter(id=>wanted.has(id))})).filter(g=>g.checks.length));
  }
  if(input.checkIds?.length)selectedGroups.push({id:'selected',title:'Selected checks',checks:input.checkIds});
  for(const category of input.categories||[]){
@@ -101,7 +106,7 @@ export function resolveSelection(db,input,review=acceptance()){
  const effectiveIds=['A-CLI-01',...requestedIds.filter(id=>targetFor(id)==='packaged'&&id!=='A-CLI-01'),...['service','desktop'].flatMap(target=>rawChecks.filter(c=>chosen.has(c.id)&&targetFor(c.id)===target).map(c=>c.id))];
  const addedPrerequisites=effectiveIds.filter(id=>!requestedIds.includes(id)).map(id=>({id,reason:reasons.get(id)}));
  const targets=[...new Set(effectiveIds.map(targetFor))];
- return {format:'wizard-smoke-selection/v2',title:input.title?text(input.title,'selection title'):origins.length===1&&!input.checkIds?.length&&!input.categories?.length&&!input.groups?getCourse(db,origins[0].id).title:'Custom checks',project,courseRevisions:origins,groups:resolvedGroups,requestedIds,effectiveIds,qualificationIds:effectiveIds.filter(id=>qualification.has(id)),addedPrerequisites,notSelected:registry.filter(c=>targets.includes(c.target)&&!effectiveIds.includes(c.id)).map(c=>c.id),requirements:requirementsFor(effectiveIds,checkpoint),...(checkpoint?{checkpoint:structuredClone(humanCheckpoint)}:{}),registryHash:digest(rawChecks),acceptanceBasis:{reviewedBy:review.reviewedBy||null,reviewedAt:review.reviewedAt||null},fullSmokeAcceptance:'Not assessed'};
+ return {...(input.diagnostics?{diagnostics:input.diagnostics}:{}),format:'wizard-smoke-selection/v2',title:input.title?text(input.title,'selection title'):origins.length===1&&!input.checkIds?.length&&!input.categories?.length&&!input.groups?getCourse(db,origins[0].id).title:'Custom checks',project,courseRevisions:origins,groups:resolvedGroups,requestedIds,effectiveIds,qualificationIds:effectiveIds.filter(id=>qualification.has(id)),addedPrerequisites,notSelected:registry.filter(c=>targets.includes(c.target)&&!effectiveIds.includes(c.id)).map(c=>c.id),requirements:requirementsFor(effectiveIds,checkpoint),...(checkpoint?{checkpoint:structuredClone(humanCheckpoint)}:{}),registryHash:digest(rawChecks),acceptanceBasis:{reviewedBy:review.reviewedBy||null,reviewedAt:review.reviewedAt||null},fullSmokeAcceptance:'Not assessed'};
 }
 export function selectedRecipe(selection){
  if(selection.checkpoint&&digest(selection.checkpoint)!==digest(humanCheckpoint))throw Error('Human checkpoint definition changed; prepare again.');
@@ -113,6 +118,7 @@ export function selectedRecipe(selection){
 export function validateRecipe(recipe,review=acceptance()){
  if(!recipe.selection)return;
  const s=recipe.selection,ids=recipe.cases.map(c=>c.id);
+ if(s.diagnostics!==undefined&&s.diagnostics!=='investigation')throw Error('Unknown diagnostic profile.');
  if(s.project!=='fresh'||!ids.length||ids[0]!=='A-CLI-01'||new Set(ids).size!==ids.length||digest(ids)!==digest(s.effectiveIds)||digest(recipe)!==digest(selectedRecipe(s))||digest(s.requirements)!==digest(requirementsFor(ids,s.checkpoint)))throw Error('Selected recipe or prerequisites changed.');
  const registry=checkRegistry(review),qualifying=s.courseRevisions.some(c=>c.id==='smoke-full'&&c.revision===fullSmokeCourse().revision)?fullSmokeCourse().qualificationChecks:[];
  if(digest(s.qualificationIds||[])!==digest(ids.filter(id=>qualifying.includes(id))))throw Error('Candidate qualification selection changed.');

@@ -63,10 +63,21 @@ export function runTiming(run, history = [], now = Date.now()) {
   return {active, elapsedMs, totalMs, estimatedTotalMs, samples};
 }
 
+// One grouped mark per check, across the full course scale. Decoration never changes the run verdict.
+function outcomeScale(counts,total,moving){
+ const order=['Pass','Fail','Blocked','N/A','Unknown','Running'],occupied=order.reduce((n,s)=>n+counts[s],0);
+ let index=0;
+ const marks=[...order.map(status=>[status,counts[status]]),['Not run',total-occupied]].flatMap(([status,n])=>Array.from({length:n},()=>{
+  const number=++index,kind=status==='Not run'?'pending':status.toLowerCase().replace(/[^a-z]+/g,'-');
+  return `<i class="outcome-tick ${kind}${number%10===0?' major':''}${moving&&number===occupied?' leading':''}" title="${status}: mark ${number}"></i>`;
+ })).join('');
+ return `<div class="outcome-scale" aria-hidden="true"><div class="outcome-line">${order.map(status=>`<span class="${status.toLowerCase().replace(/[^a-z]+/g,'-')}" style="width:${total?100*counts[status]/total:0}%"></span>`).join('')}</div><div class="outcome-ticks" style="--tick-count:${total||1}">${marks}</div></div>`;
+}
+
 export function progressBar(results, state) {
   const total = results.length, counts = Object.fromEntries(outcomes.map(s => [s, results.filter(r => r.status === s).length]));
   const completed = total - results.filter(r => ['Not run', 'Running'].includes(r.status)).length;
   const description = outcomes.filter(s => counts[s]).map(s => counts[s] + ' ' + s.toLowerCase()).join(', ') || 'No checks recorded';
   const occupied = Object.values(counts).reduce((a,b) => a+b,0), moving = movingStates.has(state) && occupied > 0;
-  return `<div class="run-progress" data-active="${moving}" role="progressbar" aria-label="Check progress" aria-valuemin="0" aria-valuemax="${total || 1}" aria-valuenow="${completed}" aria-valuetext="${description}"><div class="steam-channel"><div class="progress-fill" style="width:${total ? 100 * occupied / total : 0}%"><div class="color-fill">${outcomes.map(s => `<span class="segment ${s.toLowerCase().replace(/[^a-z]+/g, '-')}" style="width:${occupied ? 100 * counts[s] / occupied : 0}%" title="${s}: ${counts[s]}"></span>`).join('')}</div>${moving?smokeHead:''}</div></div></div>`;
+  return `<div class="run-progress ley-progress" data-active="${moving}" role="progressbar" aria-label="Check progress" aria-valuemin="0" aria-valuemax="${total || 1}" aria-valuenow="${completed}" aria-valuetext="${description}"><div class="steam-channel"><div class="progress-fill" style="width:${total ? 100 * occupied / total : 0}%"><div class="color-fill">${outcomes.map(s => `<span class="segment ${s.toLowerCase().replace(/[^a-z]+/g, '-')}" style="width:${occupied ? 100 * counts[s] / occupied : 0}%" title="${s}: ${counts[s]}"></span>`).join('')}</div>${moving?smokeHead:''}</div></div>${outcomeScale(counts,total,moving)}</div>`;
 }

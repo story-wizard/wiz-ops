@@ -47,3 +47,16 @@ test('build progress shows actual transfer bytes and does not invent totals duri
  assert.match(buildImportProgress({stage:'Failed',complete:true}),/data-active="false"/);
  assert.ok(!buildImportProgress({stage:'<script>',bytes:NaN}).includes('<script>'));
 });
+
+
+test('engraved scale preserves every outcome and pending checks outside the smoke chamber',()=>{
+ const statuses=['Pass','Fail','Blocked','N/A','Unknown','Running','Not run'];
+ const html=progressBar(statuses.map(status=>({status})),'Running');
+ assert.match(html,/aria-valuenow="5"/);
+ assert.match(html,/class="run-progress ley-progress"/);
+ const scale=html.slice(html.indexOf('<div class="outcome-scale"'));
+ assert.equal((scale.match(/class="outcome-tick /g)||[]).length,7);
+ for(const kind of ['pass','fail','blocked','n-a','unknown','running','pending'])assert.match(scale,new RegExp('outcome-tick '+kind+'(?: |")'));
+ assert.ok(!progressBar([{status:'Not run'}],'Queued').includes('outcome-tick pending leading'));
+ const empty=progressBar([],'Queued');assert.ok(!empty.includes('NaN'));assert.equal((empty.match(/class="outcome-tick /g)||[]).length,0);
+});

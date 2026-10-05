@@ -1,0 +1,6 @@
+[
+  {"role":"short-video-with-audio","kind":"video","hasAudio":true,"minDurationSeconds":2,"maxDurationSeconds":30},
+  {"role":"long-video","kind":"video","minDurationSeconds":1200},
+  {"role":"audio-only","kind":"audio","minDurationSeconds":10},
+  {"role":"prores-source","kind":"video","codec":"prores"}
+]

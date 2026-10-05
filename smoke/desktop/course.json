@@ -1,6 +1,6 @@
 {
   "id": "local-desktop-v1",
-  "revision": 11,
+  "revision": 23,
   "title": "Local desktop smoke",
   "target": "Instrumented local GUI with isolated Qt runtime",
   "cases": [
@@ -579,6 +579,1431 @@
           "caption": "Displayed editor state during the test."
         }
       ]
+    },
+    {
+      "id": "D-SEARCH-FOCUS",
+      "sourceId": "SS-07",
+      "area": "Search",
+      "title": "Project search survives timeline focus changes",
+      "expected": "The matching source remains in project-wide search when focusing a timeline that does not use it, and when returning; nonmatching media is absent and timelines remain unchanged.",
+      "scope": "Candidate scripted hybrid check: application fixture/readback, observed Qt controls, physical input where declared, and retained images. Runtime qualification pending.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readbacks and control/input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Recorded search, graph or scope observations used by the assertion."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed result in the owned app."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Create two timelines with distinct sources",
+          "phase": "prepare"
+        },
+        {
+          "id": "search",
+          "title": "Focus each timeline and physically search the project",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Compare search results and preserved timelines",
+          "phase": "verify"
+        },
+        {
+          "id": "cleanup",
+          "title": "Clear search and restore the owned timeline",
+          "phase": "cleanup"
+        }
+      ],
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect"
+      ]
+    },
+    {
+      "id": "D-INSPECTOR-BLUR-PHYSICAL",
+      "sourceId": "RG-02",
+      "area": "Render graph",
+      "title": "Physical blur Inspector edit and Undo",
+      "expected": "The physical Right key changes only the selected blur Radius, changes displayed pixels, and one Undo restores the graph and image.",
+      "scope": "Candidate scripted hybrid check: application fixture/readback, observed Qt controls, physical input where declared, and retained images. Runtime qualification pending.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readbacks and control/input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Recorded search, graph or scope observations used by the assertion."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed result in the owned app."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare a clip with a selected blur",
+          "phase": "prepare"
+        },
+        {
+          "id": "edit",
+          "title": "Physically focus the current thumb and increase Radius",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Inspect exact parameter changes and displayed pixels",
+          "phase": "verify"
+        },
+        {
+          "id": "restore",
+          "title": "Undo and compare the original graph and image",
+          "phase": "cleanup"
+        }
+      ],
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect",
+        "graph.get_clip_graph",
+        "graph.insert_on_edge",
+        "playback.seek"
+      ]
+    },
+    {
+      "id": "D-MASK-CLIPBOARD-PHYSICAL",
+      "sourceId": "RG-03",
+      "area": "Render graph",
+      "title": "Physical mask-node clipboard and history",
+      "expected": "Physical Copy/Paste creates one independently identified rectangle with matching parameters and ownership, preserves the existing matte wiring and displayed result, and Delete plus Undo restores both stages.",
+      "scope": "Candidate scripted hybrid check: application fixture/readback, observed Qt controls, physical input where declared, and retained images. Runtime qualification pending.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readbacks and control/input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Recorded search, graph or scope observations used by the assertion."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed result in the owned app."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare a connected half-frame matte",
+          "phase": "prepare"
+        },
+        {
+          "id": "paste",
+          "title": "Physically Copy and Paste the selected mask",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Inspect independent identity, parameters and preserved wiring",
+          "phase": "verify"
+        },
+        {
+          "id": "restore",
+          "title": "Delete the copy and undo deletion and paste",
+          "phase": "cleanup"
+        },
+        {
+          "id": "clipboard",
+          "title": "Restore the tester clipboard",
+          "phase": "cleanup"
+        }
+      ],
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect",
+        "graph.get_clip_graph",
+        "graph.add_pass",
+        "graph.edit_batch",
+        "playback.seek"
+      ]
+    },
+    {
+      "id": "D-SCOPES-VECTOR",
+      "sourceId": "CO-09",
+      "area": "Colour",
+      "title": "Vectorscope response across available taps",
+      "expected": "The actual vectorscope responds differently to a known colour frame and black gap at each available tap while preserving timeline content.",
+      "scope": "Candidate scripted hybrid check: application fixture/readback, observed Qt controls, physical input where declared, and retained images. Runtime qualification pending.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readbacks and control/input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Recorded search, graph or scope observations used by the assertion."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed result in the owned app."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare a colour frame and black gap; open Scopes",
+          "phase": "prepare"
+        },
+        {
+          "id": "sample",
+          "title": "Compare vectorscope image response at each tap",
+          "phase": "verify"
+        },
+        {
+          "id": "cleanup",
+          "title": "Restore the controls and close Scopes",
+          "phase": "cleanup"
+        }
+      ],
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect",
+        "render.bind_timeline",
+        "playback.seek",
+        "playback.query_transport"
+      ]
+    },
+    {
+      "id": "D-PROJECT-NEW",
+      "sourceId": "LP-02",
+      "area": "Project management",
+      "title": "New Project, Save and fresh-process reopen",
+      "expected": "New Project creates a named empty bundle with a new timeline identity. Save, normal Quit and fresh-process reopening retain it, and the original project remains unchanged.",
+      "scope": "Candidate Qt-action workflow with CLI and saved-file readback, normal Quit acknowledgment and fresh-process verification. Runtime qualification pending.",
+      "steps": [
+        {
+          "id": "baseline",
+          "title": "Save and retain the starting project",
+          "phase": "prepare"
+        },
+        {
+          "id": "create",
+          "title": "Create a named empty project through New Project",
+          "phase": "execute"
+        },
+        {
+          "id": "reopen",
+          "title": "Save, Quit and reopen and compare both new and original projects",
+          "phase": "verify"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readbacks and observed Qt actions."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Project identities and timeline snapshots used to verify preservation."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The created, copied or reopened project and Preferences controls."
+        }
+      ],
+      "operations": [
+        "project.get_name",
+        "timeline.inspect"
+      ]
+    },
+    {
+      "id": "D-PROJECT-SAVE-AS",
+      "sourceId": "LP-02",
+      "area": "Project management",
+      "title": "Save As preserves content and isolates the copy",
+      "expected": "The Save As dialog creates a separate bundle with identical timeline IDs and content. An edit and Save affect only the copy, survive a normal Quit and fresh-process reopen, and preserve the original project.",
+      "scope": "Candidate Qt-action workflow with CLI and saved-file readback, normal Quit acknowledgment and fresh-process verification. Runtime qualification pending.",
+      "steps": [
+        {
+          "id": "baseline",
+          "title": "Save and retain the starting project",
+          "phase": "prepare"
+        },
+        {
+          "id": "copy",
+          "title": "Save As to a fresh bundle and edit only the copy",
+          "phase": "execute"
+        },
+        {
+          "id": "reopen",
+          "title": "Save, Quit and reopen and compare the copy and original",
+          "phase": "verify"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readbacks and observed Qt actions."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Project identities and timeline snapshots used to verify preservation."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The created, copied or reopened project and Preferences controls."
+        }
+      ],
+      "operations": [
+        "project.get_name",
+        "timeline.inspect",
+        "timeline.update"
+      ]
+    },
+    {
+      "id": "D-PREFERENCES-PROJECTLESS",
+      "sourceId": "UI-05",
+      "area": "User interface",
+      "title": "Application Preferences without a project",
+      "expected": "Preferences opens from the projectless hub with Application pages and no project settings. Pages open, Cancel returns to the hub, and the original project reopens unchanged.",
+      "scope": "Candidate Qt-action workflow with CLI and saved-file readback plus fresh-process verification. Runtime qualification pending.",
+      "steps": [
+        {
+          "id": "baseline",
+          "title": "Save and retain the starting project",
+          "phase": "prepare"
+        },
+        {
+          "id": "projectless",
+          "title": "Start the selected build at its project hub",
+          "phase": "prepare"
+        },
+        {
+          "id": "preferences",
+          "title": "Open Application pages and Cancel back to the hub",
+          "phase": "execute"
+        },
+        {
+          "id": "reopen",
+          "title": "Reopen the original project and compare content",
+          "phase": "verify"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application readbacks and observed Qt actions."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Project identities and timeline snapshots used to verify preservation."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The created, copied or reopened project and Preferences controls."
+        }
+      ],
+      "operations": [
+        "project.get_name",
+        "timeline.inspect"
+      ]
+    },
+    {
+      "id": "D-SEARCH-EMPTY",
+      "sourceId": "SS-04",
+      "area": "Search",
+      "title": "Missing-term search returns no clips",
+      "expected": "A known filename has a match, a unique missing term yields an explicit completed zero-match result, and the known query restores the original result set. Timeline content is unchanged.",
+      "scope": "Candidate physical input with independent state assertions and fresh owned fixture.",
+      "steps": [
+        {
+          "id": "positive",
+          "title": "Find a known clip",
+          "phase": "prepare"
+        },
+        {
+          "id": "missing",
+          "title": "Search for a missing term",
+          "phase": "execute"
+        },
+        {
+          "id": "restore",
+          "title": "Restore and compare the known query",
+          "phase": "verify"
+        },
+        {
+          "id": "clear",
+          "title": "Clear the test query",
+          "phase": "cleanup"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application observations and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent search/timeline observations and history timing samples."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The visible results and edited or restored timeline."
+        }
+      ],
+      "operations": [
+        "timeline.inspect"
+      ],
+      "proof": {
+        "version": 1,
+        "oracle": "volume-v1",
+        "mode": "physical"
+      }
+    },
+    {
+      "id": "D-CLIPBOARD-LARGE",
+      "sourceId": "PF-19",
+      "area": "Clipboard",
+      "title": "Copy and paste 100 clips between timelines",
+      "expected": "Physical Select All / Copy / Paste creates exactly 100 independent clips with matching sources, ordering and timing. One Undo removes the paste and one Redo restores it without changing the source.",
+      "scope": "Candidate physical input with independent state assertions and fresh owned fixture.",
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare 100 varied clips and an empty destination",
+          "phase": "prepare"
+        },
+        {
+          "id": "copy",
+          "title": "Physically select and copy all clips",
+          "phase": "execute"
+        },
+        {
+          "id": "paste",
+          "title": "Physically paste into the destination",
+          "phase": "execute"
+        },
+        {
+          "id": "verify",
+          "title": "Compare IDs, sources and timing",
+          "phase": "verify"
+        },
+        {
+          "id": "history",
+          "title": "Verify one Undo and one Redo",
+          "phase": "verify"
+        },
+        {
+          "id": "clipboard",
+          "title": "Restore the tester clipboard",
+          "phase": "cleanup"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application observations and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent search/timeline observations and history timing samples."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The visible results and edited or restored timeline."
+        }
+      ],
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect",
+        "playback.seek"
+      ],
+      "proof": {
+        "version": 1,
+        "oracle": "volume-v1",
+        "mode": "physical",
+        "contractRevision": 3
+      }
+    },
+    {
+      "id": "D-HISTORY-50",
+      "sourceId": "PF-17",
+      "area": "History",
+      "title": "50 physical edits, Undo and Redo with latency samples",
+      "expected": "Each of 50 physical nudges moves the same clip by exactly one frame. All 50 Undo and 50 Redo states preserve sources, tracks and seeded history. Exact endpoint states return; per-step timings are retained.",
+      "scope": "Candidate physical input with independent CLI/UI readbacks and fresh owned fixture. Timing observations have no performance acceptance threshold.",
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Seed 50 earlier rename operations and prepare the clip",
+          "phase": "prepare"
+        },
+        {
+          "id": "edit",
+          "title": "Make 50 separate physical nudges",
+          "phase": "execute"
+        },
+        {
+          "id": "undo",
+          "title": "Undo and verify every intermediate state",
+          "phase": "verify"
+        },
+        {
+          "id": "redo",
+          "title": "Redo and verify every intermediate state",
+          "phase": "verify"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application observations and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent search/timeline observations and history timing samples."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The visible results and edited or restored timeline."
+        }
+      ],
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.update",
+        "timeline.inspect"
+      ],
+      "scriptTimeoutMs": 480000,
+      "proof": {
+        "version": 1,
+        "oracle": "volume-v1",
+        "mode": "physical",
+        "repetitions": 50
+      }
+    },
+    {
+      "id": "D-IMPORT-DIALOG",
+      "sourceId": "IN-03",
+      "area": "Media",
+      "title": "Import external footage through the file dialog",
+      "expected": "The physical Import Files path registers exactly one synthetic source outside the project parent, preserves the source bytes and displays its exact asset identity.",
+      "scope": "Candidate physical UI action with CLI/Qt readbacks on the designated build and an isolated owned project. See the specific expected behavior and retained qualification.",
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare the owned test fixture",
+          "phase": "prepare"
+        },
+        {
+          "id": "picker",
+          "title": "Open Import Files",
+          "phase": "execute"
+        },
+        {
+          "id": "path",
+          "title": "Choose the external file",
+          "phase": "execute"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-bound application calls and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent parameters, media identities, search results or audio measurements."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed controls or presented result after the action."
+        }
+      ],
+      "operations": [
+        "media.list_assets",
+        "media.resolve_path"
+      ],
+      "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-MEDIA-THUMBNAIL",
+      "sourceId": "IN-04",
+      "area": "Media",
+      "title": "Source thumbnail identity and media list",
+      "expected": "The known colour-plate asset has its own decoded thumbnail with usable dimensions and remains bound to the media row. Timeline filmstrips and waveforms are additional coverage.",
+      "scope": "Candidate physical UI action with CLI/Qt readbacks on the designated build and an isolated owned project. See the specific expected behavior and retained qualification.",
+      "steps": [
+        {
+          "id": "thumbnail",
+          "title": "Verify the cached source thumbnail",
+          "phase": "execute"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-bound application calls and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent parameters, media identities, search results or audio measurements."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed controls or presented result after the action."
+        }
+      ],
+      "operations": [],
+      "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-MEDIA-COLOR-COLUMN",
+      "sourceId": "IN-05",
+      "area": "Media",
+      "title": "Detected source colour in the media column",
+      "expected": "The observed Color Space model column for the exact fixture asset shows Rec.709, consistent with its ingested sidecar.",
+      "scope": "Candidate physical UI action with CLI/Qt readbacks on the designated build and an isolated owned project. See the specific expected behavior and retained qualification.",
+      "steps": [
+        {
+          "id": "column",
+          "title": "Verify the source colour-space column",
+          "phase": "execute"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-bound application calls and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent parameters, media identities, search results or audio measurements."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed controls or presented result after the action."
+        }
+      ],
+      "operations": [],
+      "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-TRANSCRIPT-SEARCH",
+      "sourceId": "SS-01",
+      "area": "Search",
+      "title": "Spoken phrase through the Transcript search UI",
+      "expected": "A physical silver camera query finds the known speech clip with the correct asset identity and independent word-time evidence in the same Wizard process.",
+      "scope": "Candidate physical UI action with CLI/Qt readbacks on the designated build and an isolated owned project. See the specific expected behavior and retained qualification.",
+      "steps": [
+        {
+          "id": "ingest",
+          "title": "Run the selected package\u2019s offline ingest",
+          "phase": "prepare"
+        },
+        {
+          "id": "search",
+          "title": "Enter the query and inspect results",
+          "phase": "execute"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-bound application calls and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent parameters, media identities, search results or audio measurements."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed controls or presented result after the action."
+        }
+      ],
+      "operations": [
+        "media.import_asset",
+        "search.query"
+      ],
+      "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-INGEST-SEARCH-LIVE",
+      "sourceId": "SS-05",
+      "area": "Search",
+      "title": "New ingest appears in filename search without restart",
+      "expected": "An absent unique filename becomes a physical Name search result after import and local ingest; the displayed asset identity and Wizard PID are preserved. Transcript live indexing is additional coverage.",
+      "scope": "Candidate physical UI action with CLI/Qt readbacks on the designated build and an isolated owned project. See the specific expected behavior and retained qualification.",
+      "steps": [
+        {
+          "id": "before",
+          "title": "Establish the absent-source search",
+          "phase": "prepare"
+        },
+        {
+          "id": "ingest",
+          "title": "Run the selected package\u2019s offline ingest",
+          "phase": "prepare"
+        },
+        {
+          "id": "search",
+          "title": "Enter the query and inspect results",
+          "phase": "execute"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-bound application calls and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent parameters, media identities, search results or audio measurements."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed controls or presented result after the action."
+        }
+      ],
+      "operations": [
+        "media.import_asset"
+      ],
+      "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-PRIMARY-PANEL",
+      "sourceId": "CO-01",
+      "area": "Colour",
+      "title": "Primary wheel, pivot and Model UI",
+      "expected": "Gamma wheel, pivot with a nonneutral grade, and the explicit Linear model change their intended graph parameters. Independent pixels respond and Undo restores exact graphs.",
+      "scope": "Candidate physical UI action with CLI/Qt readbacks on the designated build and an isolated owned project. See the specific expected behavior and retained qualification.",
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare the owned test fixture",
+          "phase": "prepare"
+        },
+        {
+          "id": "wheel",
+          "title": "Drag Gamma and verify graph and pixels",
+          "phase": "execute"
+        },
+        {
+          "id": "undo-wheel",
+          "title": "undo wheel",
+          "phase": "verify"
+        },
+        {
+          "id": "pivot",
+          "title": "Edit the contrast pivot with nonneutral Contrast",
+          "phase": "execute"
+        },
+        {
+          "id": "undo-pivot",
+          "title": "undo pivot",
+          "phase": "verify"
+        },
+        {
+          "id": "model",
+          "title": "Choose the explicit Linear model",
+          "phase": "execute"
+        },
+        {
+          "id": "undo-model",
+          "title": "Undo the model and restore graph and pixels",
+          "phase": "verify"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-bound application calls and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent parameters, media identities, search results or audio measurements."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed controls or presented result after the action."
+        }
+      ],
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect",
+        "playback.seek",
+        "graph.get_clip_graph",
+        "render.export_still"
+      ],
+      "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-TONE-ZONES",
+      "sourceId": "CO-02",
+      "area": "Colour",
+      "title": "Tone zone gestures and individual reset",
+      "expected": "Each of the five Tone zone wheels changes grade parameters and rendered/displayed pixels; resetting the selected zone restores the baseline image and preserves clip timing.",
+      "scope": "Candidate physical UI action with CLI/Qt readbacks on the designated build and an isolated owned project. See the specific expected behavior and retained qualification.",
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare the owned test fixture",
+          "phase": "prepare"
+        },
+        {
+          "id": "zone-0",
+          "title": "zone 0",
+          "phase": "execute"
+        },
+        {
+          "id": "zone-1",
+          "title": "zone 1",
+          "phase": "execute"
+        },
+        {
+          "id": "zone-2",
+          "title": "zone 2",
+          "phase": "execute"
+        },
+        {
+          "id": "zone-3",
+          "title": "zone 3",
+          "phase": "execute"
+        },
+        {
+          "id": "zone-4",
+          "title": "zone 4",
+          "phase": "execute"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-bound application calls and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent parameters, media identities, search results or audio measurements."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed controls or presented result after the action."
+        }
+      ],
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect",
+        "playback.seek",
+        "graph.get_clip_graph",
+        "render.export_still"
+      ],
+      "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-BALANCE-PANEL",
+      "sourceId": "CO-04",
+      "area": "Colour",
+      "title": "Balance exposure, contrast, temperature and tint",
+      "expected": "Each physical Balance control changes its own parameter and rendered/displayed pixels. Undo independently restores the exact graph and reference image without changing timing.",
+      "scope": "Candidate physical UI action with CLI/Qt readbacks on the designated build and an isolated owned project. See the specific expected behavior and retained qualification.",
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare the owned test fixture",
+          "phase": "prepare"
+        },
+        {
+          "id": "exposure",
+          "title": "Edit Exposure and Undo",
+          "phase": "execute"
+        },
+        {
+          "id": "contrast",
+          "title": "Edit Contrast and Undo",
+          "phase": "execute"
+        },
+        {
+          "id": "temperature",
+          "title": "Edit Temperature and Undo",
+          "phase": "execute"
+        },
+        {
+          "id": "tint",
+          "title": "Edit Tint and Undo",
+          "phase": "execute"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-bound application calls and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent parameters, media identities, search results or audio measurements."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed controls or presented result after the action."
+        }
+      ],
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect",
+        "playback.seek",
+        "graph.get_clip_graph",
+        "render.export_still"
+      ],
+      "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-SHORTCUT-CONFLICT",
+      "sourceId": "UI-03",
+      "area": "UI",
+      "title": "Shared shortcut warning, dispatch and reset",
+      "expected": "Assigning Cmd+Z to Play/Pause names its Undo collision. The latest available binding controls playback and preserves timeline content; per-row reset restores Space.",
+      "scope": "Candidate physical UI action with CLI/Qt readbacks on the designated build and an isolated owned project. See the specific expected behavior and retained qualification.",
+      "steps": [
+        {
+          "id": "assign",
+          "title": "Assign the conflicting shortcut",
+          "phase": "execute"
+        },
+        {
+          "id": "dispatch",
+          "title": "Exercise the reassigned shortcut",
+          "phase": "execute"
+        },
+        {
+          "id": "reset",
+          "title": "Reset the exact shortcut row",
+          "phase": "verify"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-bound application calls and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent parameters, media identities, search results or audio measurements."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed controls or presented result after the action."
+        }
+      ],
+      "operations": [
+        "timeline.inspect",
+        "playback.seek",
+        "playback.query_transport"
+      ],
+      "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-DOCK-MODIFIER",
+      "sourceId": "UI-02",
+      "area": "UI",
+      "title": "Redock modifier suppresses held-drag overlays",
+      "expected": "Dock overlays appear during the unmodified positive-control drag and are absent in at least three held-Alt observations during the same docking path. Timeline content is preserved.",
+      "scope": "Candidate physical UI action with CLI/Qt readbacks on the designated build and an isolated owned project. See the specific expected behavior and retained qualification.",
+      "steps": [
+        {
+          "id": "modifier",
+          "title": "Set the isolated redock modifier",
+          "phase": "prepare"
+        },
+        {
+          "id": "positive",
+          "title": "Observe docking overlays without a modifier",
+          "phase": "execute"
+        },
+        {
+          "id": "held",
+          "title": "Hold the modifier through a physical drag",
+          "phase": "execute"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-bound application calls and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent parameters, media identities, search results or audio measurements."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed controls or presented result after the action."
+        }
+      ],
+      "operations": [
+        "timeline.inspect"
+      ],
+      "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-MIXER-UI",
+      "sourceId": "AU-01",
+      "area": "Audio",
+      "title": "Physical mixer fader, mute and solo",
+      "expected": "Exact track-strip input changes real rendered loudness. Fader reset and unmute restore it; soloing an empty track suppresses the populated track, and clearing Solo restores output.",
+      "scope": "Candidate physical UI action with CLI/Qt readbacks on the designated build and an isolated owned project. See the specific expected behavior and retained qualification.",
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare the owned test fixture",
+          "phase": "prepare"
+        },
+        {
+          "id": "gain",
+          "title": "Lower and reset the exact track fader",
+          "phase": "execute"
+        },
+        {
+          "id": "mute",
+          "title": "Mute and restore the populated track",
+          "phase": "execute"
+        },
+        {
+          "id": "solo",
+          "title": "Solo and clear an empty control track",
+          "phase": "execute"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-bound application calls and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent parameters, media identities, search results or audio measurements."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed controls or presented result after the action."
+        }
+      ],
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect",
+        "playback.seek",
+        "timeline.manage_tracks",
+        "audio.mix_report"
+      ],
+      "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-METER-PLAYBACK",
+      "sourceId": "AU-03",
+      "area": "Audio",
+      "title": "Painted stereo meter response and decay",
+      "expected": "Known non-silent audio advances during physical playback; the visible stereo meter repeatedly responds, then decays after a physical pause. This is level response, not calibrated loudness.",
+      "scope": "Candidate physical UI action with CLI/Qt readbacks on the designated build and an isolated owned project. See the specific expected behavior and retained qualification.",
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare the owned test fixture",
+          "phase": "prepare"
+        },
+        {
+          "id": "play",
+          "title": "Start playback physically",
+          "phase": "execute"
+        },
+        {
+          "id": "pause",
+          "title": "Pause and inspect the decay",
+          "phase": "verify"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-bound application calls and physical input receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent parameters, media identities, search results or audio measurements."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "The observed controls or presented result after the action."
+        }
+      ],
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect",
+        "playback.seek",
+        "timeline.manage_tracks",
+        "audio.mix_report",
+        "playback.pause",
+        "playback.query_transport"
+      ],
+      "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-INSPECTOR-PLAYBACK",
+      "sourceId": "PF-11",
+      "title": "Playback with a graded graph Inspector open",
+      "expected": "A visible six-node graph Inspector remains available while physical playback advances and presented frames evolve. CPU/RSS and recorder cost are retained.",
+      "scope": "Candidate bounded local playback observations on a synthetic Fresh fixture. See the retained procedure and verdict.",
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare the known playback fixture",
+          "phase": "prepare"
+        },
+        {
+          "id": "inspector",
+          "title": "Open the exact node Inspector",
+          "phase": "prepare"
+        },
+        {
+          "id": "play",
+          "title": "Start physical playback",
+          "phase": "execute"
+        },
+        {
+          "id": "record",
+          "title": "Record motion and transport",
+          "phase": "verify"
+        },
+        {
+          "id": "pause",
+          "title": "Pause physical playback",
+          "phase": "cleanup"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application calls, physical input and worker receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Timed frames, transport, process resources and worker overlap."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Presented playback samples and final preview."
+        },
+        {
+          "id": "motion",
+          "kind": "video",
+          "when": "after",
+          "required": true,
+          "caption": "Sampled preview preserving the original intervals between captured frames."
+        }
+      ],
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect",
+        "playback.seek",
+        "graph.get_clip_graph",
+        "graph.edit_batch",
+        "playback.query_transport"
+      ],
+      "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-INGEST-PLAYBACK",
+      "sourceId": "PB-17",
+      "title": "Playback during local ingest audio analysis",
+      "expected": "Fresh advancing playback samples overlap an owned offline audio-analysis ingest worker; sixteen four-minute synthetic sources complete audio analysis without changing the playback timeline.",
+      "scope": "Candidate bounded local playback observations on a synthetic Fresh fixture. See the retained procedure and verdict.",
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Prepare playback and four-minute synthetic audio",
+          "phase": "prepare"
+        },
+        {
+          "id": "play",
+          "title": "Start physical playback",
+          "phase": "execute"
+        },
+        {
+          "id": "concurrent",
+          "title": "Record playback alongside local ingest",
+          "phase": "execute"
+        },
+        {
+          "id": "pause",
+          "title": "Pause physical playback",
+          "phase": "cleanup"
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Application calls, physical input and worker receipts."
+        },
+        {
+          "id": "graph-state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Timed frames, transport, process resources and worker overlap."
+        },
+        {
+          "id": "app-state",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Presented playback samples and final preview."
+        },
+        {
+          "id": "motion",
+          "kind": "video",
+          "when": "after",
+          "required": true,
+          "caption": "Sampled preview preserving the original intervals between captured frames."
+        }
+      ],
+      "operations": [
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect",
+        "playback.seek",
+        "graph.get_clip_graph",
+        "media.import_asset",
+        "playback.query_transport"
+      ],
+      "scriptTimeoutMs": 240000
     }
   ]
 }

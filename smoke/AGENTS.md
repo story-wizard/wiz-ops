@@ -2,13 +2,31 @@
 
 Athanor is the app name. Preserve the existing CLI names, formats and WizardSmoke workspace paths.
 
+The October 3 local slice adds fourteen further UI/playback candidates, scoped model observations, native gestures and timed evidence recording. Read [harness control](docs/harness-control.md) for how these layers work and the retained qualification state. Candidate availability is not lead acceptance.
+
+## Choose your task
+
+Work from the command root: `smoke/` in a checkout or `workspace/` in a bundle. Read the guide for the requested task, then use live JSON discovery rather than reading every guide up front.
+
+| Task | Start here |
+| --- | --- |
+| Run or compose an existing course | [Agent courses](docs/agent-courses.md) |
+| Explore Wizard with mouse, keyboard and app operations | [Computer-use guide](docs/computer-use-agent.md) |
+| Understand how the CLI, Qt adapter and physical input work together | [Harness control](docs/harness-control.md) |
+| Compare or improve agent control tooling | [Control harness baseline](docs/control-comparison.md) |
+| Investigate failed checks and prepare bug drafts | [Investigations](docs/investigations.md) |
+| Inventory a supplied .wiz project and plan representative-media checks | [Golden Project intake](docs/golden-project-intake.md) |
+| Repair build compatibility or edit a test | [Build repair](docs/build-repair.md), then [test authoring](docs/test-evidence.md) |
+
+Use `setup`, `list` and `courses` to discover readiness, current definitions and membership. Accepted definitions, runnable candidates, exploratory definitions and original Logan checklist rows are different inventories. Never substitute a documentation count for the catalog.
+
 ## Dashboard design
 
-Design for desktop use on a capable Mac. Check full-screen and normal Mac window layouts first, with readable tables, clear run controls and room for evidence details. Keep narrow-window support as a fallback; do not compromise the desktop layout for mobile. Preserve the shared alchemical scene, restrained Athanor wordmark and Wizard mark. Use the Arcane current progress treatment: taper the steam behind a clear leading spark. Steam and the magical leading edge animate only during an active run; a faint stationary origin wisp remains on finished bars. Keep status colors and reduced-motion support.
+Design for desktop use on a capable Mac. Check full-screen and normal Mac window layouts first, with readable tables, clear run controls and room for evidence details. Keep narrow-window support as a fallback; do not compromise the desktop layout for mobile. Preserve the shared alchemical scene, restrained Athanor wordmark and Wizard mark. Use the selected Engraved ley scale progress treatment: neutral Billowing puff smoke inside plain glass, with bracketed, embossed outcome ticks below it. Keep the original smoke renderer without the extra foreground smoke experiments. Result colors belong to the ticks; preserve Pass, Fail, Blocked, Running, N/A, Unknown and pending counts. Animate only during active work; finished bars retain a faint still veil. Keep reduced-motion support and the static report fallback.
 
 ## Navigation, filters and evidence
 
-Use the persistent navigation below the shared scene banner: Run tests, Results, Checks, Test guide, and More. More opens Desktop tools, Golden Project, Coverage and Logan's checklist. Direct workspace links are `/#setup`, `/#runs`, `/#catalog`, `/#desktop`, `/#gp`, `/#coverage` and `/#checklist`; the guide is `/explainer`.
+Use the persistent navigation below the shared scene banner: Run tests, Results, Investigations, Checks, Test guide, and More. Investigations is the searchable follow-up index, with links from both baseline and focused repro results. More opens Desktop tools, Golden Project, Coverage and Logan's checklist. Direct workspace links are `/#setup`, `/#runs`, `/#catalog`, `/#investigations`, `/#desktop`, `/#gp`, `/#coverage` and `/#checklist`; the guide is `/explainer`.
 
 Dropdown filters use checkbox multi-select: selected values within a field combine with OR; different fields combine with AND; no selection means all values. Build, course, sort order and evidence-record selectors remain single choices. Save filters stores a named view and the last selections per page in this browser. Workspace presets do not change courses or canonical definitions. Exported report filters and presets live in its URL fragment, which also preserves direct check links; copy the resulting link to retain that view.
 
@@ -22,45 +40,74 @@ Read `docs/changes-2026-10-02.md` for the current update. Use the maintained cou
 
 ## Start from a checkout or bundle
 
-Use Node.js 24 or newer. The command root is `smoke/` in a repository checkout and `workspace/` in a delivered bundle. It contains `package.json`, `scripts/`, `desktop/` and `docs/`; guidance paths below are relative to that root. Run:
+Use Node.js 24 or newer. No npm dependency installation is needed.
 
 ```sh
-npm test
-npm run scope:check
 npm run open -- --no-open
+node scripts/smoke.mjs setup --server URL
+node scripts/smoke.mjs courses --server URL
+node scripts/smoke.mjs list --server URL
 ```
 
-Keep the launch process running. It prints a local URL on an available port. Pass that URL to every agent command with `--server URL`, for example `node scripts/smoke.mjs setup --server URL`. `npm run open` without `--no-open` asks for a browser on first opening and remembers the choice. No npm packages are needed.
+Keep the launcher running and replace `URL` with its printed loopback address. `npm run open` without `--no-open` asks for a browser on first opening and remembers it. Use the same absolute external `SMOKE_DATA_DIR` for the service and all session commands; the default is the user's WizardSmoke workspace. Runtime state stays outside Git, and a fresh workspace has no runs.
 
-Use an absolute `SMOKE_DATA_DIR` outside Git for a separate workspace; the default is the user's WizardSmoke directory. A fresh workspace starts with the catalog and no results. Never insert invented runs or outcomes into a tester's workspace.
+Use the supplied build and selection, or ask if missing. `prepare` returns a progress ID; poll `preparation --id ID` for steps, readiness and a repair prompt. Preparation attaches matching tools to a disposable copy of the selected package. Never substitute another instrumented app. Read [desktop setup](docs/desktop-tools-setup.md) only when resolving its prerequisites. Review the frozen selection and added prerequisites, then run when the user has authorized testing on that machine. Preparation and discovery do not run a course.
 
-Run `setup`, `list`, and `courses` first. Ask for the build and intended selection if the user has not supplied them. Read [desktop tool setup](docs/desktop-tools-setup.md). Prepare the selected build before running: `smoke.mjs prepare` returns a progress ID; `smoke.mjs preparation --id ID` returns steps, readiness and an agent repair prompt. The dashboard has separate Prepare and Start actions. Preparation sets up a matching adapter and verifies it against the selected package. Never substitute a separate instrumented app. A compatible Wizard package and FFmpeg/FFprobe are needed for engine execution. Speech checks require the pinned offline model. Resolve missing prerequisites from the repair prompt and retain the failed attempt.
+For exploration, follow [computer-use guidance](docs/computer-use-agent.md). Start with `desktop/session.mjs start --plan FILE`, read the returned `agent-context.json`, and use `desktop/session.mjs tool SESSION.json OP JSON`. Context lists build/process/project identities, current keys and operations, inspection limits, toolkit Pass contracts and the deadline. Run `preflight` before gestures. Scripted courses have their own assertions; exploratory observations cannot qualify an interactive Pass without a proof contract.
 
-Read `docs/agent-tools.md` for single-check execution and atomic app/native tools. The dashboard is optional. Start with `node scripts/smoke.mjs setup --server URL` and `list --server URL`; both return JSON without executing tests.
+## Execution and evidence rules
 
-For computer-use testing, read `docs/computer-use-agent.md`. Start an owned session with `desktop/session.mjs start --plan FILE`, then use `desktop/session.mjs tool SESSION.json OP JSON`. Ready prints the session and `agent-context.json` paths. Run `preflight` before gestures. Physically click and verify the editable field before native Unicode `type`; use bounded physical `scroll` for offscreen controls. Inspect the actual key window and focused control when keys are blocked. Use scoped `observe` and exact `find` selectors, `geometry` for clip bodies/edges, `physical` for the action being tested, `wait` for read-only conditions, and `verify` plus `capture` before recording Pass. Repeated checks have separate attempts. An Unknown mutation requires inspection, current verification and explicit `resolve`; stop can close its owned app without a new save/edit. Foreground attachment holds an OS lease across workspaces. Bundle delivery includes the compiled native driver; source checkouts compile it once with Swift from macOS Command Line Tools. Agent reports reuse the interactive report viewer and remain outside Git.
+- Bind every action to the selected build, current process and observed target. Ambiguity is Blocked. Foreground sessions hold a cross-workspace lease; keep the Mac unlocked and available. Never bypass the lock screen or change system security settings.
+- Use CLI/Qt calls for setup and readback, and physical input for the gesture being tested. Verify independently and collect declared evidence. Operation success alone is not a behavioral pass. Preserve source snapshots and distinct capture filenames.
+- Preserve Fail, Blocked and Unknown. Ordinary assertion failures continue into independent checks after confirmed cleanup. An uncertain mutation stops its session; inspect and resolve it, never replay it. A retest keeps earlier attempts intact.
+- Recover a lost course start by querying its request ID first. A user-authorized retry may reuse the exact request ID, plan hash and operator after a 404; admission is idempotent. This does not authorize retrying app mutations.
+- Report tests, build/tool identities, verdicts and the local report URL. Keep technical diagnostics behind Troubleshoot. Do not invent run results or publish bugs, Jira updates, uploads or messages without the user's request.
+- Edit in a source checkout. Use `context --check ID --export --server URL` for source pointers and the repair prompt. Separate setup, tested action, pure assertions, evidence and cleanup. Changed accepted definitions need lead review. Run `npm test` and `npm run scope:check` after harness changes; these checks do not execute a Wizard course. If sandbox restrictions deny loopback/process inspection, use narrowly scoped approval without changing system permissions.
 
-Attached adapters advertise versioned capabilities, supported native commands, capture methods and inspection limits. Read the session receipt or use `desktop/session.mjs native SESSION.json capabilities '{}'` before choosing a native route. Desktop execution isolates independent script groups in fresh projects and sessions, while persistence steps keep their own fixture. Preserve group failures, require confirmed owned-process cleanup before another launch, and never replay an uncertain action. Shared check helpers retain failure-state JSON and owned-window screenshots automatically; label observation waits with the condition being checked. Repeated captures must keep distinct filenames.
+Build discovery defaults to 10 records per page. Filters search retained metadata before pagination. Use `builds --author me --page 2`, `--page-size all` for cached records and `--github-page N` for older provider pages. Inspect `nextGitHubPage` and `hasMoreGitHub`. The finder automatically loads older metadata in batches of 50, updating search without a Load older button. Changed downloaded caches require reimport or explicit local-build registration.
 
-Use `node scripts/smoke.mjs context --check ID --server URL` for a test definition, source pointers and edit prompt. Add `--export` to retain a curated context folder outside Git, or `--run ID` to use a run's frozen definition and source. Read `docs/test-evidence.md` when changing checks, step recording or evidence collection.
+For source/runtime packaging follow [maintenance](docs/maintaining-harness.md); preserve installed versions and frozen run evidence. Read the [current update](docs/changes-2026-10-02.md) for dated changes.
 
-Treat checks as reusable examples: keep fixture setup, tested action, pure independent assertions, evidence and cleanup separable. Read the composition and authoring examples in `docs/test-evidence.md`; that guide is included in exported agent packs. A check should run alone with explicit identities and declared prerequisites. Reuse the existing adapters and helpers, isolate mutable fixtures, and demonstrate a representative wrong result that its assertion rejects. Keep application-specific transports separate from state comparison logic. Course membership does not imply full checklist coverage or runtime qualification.
-
-Use `plan --checks ID` for a focused check, then `run` for an evidence-backed verdict in the dashboard. Desktop tools attach to a byte-identical disposable copy of the selected build, using its shipped CLI and bundled Qt. For exploratory calls, prepare a desktop selection and use `desktop/session.mjs start --plan FILE`, `call`, `native`, and `stop`. Resolve identities from current observations. Operation success alone is not a behavioral pass.
-
-Framework checks need loopback servers and local process inspection. If the agent sandbox denies `listen` or `ps`, use the agent's narrowly scoped approval mechanism to run those checks outside that sandbox. Do not change system permissions to make framework checks pass.
-
-Run only when the user has authorized testing on that machine. Foreground sessions control the desktop. Record ordinary failed assertions and continue through independent checks; block dependent checks when fixture restoration or script completion fails. Preserve Fail, Blocked and Unknown, and inspect an uncertain mutation before doing anything else. Never retry a mutation merely because its response was lost.
-
-For new-build preparation failures or feature changes, read `docs/build-repair.md`. Context packs include a build-repair prompt, mapped contracts and qualification records. Qualify exact reviewed schemas, update affected assertions for behavioral changes, and keep new feature checks behind lead acceptance. For source or runtime updates, follow `docs/maintaining-harness.md`. Keep bundles, models, projects and evidence outside Git. Preserve existing run evidence and installed runtime versions.
-
-Build discovery displays 10 records per page by default. Filters search all retained metadata before pagination. Agents can use `builds --author me --page 2`, `--page-size all` for the cached catalog, and `--github-page N` to load older metadata in batches of 10. Inspect `nextGitHubPage` and `hasMoreGitHub` before requesting the next provider page.
-
-For lost course-start responses, query the original request ID first. If the service returns 404, an explicitly requested retry may use the exact same request ID, plan hash and operator; admission is idempotent. Do not retry application mutations through this mechanism. Changed downloaded caches are blocked from reuse; reimport legacy archives to establish their package fingerprint, or explicitly register a modified app as a local build.
-
+For agent observation efficiency, use `observe` with 1–8 nonempty `selectors`
+to sample related controls together. Repeated reads with `since` return the
+smaller representation: `encoding: full` with `matches`, or `encoding: delta`
+with `changes`. Check encoding and completeness; UI deltas do not establish
+timeline, graph or output correctness. Both direct `physicalInput` and toolkit
+input reject unknown fields before dispatch. Use `durationMs` for drags and
+refresh geometry after `input_binding_rejected`. See the control baseline guide
+for the contract and the broader control-family audit method.
 
 ## Default checklist and qualification
 
 A fresh launcher defaults to `smoke-full`: accepted core checks plus the maintained allowlist of physical/checklist qualification candidates. `automated-full` remains accepted-only; custom courses cannot promote candidates. Read `docs/agent-courses.md` for current composition. New physical groups must expose their selected definitions in `agent-context.json`, execute in fresh owned projects, preserve failures and retain native-input receipts in the course report. Stage executors run from the retained source snapshot. Keep the Mac unlocked for desktop checks; never attempt to bypass the lock screen or change system security settings.
 
-The default `smoke-full` revision 2 excludes `S-PF-IDLE`. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.
+The default `smoke-full` revision 8 excludes `S-PF-IDLE`. It adds ten qualification candidates for project search across timeline focus, physical blur Inspector editing, mask clipboard/history, vectorscope tap response, New Project, Save As, projectless Preferences, missing-term search, 100-clip clipboard and 50-step physical history. Read the current qualification notes in `docs/harness-control.md`; lead acceptance remains separate. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.
+
+## Local investigations
+
+Read [the October 4 investigation update](docs/changes-2026-10-04-investigations.md) for the current local slice.
+
+Read `docs/investigations.md` after a failing course. Open the exported `index.html` for human review and `review-data.json` for process-bound captures and attachment roles; `drafts/` holds individual bug text. Use frozen procedures when available, preserve the legacy method fallback, and never invent missing steps. Exported review is read-only; record a person's decision in the live investigation. Results → Investigate packages the first report for agent triage, groups supported duplicates, creates a diagnostic repro selection and retains linked attempts. Classify harness/environment/app/unresolved with evidence, preserve original outcomes, and log actions with revision-checked updates. Report a Bug drafts require a person to review and confirm before they submit. Use `investigation reporter --id ID --case CHECK_ID --server URL` for a verified evidence parcel and the draft-only GUI prefill prompt. Read `docs/bug-reporter-interop.md`; prefill requires separate GUI authorization and an owned session on the same build/project. Do not inject parcels into Wizard's pending-report store or claim attachments were delivered by field prefill. The local workflow never submits externally or creates Jira issues. Investigation diagnostics add qualified captures; do not claim app tracing/profiling is enabled without a collector.
+
+Use `investigation task --id ID --task triage|repair|repro|review --case CHECK_ID --server URL` for a scoped agent handoff, and `investigation evidence` for case-owned evidence. Return triage proposals for `investigation proposal` preview before applying reviewed updates. The investigation page has Brief, Evidence, Attempts and Bug draft tabs; use recorded outcomes and frozen procedures, not operation exit alone. Draft edits clear prior confirmation and remain bound to the latest attempt. Managed `investigation prepare/start` retain admission IDs and link completed repros on inspection; they reuse the normal execution guards. Preparation can launch Wizard for attachment verification. Obtain desktop availability first. Inspect a retained request after a lost response, never replay unknown app mutations, and never bypass an active foreground lease. See the investigation guide for JSON edit and review contracts.
+
+## Shared runner planning
+
+Read [Studio hosting](docs/studio-hosting.md) for the proposed single-runner pilot and scaling path. The current server is loopback-only, with no team authentication or roles. Do not expose it by loosening Host/origin guards, using public tunnels, or trusting browser-supplied operator names as identity. Studio deployment, permission changes and remote test execution require specific authorization under the Studio access policy. Desktop checks need the runner user's unlocked GUI session; remote browser access alone does not provide that session.
+
+Project workflow candidates use `desktop/check-projects.mjs` with pure assertions in `desktop/project-proof.mjs`. Rebind the session only after the visible MainWindow confirms the owned destination. New Project and Save As must verify fresh-process persistence and unchanged original timelines; projectless Preferences must start at the hub. Pointer guarding excludes only the system cursor at its reserved Window Server layer; real overlays still block input.
+
+Volume and search candidates use `desktop/check-volume-search.mjs` and pure assertions in `desktop/volume-proof.mjs`. Every selected candidate has its own fixture group. History latency includes physical dispatch and independent readback; retain it as a measurement until a performance policy is reviewed.
+
+Long foreground driver sequences may declare `scriptTimeoutMs` (1000–600000 ms). The executor uses the largest selected declaration, with a 120000 ms default. This is an execution budget, separate from performance acceptance. Interrupted drivers retain Unknown before a missing report can mask the cause.
+
+
+Readiness helpers live in `desktop/check-support.mjs` and
+`desktop/recorder.mjs`. Use complete observations for absence, stable usable
+geometry for floating panels, and owned key-window/focus observations for native
+file entry. Waits are read-only and never reserve input targets. For stopped
+preview verification, use fresh transport-bracketed captures with an independent
+pixel predicate; two matching samples are required and all settling samples are
+retained. Compositor freshness is distinct from renderer-frame acknowledgement.
+Keep observation budgets separate from performance acceptance and preserve
+historical failed attempts. See `docs/agent-tools.md` for helper contracts.

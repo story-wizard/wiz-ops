@@ -48,6 +48,41 @@ The October 1 nightly differs only in `render.set_render_mode`: its mode enum ad
 
 ## Regression checks and interrupted execution
 
+### Repairing a failed course
+
+Start with the retained run's package hash, schema, operation receipts and failure captures. Locate the failed phase before changing a check: fixture preparation, tested action, independent verification or cleanup. Fix shared bindings and validators before adding per-check workarounds. Preserve the original run and prepare a new plan from the repaired source.
+
+The October 2 focused course ran on an unchanged `2026.10.02-39f5d60` nightly copy: 21 repair targets plus 13 fixture prerequisites. It finished with 30 Pass, 3 Fail and 1 Blocked. A separate source-colour retest passed after correcting its provenance assertion from `manual` to the observed `authored` value; the original failed attempt remains retained. Across the latest attempts, 19 of the 21 repair targets passed. MGFX bin duplication still shared its generation identity, and the physical bin drop was blocked by the macOS Screenshot overlay. The bin-name persistence prerequisite also failed. These remaining observations require follow-up; they are not repaired application behavior.
+
+| Repair | Focused checks | Required result |
+| --- | --- | --- |
+| Common fields in schema unions; MGFX prerequisite receipts | S-MGFX-DUPLICATE-DEFAULT, S-MGFX-DUPLICATE, S-MGFX-CLIP-COPY, S-MGFX-PERSIST, D-MGFX-01, D-MGFX-CLIPBOARD | Actual independent generation identities, values and rendered pixels; a failed duplicate blocks persistence. |
+| Valid carrier timing after UI edits | D-EDIT-SPLIT-REDO, D-EDIT-TRIM, D-EDIT-SLIP, D-BLADE-NO-SELECTION | Exact expected ranges, frame alignment, source identity and Undo/Redo still match. Rejected authority remains a failure. |
+| Current preview readout | D-PB-01, D-PLAYBACK-SWITCH, D-EXPORT-STILL | The owned timecode or scrubber advances and seeks with transport; still output decodes correctly. Record which readout was used. |
+| Expanded scope options | D-SCOPES-01 | The four promised modes react at each available tap. Record extra modes separately. |
+| Supported Curves reset button | D-CURVE-RGB-CLIPBOARD, D-CURVE-HUE-RESET | Authored curve state clears or becomes neutral, pixels return to baseline and resetting the copy preserves the source. |
+| Current MGFX bin placement | D-BIN-MGFX | Bin duplication creates an independent generation with matching initial pixels and independent edits. |
+| Marked-range loop shortcut | D-PLAYBACK-LOOP | Retained transport samples show advancing frames and at least two wraps within the marks. |
+| Deliberate missing-media startup | D-MEDIA-RELINK | Continue Offline is allowed once only for the selected check's single moved asset, matching bytes and owned paths. Relink restores live paths, pixels and persistence. Ordinary Missing Media still blocks. |
+| Source-colour menu binding | D-SOURCE-COLOR | Select an observed editable menu value; independent graph provenance and pixels change, then Undo restores them. |
+| Renderer-safe group paths | D-MGFX-BIN-DROP | New fixture directories exclude the URL fragment delimiter; the actual bin drop and resulting graphic still require verification. |
+
+This is 21 prior failed or blocked checks. The planner adds their fixture prerequisites explicitly. Keep the ten-minute idle check out of this selection.
+
+Missing Spellbook operations are build capability blocks. Report them before launching a GUI for a group that cannot execute; never substitute a fabricated model or a successful key dispatch. Physical input still requires a clear owned window. Occlusion diagnostics identify the covering process/window without retaining another application's document title.
+
+Focused reproduction also found these important distinctions:
+
+- Curves reset chrome can be outside the content ancestry. Bind the observed reset action to the editor's owning window, retaining uniqueness and panel identity. An omitted authored curve override means the application's neutral default; require the same node identity and independent baseline pixels as well.
+- MGFX publication Redo can pass alone and fail after generation duplication and clip-copy activity. Preserve both attempts and the preceding sequence. Keep this authored reproduction separate from independent fixture groups.
+- Twenty-cut scrubbing is **Not run** when graph insertion fails during setup. Retain expected and returned revisions in the operation journal. Do not retry a stale mutation blindly or weaken revision guards.
+- Keep a controlled plain-path versus literal-`#` renderer reproduction when investigating path handling. Safe ordinary group paths avoid the defect; they do not establish that the application handles `#` correctly.
+- External timeline adoption needs before/after state even when its expected notification never appears. A clipboard path that passes in isolation does not establish the original failure's root cause.
+
+Reports collect declared output paths and capture receipts, rather than filenames displayed in UI models. A blocked check's unreached captures are labelled **Not reached**; collected artifacts remain visible, and missing required failure captures remain gaps. Worker exports retain operation receipts and stop on an uncertain worker outcome without replaying it.
+
+Existing script groups share setup within a fresh fixture. Independent mutating groups retain separate projects. Before combining more checks, define their required baseline, mutations and verified restoration. Immutable fixture bytes and package/tool metadata can be reused; sharing live timelines or Undo stacks needs a separate design.
+
 The `Athanor framework checks` GitHub workflow runs the framework suite and scope integrity check on macOS with Node.js 24 when smoke source changes. It exercises fixtures and local servers without a Wizard package or desktop permissions. Application courses run separately on the testing Mac.
 
 Ordinary failed assertions remain recorded and the run continues through independent checks and stages. Script completion and individual test observations are separate. An unexplained nonzero exit or failed stage finalization prevents a successful run, preserves completed observations, and stops later stages. Pointer cleanup balances a synthetic press even if the verified application loses focus; new gestures still require current process and window ownership.

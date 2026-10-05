@@ -436,3 +436,46 @@ dialog.result-details { width:min(720px,70vw); padding:0; z-index:30; animation:
 .result-details iframe { display:block; width:100%; height:100%; border:0; background:#222a33; }
 @keyframes detail-slide { from { transform:translateX(100%); } to { transform:translateX(0); } }
 @media(prefers-reduced-motion:reduce) { dialog.result-details { animation:none; } }
+
+/* Navigation names the work; the scene remains the visual focus. */
+.workspace-nav .tabs>a { display:inline-flex; align-items:center; padding:18px 15px; color:#aab6c3; text-decoration:none; border-bottom:2px solid transparent; }
+.workspace-nav .tabs>a[aria-current=page] { color:#e0ebf5; border-bottom-color:var(--smoke-blue); }
+.view-heading>div { min-width:0; }
+.view-heading p { color:#aab6c3; margin:7px 0 0; max-width:70ch; }
+.run-heading { display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:12px; }
+.run-heading h2 { line-height:1.5; }
+.investigation-link { color:#d6e7f4; font-weight:500; text-decoration:none; }
+.investigation-link:hover { text-decoration:underline; }
+.investigations-table th:first-child { width:44%; }
+.investigations-table td { vertical-align:top; }
+.followup-tags { display:flex; gap:6px; flex-wrap:wrap; }
+.tag.needs-triage,.tag.needs-repro { color:#e1c38b; background:#443b2c; }
+.tag.human-review { color:#b6d7f1; background:#263e51; }
+.tag.confirmed,.tag.resolved { color:#a7d5b3; background:#263b2d; }
+.workspace-nav a:focus-visible,.investigation-link:focus-visible { outline:2px solid var(--smoke-blue); outline-offset:4px; border-radius:3px; }
+
+/* Engraved ley scale: plain silver smoke in glass, result colors below the chamber. */
+.steam-channel > .smoke-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
+.has-smoke .smoke-head,.has-smoke .energy-edge,.has-smoke .color-fill::after{display:none}
+.has-smoke .color-fill{opacity:0;mask-image:none}
+.run-progress.ley-progress{display:block;height:40px;padding:0;border-radius:0;background:transparent;box-shadow:none}
+.ley-progress .steam-channel{inset:0 0 auto;height:22px;padding:3px;border:1px solid #566579;border-radius:14px;background:#121820;box-shadow:inset 0 2px 5px #0007}
+.ley-progress .steam-channel::after{content:'';position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(#ffffff15,transparent 40%,#00000028);border-radius:inherit}
+.ley-progress .color-fill{visibility:hidden}
+.ley-progress .smoke-head,.ley-progress .energy-edge{display:none}
+.ley-progress .progress-fill{background:linear-gradient(#d7e4ef50,#aabbd32b);border-radius:inherit}
+.ley-progress.has-smoke .progress-fill{background:none}
+.outcome-scale{position:absolute;top:27px;left:4px;right:4px;height:12px}
+.outcome-scale::before,.outcome-scale::after{content:'';position:absolute;top:0;bottom:0;width:5px;border-top:1px solid #b6c0cb75;border-bottom:1px solid #667482;filter:drop-shadow(0 1px 1px #000)}
+.outcome-scale::before{left:-5px;border-left:1px solid #8e9bab;border-radius:2px 0 0 2px}
+.outcome-scale::after{right:-5px;border-right:1px solid #8e9bab;border-radius:0 2px 2px 0}
+.outcome-line{display:flex;position:absolute;left:0;right:0;top:50%;height:1px;background:#0d151e;box-shadow:0 1px #a7b9c51c}
+.outcome-line span{height:1px;min-width:0;background:var(--mark);opacity:.6}
+.outcome-ticks{display:grid;grid-template-columns:repeat(var(--tick-count),minmax(0,1fr));gap:1px;align-items:center;height:100%;position:relative}
+.outcome-tick{width:2px;justify-self:center;height:7px;border-radius:1px;background:linear-gradient(90deg,#101923,var(--mark) 33%,#ebf0ebaa 48%,var(--mark) 65%,#101923);box-shadow:1px 1px 1px #080e15,-1px -1px 1px #d9e7ed18;opacity:.85}
+.outcome-tick.major,.outcome-tick.leading{height:11px}
+.outcome-tick.major::after{content:'';display:block;height:2px;background:var(--mark);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.outcome-scale .pass{--mark:#80c69c}.outcome-scale .fail{--mark:#e89191}.outcome-scale .blocked{--mark:#e6c284}.outcome-scale .n-a{--mark:#aeb8c4}.outcome-scale .unknown{--mark:#cfac8c}.outcome-scale .running{--mark:#8fc4ea}.outcome-scale .pending{--mark:#697584;opacity:.2}
+.ley-progress[data-active="true"] .outcome-tick.leading{animation:ley-charge 3.2s ease-in-out infinite}
+@keyframes ley-charge{0%,100%{opacity:.75;filter:brightness(1.05)}50%{opacity:1;filter:brightness(1.8) drop-shadow(0 0 2px var(--mark))}}
+@media(prefers-reduced-motion:reduce){.outcome-tick{animation:none!important}}

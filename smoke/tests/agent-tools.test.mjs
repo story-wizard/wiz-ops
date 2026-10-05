@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
 import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from 'node:fs/promises';
-import {selectUI,uniqueTarget,compareObservation,exportAgentReport,requirePassProof,sessionDefinitions,agentTool} from '../desktop/agent-tools.mjs';
+import {selectUI,uniqueTarget,compareObservation,exportAgentReport,requirePassProof,sessionDefinitions,sessionContext,agentTool} from '../desktop/agent-tools.mjs';
+import {physicalKeys} from '../desktop/macos-input.mjs';
 import {sha} from '../runner/files.mjs';
 import {acquireDesktopLease} from '../desktop/desktop-lease.mjs';
 import {verifyTrimmedClip} from '../desktop/check-support.mjs';
+import {validateToolParams} from '../desktop/agent-proof.mjs';
 
 test('prepared plan IDs resolve their actual definitions alongside physical candidates',()=>{
  const checks=sessionDefinitions({plan:{cases:['A-CLI-01','D-CLI-01']}});
@@ -37,6 +39,42 @@ test('verification checks an observed value and fails for absent paths or wrong 
  assert.equal(compareObservation(observed,{path:['absent'],notEquals:0}).matched,false);
  assert.equal(compareObservation(observed,{path:['enabled'],equals:false}).matched,true);
  assert.throws(()=>compareObservation(observed,{path:['__proto__'],equals:{}}));assert.throws(()=>compareObservation(observed,{}));
+});
+test('a bounded selector bundle observes related controls together, deduplicates matches and binds its query',()=>{
+ const ui={widgets:[{id:'field',class:'MediaSearchField',text:'plate'},{id:'model',class:'QTreeView',rows:1,model:[['plate.mov']]},{id:'status',class:'QLabel',name:'mediaSearchStatus',text:'1 match in 1 clip'},{id:'other',class:'QToolButton'}]};
+ const query={selectors:[{class:'MediaSearchField'},{class:'QTreeView'},{name:'mediaSearchStatus'},{id:'field'}],details:true};
+ validateToolParams('observe',query);const found=selectUI(ui,query);
+ assert.deepEqual(found.matches.map(w=>w.id),['field','model','status']);assert.deepEqual(found.matches[1].model,[['plate.mov']]);assert.equal(found.matchCount,3);assert.equal(found.inspectionIncomplete,false);
+ assert.equal(selectUI(ui,{...query,limit:1}).truncated,true);
+ for(const selectors of [[],Array(9).fill({id:'field'}),[{}],[{arbitrary:true}],['field']])assert.throws(()=>validateToolParams('observe',{selectors}));
+ assert.throws(()=>validateToolParams('observe',{...query,selector:{id:'field'}}));assert.throws(()=>selectUI(ui,{...query,selector:{id:'field'}}));
+ assert.throws(()=>validateToolParams('find',query));
+});
+
+test('incomplete scenes and models remain visible even when a scoped query finds nothing',()=>{
+ const full=Array(128).fill({labels:['node']}),text=Array(256).fill({text:'label'});
+ const ui={widgets:[{id:'graph',sceneItems:full,sceneText:text,sceneItemsTruncated:false,sceneTextTruncated:false}]};
+ assert.equal(selectUI(ui).inspectionIncomplete,false,'Exactly full but complete scene must not imply omission');
+ ui.widgets[0].sceneItemsTruncated=true;
+ const missing=selectUI(ui,{selector:{id:'missing'}});assert.equal(missing.matchCount,0);assert.equal(missing.inspectionIncomplete,true);
+ assert.equal(selectUI(ui).matches[0].sceneItemsTruncated,true);
+ delete ui.widgets[0].sceneItemsTruncated;assert.equal(selectUI(ui).inspectionIncomplete,true,'Legacy adapter at its cap is conservative');
+ ui.widgets=[{id:'menu',menuTruncated:true}];assert.equal(selectUI(ui).matches[0].menuTruncated,true);
+});
+
+test('session context names actual Pass contracts, physical keys and launcher deadline',async()=>{
+ const data=await realpath(await mkdtemp(path.join(tmpdir(),'athanor-context-'))),previous=process.env.SMOKE_DATA_DIR;process.env.SMOKE_DATA_DIR=data;
+ try{
+  const root=path.join(data,'session'),bundle=path.join(root,'Golden.wiz'),native=path.join(root,'native');await mkdir(bundle,{recursive:true});await mkdir(native);
+  const file=path.join(root,'session.json'),deadline='2026-10-02T23:30:00.000Z';
+  await writeFile(file,JSON.stringify({dataDir:data,root,bundle,native,executable:path.join(root,'Wizard Smoke.app/Contents/MacOS/wizard'),agentDeadlineAt:deadline,plan:{cases:['D-CLI-01']},schema:{operations:{'timeline.inspect':{}}}}));
+  await writeFile(path.join(native,'ready.json'),JSON.stringify({capabilities:{limits:{modelRows:64}}}));
+  const context=await sessionContext(file);assert.equal(context.lifetime.deadlineAt,deadline);assert.equal(context.lifetime.timeoutMs,1800000);assert.deepEqual(context.physical.keys,physicalKeys);
+  assert.deepEqual(context.verdicts.toolkitPassIds,context.checks.filter(c=>c.proof).map(c=>c.id));assert.ok(context.verdicts.toolkitPassIds.includes('P-TRACK-ADD'));assert.ok(!context.verdicts.toolkitPassIds.includes('P-CURVE-LIVE'));
+  assert.deepEqual(context.applicationOperations,['timeline.inspect']);assert.match(context.verdicts.scripted,/authored assertions/);
+  assert.equal(JSON.parse(await readFile(path.join(root,'agent-context.json'))).lifetime.deadlineAt,deadline);
+  const s=JSON.parse(await readFile(file));delete s.agentDeadlineAt;await writeFile(file,JSON.stringify(s));assert.equal((await sessionContext(file)).lifetime.deadlineAt,null,'Do not invent a deadline for a course-owned session');
+ }finally{if(previous===undefined)delete process.env.SMOKE_DATA_DIR;else process.env.SMOKE_DATA_DIR=previous;await rm(data,{recursive:true,force:true});}
 });
 test('uncontracted image, arbitrary verification and unrelated physical dispatch cannot qualify Pass',()=>{
  const s={currentCheck:'P-TEST',agentAttempt:'attempt',agentRevision:3,generation:2,agentRequiredRoute:'physical'},image={caseId:s.currentCheck,attempt:s.agentAttempt,revision:3,generation:2,kind:'image'},proof={...image,kind:'json'},event={caseId:s.currentCheck,attempt:s.agentAttempt,operation:'physical',status:'Completed',result:{status:'Dispatched'}};

@@ -26,18 +26,19 @@ export function assertBuildIdentity(builds,app,packageHash){
  const build=builds.find(b=>b.app===app&&b.source!=='local');
  if(build&&(!build.packageHash||build.packageHash!==packageHash))throw Error('Cached build package changed or lacks its fingerprint. Reimport the archive, or explicitly register a modified app as a local build.');
 }
-async function githubPage(endpoint,key,get=gh,page=1){const response=await get(`${endpoint}?per_page=10&page=${page}`);return key?response[key]:response;}
+const releasePageSize=50;
+async function githubPage(endpoint,key,get=gh,page=1,size=releasePageSize){const response=await get(`${endpoint}?per_page=${size}&page=${page}`);return key?response[key]:response;}
 
 export async function findBuilds(dataDir,{refresh=false,get:provided,githubPage:providerPage=1}={}){
  const directory=catalogDirectory(dataDir);let catalog=await readBuildCatalog(directory),refreshError=null;
- if(refresh||providerPage!==1||!catalog||catalog.githubPageSize!==10||Date.now()-Date.parse(catalog.fetchedAt)>300000){
+ if(refresh||providerPage!==1||!catalog||catalog.githubPageSize!==releasePageSize||Date.now()-Date.parse(catalog.fetchedAt)>300000){
   try{catalog=await refreshBuildCatalog(directory,async()=>{
    catalog=await readBuildCatalog(directory);
    const get=provided||githubCatalogClient(directory);
-   const [releases,runs]=await Promise.allSettled([githubPage(`repos/${repository}/releases`,null,get,providerPage),githubPage(`repos/${repository}/actions/workflows/build-release.yml/runs`,'workflow_runs',get)]);
+   const [releases,runs]=await Promise.allSettled([githubPage(`repos/${repository}/releases`,null,get,providerPage),githubPage(`repos/${repository}/actions/workflows/build-release.yml/runs`,'workflow_runs',get,1,10)]);
    if(releases.status==='rejected')throw releases.reason;
    const builds=await enrichPRAuthors(releaseBuilds(releases.value,runs.status==='fulfilled'?runs.value:[]),get);
-   const result={format:'wizard-build-catalog/v1',repository,limit:10,githubPageSize:10,nextGitHubPage:Math.max(catalog?1+Math.ceil(((catalog.nextGitHubPage||(catalog.limit===300?7:2))-1)*(catalog.githubPageSize||50)/10):2,providerPage+1),hasMoreGitHub:releases.value.length===10,fetchedAt:new Date().toISOString(),attribution:'Authors of PRs referenced by the build tag and release notes',userLookupError:runs.status==='rejected'?'Workflow requester lookup unavailable.':null,sync:get.stats||null,builds:mergeCatalogBuilds(catalog?.builds||[],builds)};
+   const result={format:'wizard-build-catalog/v1',repository,limit:releasePageSize,githubPageSize:releasePageSize,nextGitHubPage:providerPage+1,hasMoreGitHub:releases.value.length===releasePageSize,fetchedAt:new Date().toISOString(),attribution:'Authors of PRs referenced by the build tag and release notes',userLookupError:runs.status==='rejected'?'Workflow requester lookup unavailable.':null,sync:get.stats||null,builds:mergeCatalogBuilds(catalog?.builds||[],builds)};
    await atomicCatalogJSON(path.join(directory,'catalog.json'),result);return result;
   },providerPage);}catch(e){if(!catalog)throw e;refreshError='GitHub refresh failed. Showing the retained build catalog.';}
  }

@@ -1,3 +1,4 @@
+import {failureStatus} from './engine.mjs';
 import path from 'node:path';
 import {mkdir,readFile,appendFile,readdir} from 'node:fs/promises';
 import {executeDesktop} from '../desktop/run.mjs';
@@ -8,7 +9,7 @@ import {targetFor} from './catalog.mjs';
 export function stageObservation(id,report,events){
  const observation=report.results.find(r=>r.id===id),last=events.findLast(r=>r.id===id);
  if(last?.status==='Running')return {id,status:'Unknown',error:'Check started but no terminal observation was retained.'};
- return observation||last;
+ const value=observation||last;return value&&{...value,status:['Pass','Fail','Blocked','Unknown','N/A'].includes(value.status)?value.status:failureStatus(value)};
 }
 
 export async function executeStages({plan,course,root,dataDir,onResult,isCancelled,signal,onStage=()=>{}}){
@@ -23,7 +24,7 @@ export async function executeStages({plan,course,root,dataDir,onResult,isCancell
    const names=await readdir(directory);if(!names.length)return;
    const file=path.join(directory,names[0],'check-events.jsonl');let lines;try{lines=(await readFile(file,'utf8')).trim().split('\n');}catch(e){if(e.code==='ENOENT')return;throw e;}
    for(const line of lines.slice(observed)){let event;try{event=JSON.parse(line);}catch{break;}
-    observed++;const c=selected.find(c=>c.id===event.id);if(c){const reopens=['D-MEDIA-RELINK','D-DOCUMENT-EDIT','D-SB-TAB-RENAME','D-BIN-RENAME','D-BIN-DUPLICATE','D-BIN-DELETE','D-BIN-MGFX'];if(event.status!=='Pass'||!reopens.includes(c.id))await onResult(c,event.status,event.error||(event.status==='Running'?'Executing '+target+' check.':'Recorded '+target+' observation; course still in progress.'));}
+    observed++;if(!['Running','Pass','Fail','Blocked','Unknown','N/A'].includes(event.status))event.status=failureStatus(event);const c=selected.find(c=>c.id===event.id);if(c){const reopens=['D-MEDIA-RELINK','D-DOCUMENT-EDIT','D-SB-TAB-RENAME','D-BIN-RENAME','D-BIN-DUPLICATE','D-BIN-DELETE','D-BIN-MGFX'];if(event.status!=='Pass'||!reopens.includes(c.id))await onResult(c,event.status,event.error||(event.status==='Running'?'Executing '+target+' check.':'Recorded '+target+' observation; course still in progress.'));}
    }
   }finally{busy=false;}};
   // Poll local receipts only. The executor owns all application mutations.

@@ -4,7 +4,7 @@ import {constants,existsSync} from 'node:fs';
 import {mkdir,mkdtemp,cp,open,realpath} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import {dataDirectory,fingerprint,readJSON,writeJSON,sha,inside} from '../runner/files.mjs';
-import {assert,pause} from '../runner/engine.mjs';
+import {assert,pause,OutcomeError} from '../runner/engine.mjs';
 import {nativeCall,verifyDesktopOwner,verifyNativeCapabilities} from './adapter.mjs';
 import {setupAttachmentTools,verifyAttachmentTools} from './attachment-tools.mjs';
 import {acquireDesktopLease} from './desktop-lease.mjs';
@@ -46,7 +46,10 @@ export async function attachSelectedBuild({app,dataDir=dataDirectory(),preparedS
   await writeJSON(file,session);verifyDesktopOwner(session,dataDir);
   const ui=await nativeCall(file,'inspect');assert(ui.widgets.length>0,'Attached process has no observed UI.');await writeJSON(path.join(root,'inspection.json'),ui);
   assert((await fingerprint(copy,{packageTree:true})).sha256===source.sha256,'The selected app changed during attachment.');
-  const loaded=run('/usr/sbin/lsof',['-p',String(child.pid),'-Fn'],{maxBuffer:8*1024*1024}).split('\n').filter(line=>line.startsWith('n/')).map(line=>line.slice(1));
+  let libraryReceipt;
+  try{libraryReceipt=run('/usr/sbin/lsof',['-p',String(child.pid),'-Fn'],{maxBuffer:8*1024*1024});}
+  catch(cause){const error=new OutcomeError('Could not verify the selected build’s loaded Qt libraries.','Blocked');error.diagnostics={operation:'lsof',pid:child.pid,exitCode:cause.status??null,signal:cause.signal??null,stdout:String(cause.stdout||'').slice(0,65536),stderr:String(cause.stderr||'').slice(0,4096),processExited:child.exitCode!==null||!!child.signalCode};await writeJSON(path.join(root,'attachment-library-failure.json'),error.diagnostics);throw error;}
+  const loaded=libraryReceipt.split('\n').filter(line=>line.startsWith('n/')).map(line=>line.slice(1));
   for(const name of ['QtCore','QtGui','QtWidgets'])assert(loaded.some(p=>p===path.join(copy,'Contents/Frameworks',name+'.framework/Versions/A',name))&&!loaded.some(p=>p.includes('/'+name+'.framework/')&&!p.startsWith(copy+'/')),'Attachment loaded '+name+' outside the selected build.');
   await writeJSON(path.join(root,'attachment-evidence.json'),{selectedApp:app,copy,packageHash:source.sha256,executable:session.executable,pid:session.pid,settingsFile:ready.settingsFile,qtVersion:version,toolHash:session.toolHash,capabilities:session.capabilities,loaded,widgetCount:ui.widgets.length});
   return {session,file,child,closed};
