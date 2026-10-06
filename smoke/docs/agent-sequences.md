@@ -273,3 +273,31 @@ Keep ambiguous semantic recommendations reviewable, include abstention and fall
 back to the agent. Evaluate a provider on sanitized held-out cases before using
 its recommendation for unattended routing. No Jev integration or provider
 request is included in this slice.
+
+## Choose plans where they remove a handoff
+
+Use a recipe to combine known phases or carry a uniquely observed ID into a
+later phase. A phase already sent as one batch does not become faster merely
+because it is wrapped in a plan. Keep physical steps, independent assertions,
+captures and review checkpoints when comparing approaches.
+
+Read the selected build's result schema before writing an assertion. For
+example, the qualified package's `timeline.create` returns a track `kind`,
+while `timeline.inspect` identifies the inspected track through its `address`.
+Require exactly one new video-track identity and preserve the original tracks,
+clips and timeline settings. A count alone cannot distinguish adding the wrong
+kind of track or disturbing existing content.
+
+Count physical input from `native-input.jsonl` entries whose status is
+`Dispatched`. The same journal also includes observations and screenshots. An
+`Unknown` input receipt may represent dispatched events and needs separate reconciliation;
+zero successful dispatches cannot establish that no input occurred.
+After a scorer error, inspect the retained results and correct the scorer;
+do not repeat a completed edit to obtain another receipt. Keep that correction
+with the attempt. Exclude recovery intervals from matched speed claims.
+
+Use the same visual review checkpoints in both timing lanes. Record request
+execution and time between requests separately, and group tool durations into
+physical input, state reads, waits and captures. Between-request time includes
+agent reasoning, transport and orchestration; it is not a model-inference timer.
+Keep run data and evidence in the external workspace.
