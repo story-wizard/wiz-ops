@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,writeFile,readFile,readdir,rm,realpath,symlink} from 'node:fs/promises';
 import {Readable,Writable} from 'node:stream';
-import {agentSequence,serveAgentTools,validateSequence} from '../desktop/agent-connection.mjs';
+import {agentSequence,serveAgentTools,validateSequence,compactToolResult} from '../desktop/agent-connection.mjs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {waitForObservation} from '../desktop/check-support.mjs';
@@ -93,7 +93,7 @@ test('CLI compact batches retain replies without requiring a Wizard process',asy
  assert.equal(reply.status,'Completed');assert.equal(reply.encoding,'compact');assert.equal(reply.results,undefined);assert.equal(JSON.parse(await readFile(reply.receipt.path,'utf8')).results.length,1);
 }));
 test('connection rejects ambiguous requests and unsupported keys before touching the session',async()=>fixture(async file=>{
- let output='';const lines=[{id:'ambiguous',operation:'context',steps:[{operation:'context'}]},{id:'unknown',operation:'context',override:true},{operation:'context'},{id:'invalid-compact',steps:[{operation:'context'}],compact:null},{id:'not-sequence',operation:'context',compact:true}];
+ let output='';const lines=[{id:'ambiguous',operation:'context',steps:[{operation:'context'}]},{id:'unknown',operation:'context',override:true},{operation:'context'},{id:'invalid-compact',steps:[{operation:'context'}],compact:null},{id:'invalid-tool-compact',operation:'context',compact:'true'}];
  await serveAgentTools(file,Readable.from([lines.map(JSON.stringify).join('\n')+'\n']),new Writable({write(chunk,_encoding,done){output+=chunk;done();}}));
  const replies=output.trim().split('\n').map(JSON.parse);assert.deepEqual(replies.map(r=>r.status),Array(5).fill('Blocked'));
  await assert.rejects(()=>readFile(file.replace('session.json','agent-context.json')),e=>e.code==='ENOENT');
@@ -318,4 +318,10 @@ test('workflow CLI and JSON-lines compile without resolving targets, writing sta
  const workflow={format:'athanor-agent-workflow/v1',parts:[workflowPart('one'),workflowPart('two')]},input=file.replace('session.json','workflow.json');await writeFile(input,JSON.stringify(workflow));const listing=await readdir(file.replace('/session.json','')),before=await readFile(file,'utf8');
  const result=JSON.parse(execFileSync(process.execPath,[new URL('../desktop/session.mjs',import.meta.url).pathname,'workflow-check',file,input],{encoding:'utf8'}));assert.equal(result.executed,false);assert.equal(result.planRequests,1);
  let output='';await serveAgentTools(file,Readable.from([JSON.stringify({id:'compile',operation:'workflow-check',params:{workflow}})+'\n']),new Writable({write(chunk,_e,done){output+=chunk;done();}}));assert.equal(JSON.parse(output).workflowHash,result.workflowHash);assert.equal(await readFile(file,'utf8'),before);assert.deepEqual(await readdir(file.replace('/session.json','')),listing);
+}));
+
+test('single-tool compact replies preserve exact bytes and fall back to known result on storage failure',async()=>fixture(async file=>{
+ const result={status:'Observed',rows:Array(100).fill({name:'retained',payload:'x'.repeat(100)}),truncated:true};
+ const compact=await compactToolResult(file,'model',result);assert.equal(compact.encoding,'compact');assert.equal(compact.summary.truncated,true);const bytes=await readFile(compact.receipt.path);assert.deepEqual(JSON.parse(bytes).result,result);assert.equal(compact.receipt.sha256,createHash('sha256').update(bytes).digest('hex'));assert(Buffer.byteLength(JSON.stringify(compact))<1000);
+ const full=await compactToolResult('/missing/session.json','physical',result);assert.equal(full.encoding,'full');assert.deepEqual(full.result,result);assert.equal(full.retentionError.code,'receipt_retention_failed');
 }));

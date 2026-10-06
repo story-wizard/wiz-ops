@@ -55,7 +55,7 @@ Keep the launcher running and replace `URL` with its printed loopback address. `
 
 Use the supplied build and selection, or ask if missing. `prepare` returns a progress ID; poll `preparation --id ID` for steps, readiness and a repair prompt. Preparation attaches matching tools to a disposable copy of the selected package. Never substitute another instrumented app. Read [desktop setup](docs/desktop-tools-setup.md) only when resolving its prerequisites. Review the frozen selection and added prerequisites, then run when the user has authorized testing on that machine. Preparation and discovery do not run a course.
 
-For exploration, follow [computer-use guidance](docs/computer-use-agent.md). Start with `desktop/session.mjs start --plan FILE`, read the returned `agent-context.json`, and use `desktop/session.mjs tool SESSION.json OP JSON`. Context lists build/process/project identities, current keys and operations, inspection limits, toolkit Pass contracts and the deadline. Run `preflight` before gestures. Scripted courses have their own assertions; exploratory observations cannot qualify an interactive Pass without a proof contract.
+For exploration, follow [computer-use guidance](docs/computer-use-agent.md). Start with `desktop/session.mjs start --plan FILE`, read the returned `agent-brief.json` first (`fullContext` retains `agent-context.json`), and use `desktop/session.mjs tool SESSION.json OP JSON`. Context lists build/process/project identities, current keys and operations, inspection limits, toolkit Pass contracts and the deadline. Run `preflight` before gestures. Scripted courses have their own assertions; exploratory observations cannot qualify an interactive Pass without a proof contract.
 
 ## Execution and evidence rules
 
@@ -174,3 +174,7 @@ a review stop. Preserve independent assertions and captures; geometry, new
 dialogs and interpretation remain agent decisions. Inspect one segment and run
 it once with a known plan ID; never automatically execute all segments or replay
 Unknown. See `docs/agent-sequences.md#compose-recipes-before-dispatch`.
+
+### Compact control entry
+
+Start exploratory control from `agent-brief.json`. Use `tool SESSION.json task` to list recipes and prepare a reviewed existing plan before writing one. Add Track can bind current state without input; other recipes require explicit observed values. Single-tool CLI results over 4 KiB retain full checksummed receipts; read exact values there when needed. JSON-lines tool clients opt into `compact:true`. Saved Spell string typing may declare `commit:{documentId,inputId}` for exact readback and owned replacement-control verification. Other focus loss remains Unknown. Reobserve after rebuilds, keep independent assertions/captures, and never replay uncertain input.

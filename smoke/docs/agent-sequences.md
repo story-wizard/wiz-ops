@@ -356,3 +356,21 @@ through the existing executor; there is no second executor or recovery loop.
 
 Planning is deterministic composition of caller-selected recipes. Freeform
 intent selection and semantic geometry routing remain agent work.
+
+## Use the compact entry first
+
+Read `agent-brief.json`, then use `tool SESSION.json task '{}'` to discover the
+shipped recipes. `task '{"recipe":"add-video-track"}'` binds the existing
+recipe from complete live project/timeline/control observations and retains a
+reviewable plan, values and known request ID without input. Other recipes take
+explicit `values`. This avoids reading every guide or rebuilding an existing
+plan. Review the emitted plan and execute it once; every existing review and
+uncertainty boundary remains. See the computer-use guide for compact single-tool
+receipts and the narrow saved-Spell text-commit declaration.
+
+`spell-input-edit` is a saved exposed string-input recipe. Supply its observed
+instance/input IDs, focused-capable field and Inspector capture target, raw
+baseline graph, replacement text and exact result path. It keeps the graph gate,
+real click/select/type, declared saved-input commit, value gate, and capture in
+one reviewed phase. It ends before Reset, Undo or a new run dialog. Missing
+selected-build support blocks compilation; explicit values are required.

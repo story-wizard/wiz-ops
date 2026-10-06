@@ -1,0 +1,130 @@
+{
+  "format": "athanor-agent-recipe/v1",
+  "id": "spell-input-edit",
+  "parameters": {
+    "documentId": {
+      "type": "string"
+    },
+    "inputId": {
+      "type": "string"
+    },
+    "fieldTarget": {
+      "type": "object"
+    },
+    "captureTarget": {
+      "type": "object"
+    },
+    "text": {
+      "type": "string"
+    },
+    "baselineGraph": {
+      "type": "object"
+    },
+    "parameterPath": {
+      "type": "array"
+    }
+  },
+  "plan": {
+    "format": "athanor-agent-plan/v1",
+    "start": "edit",
+    "phases": [
+      {
+        "id": "edit",
+        "steps": [
+          {
+            "operation": "call",
+            "params": {
+              "operation": "spellbook.inspect",
+              "params": {
+                "document_id": {
+                  "$param": "documentId"
+                },
+                "view": "raw"
+              }
+            },
+            "expect": {
+              "path": [
+                "graph"
+              ],
+              "equals": {
+                "$param": "baselineGraph"
+              }
+            }
+          },
+          {
+            "operation": "physical",
+            "params": {
+              "command": "click",
+              "target": {
+                "$param": "fieldTarget"
+              },
+              "title": "Focus the saved Spell input"
+            }
+          },
+          {
+            "operation": "physical",
+            "params": {
+              "command": "key",
+              "target": {
+                "$param": "fieldTarget"
+              },
+              "key": "cmd+a"
+            }
+          },
+          {
+            "operation": "physical",
+            "params": {
+              "command": "type",
+              "target": {
+                "$param": "fieldTarget"
+              },
+              "text": {
+                "$param": "text"
+              },
+              "commit": {
+                "documentId": {
+                  "$param": "documentId"
+                },
+                "inputId": {
+                  "$param": "inputId"
+                }
+              },
+              "title": "Change the saved Spell input"
+            }
+          },
+          {
+            "operation": "call",
+            "params": {
+              "operation": "spellbook.inspect",
+              "params": {
+                "document_id": {
+                  "$param": "documentId"
+                },
+                "view": "raw"
+              }
+            },
+            "expect": {
+              "path": {
+                "$param": "parameterPath"
+              },
+              "equals": {
+                "$param": "text"
+              }
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
+                "$param": "captureTarget"
+              },
+              "kind": "presented",
+              "title": "Saved Spell input after the edit"
+            }
+          }
+        ],
+        "next": null
+      }
+    ]
+  }
+}

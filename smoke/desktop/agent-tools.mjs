@@ -9,6 +9,7 @@ import {nativeDesktopInput,physicalKeys,physicalKeyAliases} from './macos-input.
 import {retainObservation} from './observations.mjs';
 import {recordPresented,recordingOptions} from './recorder.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
+import {briefContext,prepareAgentTask} from './agent-task.mjs';
 import {waitForObservation,usableGeometry} from './check-support.mjs';
 import {ROOT,readJSON,writeJSON,inside,sha} from '../runner/files.mjs';
 import {OutcomeError,assert} from '../runner/engine.mjs';
@@ -19,7 +20,7 @@ export {requirePassProof} from './agent-proof.mjs';
 
 const readOps=agentReadOperations,readNative=agentReadNative;
 export const isAgentMutation=(operation,params={})=>operation==='reveal'||operation==='physical'&&params.command!=='screenshot'||operation==='call'&&!readOps.includes(params.operation)||operation==='native'&&!readNative.includes(params.operation);
-const operations=['context','schema','preflight','observe','find','model','model_value','reveal','geometry','physical','native','call','wait','capture','recording','evidence','begin','verify','resolve','record','report'];
+const operations=['context','task','schema','preflight','observe','find','model','model_value','reveal','geometry','physical','native','call','wait','capture','recording','evidence','begin','verify','resolve','record','report'];
 export const agentSessionTimeoutMs=30*60*1000;
 
 export function selectUI(ui,{kind='widgets',selector,selectors,limit=20,details=false}={}){
@@ -99,7 +100,7 @@ export async function sessionContext(file){
  result.connection.sequencePlanning.plan={format:'athanor-agent-plan/v1',checkCommand:['node','desktop/session.mjs','plan-check',file,'/absolute/control-plan.json'],runCommand:['node','desktop/session.mjs','plan',file,'/absolute/control-plan.json','--request-id','known-plan-id','--compact'],inspectCommand:['node','desktop/session.mjs','plan-inspect',file,'known-plan-id'],recipeCheckCommand:['node','desktop/session.mjs','recipe-check',file,'/absolute/recipe.json','/absolute/values.json'],recipes:['examples/recipes/project-identity.json','examples/recipes/media-search.json','examples/recipes/add-video-track.json','examples/recipes/inspector-edit.json','examples/recipes/timeline-undo.json'],example:'examples/sequences/find-media-plan.json',limits:{maxPhases:8,maxDeclaredSteps:32,maxDurationMs:120000},guidance:'Validate every authored path. Branch only from the final complete read-only step using explicit values. Missing, partial, unexpected, Fail or Unknown stops; no loops, recovery or replay. Typed recipes compile without app input. Optional ID/model-offset bindings require a gated complete unique readback on every path and refresh that source before use; geometry and new-dialog choices remain review checkpoints. Plans retain intent before every action, returned prefixes and a checksummed receipt. Use a known request ID and plan-inspect after a lost response; duplicate IDs cannot execute again. Inspection is read-only and Unsettled requires journal/effect reconciliation, never resumption.'};
  result.connection.sequencePlanning.plan.workflowCheckCommand=['node','desktop/session.mjs','workflow-check',file,'/absolute/workflow.json'];
  result.connection.sequencePlanning.plan.workflowGuidance='Compose ordered typed recipes with workflow-check. Only explicitly declared continueAfter exits can join; every undeclared exit remains a review stop. Check every returned segment before executing one with a known plan ID. Never dispatch later segments automatically or replay Unknown. Preserve independent gates and captures; geometry, new dialogs and interpretation need review. Namespaced phases/bindings and hashes retain recipe provenance.';
- await writeJSON(path.join(s.root,'agent-context.json'),result);return result;
+ await writeJSON(path.join(s.root,'agent-context.json'),result);await writeJSON(path.join(s.root,'agent-brief.json'),briefContext(result));return result;
 }
 
 async function retain(s,label,value,kind='json',imported=false,metadata={}){
@@ -124,6 +125,7 @@ export async function agentTool(file,operation,params={}){
  if(operation==='call')validateApplicationParams(s.schema,params.operation,params.params||{});
  if(operation==='native')validateNativeParams(params.operation,params.params||{});
  if(params.read)validateApplicationParams(s.schema,params.read.operation,params.read.params||{});
+ if(params.commit)validateApplicationParams(s.schema,'spellbook.inspect',{document_id:params.commit.documentId,view:'raw'});
  // Reads can sample a held gesture; state admission and evidence capture must not race edits.
  if(['observe','find','model','model_value','wait','schema','preflight'].includes(operation))return await runAgentTool(file,operation,params);
  return await withAgentAction(file,()=>runAgentTool(file,operation,params),{operation,params});
@@ -132,7 +134,7 @@ export async function agentTool(file,operation,params={}){
 async function runAgentTool(file,operation,params={}){
  assert(operations.includes(operation),'Unknown agent tool: '+operation);assert(params&&typeof params==='object'&&!Array.isArray(params),'Supply a JSON object');
  let s=await readJSON(file);verifyDesktopPaths(s);
- if(operation==='context')return sessionContext(file);
+ if(operation==='context'){const context=await sessionContext(file);return params.detail==='brief'?briefContext(context):context;}
  if(operation==='report')return exportAgentReport(file);
  const records=await jsonLines(path.join(s.root,'agent-results.jsonl')),terminal=s.agentAttempt?terminalResult(records,s.agentAttempt):null;
  const mutating=isAgentMutation(operation,params);
@@ -145,7 +147,8 @@ async function runAgentTool(file,operation,params={}){
  let result;
  try{
   if(mutating&&s.agentProof&&(s.agentProof.baseline||Object.keys(s.agentProof.checkpoints).length)&&!(operation==='physical'&&params.actionId)){s.agentProof.tainted=true;await writeJSON(file,s);}
-  if(operation==='preflight'){
+  if(operation==='task')result=await prepareAgentTask(file,params,agentTool);
+  else if(operation==='preflight'){
    const observed=await nativeDesktopInput(file,{command:'inspect',mode:'window-server',depth:0});const ui=await nativeCall(file,'inspect');result={pid:observed.pid,started:observed.started,permissions:observed.permissions,frontmost:observed.frontmost,frontWindow:observed.frontWindow,windows:observed.windows,keyWindow:ui.widgets.find(w=>w.id===w.window&&w.keyWindow)||null,focusedControl:ui.widgets.find(w=>w.id===ui.focus)||null,ready:observed.permissions?.input===true&&observed.permissions?.screenCapture===true};
   }else if(operation==='schema'){
    assert(typeof params.operation==='string'&&Object.hasOwn(s.schema.operations,params.operation),'Choose an advertised application operation');result={operation:params.operation,params:s.schema.operations[params.operation],result:s.schema.results?.[params.operation],errors:s.schema.errors?.[params.operation]};
@@ -174,7 +177,7 @@ async function runAgentTool(file,operation,params={}){
    const ui=await nativeCall(file,'inspect'),target=uniqueTarget(ui,params.target||params.selector);
    const qualified=params.command==='screenshot'?null:physicalAction(s.agentProof,params,target);
    if(qualified)params={...params,stepId:qualified.stepId};
-   const p={target:target.id,expected:target};for(const k of ['button','durationMs','chrome','key','text','deltaX','deltaY','modifiers','path','clickCount'])if(params[k]!==undefined)p[k]=params[k];
+   const p={target:target.id,expected:target};for(const k of ['button','durationMs','chrome','key','text','deltaX','deltaY','modifiers','path','clickCount','commit'])if(params[k]!==undefined)p[k]=params[k];
    if(!['key','type','screenshot'].includes(params.command)){p.x=params.x??target.width*(params.xRatio??.5);p.y=params.y??target.height*(params.yRatio??.5);}
    if(params.clipId){assert(['click','drag'].includes(params.command),'Clip targeting supports click and drag');const geometry=await nativeCall(file,'timeline-clip-rect',{target:target.id,clipId:params.clipId});Object.assign(p,clipPoint(geometry,params.part),{clipId:params.clipId,expectedClip:geometry.rect});}
    if(params.command==='drag'){const to=uniqueTarget(ui,params.toTarget||params.target||params.selector);p.toTarget=to.id;p.toX=params.toX??to.width*(params.toXRatio??.5);p.toY=params.toY??to.height*(params.toYRatio??.5);}

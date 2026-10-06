@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {windowPoint,clipPoint,postInputFocus} from '../desktop/physical-input.mjs';
+import {windowPoint,clipPoint,postInputFocus,spellTextBaseline,verifySpellTextCommit} from '../desktop/physical-input.mjs';
 import {validateNativeRequest,keyboardWindowProof} from '../desktop/macos-input.mjs';
 import {mkdtemp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
@@ -75,5 +75,35 @@ export async function nativeDesktopInput(file,p){if(p.command==='inspect')return
   await assert.rejects(()=>physicalInput(file,'type',{target:'field',text:'intended'}),e=>mode==='before'?e.status==='Blocked':e.status==='Unknown'&&e.diagnostics.receipt.status==='Dispatched'&&JSON.stringify(e.nextActions)===JSON.stringify(['observe','verify_resolution','resolve']));
   const {effects}=await import(stub),session=JSON.parse(await readFile(file,'utf8'));
   assert.deepEqual(effects,mode==='before'?[]:[{text:'intended',target:'field'}]);assert.equal(!!session.agentUncertain,mode==='after');
+ }}finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('a rebuilt Spell text field requires exact saved change, preserved state and owned window',()=>{
+ const before={document_id:'picnic',kind:'instance',name:'Picnic',state_source:'live_registry',definition:{fingerprint:'pinned'},graph:{parameter_inputs:[{id:'setting',label:'Setting',node:9,param:'prompt'}],nodes:[{id:9,pass:{params:{prompt:{type:'string',value:'Sunny picnic'},seed:{type:'int',value:42}}}}]},scene:{source_sentinels:[{sha256:'product'}]},outputs:[]};
+ const target={id:'old',name:'InspectorMultilineTextControl',class:'QPlainTextEdit',editableText:true,accessibleName:'Setting (default)',window:'inspector'},replacement={...target,id:'new',accessibleName:'Setting (override)'},ui={focus:'',widgets:[{id:'inspector',keyWindow:true,nativeWindow:10},replacement]},receipt={status:'Dispatched',window:10,postInput:{frontmost:true,frontWindow:10}};
+ const baseline=spellTextBaseline(before,target,{documentId:'picnic',inputId:'setting'},'Cafe'),after=structuredClone(before);after.graph.nodes[0].pass.params.prompt.value='Cafe';
+ assert.equal(verifySpellTextCommit(baseline,after,ui,target,receipt).rebuilt,true);
+ for(const mutate of [x=>x.graph.nodes[0].pass.params.seed.value=99,x=>x.scene.source_sentinels[0].sha256='different',x=>x.definition.fingerprint='different',x=>x.outputs.push({newResult:true}),x=>x.document_id='other',x=>x.graph.nodes[0].pass.params.prompt.value='Wrong']){const bad=structuredClone(after);mutate(bad);assert.throws(()=>verifySpellTextCommit(baseline,bad,ui,target,receipt));}
+ for(const bad of [{...ui,focus:'unrelated'},{...ui,modalWindow:'dialog'},{...ui,widgets:[...ui.widgets,target]},{...ui,widgets:[...ui.widgets,{...replacement,id:'duplicate'}]},{...ui,widgets:ui.widgets.map(w=>({...w,keyWindow:false}))}])assert.throws(()=>verifySpellTextCommit(baseline,after,bad,target,receipt));
+ assert.throws(()=>verifySpellTextCommit(baseline,after,ui,target,{...receipt,postInput:{frontmost:false,frontWindow:10}}));
+ assert.throws(()=>spellTextBaseline(before,{...target,accessibleName:'Other input'},{documentId:'picnic',inputId:'setting'},'Cafe'));
+ assert.throws(()=>spellTextBaseline(before,target,{documentId:'picnic',inputId:'setting'},'Sunny picnic'));
+});
+
+test('typing a declared Spell input survives a rebuild once and never replays a divergent change',async()=>{
+ const root=await mkdtemp('/private/tmp/athanor-spell-commit-');
+ try{for(const divergent of [false,true]){
+  const owned=root+'/'+divergent;await mkdir(owned);const file=owned+'/session.json';await writeFile(file,JSON.stringify({root:owned,agentTracking:true}));const stub=pathToFileURL(owned+'/platform.mjs').href;
+  await writeFile(owned+'/platform.mjs',`export const effects=[];let dispatched=false;
+const field={id:'field',window:'main',name:'InspectorMultilineTextControl',class:'QPlainTextEdit',accessibleName:'Setting (default)',editableText:true,x:10,y:10,width:100,height:30};
+const owner={id:'main',window:'main',keyWindow:true,nativeWindow:10,title:'Wizard',width:1000,height:700};
+export async function nativeCall(f,op){return {focus:dispatched?'':'field',widgets:[owner,dispatched?{...field,id:'new',accessibleName:'Setting (override)'}:field]};}
+export async function desktopCall(){return {document_id:'picnic',kind:'instance',name:'Picnic',state_source:'live_registry',definition:{fingerprint:'pinned'},graph:{parameter_inputs:[{id:'setting',label:'Setting',node:9,param:'prompt'}],nodes:[{id:9,pass:{params:{prompt:{type:'string',value:dispatched?'Cafe':'Sunny picnic'},seed:{type:'int',value:dispatched&&${divergent}?99:42}}}}]},scene:{source_sentinels:[{sha256:'product'}]},outputs:[]};}
+export async function nativeDesktopInput(f,p){if(p.command==='inspect')return {pid:123,started:'observed',windows:[{window:10,title:'Wizard',frame:{x:0,y:0,width:1000,height:723}}]};effects.push(p.text);dispatched=true;return {status:'Dispatched',window:10,postInput:{frontmost:true,frontWindow:10}};}`);
+  const source=(await readFile(new URL('../desktop/physical-input.mjs',import.meta.url),'utf8')).replace(/from '(\.\.?\/[^']+)'/g,(_,relative)=>"from '"+(['./adapter.mjs','./macos-input.mjs'].includes(relative)?stub:new URL(relative,new URL('../desktop/',import.meta.url)).href)+"'");await writeFile(owned+'/probe.mjs',source);const {physicalInput}=await import(pathToFileURL(owned+'/probe.mjs').href);
+  const type=()=>physicalInput(file,'type',{target:'field',text:'Cafe',commit:{documentId:'picnic',inputId:'setting'}});
+  if(divergent){await assert.rejects(type,e=>e.status==='Unknown'&&e.code==='input_commit_unverified');await assert.rejects(type,e=>e.code==='mutation_unknown');}
+  else{const receipt=await type();assert.equal(receipt.status,'Dispatched');assert.equal(receipt.commit.rebuilt,true);}
+  assert.deepEqual((await import(stub)).effects,['Cafe']);
  }}finally{await rm(root,{recursive:true,force:true});}
 });

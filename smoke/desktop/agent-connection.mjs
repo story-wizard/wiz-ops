@@ -7,6 +7,13 @@ import {fields,validateToolParams,validateApplicationParams,validateNativeParams
 import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 
 const maxBytes=65536;
+export async function compactToolResult(file,operation,result){
+ if(Buffer.byteLength(JSON.stringify(result))<=4096)return {encoding:'full',result};
+ try{const session=await readJSON(file);verifyDesktopPaths(session);const directory=await mkdtemp(path.join(session.root,'tool-reply-')),retained=path.join(directory,'receipt.json');await writeJSON(retained,{operation,result,session:file,build:{packageHash:session.guiHash},process:{pid:session.pid,started:session.processStart,generation:session.generation}});
+  const keys=['format','status','ready','id','name','matchCount','truncated','inspectionIncomplete','encoding','observationId','observedAt','generation','pid','started','permissions','frontmost','frontWindow','output','requestId','run','inspect','plan','values','executed'];
+  return {encoding:'compact',summary:{...Object.fromEntries(keys.filter(k=>Object.hasOwn(result,k)).map(k=>[k,result[k]])),keys:Object.keys(result)},receipt:{path:retained,sha256:await sha(retained)},review:'Read required values and full evidence from the retained receipt before deciding.'};
+ }catch(error){return {encoding:'full',result,retentionError:{code:'receipt_retention_failed',error:error.message}};}
+}
 export function toolError(error){
  const e=normalizeToolError(error);
  return {status:e.status,code:e.code,origin:e.origin,error:e.message,nextActions:e.nextActions,diagnostics:e.diagnostics||null,evidence:e.evidence||null};
@@ -18,6 +25,7 @@ export function validateSequence(steps,schema){
   if(step.operation==='call')validateApplicationParams(schema,step.params?.operation,step.params?.params||{});
   if(step.operation==='native')validateNativeParams(step.params?.operation,step.params?.params||{});
   if(step.params?.read)validateApplicationParams(schema,step.params.read.operation,step.params.read.params||{});
+  if(step.params?.commit)validateApplicationParams(schema,'spellbook.inspect',{document_id:step.params.commit.documentId,view:'raw'});
   if(step.expect!==undefined){fields(step.expect,['path','equals','notEquals','length','includes'],'expect');compareObservation({},step.expect);}
  }
 }
@@ -81,7 +89,7 @@ export async function toolRequest(file,request){
   if(request.operation!==undefined||request.params!==undefined)throw proofError('invalid_sequence','Use steps or an operation, not both',['correct_parameters']);
   return {id:request.id,...await agentSequence(file,request.steps,undefined,{compact:request.compact===undefined?false:request.compact})};
  }
- if(request.compact!==undefined)throw proofError('invalid_sequence','compact is only available for steps',['correct_parameters']);
+ if(request.compact!==undefined&&typeof request.compact!=='boolean')throw proofError('invalid_sequence','compact must be boolean',['correct_parameters']);
  if(request.operation==='plan-inspect'){
   fields(request.params,['requestId'],'params');const {inspectAgentPlan}=await import('./agent-plan.mjs');return {id:request.id,...await inspectAgentPlan(file,request.params.requestId)};
  }
@@ -92,7 +100,8 @@ export async function toolRequest(file,request){
   fields(request.params,['workflow'],'params');const {checkAgentWorkflow}=await import('./agent-recipes.mjs');return {id:request.id,...await checkAgentWorkflow(file,request.params.workflow)};
  }
  const started=performance.now();
- return {format:'athanor-agent-tool/v1',id:request.id,operation:request.operation,result:await agentTool(file,request.operation,request.params===undefined?{}:request.params),durationMs:performance.now()-started};
+ const result=await agentTool(file,request.operation,request.params===undefined?{}:request.params);
+ return {format:'athanor-agent-tool/v1',id:request.id,operation:request.operation,...request.compact?await compactToolResult(file,request.operation,result):{result},durationMs:performance.now()-started};
 }
 export async function serveAgentTools(file,input=process.stdin,output=process.stdout){
  let pending=Buffer.alloc(0),oversized=false;

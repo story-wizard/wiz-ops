@@ -105,3 +105,18 @@ test('the native foreground lease excludes another workspace and releases after 
   last=await acquireDesktopLease(data);assert.equal(last.receipt.status,'Acquired');
  }finally{if(first)await first.release();if(last)await last.release();await rm(data,{recursive:true,force:true});}
 });
+
+test('task entry auto-binds the existing recipe without input and rejects incomplete or ambiguous fixtures',async()=>{
+ const {prepareAgentTask,briefContext}=await import('../desktop/agent-task.mjs');const root=await realpath(await mkdtemp('/private/tmp/athanor-task-')),file=root+'/session.json';
+ try{
+  await writeFile(file,JSON.stringify({root,main:{id:'timeline'},schema:{operations:{'project.get_name':{properties:{}},'timeline.inspect':{properties:{timeline_id:{type:'string'}}}}}}));
+  const tracks=[{track_id:'v1',address:'V1',items:[]},{track_id:'a1',address:'A1',items:[]}],ui={matches:[{id:'timeline-view',class:'TimelineWidget'},{id:'main',class:'MainWindow'},{id:'add',name:'panelChromeAction',text:'+ Video',enabled:true},{id:'tab',name:'panelSubtabSelector',text:'Main'}]};const seen=[];
+  const execute=async(_f,op,p)=>{seen.push(op);if(op==='observe')return ui;return p.operation==='project.get_name'?{name:'Golden'}:{timeline:{timeline_id:'timeline',name:'Main'},tracks,next_cursor:null};};
+  const task=await prepareAgentTask(file,{recipe:'add-video-track'},execute);assert.deepEqual(seen,['call','call','observe']);assert.equal(task.executed,false);assert.equal(task.run.at(-1),'--compact');const plan=JSON.parse(await readFile(task.plan.path));assert.deepEqual(plan.phases[0].steps[1].expect.equals,tracks);assert.equal(plan.phases[1].steps[0].operation,'physical');assert.equal(plan.phases[1].next,null);
+  ui.matches.push({...ui.matches[0],id:'other'});await assert.rejects(()=>prepareAgentTask(file,{recipe:'add-video-track'},execute),e=>e.code==='ambiguous_target');
+  ui.matches.pop();ui.matches.at(-1).text='Wrong timeline';await assert.rejects(()=>prepareAgentTask(file,{recipe:'add-video-track'},execute),e=>e.code==='wrong_fixture');
+  await assert.rejects(()=>prepareAgentTask(file,{recipe:'add-video-track',values:{baselineTracks:[]}},execute),e=>e.code==='unknown_parameter');
+  await assert.rejects(()=>prepareAgentTask(file,{recipe:'../escape'},execute),e=>e.code==='unknown_recipe');
+  const full={session:file,checks:[{id:'D-CLI-01',title:'Connect',steps:Array(100).fill('large')}],guidance:['x'.repeat(100000)],project:{main:'timeline'}};const brief=briefContext(full);assert(brief.recipes.includes('add-video-track'));assert(!JSON.stringify(brief).includes('large'));assert(Buffer.byteLength(JSON.stringify(brief))<3000);
+ }finally{await rm(root,{recursive:true,force:true});}
+});

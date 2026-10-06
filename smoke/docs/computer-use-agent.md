@@ -243,3 +243,57 @@ Native key aliases are listed in the session context. Direct `physicalInput`
 and the toolkit reject unsupported fields before dispatch; drag duration is
 `durationMs`. A binding rejection is Blocked; an uncertain dispatched edit
 remains Unknown and must not be replayed.
+
+## Start with a recipe
+
+The Ready receipt now points to `agent-brief.json`. Read that short entry first;
+`fullContext` retains the full check specifications, schemas and troubleshooting
+reference. Existing `context` calls keep their full format; request
+`context '{"detail":"brief"}'` for the smaller view.
+
+```sh
+node desktop/session.mjs tool SESSION.json task '{}'
+node desktop/session.mjs tool SESSION.json task '{"recipe":"add-video-track"}'
+```
+
+`task` lists the shipped recipes. Choosing Add Track reads the current project,
+complete timeline and unique visible controls, binds the existing recipe, and
+retains a plan and values file in the session. It returns a known request ID and
+an execution command. It performs no physical input. Inspect the plan, run that
+command once, then review exact domain state and its capture. Other recipes use
+explicit observed `values`; missing parameters or ambiguous controls block
+preparation. Review stops and canonical Pass requirements remain in force.
+
+Single `tool` commands now return small results directly and retain results over
+4 KiB as checksummed receipts. `--full` returns the full result when needed;
+`--compact` explicitly selects the default. JSON-lines ordinary tool requests
+can opt in with `compact:true`. Read needed values from `receipt.path`; a list
+of keys or a result summary cannot substitute for an exact assertion. Failed
+retention returns the known full result with a retention error and never replays
+input.
+
+### A Spell input that rebuilds after typing
+
+For a saved exposed Spell string input, declare its exact document and input
+before typing:
+
+```json
+{"command":"type","target":{"id":"OBSERVED_FOCUSED_SETTING"},"text":"At a cafe counter","commit":{"documentId":"OBSERVED_INSTANCE_ID","inputId":"setting"}}
+```
+
+The harness reads the live instance before input and requires a matching named
+Inspector multiline field. After input, it verifies exactly the declared string
+change, preserves the pinned definition, unrelated graph values, scene and
+outputs, and checks the same owned key window and one replacement field. A
+successful receipt records the old/new control IDs and state hashes. Reobserve
+before the next input; the old target is not reused. No focus is fabricated and
+no text is replayed. A surviving unfocused field, different window, other focus,
+ambiguous replacement or divergent saved state remains Unknown. Without this
+declaration, the original strict focus rule applies. This narrow exploration
+contract does not replace a frozen test's independent assertions or captures.
+
+Add Track defaults to the fixture's `project.main.id`. For another opened
+timeline, supply `values:{"timelineId":"OBSERVED_TIMELINE_ID"}`. The entry
+requires its name to match the visible timeline tab and binds all other values
+from fresh observations; it will not accept overrides of the baseline or target.
+Use explicit recipe compilation for a custom variant.
