@@ -6,6 +6,7 @@ import {agentSequence,serveAgentTools,validateSequence} from '../desktop/agent-c
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {waitForObservation} from '../desktop/check-support.mjs';
+import {checkAgentPlan,runAgentPlan} from '../desktop/agent-plan.mjs';
 
 async function fixture(run){
  const data=await realpath(await mkdtemp('/private/tmp/athanor-connection-')),previous=process.env.SMOKE_DATA_DIR;process.env.SMOKE_DATA_DIR=data;
@@ -105,3 +106,75 @@ test('Swift process checks retain exact output and reject a missing process with
   assert.match(execFileSync(root+'/probe',{encoding:'utf8',timeout:10000}),/Process checks verified/);
  }finally{await rm(root,{recursive:true,force:true});}
 });
+
+const routingPlan=()=>({format:'athanor-agent-plan/v1',start:'inspect',phases:[
+ {id:'inspect',steps:[{operation:'call',params:{operation:'project.get_name'}}],next:{step:0,path:['name'],cases:[{equals:'ready',phase:'use'},{equals:'needs-focus',phase:'focus'}]}},
+ {id:'focus',steps:[{operation:'physical',params:{command:'click'}}],next:'use'},
+ {id:'use',steps:[{operation:'capture'}],next:null}
+]});
+test('plans choose both authored paths from readback and retain exact results and branch evidence',async()=>fixture(async file=>{
+ for(const name of ['ready','needs-focus']){
+  const seen=[],reply=await runAgentPlan(file,routingPlan(),async(_f,operation)=>{seen.push(operation);return operation==='call'?{name}:{status:'Returned',detail:'x'.repeat(10000)};},{compact:true});
+  assert.equal(reply.status,'Completed');assert.equal(reply.encoding,'compact');assert.equal(reply.summary.continuation.state,'review_checkpoint');assert.equal(reply.summary.continuation.automatic,false);
+  assert.deepEqual(seen,name==='ready'?['call','capture']:['call','physical','capture']);
+  assert.equal(reply.summary.phases[0].branch.actual,name);assert.equal(reply.summary.phases[0].branch.next,name==='ready'?'use':'focus');
+  const bytes=await readFile(reply.receipt.path);assert.equal(reply.receipt.sha256,createHash('sha256').update(bytes).digest('hex'));
+  const full=JSON.parse(bytes);assert.deepEqual(full.plan,routingPlan());assert.equal(full.phases.at(-1).result.results[0].result.detail.length,10000);assert.equal(JSON.parse(await readFile(reply.progress,'utf8')).status,'Completed');
+ }
+}));
+test('all paths, budgets, destinations and read-only branch sources validate before any tool dispatch',async()=>fixture(async file=>{
+ const invalid=[];let p=routingPlan();p.phases[1].steps=[{operation:'call',params:{operation:'unsupported.operation'}}];invalid.push(p);
+ p=routingPlan();p.phases[2].next='inspect';invalid.push(p);
+ p=routingPlan();p.phases[1].next='missing';invalid.push(p);
+ p=routingPlan();p.phases.push({id:'unused',steps:[{operation:'capture'}],next:null});invalid.push(p);
+ p=routingPlan();p.phases[0].steps=[{operation:'physical',params:{command:'key',key:'right'}}];invalid.push(p);
+ p=routingPlan();p.phases[0].steps=[{operation:'observe',params:{since:'old'}}];invalid.push(p);
+ p=routingPlan();p.phases[0].next.cases[1].equals='ready';invalid.push(p);
+ p=routingPlan();p.phases[0].steps.push({operation:'physical',params:{command:'click'}});invalid.push(p);
+ p=routingPlan();p.maxDurationMs=120001;invalid.push(p);
+ p=routingPlan();p.phases[1].id='inspect';invalid.push(p);
+ for(const plan of invalid){let calls=0;await assert.rejects(()=>runAgentPlan(file,plan,async()=>{calls++;}));assert.equal(calls,0);}
+}));
+test('missing, unexpected, delta and incomplete branch observations never select a fallback input',async()=>fixture(async file=>{
+ const values=[{}, {name:'unexpected'}, {name:'ready',encoding:'delta'}, {name:'ready',truncated:true}, {name:'ready',inspectionIncomplete:true}, {name:'ready',rows:[{modelTruncated:true}]},{name:'ready',next_cursor:'more'},{name:'ready',hasMore:true},{name:'ready',model:[],offset:64},{name:'ready',completion:'partial'}];
+ for(const value of values){let calls=0;const reply=await runAgentPlan(file,routingPlan(),async()=>{calls++;return value;});assert.equal(calls,1);assert.equal(reply.status,'Blocked');assert.equal(reply.summary.continuation.automatic,false);assert.equal(reply.phases[0].branch,undefined);}
+}));
+test('plans preserve Unknown and Fail prefixes without executing another phase or taking a recovery branch',async()=>fixture(async file=>{
+ for(const status of ['Unknown','Fail']){
+  const plan=routingPlan();plan.phases[0].steps.unshift({operation:'physical',params:{command:'click'}});plan.phases[0].next.step=1;
+  if(status==='Fail')plan.phases[0].steps[1].expect={path:['name'],equals:'never'};
+  let calls=0;const reply=await runAgentPlan(file,plan,async(_f,op)=>{
+   calls++;if(op==='physical'){if(status==='Unknown')throw Object.assign(Error('Lost input response'),{status:'Unknown',code:'input_focus_lost'});return {status:'Dispatched'};}return {name:'needs-focus'};
+  });
+  assert.equal(reply.status,status);assert.equal(calls,status==='Unknown'?1:2);assert.equal(reply.phases.length,1);assert.equal(reply.phases[0].branch,undefined);assert.equal(reply.summary.continuation.state,status==='Unknown'?'reconcile_unknown':'inspect_failure');assert.equal(reply.summary.continuation.automatic,false);
+  assert.deepEqual(reply.phases[0].result.summary.returnedMutationIndexes,status==='Unknown'?[]:[0]);
+ }
+}));
+test('plan budget expires between steps without cancelling or replaying a returned edit',async()=>fixture(async file=>{
+ const plan={format:'athanor-agent-plan/v1',start:'edit',maxDurationMs:30,phases:[{id:'edit',steps:[{operation:'physical',params:{command:'click'}},{operation:'physical',params:{command:'key',key:'right'}}],next:null}]};
+ let calls=0;const reply=await runAgentPlan(file,plan,async()=>{calls++;await new Promise(r=>setTimeout(r,60));return {status:'Dispatched'};});
+ assert.equal(calls,1);assert.equal(reply.status,'Blocked');assert.equal(reply.failure.code,'plan_budget_exceeded');assert.deepEqual(reply.phases[0].result.summary.returnedMutationIndexes,[0]);
+}));
+test('a stale input binding stops the plan at that phase without executing downstream work',async()=>fixture(async file=>{
+ const seen=[],reply=await runAgentPlan(file,routingPlan(),async(_file,op)=>{seen.push(op);if(op==='physical')throw Object.assign(Error('Rejected before dispatch'),{status:'Blocked',code:'input_binding_rejected'});return {name:'needs-focus'};});
+ assert.deepEqual(seen,['call','physical']);assert.equal(reply.status,'Blocked');assert.equal(reply.summary.continuation.state,'rebind_target');assert.equal(reply.failure.phase,'focus');assert.equal(reply.phases.length,2);assert.equal(reply.phases[1].result.completed,0);
+}));
+test('plan retention failure stops before the next phase and returns known effects',async()=>fixture(async file=>{
+ let calls=0;const plan=routingPlan(),reply=await runAgentPlan(file,plan,async()=>{
+  calls++;const root=file.replace('/session.json','');for(const name of await readdir(root))if(name.startsWith('plan-'))await rm(root+'/'+name,{recursive:true});return {name:'needs-focus'};
+ },{compact:true});
+ assert.equal(calls,1);assert.equal(reply.status,'Blocked');assert.equal(reply.phases[0].result.status,'Completed');assert.equal(reply.phases[0].result.results[0].result.name,'needs-focus');assert.equal(reply.retentionError.code,'receipt_retention_failed');assert.equal(reply.summary.continuation.state,'retain_receipt');
+}));
+test('plan-check exposes advisory gates and evidence without resolving targets or writing',async()=>fixture(async file=>{
+ const plan=routingPlan(),before=await readFile(file,'utf8'),listing=await readdir(file.replace('/session.json',''));const result=await checkAgentPlan(file,plan);
+ assert.equal(result.status,'Valid');assert.equal(result.executed,false);assert.deepEqual(result.phases[1].mutationIndexes,[0]);assert(result.phases[1].advice.some(a=>a.code==='precondition_gate'));assert(result.phases[1].advice.some(a=>a.code==='outcome_gate'));assert(result.phases[1].advice.some(a=>a.code==='capture_checkpoint'));
+ assert.equal(await readFile(file,'utf8'),before);assert.deepEqual(await readdir(file.replace('/session.json','')),listing);
+}));
+test('CLI and JSON-lines expose plans and reject ambiguous plan requests before input',async()=>fixture(async file=>{
+ const plan={format:'athanor-agent-plan/v1',start:'context',phases:[{id:'context',steps:[{operation:'context'}],next:null}]},planFile=file.replace('session.json','plan.json');await writeFile(planFile,JSON.stringify(plan));
+ const cli=new URL('../desktop/session.mjs',import.meta.url).pathname;
+ const check=JSON.parse(execFileSync(process.execPath,[cli,'plan-check',file,planFile],{encoding:'utf8',timeout:10000}));assert.equal(check.executed,false);
+ const reply=JSON.parse(execFileSync(process.execPath,[cli,'plan',file,planFile,'--compact'],{encoding:'utf8',timeout:10000}));assert.equal(reply.status,'Completed');assert.equal(reply.encoding,'compact');
+ let output='';await serveAgentTools(file,Readable.from([JSON.stringify({id:'plan',plan,compact:true})+'\n'+JSON.stringify({id:'ambiguous',plan,steps:[{operation:'context'}]})+'\n']),new Writable({write(chunk,_e,done){output+=chunk;done();}}));
+ const replies=output.trim().split('\n').map(JSON.parse);assert.equal(replies[0].status,'Completed');assert.equal(replies[0].id,'plan');assert.equal(replies[1].status,'Blocked');
+}));

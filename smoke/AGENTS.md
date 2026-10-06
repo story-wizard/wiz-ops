@@ -99,8 +99,15 @@ For compact batch responses, add `--compact` (or JSON-lines `compact:true`). Rea
 the checksummed full `receipt.path` for required domain state, and inspect gates,
 returned mutation indexes and `summary.continuation` before proceeding. Unknown
 requires reconciliation; storage failures return the full response for retention.
-Automatic branching and the larger planner are documented next steps, not active
-execution modes. Keep semantic recommendations separate from deterministic guards.
+For bounded branching, use `plan-check SESSION.json CONTROL_PLAN.json`, then
+`plan SESSION.json CONTROL_PLAN.json --compact`. Control plans contain up to eight
+named batch phases and 32 declared steps. Every path validates before input.
+Branches compare explicit values in the final complete read-only step; unknown
+values, incomplete data, failed gates and Unknown stop execution. Keep review
+checkpoints for new IDs, geometry and interpretation. Progress and final receipts
+stay inside the owned session. Inspect them and tool journals after a lost reply;
+never resend a plan. The agent still authors and reviews the plan; automatic plan
+generation and Jev remain deferred. See the sequence guide and media-plan example.
 
 ## Default checklist and qualification
 

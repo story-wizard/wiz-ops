@@ -23,7 +23,17 @@ export function validateSequence(steps,schema){
 }
 export async function checkSequence(file,steps){
  validateSequence(steps,(await readJSON(file)).schema);
- return {format:'athanor-agent-sequence-check/v1',status:'Valid',executed:false,validation:'parameters-and-schema',steps:steps.length,gateIndexes:steps.flatMap((s,i)=>s.expect===undefined?[]:[i])};
+ return {format:'athanor-agent-sequence-check/v1',status:'Valid',executed:false,validation:'parameters-and-schema',steps:steps.length,...sequenceAdvice(steps)};
+}
+export function sequenceAdvice(steps){
+ const gateIndexes=steps.flatMap((s,i)=>s.expect===undefined?[]:[i]),mutationIndexes=steps.flatMap((s,i)=>isAgentMutation(s.operation,s.params)?[i]:[]),captureIndexes=steps.flatMap((s,i)=>s.operation==='capture'?[i]:[]),advice=[];
+ if(mutationIndexes.length){
+  if(!gateIndexes.some(i=>i<mutationIndexes[0]))advice.push({code:'precondition_gate',index:mutationIndexes[0],message:'Add a readback gate before the first dependent edit.'});
+  if(!gateIndexes.some(i=>i>mutationIndexes.at(-1)))advice.push({code:'outcome_gate',index:mutationIndexes.at(-1),message:'Read and assert the domain outcome after the last edit.'});
+  if(!captureIndexes.some(i=>i>mutationIndexes.at(-1)))advice.push({code:'capture_checkpoint',index:mutationIndexes.at(-1),message:'Retain the declared visual evidence after verification.'});
+ }
+ if(steps.length>6)advice.push({code:'review_checkpoint',message:'Consider splitting at a decision or new binding; preserve every required assertion and capture.'});
+ return {gateIndexes,mutationIndexes,captureIndexes,advice};
 }
 export function sequenceSummary(steps,receipt){
  const state=receipt.status==='Completed'?'review_checkpoint':receipt.status==='Unknown'?'reconcile_unknown':receipt.status==='Fail'?'inspect_failure':receipt.failure?.code==='input_binding_rejected'?'rebind_target':'inspect_blocker';
@@ -60,8 +70,13 @@ export async function agentSequence(file,steps,execute=agentTool,{compact=false}
  return finish({format:'athanor-agent-sequence/v1',status:'Completed',completed:steps.length,remaining:0,results,durationMs:performance.now()-started});
 }
 export async function toolRequest(file,request){
- fields(request,['id','operation','params','steps','compact'],'request');
+ fields(request,['id','operation','params','steps','plan','compact'],'request');
  if(typeof request.id!=='string'||!request.id.length||request.id.length>128)throw proofError('invalid_request_id','Supply a request ID of 1–128 characters',['correct_parameters']);
+ if(request.plan!==undefined){
+  if(request.operation!==undefined||request.params!==undefined||request.steps!==undefined)throw proofError('invalid_plan','Use a plan, steps or an operation, not a combination',['correct_parameters']);
+  const {runAgentPlan}=await import('./agent-plan.mjs');
+  return {id:request.id,...await runAgentPlan(file,request.plan,undefined,{compact:request.compact===undefined?false:request.compact})};
+ }
  if(request.steps!==undefined){
   if(request.operation!==undefined||request.params!==undefined)throw proofError('invalid_sequence','Use steps or an operation, not both',['correct_parameters']);
   return {id:request.id,...await agentSequence(file,request.steps,undefined,{compact:request.compact===undefined?false:request.compact})};

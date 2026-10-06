@@ -48,6 +48,9 @@ node desktop/session.mjs batch SESSION.json /absolute/steps.json
 array using the execution validator. It returns `status: "Valid"`,
 `executed: false`, the step count and zero-based `gateIndexes`. It makes no app
 requests or writes. It does not resolve targets or evaluate expected values.
+It also lists mutation/capture indexes and advisory `precondition_gate`,
+`outcome_gate`, `capture_checkpoint` and `review_checkpoint` suggestions. These
+describe places to review; they do not insert actions or establish coverage.
 An expired session or stale selector can pass parameter validation and still be
 rejected at execution. Every dispatched step retains its ordinary guards.
 
@@ -132,30 +135,82 @@ outside Git. Bots may use the existing [JSON-lines connection](computer-use-agen
 for sequential requests. Measure total elapsed time, request count, tool time,
 between-request time and verified outcomes separately.
 
-## Toward a branching planner
+## Run an authored branching plan
 
-The next larger capability is an Athanor-owned engine that executes a reviewed
-graph of phases. This is planned work. The current batch commands do not choose
-branches or generate plans.
+Use a control plan when every possible action and target can be authored now.
+The agent decides the intent and reviews the paths; Athanor chooses between the
+declared paths from exact readback values. Each named phase runs through the
+existing batch executor and every operation retains ordinary admission, deadline,
+ownership, uncertainty and fresh input guards.
 
-Start with named phases and deterministic branches on complete, typed readbacks.
-For example, a verified setting can select an already authored change phase or
-a preserve phase. Validate every possible branch against the selected schema
-before any input. Keep the first version acyclic, with total action and time
-budgets. Record each condition, selected branch, source observation and phase
-receipt. Bind returned IDs to the current build, process, project and generation
-and keep ordinary fresh input guards. Unexpected observations return to the
-agent. A false test assertion or Unknown mutation never silently selects a
-recovery branch.
+```sh
+node desktop/session.mjs plan-check SESSION.json /absolute/control-plan.json
+node desktop/session.mjs plan SESSION.json /absolute/control-plan.json --compact
+```
 
-The agent can propose a plan from the test intent, current context and reusable
-recipes. The engine validates and executes the accepted plan. Frozen actions,
-verifiers and captures remain owned by the check. Before automatic continuation,
-prove both sides of every branch, missing/incomplete evidence, stale bindings,
-budget exhaustion and interruption after a mutation. A lost response must be
-recoverable from receipts without resending app input. Compare completion quality,
-missed defects, elapsed time, returned bytes and agent requests on multiple
-control families against the existing phase approach.
+The JSON-lines equivalent is `{"id":"unique-id","plan":{...},"compact":true}`.
+`plan-check` validates all paths without app requests or writes and includes the
+same planning suggestions as `batch-check`. A control plan is distinct from the
+prepared-build plan used by `start --plan`.
+
+```json
+{
+  "format": "athanor-agent-plan/v1",
+  "start": "inspect-query",
+  "maxDurationMs": 30000,
+  "phases": [
+    {
+      "id": "inspect-query",
+      "steps": [{"operation":"observe","params":{"selector":{"id":"CURRENT_SEARCH_ID"}},"expect":{"path":["matchCount"],"equals":1}}],
+      "next": {"step":0,"path":["matches",0,"text"],"cases":[{"equals":"","phase":"type-query"},{"equals":"pattern_24","phase":null}]}
+    },
+    {
+      "id": "type-query",
+      "steps": [{"operation":"physical","params":{"command":"click","target":{"id":"CURRENT_SEARCH_ID"}}}],
+      "next": null
+    }
+  ]
+}
+```
+
+This short example illustrates routing only. Adapt the complete
+[find-media recipe](../examples/sequences/find-media-plan.json) for a search:
+bind the current search field, media view, known query and expected completion
+status, and select Name mode during fixture preparation. An empty query enters
+it; the exact requested query proceeds to the results checkpoint. Any other
+query stops for review. Inspect the complete result model and bind the returned
+row before a new insertion phase. Preserve the independent project baseline,
+timeline assertions and post-insert/Undo captures.
+
+`next` is another phase ID, `null` for a review checkpoint, or a branch object.
+A branch names the final step in that phase, a property/index `path`, and 1–4
+distinct `equals` values with their destination phase (or `null`). The source
+must be a full read-only observe/find/model/model_value/call/native operation.
+Missing fields, delta observations, partial pages and unknown values are Blocked.
+Gates remain test assertions: Fail stops, rather than selecting another branch.
+Unknown stops without recovery or replay. Rejected bindings return to the agent
+for inspection, not another route through the plan.
+
+Limits are eight reachable named phases, eight steps per phase, 32 declared
+steps across all paths and 64 KiB of input. Cycles and unreachable phases are
+rejected before input. `maxDurationMs` is 1–120000, default 120000. It is a
+dispatch budget checked before every operation and continuation. A running
+operation keeps its own timeout and returns before the budget stops further work;
+the engine never races cancellation against an uncertain mutation.
+
+The plan records its parameters, build/process identity, completed phase results,
+branch values and selected path. `progress` is written before each phase and
+after its result/decision; the final `receipt.path` is checksummed. Compact replies
+keep phase summaries and evidence references; full results remain in the receipt.
+On interruption, inspect the active phase in progress and the ordinary per-tool
+journals. Progress does not mean every input in that phase finished. A request ID
+still provides correlation only. Never resend a lost plan or replay its prefix.
+Storage failure stops further phases and returns the known results for retention.
+
+No variable substitution, automatic target rebinding or plan generation is
+included. End at a review checkpoint when an ID, geometry, modal or decision
+needs fresh interpretation. Compare authored plans with agent-directed batches
+on several control families before expanding unattended execution.
 
 An optional semantic decision source could rank compatible recipes or propose
 an investigation route. TypeSafe Jev is a candidate for that role, rather than
