@@ -55,9 +55,9 @@ export function readyUI(ui,params={}){
 }
 export function compareObservation(value,{path:keys=[],equals,notEquals,length,includes}={}){
  assert(Array.isArray(keys)&&keys.length<=20&&keys.every(k=>(typeof k==='string'||Number.isInteger(k))&&!['__proto__','constructor','prototype'].includes(k)),'Use a bounded array of property names or indexes');
- let actual=value;for(const key of keys){if(actual===null||typeof actual!=='object'||!Object.hasOwn(actual,key))return {matched:false,missing:true,path:keys};actual=actual[key];}
  const expected={};if(equals!==undefined)expected.equals=equals;if(notEquals!==undefined)expected.notEquals=notEquals;if(length!==undefined)expected.length=length;if(includes!==undefined)expected.includes=includes;
  assert(Object.keys(expected).length>0,'Verification needs equals, notEquals, length or includes');
+ let actual=value;for(const key of keys){if(actual===null||typeof actual!=='object'||!Object.hasOwn(actual,key))return {matched:false,missing:true,path:keys};actual=actual[key];}
  const matched=(equals===undefined||isDeepStrictEqual(actual,equals))&&(notEquals===undefined||!isDeepStrictEqual(actual,notEquals))&&(length===undefined||actual?.length===length)&&(includes===undefined||(Array.isArray(actual)?actual.some(x=>isDeepStrictEqual(x,includes)):typeof actual==='string'&&actual.includes(includes)));
  return {matched,actual,expected,path:keys};
 }
@@ -74,6 +74,7 @@ export async function sessionContext(file){
  const ready=await readJSON(path.join(s.native,'ready.json'));if(!s.agentDefinitions){s.agentDefinitions=sessionDefinitions(s);await writeJSON(file,s);}
  const result={format:'athanor-agent-session/v1',session:file,build:{app:s.sourceApp,packageHash:s.guiHash,version:s.plan?.version||null},process:{pid:s.pid,started:s.processStart,generation:s.generation},lifetime:{deadlineAt:s.agentDeadlineAt||null,timeoutMs:s.agentDeadlineAt?agentSessionTimeoutMs:null,onExpiry:s.agentDeadlineAt?'Owned app receives SIGTERM; retain evidence and start a fresh session for further work':null},project:{bundle:s.bundle,main:s.main,alternate:s.alternate,assets:s.assets},adapter:ready.capabilities,physical:{commands:['click','drag','key','type','scroll','screenshot'],keys:physicalKeys,keyAliases:physicalKeyAliases,coordinates:'Widget-relative macOS points; target and destination geometry are rechecked before dispatch'},operations,checks:definitions(s).map(testSpecification),verdicts:{scripted:'Courses run their authored assertions; discover definitions with smoke.mjs list and courses',toolkitPassIds:definitions(s).filter(c=>c.proof).map(c=>c.id),exploration:'Observe, act and retain diagnostics; toolkit Pass requires a frozen proof contract'},evidenceDirectory:path.join(s.root,'evidence'),guidance:[
   'Use CLI/Qt operations to prepare a fixture; perform the action under test with physical input.',
+  'Reduce agent round trips with session.mjs batch SESSION.json STEPS.json (1–8 steps) or tools SESSION.json (one JSON request per stdin line). Each step keeps fresh guards and its own receipt. Add expect gates to readbacks before dependent edits. Sequences stop at the first error or false expectation without rollback or replay; they do not reserve targets. Continue only after inspecting the returned results. Keep established proof checkpoints and captures.',
   'For a failed repro, read docs/bug-reporter-interop.md. The reporter helper only prefills an empty draft in the same build/project and never submits or imports historical attachments.',
   'Resolve targets from a fresh observation. An ambiguous target is Blocked.',
   'Observe returns an observationId and encoding: full or delta. Repeat the same query with since: observationId; the smaller full selection (matches) or delta (changes) is returned. Use selectors: [selector, ...] for 1–8 related controls from one inspection. These retained diagnostics cannot qualify Pass. Omitted or truncated entries are not proof of deletion. Drop since for a full current observation.',
@@ -89,7 +90,8 @@ export async function sessionContext(file){
   'Unknown responses contain a stable code and nextActions. Resolve the specific Unknown action with a named resolution assertion and retained verification reference; begin a fresh retest afterward.',
   'Stop the session when done. The foreground lease is shared across Athanor workspaces and released when its launcher exits.'
  ]};
- result.applicationOperations=Object.keys(s.schema?.operations||{});result.readOnlyOperations=readOps;
+ result.applicationOperations=Object.keys(s.schema?.operations||{});result.readOnlyOperations=readOps.filter(op=>Object.hasOwn(s.schema?.operations||{},op));
+ result.connection={command:['node','desktop/session.mjs','tools',file],protocol:'JSON lines',maxRequestBytes:65536,maxSequenceSteps:8,request:{id:'unique-request-id',operation:'observe',params:{selector:{class:'MainWindow'}}},requestIds:'Response correlation only; requests are not idempotent. Never retry a lost mutation response.'};
  await writeJSON(path.join(s.root,'agent-context.json'),result);return result;
 }
 

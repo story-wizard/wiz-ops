@@ -77,6 +77,16 @@ input reject unknown fields before dispatch. Use `durationMs` for drags and
 refresh geometry after `input_binding_rejected`. See the control baseline guide
 for the contract and the broader control-family audit method.
 
+For short known sequences, use `desktop/session.mjs batch SESSION.json STEPS.json`
+with 1–8 ordinary tool requests. Use `expect` gates on readbacks before dependent
+edits. Sequences stop at the first error or false expectation and retain individual
+tool receipts; they provide no rollback or target reservation. Bots may keep
+`desktop/session.mjs tools SESSION.json` open for sequential JSON-lines requests
+instead of restarting Node per call. Inspect the session context's connection
+contract. Request IDs correlate responses, not retries: never resend a lost
+mutation. Preserve all frozen assertions, captures, fresh input guards and the
+session deadline. See the computer-use guide for examples.
+
 ## Default checklist and qualification
 
 A fresh launcher defaults to `smoke-full`: accepted core checks plus the maintained allowlist of physical/checklist qualification candidates. `automated-full` remains accepted-only; custom courses cannot promote candidates. Read `docs/agent-courses.md` for current composition. New physical groups must expose their selected definitions in `agent-context.json`, execute in fresh owned projects, preserve failures and retain native-input receipts in the course report. Stage executors run from the retained source snapshot. Keep the Mac unlocked for desktop checks; never attempt to bypass the lock screen or change system security settings.

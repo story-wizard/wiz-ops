@@ -39,7 +39,9 @@ func ps(_ arguments: [String]) throws -> String {
     let process = Process(), pipe = Pipe()
     process.executableURL = URL(fileURLWithPath: "/bin/ps"); process.arguments = arguments
     process.standardOutput = pipe; process.standardError = FileHandle.nullDevice
-    try process.run(); let data = pipe.fileHandleForReading.readDataToEndOfFile(); process.waitUntilExit()
+    let finished = DispatchSemaphore(value: 0)
+    process.terminationHandler = { _ in finished.signal() }
+    try process.run(); let data = pipe.fileHandleForReading.readDataToEndOfFile(); finished.wait()
     try require(process.terminationStatus == 0, "Unable to inspect the selected Unix process")
     return String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
 }

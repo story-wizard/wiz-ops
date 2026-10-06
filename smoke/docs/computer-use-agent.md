@@ -165,6 +165,58 @@ Use scoped `observe`/`find` to inspect one panel. Traverse large models with the
 
 Use `recording` for a bounded playback sample window; see [agent tools](agent-tools.md). It collects fresh compositor frames, transport and owned-process resources without recording a verdict. A tracked attempt retains its images, manifest and sampled MP4 in the exported report. Transport queries remain available as read-only observations after an uncertain edit. Use `resize-window` or `floatPanel` during setup when a panel clips its controls, and `activatePanel` to restore the intended dock before binding its canvas. Never send coordinates outside a control's observed visible region.
 
+## Reduce trips back to the agent
+
+Use `node desktop/session.mjs batch SESSION.json /absolute/steps.json` for a
+short, already understood sequence. The file is an array of 1–8 ordinary tool
+requests, at most 64 KiB. Each step retains its own admission checks and receipt.
+Selectors are resolved again before each gesture. The sequence stops on the
+first error or false `expect`; it does not roll back completed edits. Review
+the returned `results`, `stoppedAt` and `failure` before continuing.
+
+For example, after observing the exact search field on the selected build:
+
+```json
+[
+  {"operation":"physical","params":{"command":"click","target":{"class":"MediaSearchField","editableText":true}}},
+  {"operation":"physical","params":{"command":"key","target":{"class":"MediaSearchField","focused":true},"key":"cmd+a"}},
+  {"operation":"physical","params":{"command":"type","target":{"class":"MediaSearchField","focused":true},"text":"plate"}},
+  {"operation":"wait","params":{"selector":{"class":"MediaSearchField"},"condition":"text","expected":"plate"}},
+  {"operation":"observe","params":{"selectors":[{"class":"MediaSearchField"},{"name":"mediaSearchStatus"}],"details":true}}
+]
+```
+
+Use an `expect` gate on a readback before a dependent edit, such as
+`{"operation":"call","params":{"operation":"project.get_name"},"expect":{"path":["name"],"equals":"THE_OBSERVED_PROJECT_NAME"}}`.
+Expectations reuse the toolkit's `path`, `equals`, `notEquals`, `length` and
+`includes` comparisons. They stop the sequence; they do not qualify a toolkit
+Pass. Keep the frozen definition's verification and capture checkpoints.
+Sequences do not reserve targets or exclude other commands between steps.
+Use a separate agent decision when an outcome needs interpretation.
+
+For a bot or a persistent agent runtime, keep
+`node desktop/session.mjs tools SESSION.json` running. Send one JSON request
+per stdin line and read one JSON reply from stdout:
+
+```json
+{"id":"observe-1","operation":"observe","params":{"selector":{"class":"MainWindow"}}}
+{"id":"search-1","steps":[{"operation":"physical","params":{"command":"click","target":{"class":"MediaSearchField","editableText":true}}},{"operation":"observe","params":{"selector":{"class":"MediaSearchField"}}}]}
+```
+
+Requests run sequentially. Each line is limited to 64 KiB; errors include their
+original status, code and evidence. Request IDs correlate replies; they are
+not idempotency keys. Never resend a mutation after a lost response. Closing
+the connection leaves the existing session lifecycle unchanged; explicitly
+stop the owned session when finished. The connection does not extend its
+deadline. `agent-context.json` advertises this protocol and only application
+read operations supported by the selected build.
+
+Measure agent round trips, total elapsed time and actual tool execution
+separately. Batching removes pauses between known steps; a persistent process
+also avoids repeatedly starting Node. Neither changes model inference time.
+The native driver still inspects process identity on every check; its
+event-driven process wait removes polling delay without caching ownership.
+
 ## Compare control improvements
 
 Use the [control harness baseline](control-comparison.md) to preserve and verify
