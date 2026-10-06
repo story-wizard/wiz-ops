@@ -20,9 +20,10 @@ export function validateAgentPlan(plan,schema){
  if(plan.maxDurationMs!==undefined&&(!Number.isInteger(plan.maxDurationMs)||plan.maxDurationMs<1||plan.maxDurationMs>planLimits.maxDurationMs))throw invalid('maxDurationMs must be 1–120000');
  const phases=new Map();let count=0;
  for(const phase of plan.phases){
-  fields(phase,['id','steps','next'],'phase');
+  fields(phase,['id','steps','next','continuationRead'],'phase');
   if(typeof phase.id!=='string'||! /^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(phase.id)||phases.has(phase.id))throw invalid('Supply distinct phase IDs of 1–64 letters, digits, underscores or hyphens');
   validateSequence(phase.steps.map(step=>bindingReferences(step,plan.bindings||{}).step),schema);count+=phase.steps.length;phases.set(phase.id,phase);
+  if(phase.continuationRead!==undefined){const i=phase.continuationRead,source=phase.steps[i];if(!Number.isInteger(i)||i!==phase.steps.findLastIndex(s=>s.operation!=='capture')||!source||source.expect===undefined||!readKinds.includes(source.operation)||isAgentMutation(source.operation,source.params)||source.params?.since!==undefined)throw invalid('continuationRead must name the final gated full read-only step, followed only by captures');}
   if(phase.next===null||typeof phase.next==='string')continue;
   fields(phase.next,['step','path','cases'],'next');const source=phase.steps[phase.next.step];
   if(!Number.isInteger(phase.next.step)||phase.next.step!==phase.steps.length-1||!source||!readKinds.includes(source.operation)||isAgentMutation(source.operation,source.params)||source.params?.since!==undefined)throw invalid('Branch from the final full read-only step in the same phase');
@@ -111,6 +112,7 @@ export async function runAgentPlan(file,plan,execute=agentTool,{compact=false,re
    const record={id:phase.id,result};state.phases.push(record);state.activePhase=null;state.activeStep=null;state.activeResults=[];
    if(result.status!=='Completed'){state.status=result.status;state.failure={phase:phase.id,...result.failure};state.continuation=result.summary.continuation;break;}
    if(storageError)throw proofError('plan_progress_failed','Retain known results before further input',['inspect_storage']);budget();
+   if(phase.continuationRead!==undefined)requireComplete(result.results.find(r=>r.index===phase.continuationRead).result);
    for(const [name,b] of Object.entries(plan.bindings||{}))if(b.phase===phase.id){const read=result.results.find(r=>r.index===b.step).result;requireComplete(read);state.bindings[name]={value:readPlanBinding(b,read),phase:phase.id,step:b.step,path:b.path,identity:state.identity};}
    if(phase.next!==null&&typeof phase.next!=='string'){
     record.branch=selectPlanBranch(phase.next,result.results.find(r=>r.index===phase.next.step).result);next=record.branch.next;

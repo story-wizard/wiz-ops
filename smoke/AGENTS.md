@@ -162,3 +162,15 @@ run both mapped targets, and retain outputs. Discovery never counts as passed te
 Exact reviewed hashes compare commits and trees separately; do not update pins or
 accept dirty source automatically. Preparation/bundle Git identities are separate
 from the retained byte fingerprint and selected package hash.
+
+### Recipe workflow planning
+
+Use `desktop/session.mjs workflow-check SESSION.json WORKFLOW.json` to compose
+ordered typed recipes before dispatch. The output is read-only compilation,
+with recipe/value hashes, namespaced phases/bindings and separate plan segments.
+Only recipe-authored `continueAfter` exits may join, and those must finish with
+a gated full read-only step followed only by captures. Every other exit remains
+a review stop. Preserve independent assertions and captures; geometry, new
+dialogs and interpretation remain agent decisions. Inspect one segment and run
+it once with a known plan ID; never automatically execute all segments or replay
+Unknown. See `docs/agent-sequences.md#compose-recipes-before-dispatch`.

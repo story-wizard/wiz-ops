@@ -6,7 +6,7 @@ import {agentTool,sessionContext,agentSessionTimeoutMs} from './agent-tools.mjs'
 import {normalizeToolError,proofError} from './agent-proof.mjs';
 import {agentSequence,checkSequence,serveAgentTools,toolError} from './agent-connection.mjs';
 import {runAgentPlan,checkAgentPlan,inspectAgentPlan} from './agent-plan.mjs';
-import {checkAgentRecipe} from './agent-recipes.mjs';
+import {checkAgentRecipe,checkAgentWorkflow} from './agent-recipes.mjs';
 const [action,target,operation,params]=process.argv.slice(2);
 if(action==='start'||action==='resume'){
   let session;
@@ -22,6 +22,10 @@ if(action==='start'||action==='resume'){
 }else if(action==='tools')await serveAgentTools(target);
 else if(action==='recipe-check'){
  try{if(process.argv.slice(2).length!==4)throw proofError('invalid_recipe','Use recipe-check SESSION.json RECIPE.json VALUES.json',['correct_parameters']);console.log(JSON.stringify(await checkAgentRecipe(target,await readJSON(operation),await readJSON(params)),null,2));}
+ catch(e){console.log(JSON.stringify(toolError(e)));process.exitCode=3;}
+}
+else if(action==='workflow-check'){
+ try{if(process.argv.slice(2).length!==3)throw proofError('invalid_recipe','Use workflow-check SESSION.json WORKFLOW.json',['correct_parameters']);console.log(JSON.stringify(await checkAgentWorkflow(target,await readJSON(operation)),null,2));}
  catch(e){console.log(JSON.stringify(toolError(e)));process.exitCode=3;}
 }
 else if(action==='plan-inspect'){
@@ -49,4 +53,4 @@ else if(['batch','batch-check','plan','plan-check'].includes(action)){
 }
 else if(action==='stop')await stopDesktop(target);
 else if(action==='schema')console.log(JSON.stringify(await readJSON(new URL('../runner/contracts/desktop-schema.json',import.meta.url)),null,2));
-else throw new Error('Usage: schema | start --plan PLAN.json | start SOURCE.app [COCOA_PLUGIN] | resume SESSION.json | tool SESSION.json operation JSON | batch-check SESSION.json STEPS.json | batch SESSION.json STEPS.json [--compact] | recipe-check SESSION.json RECIPE.json VALUES.json | plan-check SESSION.json PLAN.json | plan SESSION.json PLAN.json [--compact] [--request-id ID] | plan-inspect SESSION.json REQUEST_ID | tools SESSION.json (JSON lines on stdin) | call SESSION.json operation JSON | native SESSION.json operation JSON | stop SESSION.json');
+else throw new Error('Usage: workflow-check SESSION.json WORKFLOW.json | schema | start --plan PLAN.json | start SOURCE.app [COCOA_PLUGIN] | resume SESSION.json | tool SESSION.json operation JSON | batch-check SESSION.json STEPS.json | batch SESSION.json STEPS.json [--compact] | recipe-check SESSION.json RECIPE.json VALUES.json | plan-check SESSION.json PLAN.json | plan SESSION.json PLAN.json [--compact] [--request-id ID] | plan-inspect SESSION.json REQUEST_ID | tools SESSION.json (JSON lines on stdin) | call SESSION.json operation JSON | native SESSION.json operation JSON | stop SESSION.json');

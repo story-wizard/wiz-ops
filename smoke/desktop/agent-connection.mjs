@@ -88,6 +88,9 @@ export async function toolRequest(file,request){
  if(request.operation==='recipe-check'){
   fields(request.params,['recipe','values'],'params');const {checkAgentRecipe}=await import('./agent-recipes.mjs');return {id:request.id,...await checkAgentRecipe(file,request.params.recipe,request.params.values)};
  }
+ if(request.operation==='workflow-check'){
+  fields(request.params,['workflow'],'params');const {checkAgentWorkflow}=await import('./agent-recipes.mjs');return {id:request.id,...await checkAgentWorkflow(file,request.params.workflow)};
+ }
  const started=performance.now();
  return {format:'athanor-agent-tool/v1',id:request.id,operation:request.operation,result:await agentTool(file,request.operation,request.params===undefined?{}:request.params),durationMs:performance.now()-started};
 }

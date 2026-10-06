@@ -7,7 +7,7 @@ import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {waitForObservation} from '../desktop/check-support.mjs';
 import {checkAgentPlan,runAgentPlan,inspectAgentPlan} from '../desktop/agent-plan.mjs';
-import {compileAgentRecipe,checkAgentRecipe} from '../desktop/agent-recipes.mjs';
+import {compileAgentRecipe,checkAgentRecipe,compileAgentWorkflow,checkAgentWorkflow} from '../desktop/agent-recipes.mjs';
 
 async function fixture(run){
  const data=await realpath(await mkdtemp('/private/tmp/athanor-connection-')),previous=process.env.SMOKE_DATA_DIR;process.env.SMOKE_DATA_DIR=data;
@@ -219,6 +219,7 @@ test('recipe compilation preserves typed values and all-path validation without 
 test('shipped recipe examples compile with typed parameters against the selected schema',async()=>fixture(async file=>{
  const schema=JSON.parse(await readFile(new URL('../runner/contracts/desktop-schema.json',import.meta.url),'utf8')),session=JSON.parse(await readFile(file,'utf8'));session.schema=schema;await writeFile(file,JSON.stringify(session));
  const valuesByRecipe={
+  'project-identity':{projectName:'fixture'},
   'media-search':{searchId:'9',query:'motion_25',expectedStatus:'1 match in 1 clip',mediaViewId:'8'},
   'add-video-track':{projectName:'fixture',timelineId:'timeline-fixture',addSelector:{id:'add'},timelineTarget:{id:'timeline'},captureTarget:{id:'main'},baselineTracks:[],expectedTrackCount:3},
   'inspector-edit':{graphScope:{timeline_id:'timeline-fixture',clip_id:'clip-fixture'},controlTarget:{id:'slider'},previewTarget:{id:'preview'},inspectorTarget:{id:'inspector-window'},thumbX:19,thumbY:7,baselineValue:16,baselineNodes:[],parameterPath:['nodes',0,'params','radius'],baselineTracks:[],timelineId:'timeline-fixture'},
@@ -278,4 +279,43 @@ test('Inspector recipe distinguishes an accidental focus edit from the tested ke
  });
  assert.equal(reply.status,accidentalFocusEdit?'Fail':'Completed');assert.deepEqual(keys,accidentalFocusEdit?[]:['right']);if(accidentalFocusEdit)assert.equal(reply.phases[0].result.stoppedAt,2);
  }
+}));
+
+const guardRecipe=()=>({format:'athanor-agent-recipe/v1',id:'project-guard',parameters:{name:{type:'string'}},continueAfter:['read'],plan:{format:'athanor-agent-plan/v1',start:'read',phases:[{id:'read',steps:[{operation:'call',params:{operation:'project.get_name'},expect:{path:['name'],equals:{$param:'name'}}}],next:null}]}});
+const workflowPart=(id,recipe=guardRecipe())=>({id,recipe,values:{name:'expected'}});
+test('workflow composition preserves recipes, gates, bindings and captures while default exits remain review stops',async()=>fixture(async file=>{
+ const bound={format:'athanor-agent-recipe/v1',id:'bound',parameters:{},plan:boundPlan()},undo={format:'athanor-agent-recipe/v1',id:'undo',parameters:{},plan:{format:'athanor-agent-plan/v1',start:'read',phases:[{id:'read',steps:[{operation:'physical',params:{command:'key',key:'cmd+z'}},{operation:'capture',params:{target:{class:'MainWindow'}}}],next:null}]}};
+ const workflow={format:'athanor-agent-workflow/v1',parts:[workflowPart('guard'),{id:'edit',recipe:bound,values:{}},{id:'undo',recipe:undo,values:{}}]},before=structuredClone(workflow),compiled=await checkAgentWorkflow(file,workflow);
+ assert.deepEqual(workflow,before);assert.equal(compiled.planRequests,2);assert.equal(compiled.savedRequests,1);assert.equal(compiled.segments[0].reviewAfter.reason,'recipe_review');assert.deepEqual(compiled.segments[0].reviewAfter.exits,['click']);
+ const seen=[],full=await runAgentPlan(file,compiled.segments[0].plan,async(_f,op,p)=>{seen.push({op,p});return op==='call'?{name:'expected'}:op==='observe'?{matchCount:1,matches:[{id:'fresh-button'}]}:{status:'Dispatched'};});
+ assert.equal(full.status,'Completed');assert.equal(seen.filter(s=>s.op==='physical').length,1);assert.equal(seen.at(-1).p.target.id,'fresh-button');assert.equal(full.bindingReads.length,1);assert.equal(full.bindingReads[0].gate.matched,true);assert.equal(seen.some(s=>s.p.key==='cmd+z'),false);
+ assert.equal(compiled.segments[1].plan.phases[0].steps[1].operation,'capture');
+ const incomplete=[];const blocked=await runAgentPlan(file,compiled.segments[0].plan,async(_f,op)=>{incomplete.push(op);return {name:'expected',partial:true};});assert.equal(blocked.status,'Blocked');assert.equal(blocked.failure.code,'incomplete_branch_observation');assert.deepEqual(incomplete,['call']);
+ // A false prerequisite or uncertain mutation must still prevent all downstream work.
+ for(const failure of ['Fail','Unknown']){const actions=[];const reply=await runAgentPlan(file,compiled.segments[0].plan,async(_f,op)=>{actions.push(op);if(failure==='Unknown')throw Object.assign(Error('lost response'),{status:'Unknown'});return {name:'wrong'};});assert.equal(reply.status,failure);assert.deepEqual(actions,['call']);}
+}));
+test('workflow namespaces colliding bindings and exact branch destinations without changing literal IDs or branch values',async()=>fixture(async file=>{
+ const schema=JSON.parse(await readFile(file,'utf8')).schema,r=guardRecipe();r.plan=routingPlan();r.parameters={};r.continueAfter=['use'];
+ // Make both terminal paths safe continuations after their declared readback gate.
+ for(const phase of r.plan.phases.filter(p=>p.next===null))phase.steps=[{operation:'call',params:{operation:'project.get_name'},expect:{path:['name'],equals:'ready'}}];
+ const compiled=compileAgentWorkflow({format:'athanor-agent-workflow/v1',parts:[{id:'one',recipe:r,values:{}},workflowPart('two')]},schema);
+ assert.equal(compiled.planRequests,1);const actions=[];const reply=await runAgentPlan(file,compiled.segments[0].plan,async()=>{actions.push('read');return {name:'ready'};});assert.equal(reply.status,'Fail');assert.equal(actions.length,3);assert.equal(reply.failure.code,'sequence_expectation_failed');
+ const b={format:'athanor-agent-recipe/v1',id:'bound',parameters:{},continueAfter:['click'],plan:boundPlan()};b.plan.phases[1].steps.push({operation:'call',params:{operation:'project.get_name'},expect:{path:['name'],equals:'expected'}});
+ const repeated=compileAgentWorkflow({format:'athanor-agent-workflow/v1',parts:[{id:'one',recipe:b,values:{}},{id:'two',recipe:b,values:{}}]},schema);let reads=0;const clicks=[];
+ const result=await runAgentPlan(file,repeated.segments[0].plan,async(_f,op,p)=>op==='observe'?{matchCount:1,matches:[{id:++reads<=2?'first':'second'}]}:op==='physical'?(clicks.push(p.target.id),{status:'Dispatched'}):{name:'expected'});
+ assert.equal(result.status,'Completed');assert.deepEqual(clicks,['first','second']);assert.equal(result.bindingReads.length,2);
+}));
+test('workflow checker validates later parts before input, rejects unsafe continuations and splits at plan limits',async()=>fixture(async file=>{
+ const schema=JSON.parse(await readFile(file,'utf8')).schema,broken=guardRecipe();broken.plan.phases[0].steps[0].params.operation='unsupported';
+ assert.throws(()=>compileAgentWorkflow({format:'athanor-agent-workflow/v1',parts:[workflowPart('good'),workflowPart('bad',broken)]},schema));
+ for(const change of [r=>r.continueAfter=['missing'],r=>r.continueAfter=['read','read'],r=>delete r.plan.phases[0].steps[0].expect,r=>r.plan.phases[0].steps[0]={operation:'physical',params:{command:'click'}},r=>r.plan.phases[0].steps[0].params.since='old']){const r=guardRecipe();change(r);assert.throws(()=>compileAgentWorkflow({format:'athanor-agent-workflow/v1',parts:[workflowPart('bad',r)]},schema));}
+ const large=guardRecipe();large.plan.phases[0].steps=Array(8).fill(large.plan.phases[0].steps[0]);
+ const split=compileAgentWorkflow({format:'athanor-agent-workflow/v1',parts:Array.from({length:5},(_,i)=>workflowPart('part'+i,large))},schema);
+ assert.equal(split.planRequests,2);assert.equal(split.segments[0].reviewAfter.reason,'plan_limits');assert.equal(split.segments[0].plan.phases.flatMap(p=>p.steps).length,32);assert.equal(split.segments[0].reviewAfter.automatic,false);
+ const budget=guardRecipe();budget.plan.maxDurationMs=123;assert.equal(compileAgentWorkflow({format:'athanor-agent-workflow/v1',parts:[workflowPart('short',budget),workflowPart('long')]},schema).segments[0].plan.maxDurationMs,123);
+}));
+test('workflow CLI and JSON-lines compile without resolving targets, writing state or dispatching an app',async()=>fixture(async file=>{
+ const workflow={format:'athanor-agent-workflow/v1',parts:[workflowPart('one'),workflowPart('two')]},input=file.replace('session.json','workflow.json');await writeFile(input,JSON.stringify(workflow));const listing=await readdir(file.replace('/session.json','')),before=await readFile(file,'utf8');
+ const result=JSON.parse(execFileSync(process.execPath,[new URL('../desktop/session.mjs',import.meta.url).pathname,'workflow-check',file,input],{encoding:'utf8'}));assert.equal(result.executed,false);assert.equal(result.planRequests,1);
+ let output='';await serveAgentTools(file,Readable.from([JSON.stringify({id:'compile',operation:'workflow-check',params:{workflow}})+'\n']),new Writable({write(chunk,_e,done){output+=chunk;done();}}));assert.equal(JSON.parse(output).workflowHash,result.workflowHash);assert.equal(await readFile(file,'utf8'),before);assert.deepEqual(await readdir(file.replace('/session.json','')),listing);
 }));

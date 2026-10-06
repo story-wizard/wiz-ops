@@ -221,7 +221,7 @@ known results for retention.
 
 ## Compile a reusable recipe
 
-The four editable recipes in `examples/recipes/` cover media search, Add Video
+The editable recipes in `examples/recipes/` cover media search, Add Video
 Track, Inspector editing and Undo. A recipe declares typed parameters and uses
 whole JSON values such as `{"$param":"timelineId"}`. Supported types are string,
 number, integer, boolean, object and array. No script execution or string
@@ -301,3 +301,58 @@ execution and time between requests separately, and group tool durations into
 physical input, state reads, waits and captures. Between-request time includes
 agent reasoning, transport and orchestration; it is not a model-inference timer.
 Keep run data and evidence in the external workspace.
+
+## Compose recipes before dispatch
+
+`workflow-check` is a small planner for an ordered list of authored recipes.
+It validates every recipe against the selected build, namespaces phase and
+binding IDs, and combines compatible parts into ordinary control plans. It
+returns recipe/value hashes, phase origins, request counts and review stops;
+it makes no app requests or writes. Use it from the CLI or JSON-lines connection:
+
+```sh
+node desktop/session.mjs workflow-check SESSION.json /external/workflow.json > /external/compiled-workflow.json
+```
+
+```json
+{"id":"compile-workflow","operation":"workflow-check","params":{"workflow":{"format":"athanor-agent-workflow/v1","parts":[{"id":"identity","recipe":{},"values":{}},{"id":"edit","recipe":{},"values":{}}]}}}
+```
+
+Replace the empty recipe/value objects with the complete source recipe and this
+session's typed values. There are no file includes or automatic downloads.
+For example, compose `project-identity.json`, `add-video-track.json` and
+`timeline-undo.json`. The identity prerequisite joins Add Track; Add Track's
+review stop keeps Undo in a second plan. Review the complete added-track state
+and screenshot before deciding to dispatch that second plan. The original
+Add Track, search and Inspector examples keep their review boundaries.
+
+A recipe can explicitly declare `continueAfter: ["terminal-phase-id"]`.
+This is an authored decision that the next recipe is known and does not need
+interpretation at that exit. Its last non-capture step must be a gated full
+read-only observation; only captures may follow it. It does not certify that
+the assertion is sufficient. Write the independent oracle appropriate to the
+test. Geometry, newly opened dialogs, incomplete data and visual interpretation
+remain review stops. Every undeclared exit defaults to review. If any possible
+exit needs review, the planner does not attach another recipe to that part.
+
+The result's `segments` contain separate `plan` objects and `reviewAfter`.
+Extract and inspect one plan, then execute it once with the usual known request
+ID. Never loop over all segments automatically. `recipeRequests`, `planRequests`
+and `savedRequests` count potential dispatch requests, excluding validation,
+setup and review. They are not timing predictions.
+
+Before a joined continuation, the executor also rejects incomplete readbacks,
+even if their supplied value gate matched. The generated `continuationRead`
+index points to that gated read; following captures remain intact.
+
+Each segment keeps the existing eight-phase, 32-step, eight-binding and 64 KiB
+limits. If joining would exceed a limit, a new segment begins at a review stop.
+Its dispatch budget is the smallest budget among its parts, so composition does
+not extend an existing deadline. Bindings stay local to their recipe, are
+namespaced and retain ordinary unique-source refreshes before input. Values
+cannot refer to another part's bindings. Independent gates, captures, branches,
+action IDs and literal target IDs remain intact. Fail, Blocked and Unknown stop
+through the existing executor; there is no second executor or recovery loop.
+
+Planning is deterministic composition of caller-selected recipes. Freeform
+intent selection and semantic geometry routing remain agent work.
