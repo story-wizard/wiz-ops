@@ -1,0 +1,27 @@
+{
+  "render.set_render_mode": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "mode": {
+        "description": "Timeline preview resolution while playing or scrubbing, the same setting as the viewer's selector: 'full' (no reduction), 'auto', 'half', 'quarter', or 'eighth'",
+        "enum": [
+          "full",
+          "auto",
+          "half",
+          "quarter",
+          "eighth"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "mode"
+    ],
+    "type": "object"
+  }
+}

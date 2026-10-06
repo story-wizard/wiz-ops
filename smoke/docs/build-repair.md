@@ -16,6 +16,8 @@ The selected package and instrumented desktop tools are separate inputs. A deskt
 
 ## Choose the repair
 
+- Preparation automatically accepts conservative structural extensions of the baseline or a retained reviewed contract: object-key reordering, new operations (and their new result/error definitions), request enums that retain every old value, and optional properties on closed objects without pattern properties. These do not require a per-build hash patch. The prepared plan records `schemaCompatibility`, the reviewed anchor and the accepted differences; readiness still pins the selected build's exact schema hash.
+- Required-field, existing response/error, type, default, description, constraint, composition and reference changes still need review. Descriptions can change time-clock or default semantics, as the October 6 contract demonstrates. Adding a named property to an open object may constrain formerly allowed input, so that also needs review. Failure names the differing paths and retains a complete comparison receipt under the external workspace's `schema-reviews` directory.
 - If an existing reviewed schema matches, inspect the source/service version and configured tool paths. Refresh the source service or install the matching bundle.
 - For a compatible, reviewed change, add its exact structured hash and comparison basis to `runner/contracts/packaged-schema-qualifications.json`. Tie it to the existing baseline hash. Keep unreviewed changes blocked. Do not replace the baseline merely to make preparation green.
 - If parameters, responses or behavior changed, trace the affected checks and shared adapters. Update their requests and independent assertions, then add a regression that rejects the old incorrect behavior. Preserve each test's stable ID where its purpose is unchanged.
@@ -46,13 +48,23 @@ and seven changed definitions. The official macOS ZIP hash is
 | Eighth preview resolution | Current checks do not call render.set_render_mode. Existing quality controls retain their own UI checks. |
 | Time-remap, freeze-frame and graph analysis additions | Current courses do not invoke these new operations; their presence does not add test coverage. |
 
-The regression fixture retains only the eleven changed/added operation definitions
+The reviewed contract retains only the eleven changed/added operation definitions
 from the shipped CLI and reconstructs the exact reviewed hash with the baseline.
+The qualification's `operationsFile` points to these retained definitions so later
+compatible extensions can inherit the review. Its reconstructed hash must match
+the qualification; merely naming a file cannot approve a different contract.
 It also checks that removed operations, changed required fields, narrowed search
-scopes, altered keyframe time objects, new resolution values and a mismatched
+scopes, altered keyframe time objects, removed resolution values and a mismatched
 baseline remain blocked. Preparation and application test outcomes are retained
 separately in the external workspace. An older failed preparation stays failed;
 update the source and prepare again as a new attempt.
+
+The policy checks every existing operation. Course-specific exclusions remain
+deferred until declarations include shared setup calls and desktop dependencies;
+the current desktop selection does not retain a complete operation list.
+Compatibility permits test execution; independent assertions still decide Pass.
+A new application dialog, such as the fresh-project version warning, needs a
+separate startup-flow repair and cannot be handled by schema comparison.
 
 ## Copyable request
 

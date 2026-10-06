@@ -4,6 +4,7 @@
   "reviewed": [
     {
       "schemaHash": "0f16934c7ed782d772930a5c56bed115b92cfce169093fe8e703c2d4ead66f49",
+      "operationsFile": "packaged-schema-2026.10.01-operations.json",
       "reviewedAt": "2026-10-01",
       "changes": [
         "render.set_render_mode.properties.mode.enum adds eighth",
@@ -13,6 +14,7 @@
     },
     {
       "schemaHash": "285748db89d4172a33dfd5c5b1f4478681326fd4d2f3d20e70f6e6a249f5b1bb",
+      "operationsFile": "packaged-schema-2026.10.06-operations.json",
       "reviewedAt": "2026-10-06",
       "changes": [
         "Adds clip_effects.enable_time_remap, clip_effects.disable_time_remap, clip_effects.freeze_frame and graph.analyze_node",

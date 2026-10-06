@@ -113,6 +113,14 @@ generation and Jev remain deferred. See the sequence guide and media-plan exampl
 
 ## Default checklist and qualification
 
+Packaged schemas use conservative structural compatibility, not a per-nightly
+allowlist alone. New operations and wider request enums may extend a retained
+reviewed contract automatically. Read `schemaCompatibility` in the frozen plan;
+review failures name paths and retain a receipt in the external `schema-reviews`
+directory. Changed defaults, descriptions, responses and constraints still need
+review. Do not replace baselines or suppress application dialogs to get Ready.
+See `docs/build-repair.md`; compatibility is separate from a passing course.
+
 A fresh launcher defaults to `smoke-full`: accepted core checks plus the maintained allowlist of physical/checklist qualification candidates. `automated-full` remains accepted-only; custom courses cannot promote candidates. Read `docs/agent-courses.md` for current composition. New physical groups must expose their selected definitions in `agent-context.json`, execute in fresh owned projects, preserve failures and retain native-input receipts in the course report. Stage executors run from the retained source snapshot. Keep the Mac unlocked for desktop checks; never attempt to bypass the lock screen or change system security settings.
 
 The default `smoke-full` revision 8 excludes `S-PF-IDLE`. It adds ten qualification candidates for project search across timeline focus, physical blur Inspector editing, mask clipboard/history, vectorscope tap response, New Project, Save As, projectless Preferences, missing-term search, 100-clip clipboard and 50-step physical history. Read the current qualification notes in `docs/harness-control.md`; lead acceptance remains separate. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.

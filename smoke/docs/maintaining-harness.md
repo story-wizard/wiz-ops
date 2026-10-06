@@ -40,7 +40,7 @@ Legacy v1 bundles and `bundle --runtime FILE` remain available for historical to
 
 ## Qualify a packaged command schema
 
-The baseline is `runner/contracts/installed-schema.json`. Extra reviewed package schemas are recorded by their exact hashes in `runner/contracts/packaged-schema-qualifications.json`, tied to that baseline hash. Preparation accepts either the baseline or one of those reviewed schemas, then freezes the actual schema hash in the plan. Readiness rechecks that exact identity. The instrumented desktop CLI has its own contract.
+The baseline is `runner/contracts/installed-schema.json`. Extra reviewed package schemas are recorded by their exact hashes in `runner/contracts/packaged-schema-qualifications.json`, tied to that baseline hash. Preparation accepts the baseline, reviewed schemas, and conservative structural extensions of retained reviewed definitions. New operations and wider request enums can roll forward without a daily patch. Existing response, constraint, default and semantic-description changes still require review. The plan retains the compatibility decision and freezes the actual schema hash; readiness rechecks that exact identity. See [build repair](build-repair.md) for the complete policy. The instrumented desktop CLI has its own contract.
 
 To qualify a new schema, read it using `wiz-cli project create --schema --no-spawn`, compare every operation against the baseline, inspect changes against the checks' requests and assertions, and add a qualification with its hash and review basis. Run the regression checks and prepare the actual package. Missing or unreviewed changes stay blocked. Updating the baseline requires reviewing its qualifications again.
 
