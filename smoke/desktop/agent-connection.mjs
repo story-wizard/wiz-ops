@@ -75,13 +75,19 @@ export async function toolRequest(file,request){
  if(request.plan!==undefined){
   if(request.operation!==undefined||request.params!==undefined||request.steps!==undefined)throw proofError('invalid_plan','Use a plan, steps or an operation, not a combination',['correct_parameters']);
   const {runAgentPlan}=await import('./agent-plan.mjs');
-  return {id:request.id,...await runAgentPlan(file,request.plan,undefined,{compact:request.compact===undefined?false:request.compact})};
+  return {id:request.id,...await runAgentPlan(file,request.plan,undefined,{compact:request.compact===undefined?false:request.compact,requestId:request.id})};
  }
  if(request.steps!==undefined){
   if(request.operation!==undefined||request.params!==undefined)throw proofError('invalid_sequence','Use steps or an operation, not both',['correct_parameters']);
   return {id:request.id,...await agentSequence(file,request.steps,undefined,{compact:request.compact===undefined?false:request.compact})};
  }
  if(request.compact!==undefined)throw proofError('invalid_sequence','compact is only available for steps',['correct_parameters']);
+ if(request.operation==='plan-inspect'){
+  fields(request.params,['requestId'],'params');const {inspectAgentPlan}=await import('./agent-plan.mjs');return {id:request.id,...await inspectAgentPlan(file,request.params.requestId)};
+ }
+ if(request.operation==='recipe-check'){
+  fields(request.params,['recipe','values'],'params');const {checkAgentRecipe}=await import('./agent-recipes.mjs');return {id:request.id,...await checkAgentRecipe(file,request.params.recipe,request.params.values)};
+ }
  const started=performance.now();
  return {format:'athanor-agent-tool/v1',id:request.id,operation:request.operation,result:await agentTool(file,request.operation,request.params===undefined?{}:request.params),durationMs:performance.now()-started};
 }

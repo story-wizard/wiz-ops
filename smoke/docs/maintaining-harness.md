@@ -15,7 +15,7 @@ node scripts/harness.mjs bundle --app /path/to/Wizard.app --data-dir /external/b
 node scripts/harness.mjs check --bundle /external/Athanor-VERSION
 ```
 
-Bundling compiles or reuses the adapter, copies it beside the source, and verifies the complete inventory. It does not launch Wizard. The destination must be new and outside Git. The bundle can be relocated. Its manifest records source and tool hashes; it is an integrity check for a trusted bundle.
+Bundling compiles or reuses the adapter, copies it beside the source, and verifies the complete inventory. It does not launch Wizard. The destination must be new and outside Git. The bundle can be relocated. Its manifest records source byte hashes, Git commit/tree identities, dirty state and tool hashes; it is an integrity check for a trusted bundle.
 
 Selected-build bundles also include the compiled native input driver and foreground lease helper. They are matched by source hash and CPU architecture, copied into the external cache, and verified before use. Source-only checkouts compile this driver with the Swift compiler from macOS Command Line Tools. See [computer-use testing](computer-use-agent.md) for the agent workflow and physical permission checks.
 
@@ -88,3 +88,7 @@ The `Athanor framework checks` GitHub workflow runs the framework suite and scop
 Ordinary failed assertions remain recorded and the run continues through independent checks and stages. Script completion and individual test observations are separate. An unexplained nonzero exit or failed stage finalization prevents a successful run, preserves completed observations, and stops later stages. Pointer cleanup balances a synthetic press even if the verified application loses focus; new gestures still require current process and window ownership.
 
 If Start loses its response, use **Check start status**. If no admission is found, **Retry original start** resubmits the same immutable request ID and plan. Do not generate a new request ID to recover a lost response. The server reconciles a racing or duplicate admission under that original ID.
+
+For Core/App persistence changes, use [caller preflight](caller-preflight.md) to
+select both sides of the boundary and inspect exact source identities. It is
+read-only planning; build/test results, CI and packaged acceptance remain separate.

@@ -13,6 +13,8 @@ Work from the command root: `smoke/` in a checkout or `workspace/` in a bundle. 
 | Run or compose an existing course | [Agent courses](docs/agent-courses.md) |
 | Explore Wizard with mouse, keyboard and app operations | [Computer-use guide](docs/computer-use-agent.md) |
 | Understand how the CLI, Qt adapter and physical input work together | [Harness control](docs/harness-control.md) |
+| Plan and reuse short agent workflows | [Agent sequences](docs/agent-sequences.md) |
+| Check the App caller of a Core persistence change | [Caller preflight](docs/caller-preflight.md) |
 | Compare or improve agent control tooling | [Control harness baseline](docs/control-comparison.md) |
 | Investigate failed checks and prepare bug drafts | [Investigations](docs/investigations.md) |
 | Inventory a supplied .wiz project and plan representative-media checks | [Golden Project intake](docs/golden-project-intake.md) |
@@ -143,3 +145,20 @@ pixel predicate; two matching samples are required and all settling samples are
 retained. Compositor freshness is distinct from renderer-frame acknowledgement.
 Keep observation budgets separate from performance acceptance and preserve
 historical failed attempts. See `docs/agent-tools.md` for helper contracts.
+
+For reusable control recipes and guarded result bindings, read the sequence guide.
+`recipe-check SESSION RECIPE VALUES` compiles typed JSON into a validated plan
+without app input. Runtime values stay external. Choose a known plan request ID
+before dispatch; recover via `plan-inspect`, never replay. Inspection exposes
+retained prefixes and possible in-flight actions without writes or resumption.
+Bindings carry complete unique observed IDs/model offsets only, refresh their
+literal source before use and preserve every ordinary input guard. Geometry and
+new dialogs stay review checkpoints. Recipe gates remain exploration until the
+selected check's frozen proof contract is satisfied.
+
+For a Core/App persistence change, use `scripts/caller-preflight.mjs --app DIR --core DIR`
+and read `docs/caller-preflight.md`. Verify configured build directories, build and
+run both mapped targets, and retain outputs. Discovery never counts as passed tests.
+Exact reviewed hashes compare commits and trees separately; do not update pins or
+accept dirty source automatically. Preparation/bundle Git identities are separate
+from the retained byte fingerprint and selected package hash.

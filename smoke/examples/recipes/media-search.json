@@ -1,0 +1,171 @@
+{
+  "format": "athanor-agent-recipe/v1",
+  "id": "media-search",
+  "parameters": {
+    "searchId": {
+      "type": "string"
+    },
+    "query": {
+      "type": "string"
+    },
+    "expectedStatus": {
+      "type": "string"
+    },
+    "mediaViewId": {
+      "type": "string"
+    }
+  },
+  "plan": {
+    "format": "athanor-agent-plan/v1",
+    "start": "inspect-query",
+    "maxDurationMs": 30000,
+    "phases": [
+      {
+        "id": "inspect-query",
+        "steps": [
+          {
+            "operation": "observe",
+            "params": {
+              "selector": {
+                "id": {
+                  "$param": "searchId"
+                }
+              }
+            },
+            "expect": {
+              "path": [
+                "matchCount"
+              ],
+              "equals": 1
+            }
+          }
+        ],
+        "next": {
+          "step": 0,
+          "path": [
+            "matches",
+            0,
+            "text"
+          ],
+          "cases": [
+            {
+              "equals": "",
+              "phase": "enter-query"
+            },
+            {
+              "equals": {
+                "$param": "query"
+              },
+              "phase": "results"
+            }
+          ]
+        }
+      },
+      {
+        "id": "enter-query",
+        "steps": [
+          {
+            "operation": "physical",
+            "params": {
+              "command": "click",
+              "target": {
+                "id": {
+                  "$param": "searchId"
+                }
+              },
+              "title": "Focus the media search"
+            }
+          },
+          {
+            "operation": "physical",
+            "params": {
+              "command": "key",
+              "target": {
+                "id": {
+                  "$param": "searchId"
+                },
+                "focused": true
+              },
+              "key": "cmd+a"
+            }
+          },
+          {
+            "operation": "physical",
+            "params": {
+              "command": "type",
+              "target": {
+                "id": {
+                  "$param": "searchId"
+                },
+                "focused": true
+              },
+              "text": {
+                "$param": "query"
+              }
+            }
+          },
+          {
+            "operation": "physical",
+            "params": {
+              "command": "key",
+              "target": {
+                "id": {
+                  "$param": "searchId"
+                },
+                "focused": true
+              },
+              "key": "return"
+            }
+          }
+        ],
+        "next": "results"
+      },
+      {
+        "id": "results",
+        "steps": [
+          {
+            "operation": "wait",
+            "params": {
+              "selector": {
+                "name": "mediaSearchStatus"
+              },
+              "condition": "text",
+              "expected": {
+                "$param": "expectedStatus"
+              },
+              "timeoutMs": 10000
+            }
+          },
+          {
+            "operation": "observe",
+            "params": {
+              "selector": {
+                "id": {
+                  "$param": "mediaViewId"
+                }
+              },
+              "details": true
+            },
+            "expect": {
+              "path": [
+                "matchCount"
+              ],
+              "equals": 1
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
+                "class": "MainWindow"
+              },
+              "kind": "presented",
+              "title": "Search results"
+            }
+          }
+        ],
+        "next": null
+      }
+    ]
+  }
+}

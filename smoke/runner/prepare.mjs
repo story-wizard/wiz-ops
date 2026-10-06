@@ -12,6 +12,7 @@ export async function speechModelIdentity(directory=path.join(homedir(),'.cache/
 
 import {ROOT,dataDirectory,readJSON,writeJSON,fingerprint,digest,sha,inside} from './files.mjs';
 import {localBuilds,assertBuildIdentity} from '../builds.mjs';
+import {sourceProvenance} from './source-provenance.mjs';
 import {prepareFixtures,validateFixtures} from './fixtures.mjs';
 import {ingestPython,validateIngestProfile} from './ingest.mjs';
 import {selectedBuildRuntime,verifyRuntime,assertSelectedRuntime} from './runtime.mjs';
@@ -79,7 +80,7 @@ export async function prepare({app='/Applications/Wizard.app',dataDir=dataDirect
     finally{attached.child.kill('SIGTERM');const force=setTimeout(()=>attached.child.kill('SIGKILL'),3000);await attached.closed;clearTimeout(force);}
   }
   await onProgress('ready');
-  const content={kitVersion:2,runtime:desktopRuntime,attachmentQualification,...(selection?{recipe:course}:{}),speechModel,format:'wizard-smoke-prepared/v1',preparedAt:new Date().toISOString(),app,version,packageHash:pkg.sha256,packageFiles:pkg.files,schemaHash:digest(schema),fixtureRoot,fixtureHash:fixtures.sha256,courseHash:digest(course),runnerHash:await sourceIdentity(),courseId:course.id,cases:course.cases.map(c=>c.id),deferred:Object.keys(course.deferred),target:course.target,excludedPackagePaths:['Contents/MacOS/logs','**/__pycache__','**/*.pyc','**/.DS_Store']};
+  const content={kitVersion:2,runtime:desktopRuntime,attachmentQualification,...(selection?{recipe:course}:{}),speechModel,format:'wizard-smoke-prepared/v1',preparedAt:new Date().toISOString(),app,version,packageHash:pkg.sha256,packageFiles:pkg.files,schemaHash:digest(schema),fixtureRoot,fixtureHash:fixtures.sha256,courseHash:digest(course),runnerHash:await sourceIdentity(),runnerProvenance:await sourceProvenance(ROOT),courseId:course.id,cases:course.cases.map(c=>c.id),deferred:Object.keys(course.deferred),target:course.target,excludedPackagePaths:['Contents/MacOS/logs','**/__pycache__','**/*.pyc','**/.DS_Store']};
   const plan={...content,planHash:digest(content)};
   if(selection){await mkdir(path.join(dataDir,'plans'),{recursive:true});await writeJSON(path.join(dataDir,'plans',plan.planHash+'.json'),plan);}
   else{await writeJSON(path.join(dataDir,'prepared.json'),plan);

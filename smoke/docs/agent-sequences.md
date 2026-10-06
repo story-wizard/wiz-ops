@@ -64,7 +64,7 @@ directly, not the CLI envelope's `result` field. It supports `path`, `equals`,
 
 A false expectation is Fail and stops later steps. Completed means all tools
 and supplied gates completed; record a test Pass only through its frozen proof
-contract. There is no rollback, target reservation or variable substitution.
+contract. There is no rollback or target reservation in a batch.
 Use a new sequence when you need a value returned by the previous one.
 
 ## Adapt the examples
@@ -145,7 +145,7 @@ ownership, uncertainty and fresh input guards.
 
 ```sh
 node desktop/session.mjs plan-check SESSION.json /absolute/control-plan.json
-node desktop/session.mjs plan SESSION.json /absolute/control-plan.json --compact
+node desktop/session.mjs plan SESSION.json /absolute/control-plan.json --request-id KNOWN_ID --compact
 ```
 
 The JSON-lines equivalent is `{"id":"unique-id","plan":{...},"compact":true}`.
@@ -198,19 +198,70 @@ dispatch budget checked before every operation and continuation. A running
 operation keeps its own timeout and returns before the budget stops further work;
 the engine never races cancellation against an uncertain mutation.
 
-The plan records its parameters, build/process identity, completed phase results,
-branch values and selected path. `progress` is written before each phase and
-after its result/decision; the final `receipt.path` is checksummed. Compact replies
-keep phase summaries and evidence references; full results remain in the receipt.
-On interruption, inspect the active phase in progress and the ordinary per-tool
-journals. Progress does not mean every input in that phase finished. A request ID
-still provides correlation only. Never resend a lost plan or replay its prefix.
-Storage failure stops further phases and returns the known results for retention.
+## Recover a plan response
 
-No variable substitution, automatic target rebinding or plan generation is
-included. End at a review checkpoint when an ID, geometry, modal or decision
-needs fresh interpretation. Compare authored plans with agent-directed batches
-on several control families before expanding unattended execution.
+Choose `--request-id KNOWN_ID` before dispatch. JSON-lines plans use their request
+`id`. Athanor writes intent before every action, retains the returned prefix and
+writes a checksummed final receipt. A duplicate ID is rejected before dispatch,
+including after Unknown. It is an inspection key, not an app-mutation retry key.
+
+```sh
+node desktop/session.mjs plan-inspect SESSION.json KNOWN_ID
+```
+
+The read-only JSON-lines equivalent is
+`{"id":"inspect-1","operation":"plan-inspect","params":{"requestId":"KNOWN_ID"}}`.
+Inspection returns completed phases, active action, returned prefix, bindings and
+refresh reads. It verifies final receipt bytes and reports whether the saved
+build/process/project identity still matches the current session. Historical
+results remain inspectable after rebinding. Retained Running progress is shown
+as Unsettled: it may still be active or interrupted. Inspect tool journals and reconcile possible effects. There is
+no resume or automatic replay. Storage failure stops further work and returns
+known results for retention.
+
+## Compile a reusable recipe
+
+The four editable recipes in `examples/recipes/` cover media search, Add Video
+Track, Inspector editing and Undo. A recipe declares typed parameters and uses
+whole JSON values such as `{"$param":"timelineId"}`. Supported types are string,
+number, integer, boolean, object and array. No script execution or string
+interpolation is involved. Keep this run's values outside Git.
+
+```sh
+node desktop/session.mjs recipe-check SESSION.json RECIPE.json VALUES.json > /external/compiled.json
+```
+
+This returns `recipeHash`, `valuesHash`, the compiled `plan`, and all-path
+parameter/schema validation without app requests or writes. Extract `plan` into
+an external file, inspect it, then use `plan-check` and `plan` as above. The
+JSON-lines connection also accepts `recipe-check` with `recipe` and `values`.
+Add Video Track demonstrates exporting the uniquely observed button ID and
+refreshing that selector before the click. Examples end at review checkpoints. Compare complete domain identity/state and
+required pixels; their exploratory gates do not replace a frozen Pass contract.
+
+## Carry an observed entity into a later phase
+
+A plan may declare up to eight `bindings`. Each names a prior phase's gated
+read-only step, a unique array and a string ID or nonnegative integer model
+offset from its sole element:
+
+```json
+{"button":{"phase":"find","step":0,"uniquePath":["matches"],"path":["matches",0,"id"],"type":"string"}}
+```
+
+Use `{"$binding":"button"}` as the whole value of a parameter ID field, for
+example `params.target.id`. Integer bindings are limited to model `offset`.
+Every route must pass the binding source before using it. The validator checks
+all paths with typed placeholders, then validates resolved parameters again
+before the phase executes. Before each use it rereads the exact literal source,
+requires its gate and a complete unique value, and compares with the retained
+identity. Missing, partial, ambiguous, changed or wrong-type data blocks input.
+Refreshes count toward the dispatch budget and remain in the receipt.
+
+Ordinary ownership, uncertainty, deadline and fresh physical-target checks still
+run on every input. Bindings do not reserve targets or supply geometry, input
+text, commands or new-dialog decisions. Keep those as agent review checkpoints.
+Automatic plan generation and semantic routing remain deferred.
 
 An optional semantic decision source could rank compatible recipes or propose
 an investigation route. TypeSafe Jev is a candidate for that role, rather than

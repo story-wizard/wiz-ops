@@ -10,6 +10,8 @@ The first release supports automated testing of a selected Wizard build and agen
 
 Start with the [two-page getting-started guide (PDF)](docs/athanor-getting-started.pdf), or use [demo and first run](docs/demo-guide.md) for a short team walkthrough. The [agent onboarding prompt](examples/agent-onboarding.txt) hands the checkout to a user’s agent.
 
+For reusable short workflows, use [agent sequences](docs/agent-sequences.md): typed recipes, bounded plans, refreshed entity bindings and read-only recovery by a known plan ID. Core/App persistence changes also have a [caller preflight](docs/caller-preflight.md) that selects both sides of the boundary without executing them.
+
 For agents driving Wizard with mouse and keyboard, use the [computer-use toolkit](docs/computer-use-agent.md). It supplies a prepared test session, scoped Qt observations, physical gestures, independent verification and an interactive evidence report.
 
 Read the [October 2 changes](docs/changes-2026-10-02.md) for the expanded mixed course, physical checks and composable authoring guidance.

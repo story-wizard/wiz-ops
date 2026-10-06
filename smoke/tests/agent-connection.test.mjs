@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,mkdir,writeFile,readFile,readdir,rm,realpath} from 'node:fs/promises';
+import {mkdtemp,mkdir,writeFile,readFile,readdir,rm,realpath,symlink} from 'node:fs/promises';
 import {Readable,Writable} from 'node:stream';
 import {agentSequence,serveAgentTools,validateSequence} from '../desktop/agent-connection.mjs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {waitForObservation} from '../desktop/check-support.mjs';
-import {checkAgentPlan,runAgentPlan} from '../desktop/agent-plan.mjs';
+import {checkAgentPlan,runAgentPlan,inspectAgentPlan} from '../desktop/agent-plan.mjs';
+import {compileAgentRecipe,checkAgentRecipe} from '../desktop/agent-recipes.mjs';
 
 async function fixture(run){
  const data=await realpath(await mkdtemp('/private/tmp/athanor-connection-')),previous=process.env.SMOKE_DATA_DIR;process.env.SMOKE_DATA_DIR=data;
@@ -151,8 +152,8 @@ test('plans preserve Unknown and Fail prefixes without executing another phase o
  }
 }));
 test('plan budget expires between steps without cancelling or replaying a returned edit',async()=>fixture(async file=>{
- const plan={format:'athanor-agent-plan/v1',start:'edit',maxDurationMs:30,phases:[{id:'edit',steps:[{operation:'physical',params:{command:'click'}},{operation:'physical',params:{command:'key',key:'right'}}],next:null}]};
- let calls=0;const reply=await runAgentPlan(file,plan,async()=>{calls++;await new Promise(r=>setTimeout(r,60));return {status:'Dispatched'};});
+ const plan={format:'athanor-agent-plan/v1',start:'edit',maxDurationMs:300,phases:[{id:'edit',steps:[{operation:'physical',params:{command:'click'}},{operation:'physical',params:{command:'key',key:'right'}}],next:null}]};
+ let calls=0;const reply=await runAgentPlan(file,plan,async()=>{calls++;await new Promise(r=>setTimeout(r,400));return {status:'Dispatched'};});
  assert.equal(calls,1);assert.equal(reply.status,'Blocked');assert.equal(reply.failure.code,'plan_budget_exceeded');assert.deepEqual(reply.phases[0].result.summary.returnedMutationIndexes,[0]);
 }));
 test('a stale input binding stops the plan at that phase without executing downstream work',async()=>fixture(async file=>{
@@ -177,4 +178,93 @@ test('CLI and JSON-lines expose plans and reject ambiguous plan requests before 
  const reply=JSON.parse(execFileSync(process.execPath,[cli,'plan',file,planFile,'--compact'],{encoding:'utf8',timeout:10000}));assert.equal(reply.status,'Completed');assert.equal(reply.encoding,'compact');
  let output='';await serveAgentTools(file,Readable.from([JSON.stringify({id:'plan',plan,compact:true})+'\n'+JSON.stringify({id:'ambiguous',plan,steps:[{operation:'context'}]})+'\n']),new Writable({write(chunk,_e,done){output+=chunk;done();}}));
  const replies=output.trim().split('\n').map(JSON.parse);assert.equal(replies[0].status,'Completed');assert.equal(replies[0].id,'plan');assert.equal(replies[1].status,'Blocked');
+}));
+test('known plan IDs recover retained outcomes and reject duplicate dispatch including after Unknown',async()=>fixture(async file=>{
+ const plan={format:'athanor-agent-plan/v1',start:'edit',phases:[{id:'edit',steps:[{operation:'physical',params:{command:'click'}}],next:null}]};
+ for(const status of ['Completed','Unknown']){
+  const requestId='recover-'+status;let calls=0;
+  const reply=await runAgentPlan(file,plan,async()=>{calls++;if(status==='Unknown')throw Object.assign(Error('Lost response'),{status:'Unknown',code:'input_focus_lost'});return {status:'Returned'};},{compact:true,requestId});
+  assert.equal(reply.status,status);const inspected=await inspectAgentPlan(file,requestId);assert.equal(inspected.status,status);assert.equal(inspected.executable,false);assert.equal(inspected.currentSessionMatches,true);assert.equal(inspected.requestId,requestId);assert.equal(inspected.receipt.sha256,reply.receipt.sha256);
+  await assert.rejects(()=>runAgentPlan(file,plan,async()=>{calls++;},{requestId}),e=>e.code==='plan_request_exists');assert.equal(calls,1);
+ }
+}));
+test('inspection of active progress exposes returned prefix and pending action without replay or writes',async()=>fixture(async file=>{
+ const requestId='interrupted-prefix',plan={format:'athanor-agent-plan/v1',start:'edits',phases:[{id:'edits',steps:[{operation:'physical',params:{command:'click'}},{operation:'physical',params:{command:'key',key:'right'}}],next:null}]};let calls=0;
+ await runAgentPlan(file,plan,async()=>{
+  calls++;const inspected=await inspectAgentPlan(file,requestId),before=await readFile(inspected.progress,'utf8');
+  assert.equal(inspected.status,'Unsettled');assert.equal(inspected.retainedStatus,'Running');assert.equal(inspected.summary.activeStep.index,calls-1);assert.equal(inspected.summary.activeStep.status,'Started');assert.equal(inspected.activeResults.length,calls-1);assert.equal(inspected.executable,false);
+  await inspectAgentPlan(file,requestId);assert.equal(await readFile(inspected.progress,'utf8'),before);return {status:'Returned'};
+ },{requestId});assert.equal(calls,2);
+}));
+test('plan identity changes block the next input and retained receipt corruption is rejected',async()=>fixture(async file=>{
+ const requestId='identity',plan={format:'athanor-agent-plan/v1',start:'edits',phases:[{id:'edits',steps:[{operation:'physical',params:{command:'click'}},{operation:'physical',params:{command:'key',key:'right'}}],next:null}]};let calls=0;
+ const reply=await runAgentPlan(file,plan,async()=>{calls++;const s=JSON.parse(await readFile(file,'utf8'));s.generation=2;await writeFile(file,JSON.stringify(s));return {status:'Returned'};},{requestId});
+ assert.equal(calls,1);assert.equal(reply.status,'Blocked');assert.equal(reply.failure.code,'plan_identity_changed');assert.equal((await inspectAgentPlan(file,requestId)).currentSessionMatches,false);
+ await writeFile(reply.receipt.path,'{}');await assert.rejects(()=>inspectAgentPlan(file,requestId),e=>e.code==='plan_receipt_mismatch');
+}));
+test('CLI request IDs and read-only JSON-lines inspection recover a plan without an app',async()=>fixture(async file=>{
+ const plan={format:'athanor-agent-plan/v1',start:'context',phases:[{id:'context',steps:[{operation:'context'}],next:null}]},planFile=file.replace('session.json','plan.json');await writeFile(planFile,JSON.stringify(plan));const cli=new URL('../desktop/session.mjs',import.meta.url).pathname;
+ const run=JSON.parse(execFileSync(process.execPath,[cli,'plan',file,planFile,'--request-id','cli-known','--compact'],{encoding:'utf8',timeout:10000}));assert.equal(run.requestId,'cli-known');
+ const inspect=JSON.parse(execFileSync(process.execPath,[cli,'plan-inspect',file,'cli-known'],{encoding:'utf8',timeout:10000}));assert.equal(inspect.status,'Completed');assert.equal(inspect.executable,false);
+ let output='';await serveAgentTools(file,Readable.from([JSON.stringify({id:'read',operation:'plan-inspect',params:{requestId:'cli-known'}})+'\n']),new Writable({write(chunk,_e,done){output+=chunk;done();}}));assert.equal(JSON.parse(output).status,'Completed');assert.equal(JSON.parse(output).id,'read');
+}));
+test('recipe compilation preserves typed values and all-path validation without app input or writes',async()=>fixture(async file=>{
+ const recipe={format:'athanor-agent-recipe/v1',id:'name',parameters:{name:{type:'string'}},plan:{format:'athanor-agent-plan/v1',start:'read',phases:[{id:'read',steps:[{operation:'call',params:{operation:'project.get_name'},expect:{path:['name'],equals:{$param:'name'}}}],next:null}]}};
+ const before=await readFile(file,'utf8'),listing=await readdir(file.replace('/session.json',''));const compiled=await checkAgentRecipe(file,recipe,{name:'literal $(echo unsafe)'});
+ assert.equal(compiled.executed,false);assert.equal(compiled.plan.phases[0].steps[0].expect.equals,'literal $(echo unsafe)');assert.equal(compiled.check.status,'Valid');assert.equal(compiled.recipeHash.length,64);assert.equal(await readFile(file,'utf8'),before);assert.deepEqual(await readdir(file.replace('/session.json','')),listing);
+ for(const values of [{},{name:3},{name:'valid',override:true}])assert.throws(()=>compileAgentRecipe(recipe,values));
+ const broken=structuredClone(recipe);broken.plan.phases[0].steps[0].params.operation='unsupported.operation';await assert.rejects(()=>checkAgentRecipe(file,broken,{name:'valid'}));
+ const unknown=structuredClone(recipe);unknown.plan.start={$param:'unknown'};assert.throws(()=>compileAgentRecipe(unknown,{name:'valid'}));
+}));
+test('shipped recipe examples compile with typed parameters against the selected schema',async()=>fixture(async file=>{
+ const schema=JSON.parse(await readFile(new URL('../runner/contracts/desktop-schema.json',import.meta.url),'utf8')),session=JSON.parse(await readFile(file,'utf8'));session.schema=schema;await writeFile(file,JSON.stringify(session));
+ const valuesByRecipe={
+  'media-search':{searchId:'9',query:'motion_25',expectedStatus:'1 match in 1 clip',mediaViewId:'8'},
+  'add-video-track':{projectName:'fixture',timelineId:'timeline-fixture',addSelector:{id:'add'},timelineTarget:{id:'timeline'},captureTarget:{id:'main'},baselineTracks:[],expectedTrackCount:3},
+  'inspector-edit':{graphScope:{timeline_id:'timeline-fixture',clip_id:'clip-fixture'},controlTarget:{id:'slider'},previewTarget:{id:'preview'},inspectorTarget:{id:'inspector-window'},thumbX:19,thumbY:7,baselineValue:16,baselineNodes:[],parameterPath:['nodes',0,'params','radius'],baselineTracks:[],timelineId:'timeline-fixture'},
+  'timeline-undo':{timelineTarget:{id:'timeline'},timelineId:'timeline-fixture',baselineTracks:[],captureTarget:{id:'main'}}
+ };
+ for(const [name,values] of Object.entries(valuesByRecipe)){const recipe=JSON.parse(await readFile(new URL('../examples/recipes/'+name+'.json',import.meta.url),'utf8')),compiled=await checkAgentRecipe(file,recipe,values);assert.equal(compiled.status,'Valid');assert.equal(compiled.executed,false);}
+}));
+
+const boundPlan=()=>({format:'athanor-agent-plan/v1',start:'find',bindings:{button:{phase:'find',step:0,path:['matches',0,'id'],uniquePath:['matches'],type:'string'}},phases:[
+ {id:'find',steps:[{operation:'observe',params:{selector:{name:'Add Video Track'}},expect:{path:['matchCount'],equals:1}}],next:'click'},
+ {id:'click',steps:[{operation:'physical',params:{command:'click',target:{id:{$binding:'button'}}}}],next:null}
+]});
+test('bindings carry unique typed IDs, refresh their exact source and retain provenance before input',async()=>fixture(async file=>{
+ const seen=[],requestId='bound-button',reply=await runAgentPlan(file,boundPlan(),async(_f,op,params)=>{seen.push({op,params});return op==='observe'?{matchCount:1,matches:[{id:'observed-button',name:'Add Video Track'}]}:{status:'Dispatched'};},{requestId});
+ assert.equal(reply.status,'Completed');assert.deepEqual(seen.map(s=>s.op),['observe','observe','physical']);assert.equal(seen[2].params.target.id,'observed-button');assert.equal(reply.bindings.button.value,'observed-button');assert.equal(reply.bindingReads[0].gate.matched,true);assert.equal((await inspectAgentPlan(file,requestId)).bindingReads.length,1);
+}));
+test('missing, partial, ambiguous and changed binding readbacks prevent dependent input',async()=>fixture(async file=>{
+ for(const fresh of [{matchCount:1,matches:[]},{matchCount:1,matches:[{id:'first'},{id:'other'}]},{matchCount:1,matches:[{id:'first'}],truncated:true},{matchCount:1,matches:[{id:34}]},{matchCount:1,matches:[{id:'changed'}]},{matchCount:0,matches:[{id:'first'}]},{matchCount:1,matches:[{id:'first'}],modalWindow:'new-dialog'}]){
+  const seen=[],reply=await runAgentPlan(file,boundPlan(),async(_f,op)=>{seen.push(op);return seen.length===1?{matchCount:1,matches:[{id:'first'}]}:fresh;});assert.equal(reply.status,'Blocked');assert.deepEqual(seen,['observe','observe']);assert.deepEqual(reply.bindingReads[0].result,fresh);assert.equal(reply.phases[0].result.status,'Completed');assert.equal(reply.summary.continuation.automatic,false);
+ }
+}));
+test('invalid binding declarations and unavailable branch paths reject the whole plan before dispatch',async()=>fixture(async file=>{
+ const bad=[];for(const key of ['x','text','command','actionId','stepId']){const p=boundPlan();p.phases[1].steps[0].params={[key]:{$binding:'button'}};bad.push(p);}
+ for(const edit of [p=>delete p.phases[0].steps[0].expect,p=>p.bindings.button.path=['matches',1,'id'],p=>p.bindings.button.type='object',p=>p.bindings.button.step=9,p=>p.phases[1].steps[0].params.target.id={$binding:'missing'},p=>p.start='click']){const p=boundPlan();edit(p);bad.push(p);}
+ const alternate=boundPlan();alternate.start='route';alternate.phases.unshift({id:'route',steps:[{operation:'call',params:{operation:'project.get_name'}}],next:{step:0,path:['name'],cases:[{equals:'find',phase:'find'},{equals:'skip',phase:'click'}]}});bad.push(alternate);
+ for(const plan of bad){let calls=0;await assert.rejects(()=>runAgentPlan(file,plan,async()=>{calls++;}));assert.equal(calls,0);}
+}));
+test('identity change during binding refresh and Unknown at the bound edit never dispatch downstream input',async()=>fixture(async file=>{
+ for(const failure of ['identity','Unknown']){const plan=boundPlan();plan.phases[1].steps.push({operation:'physical',params:{command:'key',key:'right'}});let calls=0;
+  const reply=await runAgentPlan(file,plan,async(_f,op)=>{calls++;if(op==='physical')throw Object.assign(Error('Lost input response'),{status:'Unknown'});if(failure==='identity'&&calls===2){const s=JSON.parse(await readFile(file,'utf8'));s.generation=(s.generation||0)+1;await writeFile(file,JSON.stringify(s));}return {matchCount:1,matches:[{id:'first'}]};});
+  assert.equal(reply.status,failure==='Unknown'?'Unknown':'Blocked');assert.equal(calls,failure==='Unknown'?3:2);assert.equal(reply.summary.continuation.automatic,false);
+ }
+}));
+
+test('plan inspection rejects completion, receipt and progress links outside its own directory',async()=>fixture(async file=>{
+ for(const name of ['completed.json','receipt.json','progress.json']){const requestId='escape-'+name,plan={format:'athanor-agent-plan/v1',start:'read',phases:[{id:'read',steps:[{operation:'context'}],next:null}]},reply=await runAgentPlan(file,plan,async()=>({fixture:true}),{requestId});
+  const directory=reply.receipt.path.replace('/receipt.json',''),outside=file.replace('session.json','outside-'+name),original=await readFile(directory+'/'+name);await writeFile(outside,original);await rm(directory+'/'+name);await symlink(outside,directory+'/'+name);if(name==='progress.json')await rm(directory+'/completed.json');
+  await assert.rejects(()=>inspectAgentPlan(file,requestId),e=>e.code==='invalid_plan'&&/storage escaped/.test(e.message));
+ }
+}));
+test('CLI rejects a missing plan ID before creating intent or dispatching context',async()=>fixture(async file=>{
+ const planFile=file.replace('session.json','bad-cli-plan.json');await writeFile(planFile,JSON.stringify({format:'athanor-agent-plan/v1',start:'read',phases:[{id:'read',steps:[{operation:'context'}],next:null}]}));const before=await readdir(file.replace('/session.json',''));
+ assert.throws(()=>execFileSync(process.execPath,[new URL('../desktop/session.mjs',import.meta.url).pathname,'plan',file,planFile,'--request-id','--compact'],{encoding:'utf8'}),e=>e.status===3&&JSON.parse(e.stdout).status==='Blocked');assert.deepEqual(await readdir(file.replace('/session.json','')),before);
+}));
+test('typed model offsets resolve read-only requests and reject out-of-range offsets before use',async()=>fixture(async file=>{
+ const plan={format:'athanor-agent-plan/v1',start:'find',bindings:{row:{phase:'find',step:0,path:['matches',0,'index'],uniquePath:['matches'],type:'integer'}},phases:[{id:'find',steps:[{operation:'observe',params:{selector:{id:'media'}},expect:{path:['matchCount'],equals:1}}],next:'read'},{id:'read',steps:[{operation:'model_value',params:{target:{id:'media'},offset:{$binding:'row'},column:0,role:274}}],next:null}]};
+ const seen=[],reply=await runAgentPlan(file,plan,async(_f,op,p)=>{seen.push({op,p});return op==='observe'?{matchCount:1,matches:[{index:2}]}:{available:true,value:'asset'};});assert.equal(reply.status,'Completed');assert.equal(seen.at(-1).p.offset,2);
+ let calls=0;const rejected=await runAgentPlan(file,plan,async()=>{calls++;return {matchCount:1,matches:[{index:2147483648}]};});assert.equal(rejected.status,'Blocked');assert.equal(calls,1);
 }));
