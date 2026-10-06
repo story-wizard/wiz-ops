@@ -268,3 +268,14 @@ test('typed model offsets resolve read-only requests and reject out-of-range off
  const seen=[],reply=await runAgentPlan(file,plan,async(_f,op,p)=>{seen.push({op,p});return op==='observe'?{matchCount:1,matches:[{index:2}]}:{available:true,value:'asset'};});assert.equal(reply.status,'Completed');assert.equal(seen.at(-1).p.offset,2);
  let calls=0;const rejected=await runAgentPlan(file,plan,async()=>{calls++;return {matchCount:1,matches:[{index:2147483648}]};});assert.equal(rejected.status,'Blocked');assert.equal(calls,1);
 }));
+
+test('Inspector recipe distinguishes an accidental focus edit from the tested keyboard edit',async()=>fixture(async file=>{
+ const session=JSON.parse(await readFile(file,'utf8'));session.schema=JSON.parse(await readFile(new URL('../runner/contracts/desktop-schema.json',import.meta.url),'utf8'));await writeFile(file,JSON.stringify(session));
+ const recipe=JSON.parse(await readFile(new URL('../examples/recipes/inspector-edit.json',import.meta.url),'utf8')),nodes=[{node_id:'blur',type:'gaussian_blur',params:{radius:16}}],values={graphScope:{timeline_id:'timeline',clip_id:'clip'},controlTarget:{id:'slider'},previewTarget:{id:'preview'},inspectorTarget:{id:'inspector'},thumbX:4,thumbY:5,baselineValue:16,baselineNodes:nodes,parameterPath:['nodes',0,'params','radius'],baselineTracks:[],timelineId:'timeline'};
+ for(const accidentalFocusEdit of [true,false]){let radius=16;const keys=[];const reply=await runAgentPlan(file,compileAgentRecipe(recipe,values).plan,async(_f,op,p)=>{
+  if(op==='call')return p.operation==='graph.get_clip_graph'?{nodes:[{...nodes[0],params:{radius}}]}:{tracks:[]};
+  if(op==='physical'){if(p.command==='click'&&accidentalFocusEdit)radius=32;if(p.command==='key'){keys.push(p.key);radius++;}return {status:'Dispatched'};}return {kind:'image'};
+ });
+ assert.equal(reply.status,accidentalFocusEdit?'Fail':'Completed');assert.deepEqual(keys,accidentalFocusEdit?[]:['right']);if(accidentalFocusEdit)assert.equal(reply.phases[0].result.stoppedAt,2);
+ }
+}));

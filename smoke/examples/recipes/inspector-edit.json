@@ -77,6 +77,23 @@
             }
           },
           {
+            "operation": "call",
+            "params": {
+              "operation": "graph.get_clip_graph",
+              "params": {
+                "$param": "graphScope"
+              }
+            },
+            "expect": {
+              "path": [
+                "nodes"
+              ],
+              "equals": {
+                "$param": "baselineNodes"
+              }
+            }
+          },
+          {
             "operation": "physical",
             "params": {
               "command": "key",
