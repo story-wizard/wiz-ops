@@ -1,4 +1,5 @@
 import path from 'node:path';
+import {performance} from 'node:perf_hooks';
 import {spawn,execFileSync} from 'node:child_process';
 import {mkdir,readFile,open,cp,mkdtemp,unlink,appendFile,access} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
@@ -249,6 +250,7 @@ export async function acquireNativeLock(lock,{timeoutMs=6000}={}){
  for(;;){try{return await open(lock,'wx');}catch(e){if(e.code!=='EEXIST')throw e;if(performance.now()>=deadline)throw new OutcomeError('Native bridge is busy; no request was dispatched','Blocked');await pause(15);}}
 }
 async function nativeCallOwned(file,op,params={}){
+  const started=performance.now(),startedAt=new Date().toISOString();
   const session=await readJSON(file);verifyDesktopOwner(session);
   assert(session.inputMode!=='service'||['capabilities','inspect','screenshot','snapshot-widget'].includes(op),'Background service sessions cannot dispatch UI input. Run the foreground desktop course for UI evidence.');
   if(session.plan?.runtime?.kind==='selected-build-attachment'&&!agentReadNative.includes(op))verifyDesktopLease(session);
@@ -269,10 +271,10 @@ async function nativeCallOwned(file,op,params={}){
     await writeJSON(path.join(session.native,'request.json'),request);
     for(let i=0;i<100;i++){
       let response;try{response=parseNativeResponse(await readFile(path.join(session.native,`response-${id}.json`),'utf8'),{id,pid:session.pid,generation:ready.generation});}catch(e){if(e.code!=='ENOENT')throw e.status==='Unknown'?e:new OutcomeError('Cannot read the dispatched native response; outcome unknown. Inspect before continuing.','Unknown');}
-      if(response){await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,response})+'\n');assert(response.ok,response.error||'Native operation failed');return response.result;}
+      if(response){await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),startedAt,durationMs:performance.now()-started,caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,response})+'\n');assert(response.ok,response.error||'Native operation failed');return response.result;}
       await pause(50);
     }
-    await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,status:'Unknown',error:'No native response within five seconds.'})+'\n');
+    await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),startedAt,durationMs:performance.now()-started,caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,status:'Unknown',error:'No native response within five seconds.'})+'\n');
     throw new OutcomeError('Native action outcome is unknown; inspect before continuing and do not replay.','Unknown');
   }catch(e){if(session.agentTracking&&e.status==='Unknown'&&!agentReadNative.includes(op))await markUnknown(file,e);throw e;}finally{await held.close();await unlink(lock);}
 }

@@ -178,3 +178,13 @@ Unknown. See `docs/agent-sequences.md#compose-recipes-before-dispatch`.
 ### Compact control entry
 
 Start exploratory control from `agent-brief.json`. Use `tool SESSION.json task` to list recipes and prepare a reviewed existing plan before writing one. Add Track accepts only optional values.timelineId and binds the rest without input; the default fixture main must be displayed. Other recipes require explicit observed values. Returned run/inspection commands and the brief's persistent JSON-lines connection bind the session workspace. Scope is an observed ID string; model itemRects use the returned viewport. Default checkbox clicks use current styled clickRect metadata, followed by checked/enabled readback. Capture dialogs separately and review one image per required result. Single-tool CLI results over 4 KiB retain full checksummed receipts; read exact values there when needed. JSON-lines tool clients opt into `compact:true`. Saved Spell string typing may declare `commit:{documentId,inputId}` for exact readback and owned replacement-control verification. Other focus loss remains Unknown. Reobserve after rebuilds, keep independent assertions/captures, and never replay uncertain input.
+
+
+For efficient QA, choose CLI/Qt for exact state and setup, presented captures for
+visual questions, and physical input for the gesture being tested. Use the
+bounded observations/expectations in compact phase summaries before opening a
+full receipt. Reuse `summary.evidence` for the same review checkpoint; an old
+image is not current-state proof. `enable-checkbox` groups observe/click/waits;
+`timeline-undo-save` keeps required restoration Save inside the phase. Preserve
+all frozen contracts and independent assertions. See the final section of
+`docs/agent-sequences.md` for observation context, evidence reuse and timing.

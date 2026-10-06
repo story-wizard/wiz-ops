@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,mkdir,writeFile,readFile,readdir,rm,realpath,symlink} from 'node:fs/promises';
 import {Readable,Writable} from 'node:stream';
-import {agentSequence,serveAgentTools,validateSequence,compactToolResult} from '../desktop/agent-connection.mjs';
+import {agentSequence,serveAgentTools,validateSequence,compactToolResult,resultPreview,sequenceSummary} from '../desktop/agent-connection.mjs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {waitForObservation} from '../desktop/check-support.mjs';
@@ -326,4 +326,40 @@ test('single-tool compact replies preserve exact bytes and fall back to known re
  const result={status:'Observed',rows:Array(100).fill({name:'retained',payload:'x'.repeat(100)}),truncated:true};
  const compact=await compactToolResult(file,'model',result);assert.equal(compact.encoding,'compact');assert.equal(compact.summary.truncated,true);const bytes=await readFile(compact.receipt.path);assert.deepEqual(JSON.parse(bytes).result,result);assert.equal(compact.receipt.sha256,createHash('sha256').update(bytes).digest('hex'));assert(Buffer.byteLength(JSON.stringify(compact))<1000);
  const full=await compactToolResult('/missing/session.json','physical',result);assert.equal(full.encoding,'full');assert.deepEqual(full.result,result);assert.equal(full.retentionError.code,'receipt_retention_failed');
+}));
+test('compact observations keep useful whole values and never disguise omitted or partial results',async()=>fixture(async file=>{
+ const matches=[{id:'field',window:'dialog',text:'expected',enabled:true}],result={matches,inspectionIncomplete:true,large:'x'.repeat(20000)};
+ const reply=await compactToolResult(file,'observe',result);
+ assert.deepEqual(reply.summary.matches,matches);assert.equal(reply.summary.inspectionIncomplete,true);assert.equal(reply.completeResult,false);assert.equal(reply.omitted[0].field,'large');
+ assert.deepEqual(JSON.parse(await readFile(reply.receipt.path)).result,result);
+ const many={matches:Array(200).fill(matches[0]),matchCount:200,truncated:false};const preview=resultPreview(many);
+ assert.equal(preview.summary.matches,undefined);assert.equal(preview.summary.matchCount,200);assert.equal(preview.omitted[0].items,200);assert.equal(preview.completeResult,false);
+ assert(Buffer.byteLength(JSON.stringify(resultPreview('x'.repeat(30000))))<300);
+}));
+test('phase replies explain gates, return decision values and reference the original capture without recapturing',async()=>fixture(async file=>{
+ const steps=[{operation:'physical',params:{command:'click'}},{operation:'wait',params:{selector:{id:'field'},condition:'enabled'}},{operation:'call',params:{operation:'project.get_name'},expect:{path:['name'],equals:'Golden'}},{operation:'capture',params:{target:{id:'window'}}}];
+ let captures=0;const artifact={path:'/retained/checkpoint.png',sha256:'a'.repeat(64),kind:'image',revision:4,generation:2,identity:{pid:123},recordedAt:'2026-10-06T00:00:00Z'};
+ const reply=await agentSequence(file,steps,async(_f,op)=>op==='call'?{name:'Golden'}:op==='wait'?{id:'field',enabled:true}:op==='capture'?(captures++,artifact):{status:'Dispatched'},{compact:true});
+ assert.equal(captures,1);assert.equal(reply.summary.steps[1].observation.result.enabled,true);assert.deepEqual(reply.summary.steps[2].expectation.result,{matched:true,actual:'Golden',expected:{equals:'Golden'},path:['name']});
+ assert.equal(reply.summary.steps[2].observation.result.name,'Golden');assert.equal(reply.summary.evidence[0].path,artifact.path);assert.equal(reply.summary.evidence[0].revision,4);assert.deepEqual(reply.summary.evidence[0].identity,{pid:123});
+ const measured=sequenceSummary(steps,{...reply,results:steps.map((s,index)=>({index,operation:s.operation,result:{},durationMs:(index+1)*10}))});
+ assert.deepEqual(measured.timing.operationMs,{physicalInput:10,wait:20,applicationRead:30,capture:40});assert.equal(measured.timing.totalOperationMs,100);
+}));
+test('enable-checkbox recipe skips an already enabled checkbox and stops after a failed readiness wait',async()=>fixture(async file=>{
+ const recipe=JSON.parse(await readFile(new URL('../examples/recipes/enable-checkbox.json',import.meta.url)));const compiled=compileAgentRecipe(recipe,{checkbox:{id:'box'},dependentField:{id:'field'}});
+ for(const initial of [true,false]){
+  let checked=initial,clicks=0;
+  const reply=await runAgentPlan(file,compiled.plan,async(_f,op,params)=>{
+   if(op==='observe')return {matchCount:params.selectors?2:1,matches:params.selectors?[{id:'box',checked},{id:'field',enabled:checked}]:[{id:'box',checked}],truncated:false};
+   if(op==='physical'){clicks++;checked=true;return {status:'Dispatched'};}
+   return params.condition==='checked'?{id:'box',checked}:{id:'field',enabled:true};
+  },{compact:true,requestId:'checkbox-'+initial});
+  assert.equal(reply.status,'Completed');assert.equal(clicks,initial?0:1);assert.equal(reply.summary.phases.at(-1).summary.steps.at(-1).observation.result.matches[1].enabled,true);
+ }
+ let inputs=0;const stopped=await runAgentPlan(file,compiled.plan,async(_f,op)=>{
+  if(op==='observe')return {matchCount:1,matches:[{id:'box',checked:false}]};
+  if(op==='physical'){inputs++;return {status:'Dispatched'};}
+  throw Object.assign(Error('Field did not become ready'),{status:'Blocked',code:'wait_timeout'});
+ },{requestId:'checkbox-not-ready'});
+ assert.equal(stopped.status,'Blocked');assert.equal(inputs,1);assert.equal(stopped.continuation.automatic,false);
 }));

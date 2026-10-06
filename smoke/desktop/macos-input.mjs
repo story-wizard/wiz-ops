@@ -1,4 +1,5 @@
 import path from 'node:path';
+import {performance} from 'node:perf_hooks';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {execFile} from 'node:child_process';
@@ -60,6 +61,7 @@ export async function nativeUIInput(dataDir,runId,request){
 }
 
 async function nativeInput(dataDir,root,executable,packageHash,request,context={}){
+ const started=performance.now(),startedAt=new Date().toISOString();
  await mkdir(path.join(root,'evidence'),{recursive:true});
  const held=await open(path.join(root,request.command==='screenshot'?'native-capture.lock':'native-input.lock'),'wx'),id=randomUUID(),requestFile=path.join(root,'evidence',`native-${id}-request.txt`),receiptFile=path.join(root,'evidence',`native-${id}-receipt.txt`);
  let receipt;
@@ -71,7 +73,7 @@ async function nativeInput(dataDir,root,executable,packageHash,request,context={
   try{const {stdout}=await promisify(execFile)(driver,args,{encoding:'utf8',timeout:15000+(request.durationMs||0),maxBuffer:8*1024*1024});receipt=JSON.parse(stdout);}
   catch(e){try{receipt=JSON.parse(String(e.stdout));}catch{receipt={status:'Unknown',error:'Native driver response lost; inspect before continuing. No input was replayed.'};}}
   await writeJSON(receiptFile,{...receipt,sourceHash,driverHash:manifest.driverHash,packageHash});
-  await appendFile(path.join(root,'native-input.jsonl'),JSON.stringify({at:new Date().toISOString(),...context,command:request.command,input:request,request:path.relative(root,requestFile),receipt:path.relative(root,receiptFile),status:receipt.status})+'\n');
+  await appendFile(path.join(root,'native-input.jsonl'),JSON.stringify({at:new Date().toISOString(),startedAt,durationMs:performance.now()-started,...context,command:request.command,input:request,request:path.relative(root,requestFile),receipt:path.relative(root,receiptFile),status:receipt.status})+'\n');
   if(receipt.output&&!inside(path.join(root,'evidence'),receipt.output))throw Error('Native screenshot output escaped the run.');
   return {...receipt,artifacts:[path.relative(root,requestFile),path.relative(root,receiptFile),...(receipt.output?[path.relative(root,receipt.output)]:[])]};
  }finally{await held.close();await unlink(path.join(root,request.command==='screenshot'?'native-capture.lock':'native-input.lock'));}

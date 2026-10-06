@@ -1,0 +1,81 @@
+{
+  "format": "athanor-agent-recipe/v1",
+  "id": "timeline-undo-save",
+  "parameters": {
+    "timelineTarget": {
+      "type": "object"
+    },
+    "timelineId": {
+      "type": "string"
+    },
+    "baselineTracks": {
+      "type": "array"
+    },
+    "captureTarget": {
+      "type": "object"
+    }
+  },
+  "plan": {
+    "format": "athanor-agent-plan/v1",
+    "start": "restore",
+    "phases": [
+      {
+        "id": "restore",
+        "steps": [
+          {
+            "operation": "physical",
+            "params": {
+              "command": "key",
+              "target": {
+                "$param": "timelineTarget"
+              },
+              "key": "cmd+z",
+              "title": "Undo reviewed timeline edit"
+            }
+          },
+          {
+            "operation": "physical",
+            "params": {
+              "command": "key",
+              "target": {
+                "$param": "timelineTarget"
+              },
+              "key": "cmd+s",
+              "title": "Save restored timeline"
+            }
+          },
+          {
+            "operation": "call",
+            "params": {
+              "operation": "timeline.inspect",
+              "params": {
+                "timeline_id": {
+                  "$param": "timelineId"
+                }
+              }
+            },
+            "expect": {
+              "path": [
+                "tracks"
+              ],
+              "equals": {
+                "$param": "baselineTracks"
+              }
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
+                "$param": "captureTarget"
+              },
+              "kind": "presented",
+              "title": "Timeline restored"
+            }
+          }
+        ],
+        "next": null
+      }
+    ]
+  }
+}

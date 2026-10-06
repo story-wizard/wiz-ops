@@ -4,7 +4,7 @@ import {ROOT,readJSON,writeJSON,sha} from '../runner/files.mjs';
 import {checkAgentRecipe} from './agent-recipes.mjs';
 import {requireProof,fields} from './agent-proof.mjs';
 
-export const taskRecipes=['project-identity','add-video-track','media-search','inspector-edit','timeline-undo','spell-input-edit'];
+export const taskRecipes=['project-identity','add-video-track','media-search','inspector-edit','timeline-undo','timeline-undo-save','enable-checkbox','spell-input-edit'];
 export async function taskCatalog(){
  return Promise.all(taskRecipes.map(async id=>{const recipe=await readJSON(new URL('../examples/recipes/'+id+'.json',import.meta.url));return {id,parameters:id==='add-video-track'?{timelineId:{type:'string',required:false}}:recipe.parameters,autoBound:id==='add-video-track',...(id==='add-video-track'?{defaultTimeline:'Fixture main; supply timelineId for another displayed timeline'}:{}),source:'examples/recipes/'+id+'.json'};}));
 }
@@ -18,6 +18,12 @@ export function briefContext(context){
   shapes:{observe:{selectors:[{class:'MainWindow'}],scope:'OBSERVED_WIDGET_ID',limit:8},model:{target:'OBSERVED_VIEW_ID',offset:0,limit:16},call:{operation:'timeline.inspect',params:{timeline_id:'OBSERVED_TIMELINE_ID'}},physical:{command:'click',target:{id:'OBSERVED_WIDGET_ID'}},wait:{selector:{id:'OBSERVED_CHECKBOX_ID'},condition:'checked',expected:true}},
   checks:context.checks.filter(c=>c.id=== 'D-CLI-01'||c.proof).map(c=>({id:c.id,title:c.title})),
   guidance:['Choose an existing recipe with task before authoring steps. task compiles and retains a plan; it dispatches no app input.',
+   'Choose the route from the test: CLI for exact application state/setup, Qt for controls and models, screenshots for visual questions, physical input for tested gestures. Preserve a frozen check’s required route.',
+   'Run preflight from the same execution context before editing. A denied process inspection needs that context repaired; never change OS permissions or treat a prepared build as permission.',
+   'Bundle related selectors with observe; use details:true for selected rows/model geometry. Input points are widget-local; model itemRects are local to their returned viewport.',
+   'Batch known action, wait and readback steps. Stop at new geometry, unexpected dialogs or decisions. Prefer the persistent connection when the host supports it.',
+   'Inspect summary.steps observations and exact expectations first. Omitted fields require the retained receipt; gateMatched alone only proves its stated comparison.',
+   'Review summary.evidence paths directly. Reuse a capture for that same checkpoint instead of taking another for a second report. Historical images never prove the current screen or replace fresh input guards.',
    'Read a required value or full frozen check from fullContext or its retained receipt; compact output does not remove evidence.',
    'Review the plan, execute once with the returned request ID, inspect outcome and captures, then choose the next phase.',
    'Scope is an observed ID string. Model itemRects belong to the returned viewport, not the enclosing view. Reveal clipped controls and refresh geometry before binding.',

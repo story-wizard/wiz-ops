@@ -374,3 +374,59 @@ baseline graph, replacement text and exact result path. It keeps the graph gate,
 real click/select/type, declared saved-input commit, value gate, and capture in
 one reviewed phase. It ends before Reset, Undo or a new run dialog. Missing
 selected-build support blocks compilation; explicit values are required.
+
+
+## Run a QA task with the least necessary interaction
+
+Choose tools from the behavior under test. Use CLI state for exact project,
+media, timing and graph questions; use Qt for control identity, enabled/focus
+state and models. Use presented images for appearance and visual assertions.
+Use physical input when the gesture is the tested behavior, or the application
+has no suitable semantic operation. A frozen physical check keeps its required
+route even when a direct operation would be faster.
+
+Start with `agent-brief.json` and run `preflight` from the execution context that
+will send commands. A prepared package does not establish process-inspection
+permission for a different shell or agent. Repair a denied context before input.
+Use the returned workspace-bound commands; do not reconstruct paths from memory.
+
+Observe related controls in one `observe` selector bundle. With `details:true`,
+that observation includes exposed model rows, selection and item rectangles.
+Read `inspectionIncomplete`, `truncated` and model limits; page large models.
+Targets carry their owning window, geometry and visible/click regions; the
+observation carries process identity, generation and observation ID. Physical
+points are local to the target widget. Model rectangles are local to the returned
+viewport. These observations do not reserve targets; input still refreshes them.
+
+For a checkbox and dependent field, compile `enable-checkbox` with two observed
+selectors. It skips the click if already checked, otherwise physically clicks,
+then waits for checked and enabled before returning both controls for review.
+It does not type, guess a dialog or infer a Pass. Use `timeline-undo-save` when the
+procedure requires Undo followed by Save; `timeline-undo` retains its old behavior.
+
+Compact phase replies include exact gate comparisons, bounded readback values,
+per-category public-operation timings and capture references. `encoding:full`
+means the value is returned intact. A `summary` has `completeResult:false` and
+explicit omitted fields; retrieve only the omitted values needed from the full
+checksummed receipt. A true gate proves its declared comparison, not an entire
+functional test. Add Track's exploratory count gate still needs the independent
+identity/preservation checks or the maintained frozen proof contract.
+
+Review the existing `summary.evidence` image at each required checkpoint. A
+report and a benchmark may reference that same artifact rather than request a
+second screenshot. Preserve its process/generation, target, revision, capture
+method and hash. Imported images and old frames cannot replace required fresh
+proof captures. Revision metadata alone cannot establish current visual state:
+playback, asynchronous jobs and outside input can change the screen. Refresh
+when the next action depends on that change; fresh target guards always remain.
+
+Batch a known action, readiness wait, exact readback and required capture until
+the next decision. Stop at new IDs, geometry, dialogs or uncertain outcomes.
+A rejected geometry binding returns its expected and observed target with
+`dispatch:not_started` for that action. Earlier steps may already have changed
+the project; keep their receipts. Unknown always requires reconciliation.
+
+Measure public-operation time separately from agent request gaps. Qt bridge and
+native-driver journals now include start/duration fields, nested inside public
+operations. Do not add those nested measurements to the public total. Keep
+readiness, discovery, execution, visual review and recovery visible in trials.

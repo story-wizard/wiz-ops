@@ -7,11 +7,34 @@ import {fields,validateToolParams,validateApplicationParams,validateNativeParams
 import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 
 const maxBytes=65536;
+// Keep whole values: a shortened list must never look like a complete observation.
+export function resultPreview(result,budget=2048){
+ if(Buffer.byteLength(JSON.stringify(result))<=budget)return {encoding:'full',result};
+ if(result===null||typeof result!=='object'||Array.isArray(result))return {encoding:'summary',summary:{},omitted:[{field:null,bytes:Buffer.byteLength(JSON.stringify(result))}],completeResult:false};
+ const summary=Object.create(null),omitted=[];let used=0;
+ const entries=Object.entries(result);
+ for(const [key,value] of entries.slice(0,32)){
+  const bytes=Buffer.byteLength(JSON.stringify({[key]:value}));
+  if(used+bytes<=budget){summary[key]=value;used+=bytes;}
+  else omitted.push({field:key.slice(0,160),bytes,...Array.isArray(value)?{items:value.length}:{}});
+ }
+ return {encoding:'summary',summary,omitted,...entries.length>32?{additionalFields:entries.length-32}:{},completeResult:false};
+}
+export function operationCategory(operation,params={}){
+ if(operation==='capture'||operation==='physical'&&params.command==='screenshot')return 'capture';
+ if(operation==='wait')return 'wait';
+ if(operation==='physical')return 'physicalInput';
+ if(['observe','find','model','model_value','geometry','preflight'].includes(operation))return 'observation';
+ if(operation==='call')return isAgentMutation(operation,params)?'applicationEdit':'applicationRead';
+ if(operation==='native')return isAgentMutation(operation,params)?'qtEdit':'qtRead';
+ if(operation==='verify')return 'verification';
+ return 'other';
+}
 export async function compactToolResult(file,operation,result){
  if(Buffer.byteLength(JSON.stringify(result))<=4096)return {encoding:'full',result};
  try{const session=await readJSON(file);verifyDesktopPaths(session);const directory=await mkdtemp(path.join(session.root,'tool-reply-')),retained=path.join(directory,'receipt.json');await writeJSON(retained,{operation,result,session:file,build:{packageHash:session.guiHash},process:{pid:session.pid,started:session.processStart,generation:session.generation}});
-  const keys=['format','status','ready','id','name','matchCount','truncated','inspectionIncomplete','encoding','observationId','observedAt','generation','pid','started','permissions','frontmost','frontWindow','output','requestId','run','inspect','plan','values','executed'];
-  return {encoding:'compact',summary:{...Object.fromEntries(keys.filter(k=>Object.hasOwn(result,k)).map(k=>[k,result[k]])),keys:Object.keys(result)},receipt:{path:retained,sha256:await sha(retained)},review:'Read required values and full evidence from the retained receipt before deciding.'};
+  const preview=resultPreview(result);
+  return {...preview,encoding:'compact',receipt:{path:retained,sha256:await sha(retained)},review:'Use the returned exact fields. Read omitted values from the receipt when needed; this summary cannot establish completeness of the full result.'};
  }catch(error){return {encoding:'full',result,retentionError:{code:'receipt_retention_failed',error:error.message}};}
 }
 export function toolError(error){
@@ -45,10 +68,14 @@ export function sequenceAdvice(steps){
 }
 export function sequenceSummary(steps,receipt){
  const state=receipt.status==='Completed'?'review_checkpoint':receipt.status==='Unknown'?'reconcile_unknown':receipt.status==='Fail'?'inspect_failure':receipt.failure?.code==='input_binding_rejected'?'rebind_target':'inspect_blocker';
- return {steps:receipt.results.map(r=>({index:r.index,operation:r.operation,label:String(steps[r.index].params?.title||steps[r.index].params?.operation||r.operation+(steps[r.index].params?.command?' '+steps[r.index].params.command:'')).slice(0,160),status:r.expectation?.matched===false?'Fail':r.status||'Returned',gateMatched:r.expectation?.matched})),
+ const byCategory={};for(const r of receipt.results){const category=operationCategory(r.operation,steps[r.index].params);byCategory[category]=(byCategory[category]||0)+(r.durationMs||0);}
+ return {steps:receipt.results.map(r=>({index:r.index,operation:r.operation,label:String(steps[r.index].params?.title||steps[r.index].params?.operation||r.operation+(steps[r.index].params?.command?' '+steps[r.index].params.command:'')).slice(0,160),status:r.expectation?.matched===false?'Fail':r.status||'Returned',gateMatched:r.expectation?.matched,
+  ...(r.expectation?{expectation:resultPreview(r.expectation,512)}:{}),
+  ...(r.result!==undefined&&['observation','applicationRead','qtRead','wait','verification'].includes(operationCategory(r.operation,steps[r.index].params))?{observation:resultPreview(r.result)}:{})})),
+  timing:{operationMs:byCategory,totalOperationMs:Object.values(byCategory).reduce((a,b)=>a+b,0),scope:'Public operations; includes their guards and retention. Nested Qt/native timings overlap and must not be added.'},
   returnedMutationIndexes:receipt.results.filter(r=>r.result!==undefined&&isAgentMutation(r.operation,steps[r.index].params)).map(r=>r.index),
   uncertainStep:receipt.status==='Unknown'?receipt.stoppedAt:null,
-  evidence:receipt.results.filter(r=>['capture','evidence','verify'].includes(r.operation)&&r.result?.path&&r.result?.sha256).map(r=>({index:r.index,path:r.result.path,sha256:r.result.sha256,kind:r.result.kind,assertion:r.result.assertion})),
+  evidence:receipt.results.filter(r=>['capture','evidence','verify'].includes(r.operation)&&r.result?.path&&r.result?.sha256).map(r=>({index:r.index,...Object.fromEntries(['path','sha256','kind','assertion','caption','recordedAt','identity','revision','generation','method','target'].filter(k=>r.result[k]!==undefined).map(k=>[k,r.result[k]])),use:'Review this retained artifact; it describes this checkpoint, not the current screen.'})),
   continuation:{state,automatic:false,nextActions:receipt.failure?.nextActions||['inspect_results']}};
 }
 // Every step enters the ordinary tool boundary separately. No target or lock is reserved between steps.

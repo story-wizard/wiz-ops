@@ -1,9 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {windowPoint,clipPoint,defaultClickPoint,postInputFocus,spellTextBaseline,verifySpellTextCommit} from '../desktop/physical-input.mjs';
+import {windowPoint,clipPoint,defaultClickPoint,postInputFocus,spellTextBaseline,verifySpellTextCommit,requireTargetGeometry} from '../desktop/physical-input.mjs';
 import {validateNativeRequest,keyboardWindowProof} from '../desktop/macos-input.mjs';
 import {mkdtemp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
+test('a moved target reports its current geometry and pre-dispatch rejection',()=>{
+ const before={id:'button',window:'main',x:10,y:20,width:30,height:40},after={...before,x:50,visibleRect:{x:0,y:0,width:30,height:40}};
+ assert.doesNotThrow(()=>requireTargetGeometry({...before},before));
+ assert.throws(()=>requireTargetGeometry(after,before),e=>e.status==='Blocked'&&e.code==='input_binding_rejected'&&e.diagnostics.dispatch==='not_started'&&e.diagnostics.observed.x===50&&e.diagnostics.expected.x===10&&e.nextActions[0]==='observe');
+});
 test('physical coordinates include native title chrome and reject stale windows or escaped endpoints',()=>{
  const window={id:'window',window:'window',width:1000,height:700},widget={window:'window',x:20,y:40,width:100,height:60},native={frame:{x:120,y:200,width:1000,height:723}};
  assert.deepEqual(windowPoint(widget,window,native,10,15),{x:30,y:78});

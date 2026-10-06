@@ -14,6 +14,14 @@ export function validatePhysicalInput(command,params){
  if(params.clipId!==undefined)requireProof(typeof params.clipId==='string'&&params.clipId.length>0,'invalid_params','Supply an observed clip identity',['observe']);
  if(params.commit!==undefined){fields(params.commit,['documentId','inputId'],'commit');requireProof(command==='type'&&['documentId','inputId'].every(k=>typeof params.commit[k]==='string'&&params.commit[k].length>0&&params.commit[k].length<=128),'invalid_params','A text commit requires the observed Spell document and input IDs',['observe']);}
 }
+export function requireTargetGeometry(actual,expected){
+ const keys=['id','window','x','y','width','height'];
+ if(!keys.every(k=>actual[k]===expected[k])){
+  const error=new OutcomeError('Target geometry changed before input; inspect the returned target and rebind','Blocked');
+  error.code='input_binding_rejected';error.origin='harness';error.nextActions=['observe'];
+  error.diagnostics={dispatch:'not_started',expected:Object.fromEntries(keys.map(k=>[k,expected[k]])),observed:Object.fromEntries([...keys,'visibleRect','clickRect'].filter(k=>actual[k]!==undefined).map(k=>[k,actual[k]]))};throw error;
+ }
+}
 // ponytail: qualify saved Spell inputs only; other rebuilding controls retain Unknown.
 export function spellTextBaseline(observed,target,commit,text){
  requireProof(observed.document_id===commit.documentId&&observed.kind==='instance'&&observed.state_source==='live_registry'&&observed.definition?.fingerprint&&observed.graph&&observed.scene&&Array.isArray(observed.outputs),'input_commit_unavailable','Use a complete live Spell instance readback',['observe']);
@@ -77,7 +85,7 @@ async function physicalInputOwned(file,command,params={}){
  let u,widget,window;
  for(let i=0;i<5;i++){u=await nativeCall(file,'inspect');widget=u.widgets.find(w=>w.id===params.target);window=u.widgets.find(w=>w.id===widget?.window);if(widget&&window)break;await pause(100);}
  if(!widget||!window)throw new OutcomeError(`Physical input target ${params.target} (${widget?.class||'absent'}; window ${widget?.window||'absent'}) is not observable`,'Blocked');
- if(params.expected)assert(['id','window','x','y','width','height'].every(k=>widget[k]===params.expected[k]),'Target geometry changed after resolution; observe again before input');
+ if(params.expected)requireTargetGeometry(widget,params.expected);
  if(params.clipId){const fresh=await nativeCall(file,'timeline-clip-rect',{target:widget.id,clipId:params.clipId});requireClipGeometry(fresh.rect,params.expectedClip);}
  if(command==='type'&&!(widget.editableText===true&&u.focus===widget.id))throw new OutcomeError('Physically click the intended editable field before typing; secure and read-only fields are unavailable','Blocked');
  const readCommit=()=>adapter.desktopCall(file,'spellbook.inspect',{document_id:params.commit.documentId,view:'raw'});
