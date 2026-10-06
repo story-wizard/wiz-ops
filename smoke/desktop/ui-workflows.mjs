@@ -20,7 +20,7 @@ export async function uiWorkflows(file,reportName){
  async function check(id,fn){return h.check(id,async()=>{try{return {...await fn(),artifacts:retained.get(id)||[]};}catch(e){e.evidence={...e.evidence,artifacts:[...(e.evidence?.artifacts||[]),...(retained.get(id)||[])]};throw e;}});}
  async function fixture(name){const before=await gapFixture(c,s.assets,name),view=await h.openTimeline(name);return {id:before.timeline.timeline_id,before,view,scope:{timeline_id:before.timeline.timeline_id,clip_id:clips(before)[0].clip_id}};}
  async function selectClip(f){const g=await n('timeline-clip-rect',{target:f.view.id,clipId:f.scope.clip_id});await physical('key',{target:f.view.id,key:'v'});await physical('click',{target:f.view.id,clipId:f.scope.clip_id,expectedClip:g.rect,...clipPoint(g)});await c('playback.seek',{time:1});}
- async function click(w,extra={}){return physical('click',{target:w.id,x:w.width/2,y:w.height/2,...extra});}
+ async function click(w,extra={}){return physical('click',{target:w.id,...extra});}
  async function type(w,text){await click(w);await physical('key',{target:w.id,key:'cmd+a'});await physical('type',{target:w.id,text});return physical('key',{target:w.id,key:'Return'});}
  const unique=(u,fn,label)=>observedWidget(u,fn,label);
  const surface=(u,fn,label)=>{const matches=u.widgets.filter(fn);if(matches.length!==1)throw new OutcomeError(label+' is absent or ambiguous','Blocked');return matches[0];};

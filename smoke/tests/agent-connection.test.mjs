@@ -85,7 +85,9 @@ test('JSON-lines connection handles chunked UTF-8, invalid and oversized lines, 
  const replies=output.trim().split('\n').map(JSON.parse);assert.equal(replies.length,5);assert.equal(replies[0].id,'first');assert.equal(replies[1].code,'invalid_json');assert.equal(replies[2].code,'request_too_large');assert.equal(replies[3].id,'é✨');assert.equal(replies[3].status,'Completed');
  assert.equal(replies[4].id,'compact');assert.equal(replies[4].encoding,'compact');assert.equal(JSON.parse(await readFile(replies[4].receipt.path,'utf8')).results[0].result.format,'athanor-agent-session/v1');
  assert.deepEqual(replies[0].result.readOnlyOperations,['project.get_name']);assert.match(replies[0].result.connection.requestIds,/not idempotent/);
- assert.equal(replies[0].result.connection.sequencePlanning.checkCommand[2],'batch-check');
+ const stepsFile=file.replace('session.json','connection-steps.json');await writeFile(stepsFile,JSON.stringify([{operation:'context'}]));
+ const command=[...replies[0].result.connection.sequencePlanning.checkCommand.slice(0,-1),stepsFile];
+ const checked=JSON.parse(execFileSync(command[0],command.slice(1),{cwd:file.replace('/session.json',''),env:{...process.env,SMOKE_DATA_DIR:'/missing-workspace'},encoding:'utf8',timeout:10000}));assert.equal(checked.status,'Valid');assert.equal(checked.executed,false);
 }));
 test('CLI compact batches retain replies without requiring a Wizard process',async()=>fixture(async file=>{
  const stepsFile=file.replace('session.json','steps.json');await writeFile(stepsFile,JSON.stringify([{operation:'context'}]));

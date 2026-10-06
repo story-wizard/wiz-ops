@@ -92,7 +92,7 @@ class SmokeBridge : public QObject {
     }
     static QJsonObject capabilities(){
         return {{"protocol",1},{"version",8},{"operations",QJsonArray{"capabilities","inspect","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
-                {"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
+                {"buttonClickGeometry",true},{"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
                 {"limits",QJsonObject{{"modelRows",64},{"modelPageRows",64},{"timelineClipIds",1024},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
                 {"captures",QJsonObject{{"screenshot","Qt widget raster"},{"snapshot-presented","Owned native window pixels"},{"snapshot-node-preview","Rendered graph preview"}}}};
     }
@@ -142,6 +142,7 @@ class SmokeBridge : public QObject {
             for(auto* owner=w;owner;owner=owner->parentWidget())if(auto* proxy=owner->graphicsProxyWidget();proxy&&proxy->scene()&&!proxy->scene()->views().isEmpty()){item["graphView"]=id(proxy->scene()->views().front());break;}
             if(auto* p=qobject_cast<QLabel*>(w))item["text"]=p->text();
             if(auto* p=qobject_cast<QAbstractButton*>(w)){item["text"]=p->text();item["checked"]=p->isChecked();}
+            if(auto* p=qobject_cast<QCheckBox*>(w)){QStyleOptionButton opt;opt.initFrom(p);opt.text=p->text();opt.icon=p->icon();opt.iconSize=p->iconSize();const auto r=p->style()->subElementRect(QStyle::SE_CheckBoxClickRect,&opt,p).intersected(p->rect());item["clickRect"]=QJsonObject{{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}};}
             if(auto* p=qobject_cast<QLineEdit*>(w);p&&p->echoMode()==QLineEdit::Normal)item["text"]=p->text();
             if(auto* p=qobject_cast<QLineEdit*>(w))item["editableText"]=p->echoMode()==QLineEdit::Normal&&!p->isReadOnly()&&p->isEnabled();
             if(auto* p=qobject_cast<QKeySequenceEdit*>(w)){item["text"]=p->keySequence().toString();item["keySequenceCapture"]=true;}

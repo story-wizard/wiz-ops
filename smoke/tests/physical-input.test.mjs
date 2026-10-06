@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {windowPoint,clipPoint,postInputFocus,spellTextBaseline,verifySpellTextCommit} from '../desktop/physical-input.mjs';
+import {windowPoint,clipPoint,defaultClickPoint,postInputFocus,spellTextBaseline,verifySpellTextCommit} from '../desktop/physical-input.mjs';
 import {validateNativeRequest,keyboardWindowProof} from '../desktop/macos-input.mjs';
 import {mkdtemp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
@@ -9,6 +9,14 @@ test('physical coordinates include native title chrome and reject stale windows 
  assert.deepEqual(windowPoint(widget,window,native,10,15),{x:30,y:78});
  for(const operation of [()=>windowPoint({...widget,window:'other'},window,native,10,15),()=>windowPoint(widget,window,{frame:{width:1200,height:723}},10,15),()=>windowPoint(widget,window,native,100,15)])assert.throws(operation);
  const cross={command:'drag',pid:123,started:'observed',window:10,frame:{x:0,y:0,width:200,height:200},x:50,y:50,toWindow:11,toFrame:{x:10,y:10,width:1000,height:700},toX:800,toY:600};assert.doesNotThrow(()=>validateNativeRequest(cross));assert.throws(()=>validateNativeRequest({...cross,toX:1000}));assert.throws(()=>validateNativeRequest({...cross,toFrame:undefined}));
+});
+test('default clicks use visible styled hit regions without moving explicit or ordinary targets',()=>{
+ const box={width:900,height:24,clickRect:{x:0,y:0,width:140,height:24},visibleRect:{x:0,y:0,width:900,height:24}};
+ assert.deepEqual(defaultClickPoint(box),{x:69.5,y:11.5});assert(defaultClickPoint(box).x<140,'Widget center misses the checkbox hit region');
+ assert.deepEqual(defaultClickPoint({...box,clickRect:undefined}),{x:450,y:12});
+ assert.deepEqual(defaultClickPoint({...box,visibleRect:{x:100,y:0,width:800,height:24}}),{x:119.5,y:11.5});
+ assert.throws(()=>defaultClickPoint({...box,visibleRect:{x:150,y:0,width:750,height:24}}),e=>e.status==='Blocked');
+ for(const clickRect of [{x:-1,y:0,width:140,height:24},{x:0,y:0,width:1000,height:24},{x:0,y:0,width:NaN,height:24}])assert.throws(()=>defaultClickPoint({...box,clickRect}));
 });
 
 test('keyboard targets the actual key window even with a floating panel above it',()=>{

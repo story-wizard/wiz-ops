@@ -13,6 +13,38 @@ async function reviewedSource(relative){
   :readFile(path.join(smoke,relative),'utf8');
 }
 
+test('styled checkbox geometry clicks the actual hit region of a wide control',{skip:process.platform!=='darwin'||spawnSync('pkg-config',['--exists','Qt6Widgets','Qt6Test']).status!==0},async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-checkbox-hit-'));
+ try{
+  const source=await reviewedSource('desktop/native/bridge.cpp'),start=source.indexOf('if(auto* p=qobject_cast<QCheckBox*>(w))'),end=source.indexOf('if(auto* p=qobject_cast<QLineEdit*>(w);',start);
+  const snippet=start<0?'':source.slice(start,end);if(start>=0)assert(end>start);
+  const file=path.join(root,'probe.cpp'),binary=path.join(root,'probe');
+  await writeFile(file,`#include <QtWidgets>
+#include <QtTest/QTest>
+#include <iostream>
+QJsonObject observe(QWidget* w){QJsonObject item;${snippet}return item;}
+int main(int argc,char** argv){QApplication app(argc,argv);app.setStyle("Fusion");QCheckBox box("Override Setting for this run");box.resize(900,24);
+QTest::mouseClick(&box,Qt::LeftButton,Qt::NoModifier,box.rect().center());if(box.isChecked())return 1;
+const auto item=observe(&box);QRect r=box.rect();if(item.contains("clickRect")){const auto j=item["clickRect"].toObject();r=QRect(j["x"].toInt(),j["y"].toInt(),j["width"].toInt(),j["height"].toInt());}
+QTest::mouseClick(&box,Qt::LeftButton,Qt::NoModifier,r.center());if(!box.isChecked())return 2;std::cout<<"Styled region toggled; widget center did not";}
+`);
+  const flags=execFileSync('pkg-config',['--cflags','--libs','Qt6Widgets','Qt6Test'],{encoding:'utf8'}).trim().split(/\s+/);
+  execFileSync('/usr/bin/clang++',['-std=c++17',file,'-o',binary,...flags],{encoding:'utf8',timeout:60000});
+  assert.match(execFileSync(binary,[],{env:{...process.env,QT_QPA_PLATFORM:'offscreen'},encoding:'utf8',timeout:10000}),/Styled region toggled/);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('lease inspection denial does not claim a live helper expired',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-lease-inspection-'));
+ try{
+  const stub=path.join(root,'process.mjs');await writeFile(stub,`export const spawn=()=>{};export function execFileSync(_cmd,args){const mode=process.env.LEASE_PROBE_MODE;if(mode==='denied')throw Object.assign(Error('denied'),{code:'EPERM'});if(mode==='ended')throw Object.assign(Error('absent'),{status:1});return args.includes('comm=')?(mode==='changed'?'other':'owned'):'time';}`);
+  const source=(await reviewedSource('desktop/desktop-lease.mjs')).replace("from 'node:child_process'","from '"+pathToFileURL(stub).href+"'").replace("from './macos-input.mjs'","from '"+pathToFileURL(path.join(smoke,'desktop/macos-input.mjs')).href+"'").replace("from '../runner/engine.mjs'","from '"+pathToFileURL(path.join(smoke,'runner/engine.mjs')).href+"'");
+  const file=path.join(root,'probe.mjs');await writeFile(file,source);const {verifyDesktopLease}=await import(pathToFileURL(file).href),session={desktopLease:{pid:1,driver:'owned',started:'time'}},previous=process.env.LEASE_PROBE_MODE;
+  try{process.env.LEASE_PROBE_MODE='valid';assert.doesNotThrow(()=>verifyDesktopLease(session));process.env.LEASE_PROBE_MODE='denied';assert.throws(()=>verifyDesktopLease(session),e=>e.status==='Blocked'&&e.code==='lease_inspection_denied'&&e.origin==='environment');for(const mode of ['ended','changed']){process.env.LEASE_PROBE_MODE=mode;assert.throws(()=>verifyDesktopLease(session),e=>e.status==='Blocked'&&e.code==='desktop_lease_ended');}}
+  finally{if(previous===undefined)delete process.env.LEASE_PROBE_MODE;else process.env.LEASE_PROBE_MODE=previous;}
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('pointer hit testing excludes the system cursor and still blocks real overlays',{skip:process.platform!=='darwin'},async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'athanor-cursor-regression-'));
  try{

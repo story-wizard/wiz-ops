@@ -1,22 +1,27 @@
 import path from 'node:path';
 import {mkdtemp} from 'node:fs/promises';
-import {readJSON,writeJSON,sha} from '../runner/files.mjs';
+import {ROOT,readJSON,writeJSON,sha} from '../runner/files.mjs';
 import {checkAgentRecipe} from './agent-recipes.mjs';
 import {requireProof,fields} from './agent-proof.mjs';
 
 export const taskRecipes=['project-identity','add-video-track','media-search','inspector-edit','timeline-undo','spell-input-edit'];
 export async function taskCatalog(){
- return Promise.all(taskRecipes.map(async id=>{const recipe=await readJSON(new URL('../examples/recipes/'+id+'.json',import.meta.url));return {id,parameters:recipe.parameters,source:'examples/recipes/'+id+'.json'};}));
+ return Promise.all(taskRecipes.map(async id=>{const recipe=await readJSON(new URL('../examples/recipes/'+id+'.json',import.meta.url));return {id,parameters:id==='add-video-track'?{timelineId:{type:'string',required:false}}:recipe.parameters,autoBound:id==='add-video-track',...(id==='add-video-track'?{defaultTimeline:'Fixture main; supply timelineId for another displayed timeline'}:{}),source:'examples/recipes/'+id+'.json'};}));
 }
 export function briefContext(context){
- return {format:'athanor-agent-brief/v1',session:context.session,build:context.build,process:context.process,lifetime:context.lifetime,project:context.project,
+ const command=[...(context.workspace?['env','SMOKE_DATA_DIR='+context.workspace]:[]),'node',path.join(ROOT,'desktop/session.mjs')];
+ return {format:'athanor-agent-brief/v1',session:context.session,workspace:context.workspace,build:context.build,process:context.process,lifetime:context.lifetime,project:context.project,
   fullContext:path.join(path.dirname(context.session),'agent-context.json'),recipes:taskRecipes,
-  start:['node','desktop/session.mjs','tool',context.session,'task','{}'],
-  tools:['node','desktop/session.mjs','tool',context.session,'OP','JSON','--compact'],
+  start:[...command,'tool',context.session,'task','{}'],
+  tools:[...command,'tool',context.session,'OP','JSON','--compact'],
+  connection:{command:[...command,'tools',context.session],protocol:'JSON lines; one reply per request',tool:{id:'unique-tool-id',operation:'observe',params:{selector:{class:'MainWindow'}},compact:true},plan:{id:'known-plan-id',plan:'REVIEWED_COMPILED_PLAN_OBJECT',compact:true},inspect:{id:'new-inspection-id',operation:'plan-inspect',params:{requestId:'known-plan-id'}},maxRequestBytes:65536},
+  shapes:{observe:{selectors:[{class:'MainWindow'}],scope:'OBSERVED_WIDGET_ID',limit:8},model:{target:'OBSERVED_VIEW_ID',offset:0,limit:16},call:{operation:'timeline.inspect',params:{timeline_id:'OBSERVED_TIMELINE_ID'}},physical:{command:'click',target:{id:'OBSERVED_WIDGET_ID'}},wait:{selector:{id:'OBSERVED_CHECKBOX_ID'},condition:'checked',expected:true}},
   checks:context.checks.filter(c=>c.id=== 'D-CLI-01'||c.proof).map(c=>({id:c.id,title:c.title})),
   guidance:['Choose an existing recipe with task before authoring steps. task compiles and retains a plan; it dispatches no app input.',
    'Read a required value or full frozen check from fullContext or its retained receipt; compact output does not remove evidence.',
    'Review the plan, execute once with the returned request ID, inspect outcome and captures, then choose the next phase.',
+   'Scope is an observed ID string. Model itemRects belong to the returned viewport, not the enclosing view. Reveal clipped controls and refresh geometry before binding.',
+   'Capture separate dialogs with their own window target. Verify checked/enabled after a checkbox click before dependent input. Review one capture per required result; retain additional evidence without duplicate image review.',
    'Task recipes are exploratory. Do not begin a frozen check unless adapting every action/assertion/capture to its full contract. Run a course for canonical testing.',
    'New dialogs, geometry and Unknown stop for review. Never replay a lost or uncertain mutation. Stop the owned session when finished.']};
 }
@@ -26,6 +31,7 @@ export async function prepareAgentTask(file,{recipe:id,values={}}={},execute){
  if(id===undefined)return {format:'athanor-agent-task/v1',executed:false,recipes:catalog};
  requireProof(taskRecipes.includes(id),'unknown_recipe','Choose an ID from the task catalog',['task']);
  const s=await readJSON(file),recipe=await readJSON(new URL('../examples/recipes/'+id+'.json',import.meta.url));let defaults={};
+ requireProof(typeof s.dataDir==='string'&&path.isAbsolute(s.dataDir),'missing_workspace','Use a prepared session with its external workspace',['context']);
  requireProof(!s.agentTracking,'recipe_scope_mismatch','Task recipes are exploratory; use the active frozen check contract or start a separate exploration session',['context']);
  if(id==='add-video-track'){
   fields(values,['timelineId'],'auto-bound values');
@@ -44,6 +50,6 @@ export async function prepareAgentTask(file,{recipe:id,values={}}={},execute){
  const requestId=path.basename(directory)+'-'+id;
  return {format:'athanor-agent-task/v1',status:'Valid',executed:false,recipeId:id,recipeHash:compiled.recipeHash,valuesHash:compiled.valuesHash,plan:{path:planFile,sha256:await sha(planFile)},values:{path:valuesFile,sha256:await sha(valuesFile)},requestId,
   phases:compiled.plan.phases.map(p=>({id:p.id,steps:p.steps.map(s=>({operation:s.operation,title:s.params?.title||s.params?.operation||s.params?.command||s.operation,gate:s.expect!==undefined})),reviewAfter:p.next===null})),
-  run:['node','desktop/session.mjs','plan',file,planFile,'--request-id',requestId,'--compact'],inspect:['node','desktop/session.mjs','plan-inspect',file,requestId],
+  run:['env','SMOKE_DATA_DIR='+s.dataDir,'node',path.join(ROOT,'desktop/session.mjs'),'plan',file,planFile,'--request-id',requestId,'--compact'],inspect:['env','SMOKE_DATA_DIR='+s.dataDir,'node',path.join(ROOT,'desktop/session.mjs'),'plan-inspect',file,requestId],
   review:'Inspect the compiled plan before dispatch. Review independent domain state and captures before the next phase; recipe completion does not qualify toolkit Pass.'};
 }

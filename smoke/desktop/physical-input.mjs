@@ -56,6 +56,14 @@ export function windowPoint(widget,window,native,x,y){
  assert(titleHeight>=0&&titleHeight<=80&&Math.abs(native.frame.width-window.width)<=1,'Native and Qt window geometry disagree');
  return {x:widget.x+x,y:titleHeight+widget.y+y};
 }
+export function defaultClickPoint(widget){
+ if(!widget.clickRect)return {x:widget.width/2,y:widget.height/2};
+ const r=widget.clickRect,v=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height};
+ assert(['x','y','width','height'].every(k=>Number.isFinite(r[k]))&&r.x>=0&&r.y>=0&&r.width>0&&r.height>0&&r.x+r.width<=widget.width&&r.y+r.height<=widget.height,'Invalid styled click rectangle');
+ const x=Math.max(r.x,v.x),y=Math.max(r.y,v.y),right=Math.min(r.x+r.width,v.x+v.width),bottom=Math.min(r.y+r.height,v.y+v.height);
+ if(!(right>x&&bottom>y))throw new OutcomeError('The styled click region is clipped; reveal the control and inspect again','Blocked');
+ return {x:x+(right-x-1)/2,y:y+(bottom-y-1)/2};
+}
 export async function physicalInput(file,command,params={}){
  validatePhysicalInput(command,params);
  return withAdapterAction(file,command!=='screenshot',command,params,async()=>{try{return await physicalInputOwned(file,command,params);}catch(e){if(e.status==='Unknown'&&command!=='screenshot')await markUnknown(file,e);else if(e.status!=='Unknown'&&/Pointer point exceeds|Native and Qt window geometry disagree|Pointer widget differs|Target geometry changed|Clip geometry changed|Native window title\/geometry is absent or ambiguous/.test(e.message)){e.status='Blocked';e.code='input_binding_rejected';e.origin='harness';e.nextActions=['observe'];}throw e;}});
@@ -86,7 +94,7 @@ async function physicalInputOwned(file,command,params={}){
   if(params.chrome){
    assert(widget.id===window.id&&Number.isFinite(params.x)&&params.x>=120&&params.x<target.frame.width&&params.y>=0&&params.y<target.frame.height-window.height,'Choose an observed native title-bar drag point away from window controls');
    request.x=params.x;request.y=params.y;
-  }else Object.assign(request,windowPoint(widget,window,target,params.x,params.y));
+  }else {const point=command==='click'&&(params.x===undefined||params.y===undefined)?defaultClickPoint(widget):null;Object.assign(request,windowPoint(widget,window,target,params.x??point?.x,params.y??point?.y));}
   if(command==='drag'){
    const destination=u.widgets.find(w=>w.id===(params.toTarget||params.target));
    assert(destination,'Observe the drag destination');

@@ -23,5 +23,8 @@ export function verifyDesktopLease(session){
   const command=execFileSync('/bin/ps',['-p',String(lease.pid),'-o','comm='],{encoding:'utf8'}).trim();
   const started=execFileSync('/bin/ps',['-p',String(lease.pid),'-o','lstart='],{encoding:'utf8'}).trim();
   if(command!==lease.driver||started!==lease.started)throw Error('Lease owner changed');
- }catch{throw new OutcomeError('The foreground session lease ended. Inspect and stop its app before restarting.','Blocked');}
+ }catch(cause){
+  const denied=['EPERM','EACCES'].includes(cause.code),error=new OutcomeError(denied?'Process inspection was denied; the foreground lease could not be verified. Check scoped process access before restarting.':'The foreground session lease ended. Inspect and stop its app before restarting.','Blocked');
+  error.code=denied?'lease_inspection_denied':'desktop_lease_ended';error.origin=denied?'environment':'harness';error.nextActions=['inspect'];throw error;
+ }
 }

@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
+import {spawnSync} from 'node:child_process';
 import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from 'node:fs/promises';
 import {selectUI,uniqueTarget,compareObservation,exportAgentReport,requirePassProof,sessionDefinitions,sessionContext,agentTool} from '../desktop/agent-tools.mjs';
 import {physicalKeys} from '../desktop/macos-input.mjs';
@@ -69,7 +70,7 @@ test('session context names actual Pass contracts, physical keys and launcher de
   const file=path.join(root,'session.json'),deadline='2026-10-02T23:30:00.000Z';
   await writeFile(file,JSON.stringify({dataDir:data,root,bundle,native,executable:path.join(root,'Wizard Smoke.app/Contents/MacOS/wizard'),agentDeadlineAt:deadline,plan:{cases:['D-CLI-01']},schema:{operations:{'timeline.inspect':{}}}}));
   await writeFile(path.join(native,'ready.json'),JSON.stringify({capabilities:{limits:{modelRows:64}}}));
-  const context=await sessionContext(file);assert.equal(context.lifetime.deadlineAt,deadline);assert.equal(context.lifetime.timeoutMs,1800000);assert.deepEqual(context.physical.keys,physicalKeys);
+  const context=await sessionContext(file);assert.equal(context.workspace,data);assert.equal(context.lifetime.deadlineAt,deadline);assert.equal(context.lifetime.timeoutMs,1800000);assert.deepEqual(context.physical.keys,physicalKeys);
   assert.deepEqual(context.verdicts.toolkitPassIds,context.checks.filter(c=>c.proof).map(c=>c.id));assert.ok(context.verdicts.toolkitPassIds.includes('P-TRACK-ADD'));assert.ok(!context.verdicts.toolkitPassIds.includes('P-CURVE-LIVE'));
   assert.deepEqual(context.applicationOperations,['timeline.inspect']);assert.match(context.verdicts.scripted,/authored assertions/);
   assert.equal(JSON.parse(await readFile(path.join(root,'agent-context.json'))).lifetime.deadlineAt,deadline);
@@ -109,15 +110,16 @@ test('the native foreground lease excludes another workspace and releases after 
 test('task entry auto-binds the existing recipe without input and rejects incomplete or ambiguous fixtures',async()=>{
  const {prepareAgentTask,briefContext}=await import('../desktop/agent-task.mjs');const root=await realpath(await mkdtemp('/private/tmp/athanor-task-')),file=root+'/session.json';
  try{
-  await writeFile(file,JSON.stringify({root,main:{id:'timeline'},schema:{operations:{'project.get_name':{properties:{}},'timeline.inspect':{properties:{timeline_id:{type:'string'}}}}}}));
+  await mkdir(root+'/Golden.wiz');
+  await writeFile(file,JSON.stringify({dataDir:'/private/tmp',root,bundle:root+'/Golden.wiz',executable:root+'/Wizard Smoke.app/Contents/MacOS/wizard',main:{id:'timeline'},schema:{operations:{'project.get_name':{properties:{}},'timeline.inspect':{properties:{timeline_id:{type:'string'}}}}}}));
   const tracks=[{track_id:'v1',address:'V1',items:[]},{track_id:'a1',address:'A1',items:[]}],ui={matches:[{id:'timeline-view',class:'TimelineWidget'},{id:'main',class:'MainWindow'},{id:'add',name:'panelChromeAction',text:'+ Video',enabled:true},{id:'tab',name:'panelSubtabSelector',text:'Main'}]};const seen=[];
   const execute=async(_f,op,p)=>{seen.push(op);if(op==='observe')return ui;return p.operation==='project.get_name'?{name:'Golden'}:{timeline:{timeline_id:'timeline',name:'Main'},tracks,next_cursor:null};};
-  const task=await prepareAgentTask(file,{recipe:'add-video-track'},execute);assert.deepEqual(seen,['call','call','observe']);assert.equal(task.executed,false);assert.equal(task.run.at(-1),'--compact');const plan=JSON.parse(await readFile(task.plan.path));assert.deepEqual(plan.phases[0].steps[1].expect.equals,tracks);assert.equal(plan.phases[1].steps[0].operation,'physical');assert.equal(plan.phases[1].next,null);
+  const task=await prepareAgentTask(file,{recipe:'add-video-track'},execute);assert.deepEqual(seen,['call','call','observe']);assert.equal(task.executed,false);assert.equal(task.run.at(-1),'--compact');const inspection=spawnSync(task.inspect[0],task.inspect.slice(1),{cwd:root,env:{...process.env,SMOKE_DATA_DIR:root+'/wrong'},encoding:'utf8'});assert.equal(inspection.status,3);assert.match(JSON.parse(inspection.stdout).error,/ENOENT/,'Returned command inspects the owned workspace from another directory despite a different ambient workspace');const catalog=await prepareAgentTask(file,{},execute);assert.deepEqual(Object.keys(catalog.recipes.find(r=>r.id==='add-video-track').parameters),['timelineId']);const plan=JSON.parse(await readFile(task.plan.path));assert.deepEqual(plan.phases[0].steps[1].expect.equals,tracks);assert.equal(plan.phases[1].steps[0].operation,'physical');assert.equal(plan.phases[1].next,null);
   ui.matches.push({...ui.matches[0],id:'audio'});assert.equal((await prepareAgentTask(file,{recipe:'add-video-track'},execute)).status,'Valid','Video/audio canvases do not make a window shortcut ambiguous');ui.matches.pop();
   ui.matches.push({...ui.matches[1],id:'other'});await assert.rejects(()=>prepareAgentTask(file,{recipe:'add-video-track'},execute),e=>e.code==='ambiguous_target');
   ui.matches.pop();ui.matches.at(-1).text='Wrong timeline';await assert.rejects(()=>prepareAgentTask(file,{recipe:'add-video-track'},execute),e=>e.code==='wrong_fixture');
   await assert.rejects(()=>prepareAgentTask(file,{recipe:'add-video-track',values:{baselineTracks:[]}},execute),e=>e.code==='unknown_parameter');
   await assert.rejects(()=>prepareAgentTask(file,{recipe:'../escape'},execute),e=>e.code==='unknown_recipe');
-  const full={session:file,checks:[{id:'D-CLI-01',title:'Connect',steps:Array(100).fill('large')}],guidance:['x'.repeat(100000)],project:{main:'timeline'}};const brief=briefContext(full);assert(brief.recipes.includes('add-video-track'));assert(!JSON.stringify(brief).includes('large'));assert(Buffer.byteLength(JSON.stringify(brief))<3000);
+  const full={session:file,workspace:'/private/tmp',checks:[{id:'D-CLI-01',title:'Connect',steps:Array(100).fill('large')}],guidance:['x'.repeat(100000)],project:{main:'timeline'}};const brief=briefContext(full);assert(brief.recipes.includes('add-video-track'));assert(!JSON.stringify(brief).includes('large'));assert(Buffer.byteLength(JSON.stringify(brief))<5000);
  }finally{await rm(root,{recursive:true,force:true});}
 });
