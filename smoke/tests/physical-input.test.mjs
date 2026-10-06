@@ -120,3 +120,14 @@ export async function nativeDesktopInput(f,p){if(p.command==='inspect')return {p
   assert.deepEqual((await import(stub)).effects,['Cafe']);
  }}finally{await rm(root,{recursive:true,force:true});}
 });
+
+test('an already active key window avoids activation while missing or inactive ownership still activates',async()=>{
+ const root=await mkdtemp('/private/tmp/athanor-activation-');
+ try{for(const [i,flags] of [{active:true,keyWindow:true},{active:false,keyWindow:true},{active:true,keyWindow:false},{}].entries()){
+  const owned=root+'/'+i;await mkdir(owned);const file=owned+'/session.json';await writeFile(file,JSON.stringify({root:owned}));const stub=pathToFileURL(owned+'/stub.mjs').href;
+  await writeFile(owned+'/stub.mjs',`export const actions=[];export async function nativeCall(file,op){actions.push(op);return {widgets:[{id:'main',window:'main',title:'Wizard',width:100,height:100,...${JSON.stringify(flags)}},{id:'button',window:'main',width:20,height:20,x:0,y:0}]};}export async function nativeDesktopInput(file,p){return p.command==='inspect'?{pid:123,started:'observed',windows:[{window:10,title:'Wizard',frame:{width:100,height:123}}]}:{status:'Dispatched',window:10};}`);
+  const source=(await readFile(new URL('../desktop/physical-input.mjs',import.meta.url),'utf8')).replace(/from '(\.\.?\/[^']+)'/g,(_,relative)=>"from '"+(['./adapter.mjs','./macos-input.mjs'].includes(relative)?stub:new URL(relative,new URL('../desktop/',import.meta.url)).href)+"'");await writeFile(owned+'/probe.mjs',source);
+  const {physicalInput}=await import(pathToFileURL(owned+'/probe.mjs').href),reply=await physicalInput(file,'click',{target:'button'}),{actions}=await import(stub);
+  assert.equal(reply.status,'Dispatched');assert.equal(actions.includes('activate'),i!==0);assert.equal(reply.physicalTiming.activationRequested,i!==0);
+ }}finally{await rm(root,{recursive:true,force:true});}
+});

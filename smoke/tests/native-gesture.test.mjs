@@ -36,3 +36,23 @@ print("Native curved path and modifier admission verified")\n`);
   assert.match(execFileSync(root+'/probe',{encoding:'utf8',timeout:5000}),/admission verified/);
  }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test('foreground readiness returns immediately when ready, waits for arrival and rejects absence',{skip:process.platform!=='darwin'},async()=>{
+ const root=await mkdtemp('/private/tmp/athanor-foreground-');
+ try{
+  const source=await readFile(new URL('../desktop/macos-input.swift',import.meta.url),'utf8'),helper=source.slice(source.indexOf('@MainActor func waitForForeground('),source.indexOf('@main struct NativeInput'));
+  await writeFile(root+'/probe.swift',`import Foundation
+nonisolated(unsafe) var inputInterrupted=false
+struct InputError:Error {let message:String}
+func require(_ ok:Bool,_ message:String) throws {if !ok {throw InputError(message:message)}}
+${helper}
+@main struct Probe {static func main() async throws {
+ let ready=try await waitForForeground({true});precondition(ready<100,"Ready input must not pay a fixed settling delay")
+ var reads=0;_ = try await waitForForeground({reads+=1;return reads>=3});precondition(reads>=3)
+ var rejected=false;do{_ = try await waitForForeground({false})}catch{rejected=true};precondition(rejected)
+ inputInterrupted=true;rejected=false;do{_ = try await waitForForeground({false})}catch{rejected=true};precondition(rejected)
+ print("Foreground readiness verified")
+}}`);
+  execFileSync('/usr/bin/swiftc',['-parse-as-library','-module-cache-path',root+'/cache',root+'/probe.swift','-o',root+'/probe'],{timeout:60000});assert.match(execFileSync(root+'/probe',{encoding:'utf8',timeout:5000}),/readiness verified/);
+ }finally{await rm(root,{recursive:true,force:true});}
+});

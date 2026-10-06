@@ -82,6 +82,8 @@ export function postInputFocus(ui,target,receipt,command){
  if(ui.focus!==target.id||!field?.editableText||field.window!==key?.id||key?.nativeWindow!==receipt.window){const e=new OutcomeError('The editable target did not retain focus after input; inspect before continuing','Unknown');e.code='input_focus_lost';e.diagnostics={target:target.id,focus:ui.focus,keyWindow:key?.nativeWindow||null};throw e;}
 }
 async function physicalInputOwned(file,command,params={}){
+ const began=performance.now(),timing={};let mark=began;
+ const measured=name=>{const now=performance.now();timing[name]=now-mark;mark=now;};
  let u,widget,window;
  for(let i=0;i<5;i++){u=await nativeCall(file,'inspect');widget=u.widgets.find(w=>w.id===params.target);window=u.widgets.find(w=>w.id===widget?.window);if(widget&&window)break;await pause(100);}
  if(!widget||!window)throw new OutcomeError(`Physical input target ${params.target} (${widget?.class||'absent'}; window ${widget?.window||'absent'}) is not observable`,'Blocked');
@@ -90,8 +92,12 @@ async function physicalInputOwned(file,command,params={}){
  if(command==='type'&&!(widget.editableText===true&&u.focus===widget.id))throw new OutcomeError('Physically click the intended editable field before typing; secure and read-only fields are unavailable','Blocked');
  const readCommit=()=>adapter.desktopCall(file,'spellbook.inspect',{document_id:params.commit.documentId,view:'raw'});
  const commit=params.commit?spellTextBaseline(await readCommit(),widget,params.commit,params.text):null;
- if(command!=='screenshot')await nativeCall(file,'activate',{target:window.id});
+ measured('targetReadMs');
+ const activationRequested=command!=='screenshot'&&!(window.active===true&&window.keyWindow===true);
+ if(activationRequested)await nativeCall(file,'activate',{target:window.id});
+ measured('activationMs');
  const native=await nativeDesktopInput(file,{command:'inspect',depth:0,mode:'window-server'});
+ measured('nativeInspectionMs');
  const matches=native.windows.filter(w=>(window.nativeWindow?w.window===window.nativeWindow:w.title===window.title)&&Math.abs(w.frame.width-window.width)<=1&&Math.abs(w.frame.height-window.height)<=80);
  assert(matches.length===1,'Native window title/geometry is absent or ambiguous');
  const target=matches[0],request={command,mode:'window-server',pid:native.pid,started:native.started,window:target.window,frame:target.frame};
@@ -117,10 +123,13 @@ async function physicalInputOwned(file,command,params={}){
   if(params.durationMs!==undefined)request.durationMs=params.durationMs;
   if(command==='scroll'){request.deltaX=params.deltaX??0;request.deltaY=params.deltaY??0;}
  }
- const receipt=await nativeDesktopInput(file,request);
+ measured('requestMappingMs');
+ const receipt=await nativeDesktopInput(file,request);measured('nativeDispatchMs');
  if(command==='type'||command==='click'&&widget.editableText){
   try{let after;for(let i=0;i<10;i++){after=await nativeCall(file,'inspect');if(after.focus===widget.id||commit&&!after.widgets.some(w=>w.id===widget.id))break;await pause(100);}if(commit)receipt.commit=verifySpellTextCommit(commit,await readCommit(),after,widget,receipt);else postInputFocus(after,widget,receipt,command);receipt.focus={target:widget.id,focused:after.focus,keyWindow:after.widgets.find(w=>w.keyWindow)?.nativeWindow,observedAt:new Date().toISOString()};}
   catch(e){e.status='Unknown';e.code=e.code||'post_input_observation_failed';e.nextActions=['observe','verify_resolution','resolve'];e.diagnostics={...e.diagnostics,receipt};throw e;}
  }
+ measured('postInputReadMs');
+ receipt.physicalTiming={...timing,totalMs:performance.now()-began,activationRequested,scope:'Physical wrapper; nested native timings overlap. Admission and outer agent target lookup excluded.'};
  return receipt;
 }

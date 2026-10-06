@@ -348,3 +348,15 @@ key window and focused field; neither route bypasses a failed focus guard.
 `lease_inspection_denied` means process access prevented lease verification;
 it does not establish that the lease ended. Inspect scoped host access without
 restarting or bypassing ownership checks.
+
+Physical input skips a redundant Qt activation only when a fresh observation
+identifies the target window as both active and key. The native driver still
+checks foreground ownership and the target point or keyboard window. Read
+`physicalTiming` and the native receipt's `foregroundWaitMs` when diagnosing
+latency. A fast dispatch does not establish the app outcome: follow it with the
+expected state or combined readiness check, and capture when visual review is
+required. Keep using existing recipes and batches for known short procedures.
+
+Run `npm test` before opening or after closing a live Athanor desktop session:
+the regression suite tests the same cross-workspace foreground lease and must
+be able to acquire it. A live session correctly blocks that test.

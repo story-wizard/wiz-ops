@@ -444,3 +444,12 @@ no physical input or capture. Use `media-search` to test the physical entry path
 and capture separately when appearance is part of the requirement. Both recipes
 still need exact expected-result and complete-model review; a status label alone
 cannot prove the right asset was found.
+
+Physical results include `physicalTiming`: target read, activation, native window
+inspection, coordinate mapping, native dispatch and post-input focus read. The
+wrapper total excludes outer agent lookup/admission; native journal timings are
+nested inside it. `activationRequested` tells whether Qt activation was needed.
+WindowServer input reports `foregroundWaitMs` and polls foreground readiness only
+when necessary. It still checks process identity, keyboard ownership and pointer
+occlusion before dispatch. Do not add fixed sleeps around a ready result; use an
+explicit outcome wait and independent state assertion after the action.

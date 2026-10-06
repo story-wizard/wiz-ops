@@ -136,6 +136,16 @@ func sampleRGB(_ image: CGImage) throws -> Data {
     }
     return Data(stride(from:0,to:rgba.count,by:4).flatMap{Array(rgba[$0..<$0+3])})
 }
+// Poll actual foreground readiness; an already-ready process needs no settling delay.
+@MainActor func waitForForeground(_ foreground: () -> Bool) async throws -> Double {
+    let began=ProcessInfo.processInfo.systemUptime
+    while !foreground() {
+        try require(!inputInterrupted,"Input interrupted before foreground readiness")
+        try require(ProcessInfo.processInfo.systemUptime-began<0.2,"Verified PID did not become frontmost")
+        try await Task.sleep(nanoseconds:20_000_000)
+    }
+    return (ProcessInfo.processInfo.systemUptime-began)*1000
+}
 @main struct NativeInput {
     static func main() async {
         var dispatched = false, pointerCleanupReleased = false, modifierCleanupReleased=false
@@ -277,8 +287,10 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                     try require(CGPreflightPostEventAccess(),"Native input permission is unavailable; no permission changes were attempted")
                     try verifyOwner()
                     if !windowServer { try require(AXUIElementSetAttributeValue(app,kAXFrontmostAttribute as CFString,kCFBooleanTrue) == .success,"Unable to activate the verified PID"); AXUIElementPerformAction(window,kAXRaiseAction as CFString) }
-                    try await Task.sleep(nanoseconds:200_000_000)
-                    try require(foreground(),"Verified PID did not become frontmost")
+                    if windowServer { result["foregroundWaitMs"] = try await waitForForeground(foreground) }
+                    else { try await Task.sleep(nanoseconds:200_000_000) }
+                    try verifyOwner()
+                    try require(foreground(),"Verified PID did not remain frontmost")
                     // Floating panels can lead WindowServer order without owning keyboard focus.
                     // Only the instrumented wrapper can supply a fresh AppKit key-window proof.
                     let verifiedKey=request["verifiedKeyWindow"] as? NSNumber
