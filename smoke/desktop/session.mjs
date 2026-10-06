@@ -3,7 +3,7 @@ import {checkPrepared} from '../runner/prepare.mjs';
 import path from 'node:path';
 import {readJSON,writeJSON} from '../runner/files.mjs';
 import {agentTool,sessionContext,agentSessionTimeoutMs} from './agent-tools.mjs';
-import {normalizeToolError} from './agent-proof.mjs';
+import {normalizeToolError,proofError} from './agent-proof.mjs';
 import {agentSequence,checkSequence,serveAgentTools,toolError} from './agent-connection.mjs';
 const [action,target,operation,params]=process.argv.slice(2);
 if(action==='start'||action==='resume'){
@@ -20,7 +20,7 @@ if(action==='start'||action==='resume'){
 }else if(action==='tools')await serveAgentTools(target);
 else if(action==='batch'||action==='batch-check'){
  const checking=action==='batch-check';
- try{const result=await (checking?checkSequence:agentSequence)(target,await readJSON(operation));console.log(JSON.stringify(result,null,2));if(result.status!==(checking?'Valid':'Completed'))process.exitCode=result.status==='Unknown'?5:3;}
+ try{if(process.argv.slice(2).length>4||params!==undefined&&(checking||params!=='--compact'))throw proofError('invalid_sequence','Only batch accepts --compact; no extra arguments',['correct_parameters']);const steps=await readJSON(operation),result=checking?await checkSequence(target,steps):await agentSequence(target,steps,undefined,{compact:params==='--compact'});console.log(JSON.stringify(result,null,2));if(result.status!==(checking?'Valid':'Completed'))process.exitCode=result.status==='Unknown'?5:3;}
  catch(e){const result=toolError(e);console.log(JSON.stringify({format:checking?'athanor-agent-sequence-check/v1':'athanor-agent-sequence/v1',...result}));process.exitCode=result.status==='Unknown'?5:3;}
 }else if(action==='tool'){
  try{console.log(JSON.stringify({format:'athanor-agent-tool/v1',operation,result:await agentTool(target,operation,JSON.parse(params||'{}'))},null,2));}
@@ -31,4 +31,4 @@ else if(action==='batch'||action==='batch-check'){
 }
 else if(action==='stop')await stopDesktop(target);
 else if(action==='schema')console.log(JSON.stringify(await readJSON(new URL('../runner/contracts/desktop-schema.json',import.meta.url)),null,2));
-else throw new Error('Usage: schema | start --plan PLAN.json | start SOURCE.app [COCOA_PLUGIN] | resume SESSION.json | tool SESSION.json operation JSON | batch-check SESSION.json STEPS.json | batch SESSION.json STEPS.json | tools SESSION.json (JSON lines on stdin) | call SESSION.json operation JSON | native SESSION.json operation JSON | stop SESSION.json');
+else throw new Error('Usage: schema | start --plan PLAN.json | start SOURCE.app [COCOA_PLUGIN] | resume SESSION.json | tool SESSION.json operation JSON | batch-check SESSION.json STEPS.json | batch SESSION.json STEPS.json [--compact] | tools SESSION.json (JSON lines on stdin) | call SESSION.json operation JSON | native SESSION.json operation JSON | stop SESSION.json');

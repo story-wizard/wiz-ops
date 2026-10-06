@@ -18,6 +18,7 @@ import {validateToolParams,validateApplicationParams,validateNativeParams,observ
 export {requirePassProof} from './agent-proof.mjs';
 
 const readOps=agentReadOperations,readNative=agentReadNative;
+export const isAgentMutation=(operation,params={})=>operation==='reveal'||operation==='physical'&&params.command!=='screenshot'||operation==='call'&&!readOps.includes(params.operation)||operation==='native'&&!readNative.includes(params.operation);
 const operations=['context','schema','preflight','observe','find','model','model_value','reveal','geometry','physical','native','call','wait','capture','recording','evidence','begin','verify','resolve','record','report'];
 export const agentSessionTimeoutMs=30*60*1000;
 
@@ -93,6 +94,8 @@ export async function sessionContext(file){
  result.applicationOperations=Object.keys(s.schema?.operations||{});result.readOnlyOperations=readOps.filter(op=>Object.hasOwn(s.schema?.operations||{},op));
  result.connection={command:['node','desktop/session.mjs','tools',file],protocol:'JSON lines',maxRequestBytes:65536,maxSequenceSteps:8,request:{id:'unique-request-id',operation:'observe',params:{selector:{class:'MainWindow'}}},requestIds:'Response correlation only; requests are not idempotent. Never retry a lost mutation response.'};
  result.connection.sequencePlanning={guide:'docs/agent-sequences.md',examples:['examples/sequences/add-video-track.json','examples/sequences/search-known-term.json'],checkCommand:['node','desktop/session.mjs','batch-check',file,'/absolute/steps.json'],runCommand:['node','desktop/session.mjs','batch',file,'/absolute/steps.json'],checkScope:'Parameters and selected-build schema only; no target lookup, expected-result evaluation, input, reservation or Pass.'};
+ result.connection.sequencePlanning.compactCommand=[...result.connection.sequencePlanning.runCommand,'--compact'];
+ result.connection.sequencePlanning.continuation='Inspect summary.continuation, gate outcomes and returnedMutationIndexes. Compact replies retain full results at receipt.path with a checksum. Read required domain results there before another phase. No automatic continuation or branch engine is enabled.';
  await writeJSON(path.join(s.root,'agent-context.json'),result);return result;
 }
 
@@ -129,7 +132,7 @@ async function runAgentTool(file,operation,params={}){
  if(operation==='context')return sessionContext(file);
  if(operation==='report')return exportAgentReport(file);
  const records=await jsonLines(path.join(s.root,'agent-results.jsonl')),terminal=s.agentAttempt?terminalResult(records,s.agentAttempt):null;
- const mutating=operation==='reveal'||operation==='physical'&&params.command!=='screenshot'||operation==='call'&&!readOps.includes(params.operation)||operation==='native'&&!readNative.includes(params.operation);
+ const mutating=isAgentMutation(operation,params);
  if(operation==='record'&&terminal)return closeAttempt(records,{attempt:s.agentAttempt,status:params.status,observation:params.note?.trim()});
  requireProof(!(terminal&&mutating),'attempt_closed','Begin a new attempt before another edit',['begin_new_attempt','report']);
  if(operation==='begin')requireProof(!s.agentAttempt||terminal,'attempt_open','Close the current attempt before beginning another',['record','report']);

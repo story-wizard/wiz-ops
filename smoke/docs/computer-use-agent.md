@@ -198,6 +198,13 @@ Pass. Keep the frozen definition's verification and capture checkpoints.
 Sequences do not reserve targets or exclude other commands between steps.
 Use a separate agent decision when an outcome needs interpretation.
 
+Add `--compact` to the batch command, or `compact:true` on a JSON-lines sequence
+request, for a checkpoint summary and a checksummed full receipt file. Inspect
+`summary.continuation`, returned mutation indexes, gates and evidence. Read the
+full result where the next phase requires domain values. Defaults still return
+full results; compact output does not authorize automatic continuation. See
+[sequence review](agent-sequences.md#review-and-reuse) for each continuation state.
+
 For a bot or a persistent agent runtime, keep
 `node desktop/session.mjs tools SESSION.json` running. Send one JSON request
 per stdin line and read one JSON reply from stdout:

@@ -95,6 +95,12 @@ array against the selected schema without app requests or writes. Reuse the
 editable JSON in `examples/sequences/`; replace its placeholders and preserve
 the selected check's frozen actions, assertions and captures. Review each phase
 before dispatching another. Parameter validation does not reserve targets.
+For compact batch responses, add `--compact` (or JSON-lines `compact:true`). Read
+the checksummed full `receipt.path` for required domain state, and inspect gates,
+returned mutation indexes and `summary.continuation` before proceeding. Unknown
+requires reconciliation; storage failures return the full response for retention.
+Automatic branching and the larger planner are documented next steps, not active
+execution modes. Keep semantic recommendations separate from deterministic guards.
 
 ## Default checklist and qualification
 

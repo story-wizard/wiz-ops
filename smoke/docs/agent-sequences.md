@@ -94,6 +94,33 @@ request. Scope related observations together and retain the required evidence.
 
 ## Review and reuse
 
+Use `batch SESSION.json /absolute/steps.json --compact` when the next decision
+can use the gates and evidence references. The JSON-lines equivalent is
+`{"id":"phase-1","compact":true,"steps":[...]}`. The default still returns full
+results. Compact replies include a checksum and `receipt.path` pointing to the
+complete results, parameters and build/process identity inside the session.
+Read required domain values from that file before planning another phase.
+
+Every batch now has a `summary` listing returned steps, gate outcomes, evidence
+references and `returnedMutationIndexes`. These indexes use the same app-mutation
+classification as admission. They describe operations that returned, including
+an edit whose later expectation failed; they do not establish a test Pass.
+`uncertainStep` marks an Unknown step whose effect needs reconciliation.
+
+| `summary.continuation.state` | Agent action |
+| --- | --- |
+| `review_checkpoint` | Review the domain outcome and evidence before the next phase |
+| `rebind_target` | Inspect fresh bindings and prior edits; do not repeat the whole batch |
+| `inspect_blocker` | Inspect the timeout, admission or environment failure |
+| `inspect_failure` | Review the failed assertion with the earlier completed actions |
+| `reconcile_unknown` | Stop editing and reconcile the named uncertain action |
+| `retain_receipt` | Save the full returned response and inspect the storage problem |
+
+`automatic` is false for every continuation. Storage failure returns the full
+known outcome and `retentionError`, preserving its status; it never reruns an
+operation or turns a known Completed result into Unknown. Per-tool journals
+remain separate from the optional compact batch receipt.
+
 Inspect `status`, `results`, each `expectation`, and `failure`/`stoppedAt` when
 present. Earlier steps may have changed the project. On Unknown, stop editing
 and reconcile that specific action from retained evidence. A lost response is
@@ -104,3 +131,39 @@ be rebound on every use. Keep procedures in source and runtime bindings/results
 outside Git. Bots may use the existing [JSON-lines connection](computer-use-agent.md#reduce-trips-back-to-the-agent)
 for sequential requests. Measure total elapsed time, request count, tool time,
 between-request time and verified outcomes separately.
+
+## Toward a branching planner
+
+The next larger capability is an Athanor-owned engine that executes a reviewed
+graph of phases. This is planned work. The current batch commands do not choose
+branches or generate plans.
+
+Start with named phases and deterministic branches on complete, typed readbacks.
+For example, a verified setting can select an already authored change phase or
+a preserve phase. Validate every possible branch against the selected schema
+before any input. Keep the first version acyclic, with total action and time
+budgets. Record each condition, selected branch, source observation and phase
+receipt. Bind returned IDs to the current build, process, project and generation
+and keep ordinary fresh input guards. Unexpected observations return to the
+agent. A false test assertion or Unknown mutation never silently selects a
+recovery branch.
+
+The agent can propose a plan from the test intent, current context and reusable
+recipes. The engine validates and executes the accepted plan. Frozen actions,
+verifiers and captures remain owned by the check. Before automatic continuation,
+prove both sides of every branch, missing/incomplete evidence, stale bindings,
+budget exhaustion and interruption after a mutation. A lost response must be
+recoverable from receipts without resending app input. Compare completion quality,
+missed defects, elapsed time, returned bytes and agent requests on multiple
+control families against the existing phase approach.
+
+An optional semantic decision source could rank compatible recipes or propose
+an investigation route. TypeSafe Jev is a candidate for that role, rather than
+the executor: its current interface evaluates text/JSON and returns typed
+choices/probabilities, with no image input or plan generation. See
+[TypeSafe's System One documentation](https://docs.typesafe.ai/concepts/system-one).
+Use code for identity, permissions, exact assertions, completeness and dispatch.
+Keep ambiguous semantic recommendations reviewable, include abstention and fall
+back to the agent. Evaluate a provider on sanitized held-out cases before using
+its recommendation for unattended routing. No Jev integration or provider
+request is included in this slice.

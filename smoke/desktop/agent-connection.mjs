@@ -1,7 +1,10 @@
 import {performance} from 'node:perf_hooks';
-import {agentTool,compareObservation} from './agent-tools.mjs';
+import {agentTool,compareObservation,isAgentMutation} from './agent-tools.mjs';
+import path from 'node:path';
+import {mkdtemp} from 'node:fs/promises';
+import {verifyDesktopPaths} from './adapter.mjs';
 import {fields,validateToolParams,validateApplicationParams,validateNativeParams,normalizeToolError,proofError} from './agent-proof.mjs';
-import {readJSON} from '../runner/files.mjs';
+import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 
 const maxBytes=65536;
 export function toolError(error){
@@ -22,9 +25,25 @@ export async function checkSequence(file,steps){
  validateSequence(steps,(await readJSON(file)).schema);
  return {format:'athanor-agent-sequence-check/v1',status:'Valid',executed:false,validation:'parameters-and-schema',steps:steps.length,gateIndexes:steps.flatMap((s,i)=>s.expect===undefined?[]:[i])};
 }
+export function sequenceSummary(steps,receipt){
+ const state=receipt.status==='Completed'?'review_checkpoint':receipt.status==='Unknown'?'reconcile_unknown':receipt.status==='Fail'?'inspect_failure':receipt.failure?.code==='input_binding_rejected'?'rebind_target':'inspect_blocker';
+ return {steps:receipt.results.map(r=>({index:r.index,operation:r.operation,label:String(steps[r.index].params?.title||steps[r.index].params?.operation||r.operation+(steps[r.index].params?.command?' '+steps[r.index].params.command:'')).slice(0,160),status:r.expectation?.matched===false?'Fail':r.status||'Returned',gateMatched:r.expectation?.matched})),
+  returnedMutationIndexes:receipt.results.filter(r=>r.result!==undefined&&isAgentMutation(r.operation,steps[r.index].params)).map(r=>r.index),
+  uncertainStep:receipt.status==='Unknown'?receipt.stoppedAt:null,
+  evidence:receipt.results.filter(r=>['capture','evidence','verify'].includes(r.operation)&&r.result?.path&&r.result?.sha256).map(r=>({index:r.index,path:r.result.path,sha256:r.result.sha256,kind:r.result.kind,assertion:r.result.assertion})),
+  continuation:{state,automatic:false,nextActions:receipt.failure?.nextActions||['inspect_results']}};
+}
 // Every step enters the ordinary tool boundary separately. No target or lock is reserved between steps.
-export async function agentSequence(file,steps,execute=agentTool){
- validateSequence(steps,(await readJSON(file)).schema);
+export async function agentSequence(file,steps,execute=agentTool,{compact=false}={}){
+ const session=await readJSON(file);validateSequence(steps,session.schema);
+ if(typeof compact!=='boolean')throw proofError('invalid_sequence','compact must be boolean',['correct_parameters']);
+ let directory;
+ if(compact){verifyDesktopPaths(session);directory=await mkdtemp(path.join(session.root,'sequence-'));}
+ const finish=async receipt=>{
+  const summary=sequenceSummary(steps,receipt),full={...receipt,summary};if(!compact)return full;
+  try{const retained=path.join(directory,'receipt.json');await writeJSON(retained,{...full,session:file,build:{packageHash:session.guiHash},process:{pid:session.pid,started:session.processStart,generation:session.generation},steps});const {results,failure,...brief}=full;return {...brief,...failure?{failure:Object.fromEntries(['index','operation','status','code','origin','error','nextActions'].map(k=>[k,failure[k]]))}:{},encoding:'compact',receipt:{path:retained,sha256:await sha(retained)}};}
+  catch(error){return {...full,retentionError:{code:'receipt_retention_failed',error:error.message},summary:{...summary,continuation:{state:'retain_receipt',automatic:false,nextActions:['retain_full_response','inspect_storage']}}};}
+ };
  const started=performance.now(),results=[];
  for(const [index,step] of steps.entries()){
   const at=performance.now();let result;
@@ -35,18 +54,19 @@ export async function agentSequence(file,steps,execute=agentTool){
   }catch(error){
    const failure={index,operation:step.operation,...toolError(error)};
    if(result===undefined)results.push({...failure,durationMs:performance.now()-at});
-   return {format:'athanor-agent-sequence/v1',status:failure.status,completed:results.filter(r=>r.result!==undefined).length,stoppedAt:index,remaining:steps.length-index-1,results,failure,durationMs:performance.now()-started};
+   return finish({format:'athanor-agent-sequence/v1',status:failure.status,completed:results.filter(r=>r.result!==undefined).length,stoppedAt:index,remaining:steps.length-index-1,results,failure,durationMs:performance.now()-started});
   }
  }
- return {format:'athanor-agent-sequence/v1',status:'Completed',completed:steps.length,remaining:0,results,durationMs:performance.now()-started};
+ return finish({format:'athanor-agent-sequence/v1',status:'Completed',completed:steps.length,remaining:0,results,durationMs:performance.now()-started});
 }
 export async function toolRequest(file,request){
- fields(request,['id','operation','params','steps'],'request');
+ fields(request,['id','operation','params','steps','compact'],'request');
  if(typeof request.id!=='string'||!request.id.length||request.id.length>128)throw proofError('invalid_request_id','Supply a request ID of 1–128 characters',['correct_parameters']);
  if(request.steps!==undefined){
   if(request.operation!==undefined||request.params!==undefined)throw proofError('invalid_sequence','Use steps or an operation, not both',['correct_parameters']);
-  return {id:request.id,...await agentSequence(file,request.steps)};
+  return {id:request.id,...await agentSequence(file,request.steps,undefined,{compact:request.compact===undefined?false:request.compact})};
  }
+ if(request.compact!==undefined)throw proofError('invalid_sequence','compact is only available for steps',['correct_parameters']);
  const started=performance.now();
  return {format:'athanor-agent-tool/v1',id:request.id,operation:request.operation,result:await agentTool(file,request.operation,request.params===undefined?{}:request.params),durationMs:performance.now()-started};
 }
