@@ -1,0 +1,9 @@
+[
+  {"operation":"physical","params":{"command":"click","target":{"class":"MediaSearchField","editableText":true},"title":"Focus the media search"}},
+  {"operation":"physical","params":{"command":"key","target":{"class":"MediaSearchField","focused":true},"key":"cmd+a"}},
+  {"operation":"physical","params":{"command":"type","target":{"class":"MediaSearchField","focused":true},"text":"YOUR_SEARCH_TERM"}},
+  {"operation":"physical","params":{"command":"key","target":{"class":"MediaSearchField","focused":true},"key":"return"}},
+  {"operation":"wait","params":{"selector":{"name":"mediaSearchStatus"},"condition":"text","expected":"YOUR_EXPECTED_SEARCH_STATUS","stableForMs":250,"timeoutMs":5000}},
+  {"operation":"observe","params":{"selectors":[{"class":"MediaSearchField"},{"name":"mediaSearchStatus"},{"class":"QTreeView"}],"details":true,"limit":8}},
+  {"operation":"capture","params":{"target":{"class":"MainWindow"},"kind":"presented","title":"Search results after settling"}}
+]

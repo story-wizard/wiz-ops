@@ -108,6 +108,30 @@ unchanged observations after correcting the trial driver's mistaken requirement
 for a status label in unfiltered mode; the original error remains retained.
 Raw results, scripts, screenshots and cleanup receipts stay outside Git.
 
+### Live agent request-gap pilot
+
+The next pilot used the same updated source (`262605e`) in both lanes. The live
+agent dispatched individual requests in one lane and two short phases in the
+other. Add Video Track, Save, readback/capture, Undo, Save and readback/capture
+ran in fresh disposable projects and processes on the same package. Two pairs
+reversed order; all four attempts passed the exact timeline outcome scorer.
+
+| Mean per attempt | Individual requests | Batches |
+| --- | ---: | ---: |
+| Actor elapsed time | 50.6 s | 13.4 s |
+| Request execution | 5.8 s | 5.4 s |
+| Time between requests | 44.8 s | 8.0 s |
+| Agent requests / operations | 8 / 8 | 2 / 8 |
+
+Elapsed time fell by 73.5% on this known workflow. Between-request time includes
+agent reasoning, tool transport, orchestration and process startup; it is not
+isolated inference time. Preparation and independent scoring were excluded.
+The same actor already knew the procedure, and this sample covers one workflow.
+Keep broader control-family measurements separate. External evidence is labeled
+`athanor-live-agent-gap-pilot/v1`, with full request receipts, eight checksummed
+captures, scores, protocol and cleanup. Use [agent sequences](agent-sequences.md)
+to apply the result without removing checkpoints.
+
 ## Read only what changed
 
 `observe` returns an `observationId` and `encoding`. Repeat the same query with

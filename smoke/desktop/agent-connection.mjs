@@ -18,6 +18,10 @@ export function validateSequence(steps,schema){
   if(step.expect!==undefined){fields(step.expect,['path','equals','notEquals','length','includes'],'expect');compareObservation({},step.expect);}
  }
 }
+export async function checkSequence(file,steps){
+ validateSequence(steps,(await readJSON(file)).schema);
+ return {format:'athanor-agent-sequence-check/v1',status:'Valid',executed:false,validation:'parameters-and-schema',steps:steps.length,gateIndexes:steps.flatMap((s,i)=>s.expect===undefined?[]:[i])};
+}
 // Every step enters the ordinary tool boundary separately. No target or lock is reserved between steps.
 export async function agentSequence(file,steps,execute=agentTool){
  validateSequence(steps,(await readJSON(file)).schema);

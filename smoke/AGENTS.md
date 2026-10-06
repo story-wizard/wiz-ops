@@ -87,6 +87,15 @@ contract. Request IDs correlate responses, not retries: never resend a lost
 mutation. Preserve all frozen assertions, captures, fresh input guards and the
 session deadline. See the computer-use guide for examples.
 
+Before planning physical work, read [agent sequences](docs/agent-sequences.md).
+Plan each known phase ahead, bind targets and expected values from the current
+session, and split at new IDs, dialogs, geometry or decisions. Use
+`desktop/session.mjs batch-check SESSION.json STEPS.json` to validate the complete
+array against the selected schema without app requests or writes. Reuse the
+editable JSON in `examples/sequences/`; replace its placeholders and preserve
+the selected check's frozen actions, assertions and captures. Review each phase
+before dispatching another. Parameter validation does not reserve targets.
+
 ## Default checklist and qualification
 
 A fresh launcher defaults to `smoke-full`: accepted core checks plus the maintained allowlist of physical/checklist qualification candidates. `automated-full` remains accepted-only; custom courses cannot promote candidates. Read `docs/agent-courses.md` for current composition. New physical groups must expose their selected definitions in `agent-context.json`, execute in fresh owned projects, preserve failures and retain native-input receipts in the course report. Stage executors run from the retained source snapshot. Keep the Mac unlocked for desktop checks; never attempt to bypass the lock screen or change system security settings.

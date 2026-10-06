@@ -167,6 +167,10 @@ Use `recording` for a bounded playback sample window; see [agent tools](agent-to
 
 ## Reduce trips back to the agent
 
+Read [Plan agent sequences](agent-sequences.md) for phase boundaries, editable
+JSON examples and the read-only `batch-check` command. Plan known steps before
+dispatch, then review the complete outcome at each meaningful checkpoint.
+
 Use `node desktop/session.mjs batch SESSION.json /absolute/steps.json` for a
 short, already understood sequence. The file is an array of 1–8 ordinary tool
 requests, at most 64 KiB. Each step retains its own admission checks and receipt.
