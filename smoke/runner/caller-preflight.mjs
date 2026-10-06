@@ -10,7 +10,8 @@ export async function callerPreflight({app,core,appBuild,coreBuild,reviewedApp,r
  const roots={app:await realpath(app),core:await realpath(core)},identities={app:await sourceProvenance(roots.app,{reviewedCommit:reviewedApp}),core:await sourceProvenance(roots.core,{reviewedCommit:reviewedCore})},tests=[],gaps=[];
  for(const item of mapping){
   const [cmake,source]=await Promise.all([readFile(path.join(roots[item.role],item.cmake),'utf8'),readFile(path.join(roots[item.role],item.source),'utf8')]);
-  if(!new RegExp('^[ \\t]*add_test\\([ \\t]*NAME[ \\t]+'+item.target+'(?:\\s|\\))','m').test(cmake)||!cmake.includes(item.source.split('/').slice(-2).join('/')))gaps.push(item.role+': reviewed test registration changed; inspect the mapping');
+  const executable=new RegExp('^[ \\t]*(?:qt_add_executable|add_executable|wiz_timeline_add_test)\\(\\s*'+item.target+'\\s+([^)]*)\\)','m').exec(cmake)?.[1],registered=new RegExp('^[ \\t]*add_test\\(\\s*NAME\\s+'+item.target+'\\s+COMMAND\\s+'+item.target+'(?:\\s|\\))','m').test(cmake);
+  if(!registered||!executable?.split(/\s+/).includes(item.source.split('/').slice(-2).join('/')))gaps.push(item.role+': reviewed executable source or test command changed; inspect the mapping');
   const supplied=item.role==='app'?appBuild:coreBuild,build=supplied?await realpath(supplied):'/absolute/'+item.role+'-build';
   if(supplied){
    const cache=await readFile(path.join(build,'CMakeCache.txt'),'utf8'),home=cache.match(/^CMAKE_HOME_DIRECTORY:[^=]+=(.*)$/m)?.[1],expected=item.role==='core'?path.join(roots.core,'c++'):roots.app;
