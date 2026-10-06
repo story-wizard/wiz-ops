@@ -17,7 +17,7 @@ export function briefContext(context){
   guidance:['Choose an existing recipe with task before authoring steps. task compiles and retains a plan; it dispatches no app input.',
    'Read a required value or full frozen check from fullContext or its retained receipt; compact output does not remove evidence.',
    'Review the plan, execute once with the returned request ID, inspect outcome and captures, then choose the next phase.',
-   'Use current observed targets and physical input for the UI behavior under test. Begin/verify/capture/record are required for a frozen toolkit Pass.',
+   'Task recipes are exploratory. Do not begin a frozen check unless adapting every action/assertion/capture to its full contract. Run a course for canonical testing.',
    'New dialogs, geometry and Unknown stop for review. Never replay a lost or uncertain mutation. Stop the owned session when finished.']};
 }
 // ponytail: auto-bind Add Track only; other recipes take explicit observed values.
@@ -26,15 +26,18 @@ export async function prepareAgentTask(file,{recipe:id,values={}}={},execute){
  if(id===undefined)return {format:'athanor-agent-task/v1',executed:false,recipes:catalog};
  requireProof(taskRecipes.includes(id),'unknown_recipe','Choose an ID from the task catalog',['task']);
  const s=await readJSON(file),recipe=await readJSON(new URL('../examples/recipes/'+id+'.json',import.meta.url));let defaults={};
+ requireProof(!s.agentTracking,'recipe_scope_mismatch','Task recipes are exploratory; use the active frozen check contract or start a separate exploration session',['context']);
  if(id==='add-video-track'){
   fields(values,['timelineId'],'auto-bound values');
   const timelineId=values.timelineId??s.main?.id;
   requireProof(typeof timelineId==='string'&&timelineId.length>0,'missing_timeline','Supply values.timelineId from the fixture context',['context']);
-  const name=await execute(file,'call',{operation:'project.get_name'}),before=await execute(file,'call',{operation:'timeline.inspect',params:{timeline_id:timelineId}}),ui=await execute(file,'observe',{selectors:[{class:'TimelineWidget'},{class:'MainWindow'},{name:'panelChromeAction',text:'+ Video',enabled:true},{name:'panelSubtabSelector'}]});
+  const name=await execute(file,'call',{operation:'project.get_name'}),before=await execute(file,'call',{operation:'timeline.inspect',params:{timeline_id:timelineId}}),ui=await execute(file,'observe',{selectors:[{class:'MainWindow'},{name:'panelChromeAction',text:'+ Video',enabled:true},{name:'panelSubtabSelector'}]});
   requireProof(before.timeline?.timeline_id===timelineId&&Array.isArray(before.tracks)&&before.next_cursor==null&&!ui.truncated&&!ui.inspectionIncomplete,'incomplete_observation','Use a complete current timeline and UI observation',['observe']);
   requireProof(typeof before.timeline.name==='string'&&ui.matches.some(w=>w.name==='panelSubtabSelector'&&w.text?.replace(/ \(\d+\)$/,'')===before.timeline.name),'wrong_fixture','Open the requested timeline and supply its values.timelineId',['observe']);
-  const one=selector=>{const found=ui.matches.filter(selector);requireProof(found.length===1,'ambiguous_target','The recipe needs one visible timeline, main window and Add Video button',['observe']);return {id:found[0].id};};
-  defaults={projectName:name.name,timelineId,timelineTarget:one(w=>w.class==='TimelineWidget'),captureTarget:one(w=>w.class==='MainWindow'),baselineTracks:before.tracks,expectedTrackCount:before.tracks.length+1,addSelector:{name:'panelChromeAction',text:'+ Video',enabled:true}};
+  const one=selector=>{const found=ui.matches.filter(selector);requireProof(found.length===1,'ambiguous_target','The recipe needs one main window and Add Video button',['observe']);return {id:found[0].id};};
+  one(w=>w.name==='panelChromeAction'&&w.text==='+ Video'&&w.enabled);
+  // Save/Undo are window shortcuts, not a choice between video and audio canvases.
+  defaults={projectName:name.name,timelineId,timelineTarget:one(w=>w.class==='MainWindow'),captureTarget:one(w=>w.class==='MainWindow'),baselineTracks:before.tracks,expectedTrackCount:before.tracks.length+1,addSelector:{name:'panelChromeAction',text:'+ Video',enabled:true}};
  }
  const bound={...defaults,...values},compiled=await checkAgentRecipe(file,recipe,bound),directory=await mkdtemp(path.join(s.root,'task-')),planFile=path.join(directory,'plan.json'),valuesFile=path.join(directory,'values.json');
  await writeJSON(planFile,compiled.plan);await writeJSON(valuesFile,bound);

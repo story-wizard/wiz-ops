@@ -297,3 +297,9 @@ timeline, supply `values:{"timelineId":"OBSERVED_TIMELINE_ID"}`. The entry
 requires its name to match the visible timeline tab and binds all other values
 from fresh observations; it will not accept overrides of the baseline or target.
 Use explicit recipe compilation for a custom variant.
+
+Task recipes operate in exploration sessions. An active frozen-check attempt
+blocks task preparation; its action IDs, assertions and capture surface must
+come from that contract. Use a course for canonical testing, or deliberately
+adapt a recipe through the existing compiler. Do not substitute a main-window
+capture for a contract's required timeline/preview capture.
