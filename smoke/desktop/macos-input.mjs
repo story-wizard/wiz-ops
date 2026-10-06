@@ -35,7 +35,7 @@ export function validateNativeRequest(request){
  if(request.toWindow!==undefined&&(!Number.isInteger(request.toWindow)||request.toWindow<=0||!request.toFrame||!['x','y','width','height'].every(k=>Number.isFinite(request.toFrame[k]))||request.toFrame.width<=0||request.toFrame.height<=0))throw Error('Supply the observed drag destination window and frame.');
  if(['click','drag','scroll'].includes(request.command))for(const [x,y] of request.command==='drag'?[['x','y'],['toX','toY']]:[['x','y']])if(!Number.isFinite(request[x])||!Number.isFinite(request[y])||request[x]<0||request[y]<0||request[x]>=(x==='toX'?request.toFrame?.width??request.frame.width:request.frame.width)||request[y]>=(x==='toX'?request.toFrame?.height??request.frame.height:request.frame.height))throw Error('Pointer coordinates must be inside the observed window in macOS points.');
  if(request.command==='type'&&(typeof request.text!=='string'||request.text.length<1||request.text.length>4096||/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(request.text)))throw Error('Supply 1–4096 text characters without control codes');
- if(request.focusTarget!==undefined&&(request.command!=='type'||typeof request.focusTarget!=='string'||!request.focusTarget))throw Error('An expected editable target is valid only for text entry.');
+ if(request.focusTarget!==undefined&&(!['type','key'].includes(request.command)||typeof request.focusTarget!=='string'||!request.focusTarget))throw Error('An expected focus target is valid only for keyboard input.');
  if(request.command==='scroll'&&(!['deltaX','deltaY'].every(k=>Number.isInteger(request[k]??0)&&Math.abs(request[k]??0)<=2000)||!(request.deltaX||request.deltaY)))throw Error('Supply a nonzero scroll of at most 2000 pixels per axis');
  if(request.button!==undefined&&!['left','middle','right'].includes(request.button))throw Error('Unsupported pointer button.');
  if(request.durationMs!==undefined&&(request.command!=='drag'||!Number.isInteger(request.durationMs)||request.durationMs<300||request.durationMs>10000))throw Error('Drag duration must be 300–10000 milliseconds.');
@@ -102,10 +102,10 @@ async function nativeDesktopInputOwned(file,request){
 export function keyboardWindowProof(ui,request){
  const key=ui.widgets.find(w=>w.keyWindow===true);
  if(key?.nativeWindow!==request.window)throw new OutcomeError('Keyboard input requires the actual key window; physically click the intended control first','Blocked');
- if(request.command==='type'){
+ if(request.command==='type'||request.focusTarget!==undefined){
   const field=ui.widgets.find(w=>w.id===ui.focus);
-  if(ui.focus!==request.focusTarget)throw new OutcomeError('The requested editable field lost focus before typing; observe and focus it again','Blocked');
-  if(!field?.editableText||field.window!==key.id)throw new OutcomeError('Text entry requires the focused editable field in the verified key window','Blocked');
+  if(ui.focus!==request.focusTarget){const error=new OutcomeError('The requested control lost keyboard focus; observe and focus it again','Blocked');Object.assign(error,{code:'input_focus_changed',origin:'harness',nextActions:['observe','focus_target'],diagnostics:{dispatch:'not_started',expectedTarget:request.focusTarget,observedFocus:ui.focus??null,keyWindow:key.nativeWindow}});throw error;}
+  if(!field||request.command==='type'&&!field.editableText||field.window!==key.id)throw new OutcomeError('Keyboard input requires its focused control in the verified key window','Blocked');
  }
  return {verifiedKeyWindow:key.nativeWindow};
 }

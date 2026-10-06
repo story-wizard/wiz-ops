@@ -131,3 +131,12 @@ test('an already active key window avoids activation while missing or inactive o
   assert.equal(reply.status,'Dispatched');assert.equal(actions.includes('activate'),i!==0);assert.equal(reply.physicalTiming.activationRequested,i!==0);
  }}finally{await rm(root,{recursive:true,force:true});}
 });
+
+test('focus-bound keyboard input refuses another control in the same owned window',()=>{
+ const ui={focus:'timeline',widgets:[{id:'main',keyWindow:true,nativeWindow:10},{id:'timeline',window:'main',class:'TimelineWidget'},{id:'search',window:'main',editableText:true}]};
+ const request={command:'key',key:'cmd+z',window:10,focusTarget:'timeline'};
+ assert.deepEqual(keyboardWindowProof(ui,request),{verifiedKeyWindow:10});
+ assert.throws(()=>keyboardWindowProof({...ui,focus:'search'},request),e=>e.status==='Blocked'&&e.code==='input_focus_changed'&&e.diagnostics.dispatch==='not_started'&&e.diagnostics.observedFocus==='search');
+ assert.throws(()=>keyboardWindowProof({...ui,widgets:ui.widgets.filter(w=>w.id!=='timeline')},request),e=>e.status==='Blocked');
+ assert.deepEqual(keyboardWindowProof({...ui,focus:'search'},{command:'key',key:'cmd+s',window:10}),{verifiedKeyWindow:10},'Window shortcuts retain their explicit window scope');
+});

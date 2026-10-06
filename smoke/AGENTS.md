@@ -203,3 +203,11 @@ observation with process/generation identity and an observation ID. Reuse that
 state rather than immediately observing it again. The checkbox and semantic
 search recipes do this already. Input still refreshes targets; visual proof
 still needs its capture. Timeout diagnostics retain the last selected state.
+
+For context-sensitive keyboard actions, use `physical` with `requireFocus:true`.
+The Undo recipes require an observed, physically focused TimelineWidget; Add
+Track's MainWindow Save target is not an Undo target. Read bounded diagnostics
+and evidence from compact `summary.continuation.context` before opening a full
+failure receipt. Group related scoped observations, preserve the same assertions
+and captures, and keep GUI readiness separate from agent reasoning time in
+measurements. See the focus/recovery section of `docs/agent-sequences.md`.

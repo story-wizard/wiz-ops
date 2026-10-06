@@ -6,11 +6,12 @@ import {nativeDesktopInput} from './macos-input.mjs';
 import {assert,pause,OutcomeError} from '../runner/engine.mjs';
 import {withAdapterAction,markUnknown,fields,requireProof} from './agent-proof.mjs';
 
-const inputFields={click:['x','y','chrome','button','modifiers','clickCount','clipId','expectedClip'],drag:['x','y','chrome','toTarget','toX','toY','button','modifiers','path','durationMs','clipId','expectedClip'],key:['key'],type:['text','commit'],scroll:['x','y','deltaX','deltaY'],screenshot:['crop']};
+const inputFields={click:['x','y','chrome','button','modifiers','clickCount','clipId','expectedClip'],drag:['x','y','chrome','toTarget','toX','toY','button','modifiers','path','durationMs','clipId','expectedClip'],key:['key','requireFocus'],type:['text','commit'],scroll:['x','y','deltaX','deltaY'],screenshot:['crop']};
 export function validatePhysicalInput(command,params){
  requireProof(Object.hasOwn(inputFields,command),'unsupported_physical_command','Choose click, drag, key, type, scroll or screenshot',['correct_parameters']);
  fields(params,['target','expected',...inputFields[command]],'physical input');
  requireProof(typeof params.target==='string'&&params.target.length>0,'invalid_params','Supply the ID of an observed physical target',['observe']);
+ if(params.requireFocus!==undefined)requireProof(command==='key'&&typeof params.requireFocus==='boolean','invalid_params','requireFocus is a boolean keyboard guard',['correct_parameters']);
  if(params.clipId!==undefined)requireProof(typeof params.clipId==='string'&&params.clipId.length>0,'invalid_params','Supply an observed clip identity',['observe']);
  if(params.commit!==undefined){fields(params.commit,['documentId','inputId'],'commit');requireProof(command==='type'&&['documentId','inputId'].every(k=>typeof params.commit[k]==='string'&&params.commit[k].length>0&&params.commit[k].length<=128),'invalid_params','A text commit requires the observed Spell document and input IDs',['observe']);}
 }
@@ -102,7 +103,7 @@ async function physicalInputOwned(file,command,params={}){
  assert(matches.length===1,'Native window title/geometry is absent or ambiguous');
  const target=matches[0],request={command,mode:'window-server',pid:native.pid,started:native.started,window:target.window,frame:target.frame};
  if(command==='screenshot'&&params.crop){const r=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height},p=windowPoint(widget,window,target,r.x,r.y);request.captureRect={...p,width:r.width,height:r.height};}
- if(command==='key')request.key=params.key;
+ if(command==='key'){request.key=params.key;if(params.requireFocus)request.focusTarget=widget.id;}
  else if(command==='type'){request.text=params.text;request.focusTarget=widget.id;}
  else if(command!=='screenshot'){
   if(params.chrome){

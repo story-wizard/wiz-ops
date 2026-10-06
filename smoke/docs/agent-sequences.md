@@ -453,3 +453,23 @@ WindowServer input reports `foregroundWaitMs` and polls foreground readiness onl
 when necessary. It still checks process identity, keyboard ownership and pointer
 occlusion before dispatch. Do not add fixed sleeps around a ready result; use an
 explicit outcome wait and independent state assertion after the action.
+
+### Focus and recovery at a review boundary
+
+`timeline-undo` and `timeline-undo-save` require `timelineTarget` to identify a
+physically focused `TimelineWidget`. Inspect the displayed timeline, click a safe
+observed point, and verify focus and unchanged timeline state before compiling
+Undo. Add Track's `timelineTarget` is a MainWindow shortcut target for Save; do
+not reuse it for Undo. A focused text field can consume Cmd+Z even while the
+correct Wizard window is active.
+
+Use `requireFocus:true` on a physical `key` when its meaning depends on a
+particular control. The ordinary keyboard admission refresh checks that exact
+control in the owned key window before dispatch. Unscoped window shortcuts keep
+their existing behavior. A focus rejection returns `dispatch:not_started`, the
+expected target and the observed focus; earlier operations may still have run.
+
+Compact batch/phase summaries retain bounded failure diagnostics and evidence
+in `summary.continuation.context`. Read its encoding and omitted fields just as
+for observations. It provides recovery context, never permission to replay an
+Unknown operation or automatically resume a failed sequence.

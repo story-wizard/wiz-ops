@@ -184,7 +184,7 @@ async function runAgentTool(file,operation,params={}){
    const ui=await nativeCall(file,'inspect'),target=uniqueTarget(ui,params.target||params.selector);
    const qualified=params.command==='screenshot'?null:physicalAction(s.agentProof,params,target);
    if(qualified)params={...params,stepId:qualified.stepId};
-   const p={target:target.id,expected:target};for(const k of ['button','durationMs','chrome','key','text','deltaX','deltaY','modifiers','path','clickCount','commit'])if(params[k]!==undefined)p[k]=params[k];
+   const p={target:target.id,expected:target};for(const k of ['button','durationMs','chrome','key','text','deltaX','deltaY','modifiers','path','clickCount','commit','requireFocus'])if(params[k]!==undefined)p[k]=params[k];
    if(!['key','type','screenshot'].includes(params.command)&&!(params.command==='click'&&['x','y','xRatio','yRatio'].every(k=>params[k]===undefined))){p.x=params.x??target.width*(params.xRatio??.5);p.y=params.y??target.height*(params.yRatio??.5);}
    if(params.clipId){assert(['click','drag'].includes(params.command),'Clip targeting supports click and drag');const geometry=await nativeCall(file,'timeline-clip-rect',{target:target.id,clipId:params.clipId});Object.assign(p,clipPoint(geometry,params.part),{clipId:params.clipId,expectedClip:geometry.rect});}
    if(params.command==='drag'){const to=uniqueTarget(ui,params.toTarget||params.target||params.selector);p.toTarget=to.id;p.toX=params.toX??to.width*(params.toXRatio??.5);p.toY=params.toY??to.height*(params.toYRatio??.5);}

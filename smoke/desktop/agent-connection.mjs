@@ -76,7 +76,8 @@ export function sequenceSummary(steps,receipt){
   returnedMutationIndexes:receipt.results.filter(r=>r.result!==undefined&&isAgentMutation(r.operation,steps[r.index].params)).map(r=>r.index),
   uncertainStep:receipt.status==='Unknown'?receipt.stoppedAt:null,
   evidence:receipt.results.filter(r=>['capture','evidence','verify'].includes(r.operation)&&r.result?.path&&r.result?.sha256).map(r=>({index:r.index,...Object.fromEntries(['path','sha256','kind','assertion','caption','recordedAt','identity','revision','generation','method','target'].filter(k=>r.result[k]!==undefined).map(k=>[k,r.result[k]])),use:'Review this retained artifact; it describes this checkpoint, not the current screen.'})),
-  continuation:{state,automatic:false,nextActions:receipt.failure?.nextActions||['inspect_results']}};
+  continuation:{state,automatic:false,nextActions:receipt.failure?.nextActions||['inspect_results'],
+   ...(receipt.failure?.diagnostics||receipt.failure?.evidence?{context:resultPreview({diagnostics:receipt.failure.diagnostics,evidence:receipt.failure.evidence})}:{})}};
 }
 // Every step enters the ordinary tool boundary separately. No target or lock is reserved between steps.
 export async function agentSequence(file,steps,execute=agentTool,{compact=false}={}){

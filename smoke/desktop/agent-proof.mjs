@@ -26,7 +26,7 @@ export function fields(value,allowed,label='parameters'){
 }
 const selectors=['id','class','name','text','tooltip','title','window','parent','enabled','active','focused','editableText','keyWindow','accessibleName','accessibleDescription','contains'];
 const toolFields={context:['detail'],task:['recipe','values'],report:[],preflight:[],schema:['operation'],observe:['selector','selectors','kind','limit','details','scope','since'],find:['selector','kind','scope'],model:['target','selector','offset','limit','cursor'],model_value:['target','selector','offset','column','role','cursor'],reveal:['target','selector','offset','cursor'],geometry:['target','selector','clipId','part'],
- physical:['command','target','selector','toTarget','x','y','toX','toY','xRatio','yRatio','toXRatio','toYRatio','button','durationMs','chrome','key','text','deltaX','deltaY','clipId','part','actionId','modifiers','path','clickCount','commit'],
+ physical:['command','target','selector','toTarget','x','y','toX','toY','xRatio','yRatio','toXRatio','toYRatio','button','durationMs','chrome','key','text','deltaX','deltaY','clipId','part','actionId','modifiers','path','clickCount','commit','requireFocus'],
  call:['operation','params'],native:['operation','params'],wait:['selector','kind','scope','condition','expected','conditions','details','limit','timeoutMs','intervalMs','stableForMs'],capture:['target','selector','kind','assertion'],recording:['target','timelineTarget','timelineId','durationMs','intervalMs','maxSamples'],evidence:['file','kind'],
  begin:['id','mode'],verify:['assertion','target','read','selector','kind','expect','fixture'],resolve:['actionId','verification','note'],record:['status','note']};
 export function validateToolParams(operation,params){
@@ -34,6 +34,7 @@ export function validateToolParams(operation,params){
  fields(params,[...toolFields[operation],'title','stepId']);
  if(operation==='context')requireProof(params.detail===undefined||['brief','full'].includes(params.detail),'invalid_params','Choose brief or full context',['correct_parameters']);
  if(operation==='task'&&params.values!==undefined)requireProof(params.values&&typeof params.values==='object'&&!Array.isArray(params.values)&&Buffer.byteLength(JSON.stringify(params.values))<=65536,'invalid_params','Supply bounded recipe values as an object',['correct_parameters']);
+ if(params.requireFocus!==undefined)requireProof(operation==='physical'&&params.command==='key'&&typeof params.requireFocus==='boolean','invalid_params','requireFocus is a boolean keyboard guard',['correct_parameters']);
  if(params.commit!==undefined){fields(params.commit,['documentId','inputId'],'commit');requireProof(operation==='physical'&&params.command==='type'&&['documentId','inputId'].every(k=>typeof params.commit[k]==='string'&&params.commit[k].length>0&&params.commit[k].length<=128),'invalid_params','A text commit requires observed Spell document and input IDs',['observe']);}
  if(operation==='observe')observationSelectors(params);
  if(operation==='wait'){

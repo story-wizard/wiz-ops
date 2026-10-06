@@ -378,3 +378,34 @@ test('checkbox readiness cannot combine a checked box from one moment with an en
  },{requestId:'non-simultaneous-controls'});
  assert.equal(result.status,'Blocked');assert.equal(result.continuation.automatic,false);assert.ok(reads>1);
 }));
+
+test('compact failures retain bounded recovery context without authorizing replay',async()=>fixture(async file=>{
+ for(const status of ['Blocked','Unknown']){
+  const diagnostics={dispatch:status==='Blocked'?'not_started':'uncertain',expected:{id:'target',x:10},observed:{id:'target',x:20}},evidence={failureScreenshot:'/owned/failure.png'};let calls=0;
+  const reply=await agentSequence(file,[{operation:'physical',params:{command:'click'}},{operation:'physical',params:{command:'click'}}],async()=>{calls++;throw Object.assign(Error('Target changed'),{status,code:status==='Blocked'?'input_binding_rejected':'mutation_unknown',diagnostics,evidence,nextActions:status==='Blocked'?['observe']:['verify_resolution']});},{compact:true});
+  assert.equal(calls,1);assert.equal(reply.summary.continuation.automatic,false);assert.deepEqual(reply.summary.continuation.context.result,{diagnostics,evidence});assert.equal(reply.summary.continuation.state,status==='Blocked'?'rebind_target':'reconcile_unknown');
+ }
+ const diagnostics={large:'x'.repeat(12000)};const reply=await agentSequence(file,[{operation:'observe'}],async()=>{throw Object.assign(Error('Large failure'),{status:'Blocked',diagnostics});},{compact:true});
+ assert.equal(reply.summary.continuation.context.completeResult,false);assert.equal(reply.summary.continuation.context.omitted[0].field,'diagnostics');assert.deepEqual(JSON.parse(await readFile(reply.receipt.path)).failure.diagnostics,diagnostics);
+}));
+
+test('physical search requires its query and completion in one observation before capturing',async()=>fixture(async file=>{
+ const recipe=JSON.parse(await readFile(new URL('../examples/recipes/media-search.json',import.meta.url))),{plan}=compileAgentRecipe(recipe,{searchId:'search',mediaViewId:'view',query:'motion',expectedStatus:'1 match'});
+ for(const staleQuery of [false,true]){let captures=0;
+  const reply=await runAgentPlan(file,plan,async(_f,op,params)=>{
+   if(op==='observe')return {matchCount:1,matches:[{id:'search',text:'motion'}],truncated:false};
+   if(op==='wait')return waitForObservation(async()=>readyUI({widgets:[{id:'search',text:staleQuery?'other':'motion'},{id:'view',rows:1,model:[['motion.mp4']]},{id:'status',name:'mediaSearchStatus',text:'1 match'}]},params),{timeoutMs:15,intervalMs:1});
+   if(op==='capture'){captures++;return {path:'/owned/result.png',sha256:'a'.repeat(64)};}throw Error('Unexpected mutation');
+  },{requestId:'search-state-'+staleQuery});
+  assert.equal(reply.status,staleQuery?'Blocked':'Completed');assert.equal(captures,staleQuery?0:1);
+ }
+}));
+
+test('timeline Undo recipes require a focused timeline and carry that guard to keyboard dispatch',async()=>fixture(async file=>{
+ const session=JSON.parse(await readFile(file));session.schema=JSON.parse(await readFile(new URL('../runner/contracts/desktop-schema.json',import.meta.url)));await writeFile(file,JSON.stringify(session));
+ for(const id of ['timeline-undo','timeline-undo-save'])for(const target of [{class:'MainWindow',focused:false},{class:'MediaSearchField',focused:true},{class:'TimelineWidget',focused:true}]){
+  const recipe=JSON.parse(await readFile(new URL('../examples/recipes/'+id+'.json',import.meta.url))),{plan}=compileAgentRecipe(recipe,{timelineTarget:{id:'target'},timelineId:'timeline',baselineTracks:[],captureTarget:{id:'main'}});let keys=[];
+  const reply=await runAgentPlan(file,plan,async(_f,op,p)=>{if(op==='wait'){if(!target.focused)throw Object.assign(Error('Wrong focus'),{status:'Blocked'});return target;}if(op==='physical'){keys.push(p);return {status:'Dispatched'};}if(op==='call')return {tracks:[]};return {path:'/owned/result.png',sha256:'a'.repeat(64)};},{requestId:id+'-'+target.class});
+  if(target.class==='TimelineWidget'){assert.equal(reply.status,'Completed');assert.equal(keys[0].key,'cmd+z');assert.equal(keys[0].requireFocus,true);}else{assert.notEqual(reply.status,'Completed');assert.equal(keys.length,0);}
+ }
+}));

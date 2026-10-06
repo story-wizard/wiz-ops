@@ -23,6 +23,23 @@
         "id": "restore",
         "steps": [
           {
+            "operation": "wait",
+            "params": {
+              "selector": {
+                "$param": "timelineTarget"
+              },
+              "condition": "focused",
+              "timeoutMs": 1000,
+              "title": "Require a physically focused timeline canvas"
+            },
+            "expect": {
+              "path": [
+                "class"
+              ],
+              "equals": "TimelineWidget"
+            }
+          },
+          {
             "operation": "physical",
             "params": {
               "command": "key",
@@ -30,7 +47,8 @@
                 "$param": "timelineTarget"
               },
               "key": "cmd+z",
-              "title": "Undo reviewed timeline edit"
+              "title": "Undo reviewed timeline edit",
+              "requireFocus": true
             }
           },
           {
