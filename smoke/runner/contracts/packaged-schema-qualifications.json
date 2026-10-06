@@ -10,6 +10,19 @@
         "render.set_render_mode.properties.mode.description clarifies preview resolution"
       ],
       "basis": "All 161 operation definitions were compared. These are the only differences; the existing mode values and all other operation signatures are unchanged."
+    },
+    {
+      "schemaHash": "285748db89d4172a33dfd5c5b1f4478681326fd4d2f3d20e70f6e6a249f5b1bb",
+      "reviewedAt": "2026-10-06",
+      "changes": [
+        "Adds clip_effects.enable_time_remap, clip_effects.disable_time_remap, clip_effects.freeze_frame and graph.analyze_node",
+        "clip_effects.add_keyframe_at_time and move_keyframe accept exact time objects, make time_sec optional and describe the clip-left-edge clock",
+        "track_effects.add_keyframe_at_time accepts an exact timeline time object and makes time_sec optional",
+        "search.query and search.status add timelines scope; that scope rejects predicate and limit; existing inventory scopes are unchanged",
+        "media.detect_color defaults camera RAW video paths to camera_raw_video; ordinary video and explicit still requests retain their categories",
+        "render.set_render_mode adds eighth preview resolution and clarifies its description"
+      ],
+      "basis": "Official nightly-2026.10.06-2a8b246 shipped CLI, project create --schema --no-spawn: all 165 operations and all top-level schema fields compared with the 161-operation baseline, no removals, exactly four additions and seven changed operations. Existing course requests use project/assets/bin search with independent identity, completeness, scope and timestamp assertions, and MOV/still colour detection with encoding, provenance and input-transform assertions. They do not call the changed keyframe operations, search.status, render.set_render_mode or the four additions. No request mapping or assertion relaxation is needed for these existing checks. New timeline-search, RAW-default, keyframe and time-remap behavior requires its own tests. See docs/build-repair.md."
     }
   ]
 }

@@ -30,6 +30,30 @@ Run affected checks within the user's authorized scope before relying on a chang
 
 Keep changes in the source checkout. Preserve old plans, reports and installed versions. Follow `docs/maintaining-harness.md` to build a new versioned bundle after committing. Return the cause, schema differences, source changes, checks executed, evidence and remaining work. Jira writes, merging, publication and messages require their own user request.
 
+## Reviewed nightly: 2026.10.06-2a8b246
+
+This nightly is qualified by structured schema hash
+`285748db89d4172a33dfd5c5b1f4478681326fd4d2f3d20e70f6e6a249f5b1bb`
+against the unchanged installed baseline. Its 165 operations include four additions
+and seven changed definitions. The official macOS ZIP hash is
+`4799444a12626eaef598e39ade2b8010030cc2c8625c58265eba51343617b32b`.
+
+| Contract change | Existing course use and verification |
+|---|---|
+| Exact keyframe time objects and clip-left-edge clocks | No current course calls the three changed keyframe operations. Future checks must use the documented clock and verify exact timing independently. |
+| Timeline search scope; no predicate/limit for that scope | Existing CLI checks use project, assets and bin scopes. They assert exact asset IDs, exhaustive completion, scope exclusions and transcript timestamps. Keep these assertions. |
+| Camera RAW category default | A-IN-05 uses ordinary MOV and explicit still category; it asserts encoding, provenance and the ingested transform. RAW defaults need a separate fixture/check. |
+| Eighth preview resolution | Current checks do not call render.set_render_mode. Existing quality controls retain their own UI checks. |
+| Time-remap, freeze-frame and graph analysis additions | Current courses do not invoke these new operations; their presence does not add test coverage. |
+
+The regression fixture retains only the eleven changed/added operation definitions
+from the shipped CLI and reconstructs the exact reviewed hash with the baseline.
+It also checks that removed operations, changed required fields, narrowed search
+scopes, altered keyframe time objects, new resolution values and a mismatched
+baseline remain blocked. Preparation and application test outcomes are retained
+separately in the external workspace. An older failed preparation stays failed;
+update the source and prepare again as a new attempt.
+
 ## Copyable request
 
 > Repair Athanor for this build or feature: [identity]. Intended course or checks: [selection]. Failure or missing behavior: [observation]. Read AGENTS.md and docs/build-repair.md. Inspect and compare the actual contract, update the mapping or affected checks as needed, validate the repair and retain the evidence. Preserve old results and the review gate for accepted tests.
