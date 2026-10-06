@@ -6,6 +6,7 @@ import {agentSequence,serveAgentTools,validateSequence,compactToolResult,resultP
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {waitForObservation} from '../desktop/check-support.mjs';
+import {readyUI} from '../desktop/agent-tools.mjs';
 import {checkAgentPlan,runAgentPlan,inspectAgentPlan} from '../desktop/agent-plan.mjs';
 import {compileAgentRecipe,checkAgentRecipe,compileAgentWorkflow,checkAgentWorkflow} from '../desktop/agent-recipes.mjs';
 
@@ -355,7 +356,7 @@ test('enable-checkbox recipe skips an already enabled checkbox and stops after a
   const reply=await runAgentPlan(file,compiled.plan,async(_f,op,params)=>{
    if(op==='observe')return {matchCount:params.selectors?2:1,matches:params.selectors?[{id:'box',checked},{id:'field',enabled:checked}]:[{id:'box',checked}],truncated:false};
    if(op==='physical'){clicks++;checked=true;return {status:'Dispatched'};}
-   return params.condition==='checked'?{id:'box',checked}:{id:'field',enabled:true};
+   return readyUI({widgets:[{id:'box',checked},{id:'field',enabled:checked}]},params);
   },{compact:true,requestId:'checkbox-'+initial});
   assert.equal(reply.status,'Completed');assert.equal(clicks,initial?0:1);assert.equal(reply.summary.phases.at(-1).summary.steps.at(-1).observation.result.matches[1].enabled,true);
  }
@@ -365,4 +366,15 @@ test('enable-checkbox recipe skips an already enabled checkbox and stops after a
   throw Object.assign(Error('Field did not become ready'),{status:'Blocked',code:'wait_timeout'});
  },{requestId:'checkbox-not-ready'});
  assert.equal(stopped.status,'Blocked');assert.equal(inputs,1);assert.equal(stopped.continuation.automatic,false);
+}));
+
+test('checkbox readiness cannot combine a checked box from one moment with an enabled field from another',async()=>fixture(async file=>{
+ const recipe=JSON.parse(await readFile(new URL('../examples/recipes/enable-checkbox.json',import.meta.url)));
+ const {plan}=compileAgentRecipe(recipe,{checkbox:{id:'box'},dependentField:{id:'field'}});let reads=0;
+ const result=await runAgentPlan(file,plan,async(_f,operation,params)=>{
+  if(operation==='observe')return {matchCount:1,matches:[{id:'box',checked:true}],truncated:false};
+  assert.equal(operation,'wait');
+  return waitForObservation(async()=>readyUI({widgets:[{id:'box',checked:++reads%2===1},{id:'field',enabled:reads%2===0}]},params),{timeoutMs:30,intervalMs:1});
+ },{requestId:'non-simultaneous-controls'});
+ assert.equal(result.status,'Blocked');assert.equal(result.continuation.automatic,false);assert.ok(reads>1);
 }));

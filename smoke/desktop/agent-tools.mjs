@@ -45,6 +45,11 @@ export function uniqueTarget(ui,selector,kind='widgets'){
  return selected.matches[0];
 }
 export function readyUI(ui,params={}){
+ if(params.conditions){
+  const values=params.conditions.map(c=>readyUI(ui,{...c,kind:params.kind}));
+  if(values.some(v=>!v))return false;
+  return {...selectUI(ui,{kind:params.kind,selectors:params.conditions.map(c=>c.selector),details:params.details,limit:params.limit}),matched:true,conditions:params.conditions.map((c,i)=>({...c,condition:c.condition||'exists',matched:true,targetId:values[i].id||null}))};
+ }
  const found=selectUI(ui,{selector:params.selector,kind:params.kind,details:true}),condition=params.condition||'exists';
  if(condition==='absent'){
   requireProof(!found.inspectionIncomplete&&!found.truncated,'incomplete_observation','Absence needs a complete inspection; narrow the scope or inspect the model',['observe']);
@@ -77,6 +82,7 @@ export async function sessionContext(file){
  const command=['env','SMOKE_DATA_DIR='+s.dataDir,'node',path.join(ROOT,'desktop/session.mjs')];
  const result={format:'athanor-agent-session/v1',session:file,workspace:s.dataDir,build:{app:s.sourceApp,packageHash:s.guiHash,version:s.plan?.version||null},process:{pid:s.pid,started:s.processStart,generation:s.generation},lifetime:{deadlineAt:s.agentDeadlineAt||null,timeoutMs:s.agentDeadlineAt?agentSessionTimeoutMs:null,onExpiry:s.agentDeadlineAt?'Owned app receives SIGTERM; retain evidence and start a fresh session for further work':null},project:{bundle:s.bundle,main:s.main,alternate:s.alternate,assets:s.assets},adapter:ready.capabilities,physical:{commands:['click','drag','key','type','scroll','screenshot'],keys:physicalKeys,keyAliases:physicalKeyAliases,coordinates:'Widget-relative macOS points; target and destination geometry are rechecked before dispatch'},operations,checks:definitions(s).map(testSpecification),verdicts:{scripted:'Courses run their authored assertions; discover definitions with smoke.mjs list and courses',toolkitPassIds:definitions(s).filter(c=>c.proof).map(c=>c.id),exploration:'Observe, act and retain diagnostics; toolkit Pass requires a frozen proof contract'},evidenceDirectory:path.join(s.root,'evidence'),guidance:[
   'Use CLI/Qt operations to prepare a fixture; perform the action under test with physical input.',
+  'Use wait.conditions for controls that must be ready simultaneously. Its successful reply already contains the selected observation and identity; reuse it instead of immediately inspecting again. Input still refreshes targets and visual proof still requires capture.',
   'Plan short known phases before acting: current targets, precondition gate, physical action, independent readback and declared capture. Read docs/agent-sequences.md and adapt its examples. Check parameters without input using session.mjs batch-check SESSION.json STEPS.json, then run batch SESSION.json STEPS.json (1–8 steps). Split at new dialogs, unknown geometry, asynchronous outcomes or a decision that needs interpretation. Each step keeps fresh guards and its own receipt. Sequences stop on errors or false expectations without rollback or replay; inspect results before continuing. Keep frozen verification and capture checkpoints.',
   'For a failed repro, read docs/bug-reporter-interop.md. The reporter helper only prefills an empty draft in the same build/project and never submits or imports historical attachments.',
   'Resolve targets from a fresh observation. An ambiguous target is Blocked.',
@@ -187,7 +193,10 @@ async function runAgentTool(file,operation,params={}){
    if(params.command==='screenshot')result.capture=await retain(s,params.title||'Owned native window',result.output,'image');
   }else if(operation==='call'||operation==='native')result=await (operation==='call'?desktopCall:nativeCall)(file,params.operation,params.params||{});
   else if(operation==='wait'){
-   result=await waitForObservation(async()=>readyUI(await nativeCall(file,'inspect',params.scope?{target:params.scope}:{}),params),{description:params.title||'Target '+(params.condition||'exists'),timeoutMs:params.timeoutMs??5000,intervalMs:params.intervalMs??150,stableForMs:params.stableForMs??(params.condition==='geometry'?250:0)});
+   let lastUI;const query=params.conditions?{kind:params.kind,scope:params.scope,selectors:params.conditions.map(c=>c.selector),details:params.details,limit:params.limit}:null;
+   try{result=await waitForObservation(async()=>{lastUI=await nativeCall(file,'inspect',params.scope?{target:params.scope}:{});return readyUI(lastUI,params);},{description:params.title||(query?'All requested UI conditions':'Target '+(params.condition||'exists')),timeoutMs:params.timeoutMs??5000,intervalMs:params.intervalMs??150,stableForMs:params.stableForMs??(params.condition==='geometry'||params.conditions?.some(c=>c.condition==='geometry')?250:0)});}
+   catch(error){if(query&&lastUI)error.diagnostics={...error.diagnostics,conditions:params.conditions,lastObservation:selectUI(lastUI,query),generation:s.generation,identity:{packageHash:s.guiHash,pid:s.pid,started:s.processStart}};throw error;}
+   if(query)result=await retainObservation(s,query,{...result,observedAt:new Date().toISOString(),generation:s.generation,identity:{packageHash:s.guiHash,pid:s.pid,started:s.processStart}});
   }else if(operation==='capture'){
    const target=uniqueTarget(await nativeCall(file,'inspect'),params.target||params.selector),kind=params.kind||'presented';assert(['presented','widget','window'].includes(kind),'Choose presented, widget or window capture');
    const assertion=params.assertion,point=s.agentProof?.checkpoints?.[assertion];

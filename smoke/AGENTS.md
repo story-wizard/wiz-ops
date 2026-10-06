@@ -196,3 +196,10 @@ image is not current-state proof. `enable-checkbox` groups observe/click/waits;
 `timeline-undo-save` keeps required restoration Save inside the phase. Preserve
 all frozen contracts and independent assertions. See the final section of
 `docs/agent-sequences.md` for observation context, evidence reuse and timing.
+
+Use `wait.conditions` for 1–8 controls that must be ready together. It polls one
+inspection, requires every condition in that sample and returns the successful
+observation with process/generation identity and an observation ID. Reuse that
+state rather than immediately observing it again. The checkbox and semantic
+search recipes do this already. Input still refreshes targets; visual proof
+still needs its capture. Timeout diagnostics retain the last selected state.

@@ -27,7 +27,7 @@ export function fields(value,allowed,label='parameters'){
 const selectors=['id','class','name','text','tooltip','title','window','parent','enabled','active','focused','editableText','keyWindow','accessibleName','accessibleDescription','contains'];
 const toolFields={context:['detail'],task:['recipe','values'],report:[],preflight:[],schema:['operation'],observe:['selector','selectors','kind','limit','details','scope','since'],find:['selector','kind','scope'],model:['target','selector','offset','limit','cursor'],model_value:['target','selector','offset','column','role','cursor'],reveal:['target','selector','offset','cursor'],geometry:['target','selector','clipId','part'],
  physical:['command','target','selector','toTarget','x','y','toX','toY','xRatio','yRatio','toXRatio','toYRatio','button','durationMs','chrome','key','text','deltaX','deltaY','clipId','part','actionId','modifiers','path','clickCount','commit'],
- call:['operation','params'],native:['operation','params'],wait:['selector','kind','scope','condition','expected','timeoutMs','intervalMs','stableForMs'],capture:['target','selector','kind','assertion'],recording:['target','timelineTarget','timelineId','durationMs','intervalMs','maxSamples'],evidence:['file','kind'],
+ call:['operation','params'],native:['operation','params'],wait:['selector','kind','scope','condition','expected','conditions','details','limit','timeoutMs','intervalMs','stableForMs'],capture:['target','selector','kind','assertion'],recording:['target','timelineTarget','timelineId','durationMs','intervalMs','maxSamples'],evidence:['file','kind'],
  begin:['id','mode'],verify:['assertion','target','read','selector','kind','expect','fixture'],resolve:['actionId','verification','note'],record:['status','note']};
 export function validateToolParams(operation,params){
  requireProof(Object.hasOwn(toolFields,operation),'unknown_tool','Unknown agent tool: '+operation,['context']);
@@ -37,10 +37,20 @@ export function validateToolParams(operation,params){
  if(params.commit!==undefined){fields(params.commit,['documentId','inputId'],'commit');requireProof(operation==='physical'&&params.command==='type'&&['documentId','inputId'].every(k=>typeof params.commit[k]==='string'&&params.commit[k].length>0&&params.commit[k].length<=128),'invalid_params','A text commit requires observed Spell document and input IDs',['observe']);}
  if(operation==='observe')observationSelectors(params);
  if(operation==='wait'){
-  requireProof(['exists','absent','enabled','value','text','checked','focused','keyWindow','geometry'].includes(params.condition||'exists'),'invalid_wait','Choose an advertised readiness condition',['context']);
-  if(['value','text','checked'].includes(params.condition))requireProof(Object.hasOwn(params,'expected')&&params.expected!==undefined,'invalid_wait','Supply the expected value for this wait condition',['correct_parameters']);
+  let conditions=[params];
+  if(params.conditions!==undefined){
+   requireProof(!['selector','condition','expected'].some(k=>Object.hasOwn(params,k))&&Array.isArray(params.conditions)&&params.conditions.length>=1&&params.conditions.length<=8,'invalid_wait','Use one wait or 1–8 bundled conditions, without mixing them',['correct_parameters']);
+   conditions=params.conditions;for(const condition of conditions)fields(condition,['selector','condition','expected'],'condition');
+   observationSelectors({selectors:conditions.map(c=>c.selector)});
+   requireProof(params.kind===undefined||['widgets','actions'].includes(params.kind),'invalid_wait','Choose widgets or actions',['correct_parameters']);
+   requireProof((params.details===undefined||typeof params.details==='boolean')&&(params.limit===undefined||Number.isInteger(params.limit)&&params.limit>=1&&params.limit<=100),'invalid_wait','Use boolean details and a limit from 1 to 100',['correct_parameters']);
+  }else requireProof(params.details===undefined&&params.limit===undefined,'invalid_wait','Observation details and limit require bundled conditions',['correct_parameters']);
+  for(const condition of conditions){
+   requireProof(['exists','absent','enabled','value','text','checked','focused','keyWindow','geometry'].includes(condition.condition||'exists'),'invalid_wait','Choose an advertised readiness condition',['context']);
+   if(['value','text','checked'].includes(condition.condition))requireProof(Object.hasOwn(condition,'expected')&&condition.expected!==undefined,'invalid_wait','Supply the expected value for this wait condition',['correct_parameters']);
+  }
   for(const [key,min,max] of [['timeoutMs',1,60000],['intervalMs',1,10000],['stableForMs',0,2000]])if(params[key]!==undefined)requireProof(Number.isInteger(params[key])&&params[key]>=min&&params[key]<=max,'invalid_wait','Use bounded integer wait options',['correct_parameters']);
-  requireProof((params.stableForMs??(params.condition==='geometry'?250:0))<=(params.timeoutMs??5000),'invalid_wait','The stable interval must fit within the wait deadline',['correct_parameters']);
+  requireProof((params.stableForMs??(conditions.some(c=>c.condition==='geometry')?250:0))<=(params.timeoutMs??5000),'invalid_wait','The stable interval must fit within the wait deadline',['correct_parameters']);
  }
  for(const k of ['selector','target','toTarget'])if(params[k]!==undefined){requireProof(typeof params[k]==='string'||params[k]&&typeof params[k]==='object','invalid_params','Supply an observed target',['correct_parameters']);if(typeof params[k]!=='string')fields(params[k],selectors,k);}
  if(params.read!==undefined)fields(params.read,['operation','params'],'read');

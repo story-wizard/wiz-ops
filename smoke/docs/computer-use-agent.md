@@ -66,6 +66,29 @@ node desktop/session.mjs tool SESSION.json wait '{"selector":{"id":"OBSERVED_NAT
 
 A successful wait does not reserve a target or grant keyboard focus. Input still refreshes geometry, process identity and key-window ownership before dispatch. Available physical keys and adapter operations are listed in the context. Editing keys include J/K/L, I/O, B/V, arrows, digits, F1–F12, Home/End, Page Up/Down, comma/period nudges and forward delete. Chords use names such as `shift+right`, `cmd+1`, `period` and `f2`. Key codes identify physical keys; Unicode text uses `type`. The same ownership and focus checks apply to every chord.
 
+When several controls must be ready together, use one bundled wait:
+
+```json
+{
+  "conditions": [
+    {"selector":{"id":"OBSERVED_CHECKBOX"},"condition":"checked","expected":true},
+    {"selector":{"id":"OBSERVED_FIELD"},"condition":"enabled"}
+  ],
+  "timeoutMs":5000,
+  "limit":2
+}
+```
+
+Pass this as the parameters to `wait`. All 1–8 conditions must hold in the same
+Qt inspection. The reply contains that observation's `matches`, condition results,
+process/generation identity and retained `observationId`; use it instead of
+immediately inspecting the same controls again. `details:true` includes model
+rows and selection. Scope, kind and deadline apply to the whole bundle. Geometry
+defaults to a 250 ms stable interval if any condition requests it. Absence still
+requires complete inspection, and ambiguous targets remain blocked. A timeout
+retains the last selected observation and requested conditions for diagnosis.
+Use physical input for the tested gesture and a fresh capture for visual proof.
+
 The context also lists the selected build's application operations and the verification allowlist. Use `schema '{"operation":"timeline.inspect"}'` to retrieve one operation's parameter, result and error schemas. Use `evidence '{"file":"/absolute/session/file.json","title":"Measured state"}'` to retain existing JSON, or add `kind:"image"` for a PNG. Imported observations appear in the report but cannot satisfy the current capture or verification required for Pass.
 
 ## Text, scrolling and timeline targets

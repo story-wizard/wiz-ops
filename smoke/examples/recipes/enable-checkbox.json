@@ -72,35 +72,22 @@
           {
             "operation": "wait",
             "params": {
-              "selector": {
-                "$param": "checkbox"
-              },
-              "condition": "checked",
-              "expected": true,
-              "timeoutMs": 5000
-            }
-          },
-          {
-            "operation": "wait",
-            "params": {
-              "selector": {
-                "$param": "dependentField"
-              },
-              "condition": "enabled",
-              "timeoutMs": 5000
-            }
-          },
-          {
-            "operation": "observe",
-            "params": {
-              "selectors": [
+              "conditions": [
                 {
-                  "$param": "checkbox"
+                  "selector": {
+                    "$param": "checkbox"
+                  },
+                  "condition": "checked",
+                  "expected": true
                 },
                 {
-                  "$param": "dependentField"
+                  "selector": {
+                    "$param": "dependentField"
+                  },
+                  "condition": "enabled"
                 }
               ],
+              "timeoutMs": 5000,
               "limit": 2
             },
             "expect": {

@@ -51,36 +51,39 @@
           {
             "operation": "wait",
             "params": {
-              "selector": {
-                "name": "mediaSearchStatus"
-              },
-              "condition": "text",
-              "expected": {
-                "$param": "expectedStatus"
-              },
-              "timeoutMs": 10000
-            }
-          },
-          {
-            "operation": "observe",
-            "params": {
-              "selectors": [
+              "conditions": [
                 {
-                  "id": {
-                    "$param": "searchId"
+                  "selector": {
+                    "id": {
+                      "$param": "searchId"
+                    }
+                  },
+                  "condition": "text",
+                  "expected": {
+                    "$param": "query"
                   }
                 },
                 {
-                  "id": {
-                    "$param": "mediaViewId"
-                  }
+                  "selector": {
+                    "id": {
+                      "$param": "mediaViewId"
+                    }
+                  },
+                  "condition": "exists"
                 },
                 {
-                  "name": "mediaSearchStatus"
+                  "selector": {
+                    "name": "mediaSearchStatus"
+                  },
+                  "condition": "text",
+                  "expected": {
+                    "$param": "expectedStatus"
+                  }
                 }
               ],
               "details": true,
-              "limit": 3
+              "limit": 3,
+              "timeoutMs": 10000
             },
             "expect": {
               "path": [

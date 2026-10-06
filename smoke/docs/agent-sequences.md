@@ -400,7 +400,8 @@ viewport. These observations do not reserve targets; input still refreshes them.
 
 For a checkbox and dependent field, compile `enable-checkbox` with two observed
 selectors. It skips the click if already checked, otherwise physically clicks,
-then waits for checked and enabled before returning both controls for review.
+then waits for checked and enabled together before returning both controls from
+the successful inspection. It cannot combine readiness from different moments.
 It does not type, guess a dialog or infer a Pass. Use `timeline-undo-save` when the
 procedure requires Undo followed by Save; `timeline-undo` retains its old behavior.
 
@@ -431,8 +432,13 @@ native-driver journals now include start/duration fields, nested inside public
 operations. Do not add those nested measurements to the public total. Keep
 readiness, discovery, execution, visual review and recovery visible in trials.
 
-`media-search-state` sets the query through Qt, waits for the expected completion
-label and returns the field, result model/selection/geometry and status together.
+`media-search-state` sets the query through Qt, waits for the query text, result
+view and expected completion label together, then returns that same observation's
+field, result model/selection/geometry and status. Both recipes use `wait.conditions`
+to eliminate the separate final inspection. Existing single-condition waits keep
+their target-shaped reply. Bundled replies keep observation truncation flags;
+they are readiness observations, not a functional-test verdict. Plan branching
+and binding sources retain their existing supported-operation rules.
 Use it for result-state checks or setup in an observed Name-mode search. It uses
 no physical input or capture. Use `media-search` to test the physical entry path,
 and capture separately when appearance is part of the requirement. Both recipes
