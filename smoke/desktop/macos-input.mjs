@@ -12,7 +12,7 @@ import {ROOT,dataDirectory,writeJSON,readJSON,sha,fingerprint,inside} from '../r
 import {verifyDesktopLease} from './desktop-lease.mjs';
 import {withAdapterAction,markUnknown} from './agent-proof.mjs';
 
-export const physicalKeys=Object.freeze(['escape','return','tab','space','delete','k','n','s','a','z','d','c','v','b','g','j','l','i','o','left','right','up','down','home','end','pageup','pagedown','forwarddelete','comma','period',...Array.from({length:10},(_,i)=>String(i)),...Array.from({length:12},(_,i)=>'f'+(i+1))]);
+export const physicalKeys=Object.freeze(['escape','return','tab','space','delete','k','n','s','a','z','d','c','v','p','r','b','g','j','l','i','o','left','right','up','down','home','end','pageup','pagedown','forwarddelete','comma','period',...Array.from({length:10},(_,i)=>String(i)),...Array.from({length:12},(_,i)=>'f'+(i+1))]);
 export const physicalKeyAliases=Object.freeze({backspace:'delete',enter:'return',esc:'escape',super:'cmd',option:'alt'});
 export function normalizePhysicalKey(key){
  const parts=typeof key==='string'?key.toLowerCase().split('+').map(p=>physicalKeyAliases[p]||p):[];

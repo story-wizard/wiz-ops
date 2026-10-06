@@ -74,7 +74,7 @@ func children(_ element: AXUIElement) -> [AXUIElement] { attribute(element, kAXC
 func actions(_ element: AXUIElement) -> [String] { var names: CFArray?; AXUIElementCopyActionNames(element, &names); return names as? [String] ?? [] }
 let keyCodes: [String:CGKeyCode] = [
     "escape":53,"return":36,"tab":48,"space":49,"delete":51,"k":40,"n":45,"s":1,"a":0,"z":6,"d":2,"c":8,"v":9,
-    "b":CGKeyCode(kVK_ANSI_B),"g":CGKeyCode(kVK_ANSI_G),"j":CGKeyCode(kVK_ANSI_J),"l":CGKeyCode(kVK_ANSI_L),"i":CGKeyCode(kVK_ANSI_I),"o":CGKeyCode(kVK_ANSI_O),
+    "p":CGKeyCode(kVK_ANSI_P),"r":CGKeyCode(kVK_ANSI_R),"b":CGKeyCode(kVK_ANSI_B),"g":CGKeyCode(kVK_ANSI_G),"j":CGKeyCode(kVK_ANSI_J),"l":CGKeyCode(kVK_ANSI_L),"i":CGKeyCode(kVK_ANSI_I),"o":CGKeyCode(kVK_ANSI_O),
     "left":CGKeyCode(kVK_LeftArrow),"right":CGKeyCode(kVK_RightArrow),"up":CGKeyCode(kVK_UpArrow),"down":CGKeyCode(kVK_DownArrow),
     "home":CGKeyCode(kVK_Home),"end":CGKeyCode(kVK_End),"pageup":CGKeyCode(kVK_PageUp),"pagedown":CGKeyCode(kVK_PageDown),"forwarddelete":CGKeyCode(kVK_ForwardDelete),
     "comma":CGKeyCode(kVK_ANSI_Comma),"period":CGKeyCode(kVK_ANSI_Period),
