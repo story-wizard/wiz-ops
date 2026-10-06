@@ -223,6 +223,9 @@ test('shipped recipe examples compile with typed parameters against the selected
  const valuesByRecipe={
   'project-identity':{projectName:'fixture'},
   'media-search':{searchId:'9',query:'motion_25',expectedStatus:'1 match in 1 clip',mediaViewId:'8'},
+  'media-search-state':{searchId:'9',query:'motion_25',expectedStatus:'1 match in 1 clip',mediaViewId:'8'},
+  'enable-checkbox':{checkbox:{id:'box'},dependentField:{id:'field'}},
+  'timeline-undo-save':{timelineTarget:{id:'timeline'},timelineId:'timeline-fixture',baselineTracks:[],captureTarget:{id:'main'}},
   'add-video-track':{projectName:'fixture',timelineId:'timeline-fixture',addSelector:{id:'add'},timelineTarget:{id:'timeline'},captureTarget:{id:'main'},baselineTracks:[],expectedTrackCount:3},
   'inspector-edit':{graphScope:{timeline_id:'timeline-fixture',clip_id:'clip-fixture'},controlTarget:{id:'slider'},previewTarget:{id:'preview'},inspectorTarget:{id:'inspector-window'},thumbX:19,thumbY:7,baselineValue:16,baselineNodes:[],parameterPath:['nodes',0,'params','radius'],baselineTracks:[],timelineId:'timeline-fixture'},
   'timeline-undo':{timelineTarget:{id:'timeline'},timelineId:'timeline-fixture',baselineTracks:[],captureTarget:{id:'main'}}

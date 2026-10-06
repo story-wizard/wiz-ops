@@ -430,3 +430,11 @@ Measure public-operation time separately from agent request gaps. Qt bridge and
 native-driver journals now include start/duration fields, nested inside public
 operations. Do not add those nested measurements to the public total. Keep
 readiness, discovery, execution, visual review and recovery visible in trials.
+
+`media-search-state` sets the query through Qt, waits for the expected completion
+label and returns the field, result model/selection/geometry and status together.
+Use it for result-state checks or setup in an observed Name-mode search. It uses
+no physical input or capture. Use `media-search` to test the physical entry path,
+and capture separately when appearance is part of the requirement. Both recipes
+still need exact expected-result and complete-model review; a status label alone
+cannot prove the right asset was found.

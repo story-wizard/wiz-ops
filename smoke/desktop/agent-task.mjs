@@ -4,7 +4,7 @@ import {ROOT,readJSON,writeJSON,sha} from '../runner/files.mjs';
 import {checkAgentRecipe} from './agent-recipes.mjs';
 import {requireProof,fields} from './agent-proof.mjs';
 
-export const taskRecipes=['project-identity','add-video-track','media-search','inspector-edit','timeline-undo','timeline-undo-save','enable-checkbox','spell-input-edit'];
+export const taskRecipes=['project-identity','add-video-track','media-search','media-search-state','inspector-edit','timeline-undo','timeline-undo-save','enable-checkbox','spell-input-edit'];
 export async function taskCatalog(){
  return Promise.all(taskRecipes.map(async id=>{const recipe=await readJSON(new URL('../examples/recipes/'+id+'.json',import.meta.url));return {id,parameters:id==='add-video-track'?{timelineId:{type:'string',required:false}}:recipe.parameters,autoBound:id==='add-video-track',...(id==='add-video-track'?{defaultTimeline:'Fixture main; supply timelineId for another displayed timeline'}:{}),source:'examples/recipes/'+id+'.json'};}));
 }

@@ -1,0 +1,97 @@
+{
+  "format": "athanor-agent-recipe/v1",
+  "id": "media-search-state",
+  "parameters": {
+    "searchId": {
+      "type": "string"
+    },
+    "query": {
+      "type": "string"
+    },
+    "expectedStatus": {
+      "type": "string"
+    },
+    "mediaViewId": {
+      "type": "string"
+    }
+  },
+  "plan": {
+    "format": "athanor-agent-plan/v1",
+    "start": "search",
+    "phases": [
+      {
+        "id": "search",
+        "steps": [
+          {
+            "operation": "native",
+            "params": {
+              "operation": "text",
+              "params": {
+                "target": {
+                  "$param": "searchId"
+                },
+                "text": {
+                  "$param": "query"
+                }
+              }
+            }
+          },
+          {
+            "operation": "native",
+            "params": {
+              "operation": "key",
+              "params": {
+                "target": {
+                  "$param": "searchId"
+                },
+                "key": "Return"
+              }
+            }
+          },
+          {
+            "operation": "wait",
+            "params": {
+              "selector": {
+                "name": "mediaSearchStatus"
+              },
+              "condition": "text",
+              "expected": {
+                "$param": "expectedStatus"
+              },
+              "timeoutMs": 10000
+            }
+          },
+          {
+            "operation": "observe",
+            "params": {
+              "selectors": [
+                {
+                  "id": {
+                    "$param": "searchId"
+                  }
+                },
+                {
+                  "id": {
+                    "$param": "mediaViewId"
+                  }
+                },
+                {
+                  "name": "mediaSearchStatus"
+                }
+              ],
+              "details": true,
+              "limit": 3
+            },
+            "expect": {
+              "path": [
+                "matchCount"
+              ],
+              "equals": 3
+            }
+          }
+        ],
+        "next": null
+      }
+    ]
+  }
+}
