@@ -439,3 +439,9 @@ test('compact replies prioritize decisions and partial flags without truncating 
  assert.equal((await compactToolResult(file,'query',medium)).encoding,'compact');
  assert(Buffer.byteLength(JSON.stringify(compact))<Buffer.byteLength(JSON.stringify(result))/2);
 }));
+
+test('separate keyboard modifiers reject the entire phase before an earlier pointer edit',async()=>fixture(async file=>{
+ let calls=0;await assert.rejects(()=>agentSequence(file,[{operation:'physical',params:{command:'click'}},{operation:'physical',params:{command:'key',key:'z',modifiers:['command']}}],async()=>{calls++;return {status:'Dispatched'};}),e=>e.code==='invalid_params'&&e.diagnostics.step===1&&e.diagnostics.interface.parameterRules.modifiers.includes('cmd+z'));
+ assert.equal(calls,0);
+ const valid=await agentSequence(file,[{operation:'physical',params:{command:'key',key:'cmd+z',requireFocus:true}}],async()=>{calls++;return {status:'Dispatched'};});assert.equal(valid.status,'Completed');assert.equal(calls,1);
+}));

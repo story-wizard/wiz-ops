@@ -144,3 +144,8 @@ values are included or omitted; lists are never shortened to look complete. Read
 state. Plan gates still evaluate the full internal result. Read a retained image
 once for its checkpoint and use that same artifact in reports and scoring. A
 changed screen or a different declared checkpoint needs its own capture.
+
+Keyboard input uses a chord in `key`, such as `cmd+z`. The `modifiers` array is
+for pointer click/drag only. Plan validation rejects a separate keyboard modifier
+before executing any phase prefix; low-level callers must use the shared native
+request validator rather than calling the binary with unchecked fields.
