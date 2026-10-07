@@ -4,6 +4,18 @@ import {verifyInspectorEdit} from './checklist-proof.mjs';
 import {snapshotState,clips} from '../runner/engine.mjs';
 
 const one=(widgets,predicate,message)=>{const found=widgets.filter(predicate);requireProof(found.length===1,'ambiguous_target',message,['observe']);return found[0];};
+export function inspectorRowBinding(row){
+ const key=row.inspectorInteractionKey;
+ requireProof(row.inspectorBindingIncomplete===false&&typeof key==='string'&&key.length<=4096,'wrong_inspector_binding','Inspector row identity is unavailable',['observe']);
+ // Qualify the two retained app encodings; unknown versions stop before input.
+ if(key.includes('\u001f')){const parts=key.split('\u001f');requireProof(parts.length===4&&parts[0]==='render.graph_node'&&parts[1]===row.paramPath,'wrong_inspector_binding','Unsupported Inspector row identity',['observe']);const ids=Object.fromEntries(parts.slice(2).map(p=>{const i=p.indexOf('=');return [p.slice(0,i),p.slice(i+1)];}));requireProof(Object.keys(ids).length===2&&ids.graph_id&&ids.node_id,'wrong_inspector_binding','Ambiguous Inspector row identity',['observe']);return {owner:parts[0],parameter:parts[1],ids};}
+ const parse=text=>{const parts=[];let offset=0;while(offset<text.length){const match=/^(0|[1-9][0-9]{0,3}):/.exec(text.slice(offset));requireProof(match&&parts.length<16,'wrong_inspector_binding','Malformed Inspector row identity',['observe']);const size=Number(match[1]);offset+=match[0].length;requireProof(size<=4096&&offset+size<=text.length,'wrong_inspector_binding','Truncated Inspector row identity',['observe']);parts.push(text.slice(offset,offset+size));offset+=size;}return parts;};
+ const interaction=parse(key);requireProof(interaction.length===3&&interaction[0]==='interaction-v1'&&interaction[2]===row.paramPath,'wrong_inspector_binding','Unsupported Inspector interaction version',['observe']);
+ const instance=parse(interaction[1]);requireProof(instance.length===3&&instance[0]==='instance-v1'&&instance[2]==='render.graph_node','wrong_inspector_binding','Unsupported Inspector instance version',['observe']);
+ const target=parse(instance[1]);requireProof(target.length===11&&target[0]==='target-v1'&&target[1]==='graph_node'&&target[2]==='wiz.render','wrong_inspector_binding','Unsupported Inspector target version',['observe']);
+ const ids={};for(let i=3;i<target.length;i+=2){requireProof(['timeline_id','clip_id','graph_id','node_id'].includes(target[i])&&!Object.hasOwn(ids,target[i])&&target[i+1].length>0,'wrong_inspector_binding','Ambiguous Inspector target identity',['observe']);ids[target[i]]=target[i+1];}
+ return {owner:instance[2],parameter:interaction[2],ids};
+}
 export function inspectorParameterAnswer(ui,graph,{nodeId,parameter,label}){
  requireProof(!ui.modalWindow&&!ui.popupWindow&&!ui.mouseGrabber,'desktop_not_ready','Dismiss unexpected overlays before Inspector input',['observe']);
  const owner='clip:'+graph.timeline_id+':'+graph.clip_id;
@@ -15,8 +27,8 @@ export function inspectorParameterAnswer(ui,graph,{nodeId,parameter,label}){
  const panel=withinWidgets(ui,{class:'InspectorPanel'});
  const field=one(panel.widgets,w=>w.name==='InspectorParamLabel'&&w.text===label,'The Inspector label must be unique');
  const row=withinWidgets(ui,{id:field.parent});
- const route=row.widgets.find(w=>w.id===row.scope),parts=route.inspectorInteractionKey?.split('\u001f')||[];
- requireProof(route.inspectorBindingIncomplete===false&&route.paramPath===parameter&&parts[0]==='render.graph_node'&&parts[1]===parameter&&parts.filter(p=>p.startsWith('graph_id=')).length===1&&parts.includes('graph_id='+owner)&&parts.filter(p=>p.startsWith('node_id=')).length===1&&parts.includes('node_id='+nodeId),'wrong_inspector_binding','The Inspector mutation row must identify the declared clip, node and parameter',['observe']);
+ const binding=inspectorRowBinding(row.widgets.find(w=>w.id===row.scope));
+ requireProof(binding.parameter===parameter&&binding.ids.graph_id===owner&&binding.ids.node_id===nodeId&&(binding.ids.timeline_id===undefined||binding.ids.timeline_id===graph.timeline_id)&&(binding.ids.clip_id===undefined||binding.ids.clip_id===graph.clip_id),'wrong_inspector_binding','The Inspector mutation row must identify the declared clip, node and parameter',['observe']);
  const control=one(row.widgets,w=>w.name==='InspectorSliderControl'&&w.window===field.window&&Math.abs(w.y-field.y)<5&&w.enabled,'The Inspector row must have one enabled slider');
  requireProof(Array.isArray(control.handle)&&control.handle.length===2&&control.handle.every(Number.isFinite),'missing_geometry','The slider must expose its current styled thumb',['observe']);
  const canvas=one(ui.widgets,w=>w.class==='TimelineWidget'&&!w.clipIdsTruncated&&w.clipIds?.includes(graph.clip_id),'The declared clip must have one visible canvas');

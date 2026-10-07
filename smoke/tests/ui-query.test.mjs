@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
-import {mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer} from '../desktop/ui-query.mjs';
+import {mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer,inspectorRowBinding} from '../desktop/ui-query.mjs';
 import {selectUI,readyUI} from '../desktop/agent-tools.mjs';
 import {validateToolParams,validateNativeParams} from '../desktop/agent-proof.mjs';
 import {modelItemPoint,defaultClickPoint} from '../desktop/physical-input.mjs';
@@ -45,6 +45,12 @@ test('Inspector outcomes require one increasing parameter and unchanged graph wi
  for(const mutate of [g=>g.nodes[0].params.other=2,g=>g.edges.push({unexpected:true}),g=>g.clip_id='other',g=>g.nodes[0].params.radius=15]){const bad=structuredClone(after);mutate(bad);assert.equal(inspectorOutcome(graph,bad,timeline,timeline,params).matched,false);}
  const changedTimeline=structuredClone(timeline);changedTimeline.tracks[0].name='other';assert.equal(inspectorOutcome(graph,after,timeline,changedTimeline,params).matched,false);
  assert.equal(inspectorOutcome(graph,graph,timeline,timeline,{...params,state:'restored'}).matched,true);assert.equal(inspectorOutcome(graph,after,timeline,timeline,{...params,state:'restored'}).matched,false);
+});
+test('packaged Inspector identities use strict bounded versioned fields, not substring matching',()=>{
+ const encode=parts=>parts.map(s=>s.length+':'+s).join(''),target=encode(['target-v1','graph_node','wiz.render','timeline_id','timeline','clip_id','clip','graph_id','clip:timeline:clip','node_id','node']),instance=encode(['instance-v1',target,'render.graph_node']),key=encode(['interaction-v1',instance,'radius']),row={paramPath:'radius',inspectorBindingIncomplete:false,inspectorInteractionKey:key};
+ assert.deepEqual(inspectorRowBinding(row).ids,{timeline_id:'timeline',clip_id:'clip',graph_id:'clip:timeline:clip',node_id:'node'});
+ for(const invalid of [key.slice(0,-1),key+'0:',key.replace('interaction-v1','interaction-v2'),'9999:x',encode(['interaction-v1',encode(['instance-v1',target,'other_owner']),'radius'])])assert.throws(()=>inspectorRowBinding({...row,inspectorInteractionKey:invalid}),e=>e.code==='wrong_inspector_binding');
+ assert.throws(()=>inspectorRowBinding({...row,paramPath:'other'}));
 });
 test('timeline clip questions reject a wrong or incomplete displayed canvas',()=>{
  const timeline=before();timeline.tracks[0].items=[{kind:'clip',clip_id:'clip',source:{asset_id:'asset'}}];
