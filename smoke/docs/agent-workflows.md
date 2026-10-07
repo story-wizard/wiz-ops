@@ -24,6 +24,15 @@ does. Task preparation already validates every path against the selected schema,
 so unchanged task output does not need a second `plan-check`. An edited or
 agent-authored plan still needs validation and review.
 
+Recipe inputs belong inside `values`, not beside `recipe`. The entry brief's
+`shapes.task` and `schema {"tool":"task"}` expose the same example:
+
+```json
+{"recipe":"inspector-edit-undo","values":{"graphScope":{"timeline_id":"OBSERVED_TIMELINE_ID","clip_id":"OBSERVED_CLIP_ID"},"nodeId":"OBSERVED_NODE_ID","parameter":"radius","label":"Radius"}}
+```
+
+Use this object as the task's parameters (`params` in JSON-lines requests).
+
 Use the reviewed plan once with its known request ID. Inspect its retained result
 after a lost response. Never replay uncertain input. Compare assertions and
 captures before declaring the functional result.

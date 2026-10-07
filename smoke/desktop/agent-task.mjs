@@ -2,7 +2,7 @@ import path from 'node:path';
 import {mkdtemp} from 'node:fs/promises';
 import {ROOT,readJSON,writeJSON,sha} from '../runner/files.mjs';
 import {checkAgentRecipe} from './agent-recipes.mjs';
-import {requireProof,fields} from './agent-proof.mjs';
+import {requireProof,fields,toolInterface} from './agent-proof.mjs';
 import {mediaInsertionOutcome} from './ui-query.mjs';
 
 export const taskRecipes=['project-identity','add-video-track','media-search','media-search-state','media-insert-undo','inspector-edit','inspector-edit-undo','timeline-undo','timeline-undo-save','enable-checkbox','spell-input-edit'];
@@ -17,24 +17,24 @@ export function briefContext(context){
   start:[...command,'tool',context.session,'task','{}'],
   tools:[...command,'tool',context.session,'OP','JSON','--compact'],
   connection:{command:[...command,'tools',context.session],protocol:'JSON lines; one reply per request',tool:{id:'unique-tool-id',operation:'observe',params:{selector:{class:'MainWindow'}},compact:true},plan:{id:'known-plan-id',plan:'REVIEWED_COMPILED_PLAN_OBJECT',compact:true},inspect:{id:'new-inspection-id',operation:'plan-inspect',params:{requestId:'known-plan-id'}},maxRequestBytes:65536},
-  shapes:{schema:{tool:'physical'},query:{question:'media-search'},observe:{selectors:[{class:'QTreeView'}],within:{class:'MediaPanel'},limit:8},model:{target:'OBSERVED_VIEW_ID',offset:0,limit:16},call:{operation:'timeline.inspect',params:{timeline_id:'OBSERVED_TIMELINE_ID'}},physical:{command:'click',target:{id:'OBSERVED_WIDGET_ID'}},focusedKey:{command:'key',target:{id:'OBSERVED_FOCUSED_CONTROL_ID'},key:'cmd+z',requireFocus:true},wait:{selector:{id:'OBSERVED_CHECKBOX_ID'},condition:'checked',expected:true}},
+  shapes:{task:toolInterface('task').example.params,schema:{tool:'physical'},query:{question:'media-search'},observe:{selectors:[{class:'QTreeView'}],within:{class:'MediaPanel'},limit:8},model:{target:'OBSERVED_VIEW_ID',offset:0,limit:16},call:{operation:'timeline.inspect',params:{timeline_id:'OBSERVED_TIMELINE_ID'}},physical:{command:'click',target:{id:'OBSERVED_WIDGET_ID'}},focusedKey:{command:'key',target:{id:'OBSERVED_FOCUSED_CONTROL_ID'},key:'cmd+z',requireFocus:true},wait:{selector:{id:'OBSERVED_CHECKBOX_ID'},condition:'checked',expected:true}},
   checks:context.checks.filter(c=>c.id=== 'D-CLI-01'||c.proof).map(c=>({id:c.id,title:c.title})),
   guidance:['Functional scripts: '+path.join(ROOT,'docs/functional-testing-agent.md')+'. Declare fixtures/assertions; preserve script dependencies and required gestures.',
    'Choose an existing recipe with task before authoring steps. task compiles and retains a plan; it dispatches no app input.',
    'Media drop/Undo: docs/media-procedure.md. Inspector/timeline: docs/agent-workflows.md.',
    'Choose the route from the test: CLI for exact application state/setup, Qt for controls and models, screenshots for visual questions, physical input for tested gestures. Preserve a frozen check’s required route.',
-   'Run preflight from the same execution context before editing. A denied process inspection needs that context repaired; never change OS permissions or treat a prepared build as permission.',
+   'Run preflight in the input context. Repair denied process inspection there; never change OS permissions. Preparation grants no input authority.',
    'Bundle selectors with observe; details:true includes model geometry. Input is widget-local; itemRects are viewport-local.',
    'schema {} includes a read-only plan scaffold; schema {tool:NAME} shows step/gate shapes. Gates use array paths. Use operation for app schemas.',
    'Keep canvas focus. Save adds history even when empty: query timeline-history before Undo; verify each history step and domain outcome.',
    'Batch known action, wait and readback steps. Stop at new geometry, unexpected dialogs or decisions. Prefer the persistent connection when the host supports it.',
    'Read compact outcomes and completeness first; omitted values stay in the receipt. gateMatched proves only the declared comparison.',
-   'Review summary.evidence paths directly. Reuse a capture for that same checkpoint instead of taking another for a second report. Historical images never prove the current screen or replace fresh input guards.',
+   'Review summary.evidence once per checkpoint; reuse that artifact. Historical images do not prove current pixels or replace fresh input guards.',
    'Read a required value or full frozen check from fullContext or its retained receipt; compact output does not remove evidence.',
    'Review task.reviewPlan or plan-check.review. Read hashed baselines in the full plan if unfamiliar. Execute once with its request ID, then review outcomes and captures.',
    'Scope is an observed ID string. Model itemRects belong to the returned viewport, not the enclosing view. Reveal clipped controls and refresh geometry before binding.',
-   'Capture separate dialogs with their own window target. Verify checked/enabled after a checkbox click before dependent input. Review one capture per required result; retain additional evidence without duplicate image review.',
-   'Task recipes are exploratory. Do not begin a frozen check unless adapting every action/assertion/capture to its full contract. Run a course for canonical testing.',
+   'Capture separate dialogs by their own window target. Verify checked/enabled after checkbox clicks before dependent input. Review one capture per required result; retain extra evidence without duplicate review.',
+   'Recipes are exploratory. Frozen checks require every declared action, assertion and capture; use a course for canonical testing.',
    'Unexpected dialogs, unavailable geometry and Unknown stop for review. Only an authored exact dialog branch may continue. Never replay a lost or uncertain mutation. Stop the owned session when finished.']};
 }
 // ponytail: auto-bind authored procedures only; unfamiliar routes stay agent-authored.

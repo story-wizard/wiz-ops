@@ -10,6 +10,7 @@ import {readyUI} from '../desktop/agent-tools.mjs';
 import {checkAgentPlan,runAgentPlan,inspectAgentPlan} from '../desktop/agent-plan.mjs';
 import {compileAgentRecipe,checkAgentRecipe,compileAgentWorkflow,checkAgentWorkflow} from '../desktop/agent-recipes.mjs';
 import {toolInterface} from '../desktop/agent-proof.mjs';
+import {briefContext} from '../desktop/agent-task.mjs';
 
 async function fixture(run){
  const data=await realpath(await mkdtemp('/private/tmp/athanor-connection-')),previous=process.env.SMOKE_DATA_DIR;process.env.SMOKE_DATA_DIR=data;
@@ -34,6 +35,13 @@ test('task replies expose complete recipe discovery and review commands while re
  assert.equal(reply.completeResult,false);assert(reply.omitted.some(x=>x.field==='phases'));assert(reply.omitted.some(x=>x.field==='futureField'));
  const bytes=await readFile(reply.receipt.path);assert.deepEqual(JSON.parse(bytes).result,result);assert.equal(reply.receipt.sha256,createHash('sha256').update(bytes).digest('hex'));
  const oversized=await compactToolResult(file,'task',{...result,reviewPlan:{...review,large:'x'.repeat(20000)}});assert.equal(oversized.summary.reviewPlan,undefined);assert(oversized.omitted.some(x=>x.field==='reviewPlan'));assert.deepEqual(JSON.parse(await readFile(oversized.receipt.path)).result.reviewPlan.large,'x'.repeat(20000));
+}));
+test('task discovery and the entry brief advertise valid nested recipe values without app input',async()=>fixture(async file=>{
+ const example=toolInterface('task').example;
+ assert.equal(example.operation,'task');assert.equal(example.params.recipe,'inspector-edit-undo');assert.deepEqual(Object.keys(example.params.values).sort(),['graphScope','label','nodeId','parameter']);
+ const shape=briefContext({session:file,checks:[]}).shapes.task;assert.deepEqual(shape,example.params);
+ assert.doesNotThrow(()=>validateSequence([example],{}));
+ let calls=0;await assert.rejects(()=>agentSequence(file,[{operation:'task',params:{recipe:'inspector-edit-undo',...shape.values}}],async()=>{calls++;}),e=>e.code==='unknown_parameter'&&e.diagnostics.interface.example.params.values.graphScope.timeline_id==='OBSERVED_TIMELINE_ID');assert.equal(calls,0);
 }));
 test('sequence steps remain ordered and a false readback prevents the dependent edit',async()=>fixture(async file=>{
  const seen=[],steps=[{operation:'physical',params:{command:'click'}},{operation:'call',params:{operation:'project.get_name'},expect:{path:['name'],equals:'expected'}},{operation:'physical',params:{command:'key',key:'cmd+z'}}];
