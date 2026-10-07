@@ -217,7 +217,7 @@ measurements. See the focus/recovery section of `docs/agent-sequences.md`.
 
 New selections freeze `desktopMode: "grouped"` by default. `smoke-full` revision 9
 runs compatible driver families in one owned session; every check keeps its own
-authored fixture, assertions and captures. Lifecycle, external disk reload,
+authored fixture, assertions and captures. Lifecycle, live curve sampling, external disk reload,
 preference-changing gestures, long history and import/live-indexing probes remain
 isolated. The maintained `smoke-isolated` course uses the previous session layout
 with the same check membership. CLI selections may set `--desktop-mode isolated`;

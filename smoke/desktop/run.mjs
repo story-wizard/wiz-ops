@@ -113,8 +113,8 @@ export function desktopGroups(ids,map,mode='grouped'){
   assert(['grouped','isolated'].includes(mode),'Unknown desktop execution mode');
   const remaining=new Set(ids),groups=[];
   for(const name of ['check-physical-editor.mjs','check-physical.mjs','check-checklist.mjs','check-checklist-expansion.mjs','check-projects.mjs','check-volume-search.mjs','check-media-search-ui.mjs','check-colour-panels.mjs','check-controls-audio.mjs','check-recorded-playback.mjs'])for(const id of map[name]||[])if(remaining.delete(id)){
-    // Lifecycle, disk reload and preference-changing gestures keep their own session.
-    const isolated=mode==='isolated'||name==='check-projects.mjs'||['D-EXTERNAL-RELOAD','D-SHORTCUT-CONFLICT','D-DOCK-MODIFIER','D-HISTORY-50','D-IMPORT-DIALOG','D-INGEST-SEARCH-LIVE'].includes(id);
+    // Lifecycle, live scripted input, disk reload and preference-changing gestures keep their own session.
+    const isolated=mode==='isolated'||name==='check-projects.mjs'||['P-CURVE-LIVE','D-EXTERNAL-RELOAD','D-SHORTCUT-CONFLICT','D-DOCK-MODIFIER','D-HISTORY-50','D-IMPORT-DIALOG','D-INGEST-SEARCH-LIVE'].includes(id);
     const nameKey=isolated?name+'#'+id:name,group=groups.find(g=>g.name===nameKey);
     if(group)group.ids.push(id);else groups.push({name:nameKey,ids:[id],recoverUnstarted:mode==='grouped'&&!isolated});
   }

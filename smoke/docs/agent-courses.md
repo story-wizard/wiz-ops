@@ -419,7 +419,7 @@ Use `investigation create/show/triage/link/review/export` and `investigations --
 `smoke-full` revision 9 freezes the same 177 checks as revision 8, with grouped
 desktop execution. Compatible checks from one driver reuse its owned Wizard
 session while creating their separate test timelines or Spells. The current full
-selection plans 34 desktop groups instead of 56. Project lifecycle, external
+selection plans 35 desktop groups instead of 56. Project lifecycle, live curve sampling, external
 reload, preference changes, long history and selected import probes still use
 separate sessions. Save/reopen assertions keep their required process restarts.
 

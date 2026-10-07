@@ -59,7 +59,8 @@ test('live persistence waits for the merged group result without hiding an earli
 test('grouping preserves selected checks and only untouched checks get a bounded fresh continuation',async()=>{
  const map=JSON.parse(await readFile(new URL('../desktop/check-map.json',import.meta.url))),ids=['P-TL-BIN-DROP','P-TL-TRIM','D-PROJECT-NEW','D-PROJECT-SAVE-AS'];
  const grouped=desktopGroups(ids,map),isolated=desktopGroups(ids,map,'isolated');
- assert.equal(grouped.length,3);assert.equal(isolated.length,4);assert.deepEqual(new Set(grouped.flatMap(g=>g.ids)),new Set(ids));
+ assert.equal(grouped.length,3);assert.equal(isolated.length,4);
+ assert.equal(desktopGroups(['P-RG-WIRE','P-CURVE-LIVE'],map,'grouped').length,2,'Live scripted input cannot inherit a completed agent-proof attempt');assert.deepEqual(new Set(grouped.flatMap(g=>g.ids)),new Set(ids));
  for(const repeat of [false,true]){
   const root=await mkdtemp(path.join(tmpdir(),'athanor-group-unstarted-'));const calls=[],live=[];
   try{
