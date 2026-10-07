@@ -288,7 +288,7 @@ explicit observed `values`; missing parameters or ambiguous controls block
 preparation. Review stops and canonical Pass requirements remain in force.
 
 Single `tool` commands now return small results directly and retain results over
-4 KiB as checksummed receipts. `--full` returns the full result when needed;
+2 KiB as checksummed receipts. `--full` returns the full result when needed;
 `--compact` explicitly selects the default. JSON-lines ordinary tool requests
 can opt in with `compact:true`. Read needed values from `receipt.path`; a list
 of keys or a result summary cannot substitute for an exact assertion. Failed

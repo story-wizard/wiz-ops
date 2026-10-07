@@ -96,6 +96,24 @@ workflow segments. Reuse evidence from the same checkpoint rather than requestin
 duplicate screenshots. Check completeness and refresh when state changes; fresh
 target guards still run before input.
 
+## Keep physical actions and evidence aligned
+
+- After an action that can open a dialog, query the expected dialog or inspect
+  the owned key window before the next action. Capture a separate dialog using
+  its own target; a main-window image does not establish that no dialog exists.
+- Put keyboard chords in `key`, for example `"cmd+z"`. `modifiers` is for pointer
+  clicks and drags. Physically focus the timeline and require focus before Undo.
+- Verify Undo against the declared domain baseline and review the restored image.
+  If it differs, inspect focus and bounded history before deciding what to do;
+  do not blindly repeat the shortcut. Save can create its own history entry.
+- Keep checkpoints in their declared order. Resolve a format decision before
+  retaining the insertion checkpoint; an image from before that decision cannot
+  serve as evidence of the committed insertion.
+- Use the task's returned run/inspection commands and plan review. Inspect only
+  omitted values needed for the assertion, rather than reading every receipt.
+  When a wrapper rejects parameters before input, correct its documented shape;
+  an Unknown action still requires reconciliation without replay.
+
 ## Example: edit, undo, then save and reopen
 
 Suppose the script asks: “Place a video, trim its right edge, undo the trim, add a
