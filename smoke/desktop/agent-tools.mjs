@@ -7,7 +7,7 @@ import {nativeCall,desktopCall,verifyDesktopOwner,verifyDesktopPaths,captureDesk
 import {physicalInput,clipPoint} from './physical-input.mjs';
 import {nativeDesktopInput,physicalKeys,physicalKeyAliases} from './macos-input.mjs';
 import {retainObservation} from './observations.mjs';
-import {withinWidgets,mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer} from './ui-query.mjs';
+import {withinWidgets,mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer,readQuestionInputs} from './ui-query.mjs';
 import {recordPresented,recordingOptions} from './recorder.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
 import {briefContext,prepareAgentTask} from './agent-task.mjs';
@@ -166,9 +166,7 @@ async function runAgentTool(file,operation,params={}){
   }else if(operation==='query'){
    if(['inspector-parameter','inspector-change','timeline-clip'].includes(params.question)){
     const graphRequest=()=>desktopCall(file,'graph.get_clip_graph',params.graphScope),timelineRequest=()=>desktopCall(file,'timeline.inspect',{timeline_id:params.timelineId??params.graphScope.timeline_id});
-    const reads=await Promise.allSettled(params.question==='inspector-change'?[graphRequest(),timelineRequest()]:[nativeCall(file,'inspect'),params.question==='timeline-clip'?timelineRequest():graphRequest()]);
-    for(const read of reads)if(read.status==='rejected')throw read.reason;
-    const [a,b]=reads.map(r=>r.value);
+    const [a,b]=await readQuestionInputs(params.question,{ui:()=>nativeCall(file,'inspect'),graph:graphRequest,timeline:timelineRequest});
     if(params.question==='inspector-change')result=inspectorOutcome(params.baselineGraph,a,params.baselineTimeline,b,params);
     else if(params.question==='inspector-parameter'){requireProof(b.timeline_id===params.graphScope.timeline_id&&b.clip_id===params.graphScope.clip_id,'wrong_fixture','Graph readback differs from the declared clip',['inspect']);result=inspectorParameterAnswer(a,b,params);}
     else {result=timelineClipAnswer(a,b,params.clipId);const geometry=await nativeCall(file,'timeline-clip-rect',{target:result.targets.canvas.id,clipId:params.clipId});result={...result,geometry,points:{body:clipPoint(geometry),left:clipPoint(geometry,'left-edge'),right:clipPoint(geometry,'right-edge')}};}

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
-import {mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer,inspectorRowBinding} from '../desktop/ui-query.mjs';
+import {mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer,inspectorRowBinding,readQuestionInputs} from '../desktop/ui-query.mjs';
 import {selectUI,readyUI} from '../desktop/agent-tools.mjs';
 import {validateToolParams,validateNativeParams} from '../desktop/agent-proof.mjs';
 import {modelItemPoint,defaultClickPoint} from '../desktop/physical-input.mjs';
@@ -51,6 +51,14 @@ test('packaged Inspector identities use strict bounded versioned fields, not sub
  assert.deepEqual(inspectorRowBinding(row).ids,{timeline_id:'timeline',clip_id:'clip',graph_id:'clip:timeline:clip',node_id:'node'});
  for(const invalid of [key.slice(0,-1),key+'0:',key.replace('interaction-v1','interaction-v2'),'9999:x',encode(['interaction-v1',encode(['instance-v1',target,'other_owner']),'radius'])])assert.throws(()=>inspectorRowBinding({...row,inspectorInteractionKey:invalid}),e=>e.code==='wrong_inspector_binding');
  assert.throws(()=>inspectorRowBinding({...row,paramPath:'other'}));
+});
+test('question reads serialize the shared CLI mailbox but overlap independent Qt and CLI transports',async()=>{
+ let active=false,ended=false,release;const held=new Promise(r=>release=r),calls=[];
+ const graph=async()=>{assert.equal(active,false);active=true;calls.push('graph');await held;active=false;ended=true;return 'graph';};
+ const timeline=async()=>{assert.equal(active,false,'Shared CLI mailbox overlapped');assert.equal(ended,true);calls.push('timeline');return 'timeline';};
+ const pending=readQuestionInputs('inspector-change',{graph,timeline,ui:()=>{throw Error('Unexpected Qt read');}});await Promise.resolve();assert.deepEqual(calls,['graph']);release();assert.deepEqual(await pending,['graph','timeline']);
+ let count=0,ready;const together=new Promise(r=>ready=r),read=async name=>{if(++count===2)ready();await together;return name;};
+ assert.deepEqual(await readQuestionInputs('timeline-clip',{ui:()=>read('ui'),timeline:()=>read('timeline'),graph:()=>{throw Error('Unexpected graph read');}}),['ui','timeline']);
 });
 test('timeline clip questions reject a wrong or incomplete displayed canvas',()=>{
  const timeline=before();timeline.tracks[0].items=[{kind:'clip',clip_id:'clip',source:{asset_id:'asset'}}];

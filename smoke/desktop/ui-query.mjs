@@ -4,6 +4,13 @@ import {verifyInspectorEdit} from './checklist-proof.mjs';
 import {snapshotState,clips} from '../runner/engine.mjs';
 
 const one=(widgets,predicate,message)=>{const found=widgets.filter(predicate);requireProof(found.length===1,'ambiguous_target',message,['observe']);return found[0];};
+export async function readQuestionInputs(question,{ui,graph,timeline}){
+ // The two domain reads share call.lock. Only Qt/CLI transports may overlap.
+ if(question==='inspector-change')return [await graph(),await timeline()];
+ const reads=await Promise.allSettled([ui(),question==='timeline-clip'?timeline():graph()]);
+ for(const read of reads)if(read.status==='rejected')throw read.reason;
+ return reads.map(r=>r.value);
+}
 export function inspectorRowBinding(row){
  const key=row.inspectorInteractionKey;
  requireProof(row.inspectorBindingIncomplete===false&&typeof key==='string'&&key.length<=4096,'wrong_inspector_binding','Inspector row identity is unavailable',['observe']);
