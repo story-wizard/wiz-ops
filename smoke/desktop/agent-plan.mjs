@@ -1,5 +1,6 @@
 import path from 'node:path';
-import {mkdir,realpath,readFile} from 'node:fs/promises';
+import {mkdir,realpath,readFile,open,lstat} from 'node:fs/promises';
+import {constants} from 'node:fs';
 import {randomUUID,createHash} from 'node:crypto';
 import {performance} from 'node:perf_hooks';
 import {isDeepStrictEqual} from 'node:util';
@@ -90,6 +91,21 @@ export function selectPlanBranch(next,result){
  const matches=observations.flatMap((c,i)=>c.matched?[i]:[]);
  if(matches.length!==1)throw proofError('unrecognized_branch_value','The readback does not match exactly one declared value',['inspect']);
  const index=matches[0];return {sourceStep:next.step,path:next.path||[],actual:observations[index].actual,caseIndex:index,next:next.cases[index].phase};
+}
+// Load reviewed bytes once; the ordinary plan admission and input guards still apply.
+export async function runRetainedAgentPlan(file,reference,execute,options={}){
+ fields(reference,['path','sha256'],'plan reference');
+ if(typeof reference.path!=='string'||!path.isAbsolute(reference.path)||typeof reference.sha256!=='string'||! /^[a-f0-9]{64}$/.test(reference.sha256))throw invalid('Supply an absolute retained plan path and its SHA-256');
+ const session=await readJSON(file);verifyDesktopPaths(session);const canonical=await realpath(reference.path);
+ if(!inside(await realpath(session.root),canonical)||!(await lstat(canonical)).isFile())throw invalid('Use a regular plan file inside this session');
+ const handle=await open(canonical,constants.O_RDONLY|(constants.O_NOFOLLOW??0)|(constants.O_NONBLOCK??0));let plan;
+ try{
+  const stat=await handle.stat();if(!stat.isFile()||stat.size>planLimits.maxRequestBytes)throw invalid('Retained plan exceeds the regular-file byte budget');
+  const buffer=Buffer.alloc(planLimits.maxRequestBytes+1),{bytesRead}=await handle.read(buffer,0,buffer.length,0),bytes=buffer.subarray(0,bytesRead);
+  if(bytesRead!==stat.size||createHash('sha256').update(bytes).digest('hex')!==reference.sha256)throw proofError('plan_file_mismatch','Retained plan changed; inspect and review its current bytes',['inspect']);
+  plan=JSON.parse(bytes.toString('utf8'));
+ }finally{await handle.close();}
+ return runAgentPlan(file,plan,execute,options);
 }
 // Each phase reuses agentSequence; each operation still enters ordinary admission and fresh input guards.
 export async function runAgentPlan(file,plan,execute=agentTool,{compact=false,requestId=randomUUID()}={}){

@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
 import {mkdtemp,mkdir,writeFile,readFile,readdir,rm,realpath,symlink} from 'node:fs/promises';
 import {Readable,Writable} from 'node:stream';
-import {agentSequence,serveAgentTools,validateSequence,compactToolResult,resultPreview,sequenceSummary} from '../desktop/agent-connection.mjs';
+import {agentSequence,serveAgentTools,validateSequence,compactToolResult,resultPreview,sequenceSummary,toolRequest} from '../desktop/agent-connection.mjs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 import {waitForObservation} from '../desktop/check-support.mjs';
 import {readyUI} from '../desktop/agent-tools.mjs';
-import {checkAgentPlan,runAgentPlan,inspectAgentPlan} from '../desktop/agent-plan.mjs';
+import {checkAgentPlan,runAgentPlan,inspectAgentPlan,runRetainedAgentPlan} from '../desktop/agent-plan.mjs';
 import {compileAgentRecipe,checkAgentRecipe,compileAgentWorkflow,checkAgentWorkflow} from '../desktop/agent-recipes.mjs';
 import {toolInterface} from '../desktop/agent-proof.mjs';
 import {briefContext} from '../desktop/agent-task.mjs';
@@ -42,6 +43,21 @@ test('task discovery and the entry brief advertise valid nested recipe values wi
  const shape=briefContext({session:file,checks:[]}).shapes.task;assert.deepEqual(shape,example.params);
  assert.doesNotThrow(()=>validateSequence([example],{}));
  let calls=0;await assert.rejects(()=>agentSequence(file,[{operation:'task',params:{recipe:'inspector-edit-undo',...shape.values}}],async()=>{calls++;}),e=>e.code==='unknown_parameter'&&e.diagnostics.interface.example.params.values.graphScope.timeline_id==='OBSERVED_TIMELINE_ID');assert.equal(calls,0);
+}));
+test('retained plan requests run only reviewed owned bytes and keep validation and replay stops',async()=>fixture(async file=>{
+ const root=path.dirname(file),plan={format:'athanor-agent-plan/v1',start:'read',phases:[{id:'read',steps:[{operation:'call',params:{operation:'project.get_name'},expect:{path:['name'],equals:'Golden'}}],next:null}]},planFile=root+'/reviewed.json',bytes=Buffer.from(JSON.stringify(plan));await writeFile(planFile,bytes);
+ const reference={path:planFile,sha256:createHash('sha256').update(bytes).digest('hex')};let calls=0;const execute=async()=>{calls++;return {name:'Golden'};};
+ const result=await runRetainedAgentPlan(file,reference,execute,{requestId:'reviewed-file',compact:true});assert.equal(result.status,'Completed');assert.equal(calls,1);
+ await assert.rejects(()=>runRetainedAgentPlan(file,reference,execute,{requestId:'reviewed-file'}),e=>e.code==='plan_request_exists');
+ const tampered=structuredClone(plan);tampered.phases[0].steps.unshift({operation:'physical',params:{command:'click',target:{id:'target'}}});await writeFile(planFile,JSON.stringify(tampered));await assert.rejects(()=>runRetainedAgentPlan(file,reference,execute),e=>e.code==='plan_file_mismatch');assert.equal(calls,1);
+ await writeFile(planFile,'x'.repeat(65537));await assert.rejects(()=>runRetainedAgentPlan(file,{...reference,sha256:'a'.repeat(64)},execute),e=>e.code==='invalid_plan');
+ const outside=path.dirname(root)+'/outside.json';await writeFile(outside,bytes);await symlink(outside,root+'/escape.json');
+ for(const ref of [{...reference,path:outside},{...reference,path:root+'/escape.json'},{...reference,path:'.'},{...reference,sha256:[reference.sha256]}])await assert.rejects(()=>runRetainedAgentPlan(file,ref,execute));assert.equal(calls,1);
+ const malformed=structuredClone(plan);malformed.phases[0].steps.push({operation:'physical',params:{command:'invented'}});const invalidBytes=Buffer.from(JSON.stringify(malformed));await writeFile(planFile,invalidBytes);await assert.rejects(()=>runRetainedAgentPlan(file,{path:planFile,sha256:createHash('sha256').update(invalidBytes).digest('hex')},execute),e=>e.code==='invalid_params');assert.equal(calls,1);
+ // Exercise the public connection without a Wizard process: a read-only context plan.
+ const context={format:'athanor-agent-plan/v1',start:'read',phases:[{id:'read',steps:[{operation:'context',expect:{path:['format'],equals:'athanor-agent-session/v1'}}],next:null}]},contextBytes=Buffer.from(JSON.stringify(context));await writeFile(planFile,contextBytes);
+ const request={id:'connection-file',operation:'plan-run',params:{plan:{path:planFile,sha256:createHash('sha256').update(contextBytes).digest('hex')}},compact:true},reply=await toolRequest(file,request);assert.equal(reply.status,'Completed');assert.equal(reply.requestId,request.id);assert.equal(reply.summary.review.outcomes[0].gateMatched,true);
+ await assert.rejects(()=>toolRequest(file,request),e=>e.code==='plan_request_exists');
 }));
 test('sequence steps remain ordered and a false readback prevents the dependent edit',async()=>fixture(async file=>{
  const seen=[],steps=[{operation:'physical',params:{command:'click'}},{operation:'call',params:{operation:'project.get_name'},expect:{path:['name'],equals:'expected'}},{operation:'physical',params:{command:'key',key:'cmd+z'}}];

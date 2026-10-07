@@ -283,6 +283,10 @@ inspection commands in `summary` (16 KiB task preview). Check `omitted`; read a
 missing review or unfamiliar hashed baseline from the retained receipt/plan.
 An unchanged prepared task has already passed all-path schema validation; review
 it and use its returned command once. Revalidate plans you edit or author.
+Persistent JSON-lines clients may send the task's exact `runRequest` after review.
+It loads the checksum-bound plan from this session and retains the same request
+identity and input guards. A changed file is rejected before dispatch; inspect
+the retained request after a lost reply rather than resending it.
 
 For result review, start with `summary.review.outcomes` and
 `summary.review.evidence`. These group recorded comparisons and original captures

@@ -16,7 +16,7 @@ export function briefContext(context){
   fullContext:path.join(path.dirname(context.session),'agent-context.json'),recipes:taskRecipes,
   start:[...command,'tool',context.session,'task','{}'],
   tools:[...command,'tool',context.session,'OP','JSON','--compact'],
-  connection:{command:[...command,'tools',context.session],protocol:'JSON lines; one reply per request',tool:{id:'unique-tool-id',operation:'observe',params:{selector:{class:'MainWindow'}},compact:true},plan:{id:'known-plan-id',plan:'REVIEWED_COMPILED_PLAN_OBJECT',compact:true},inspect:{id:'new-inspection-id',operation:'plan-inspect',params:{requestId:'known-plan-id'}},maxRequestBytes:65536},
+  connection:{command:[...command,'tools',context.session],protocol:'JSON lines; one reply per request',tool:{id:'unique-tool-id',operation:'observe',params:{selector:{class:'MainWindow'}},compact:true},plan:{id:'known-plan-id',operation:'plan-run',params:{plan:{path:'REVIEWED_PLAN_PATH',sha256:'REVIEWED_SHA256'}},compact:true},inspect:{id:'new-inspection-id',operation:'plan-inspect',params:{requestId:'known-plan-id'}},maxRequestBytes:65536},
   shapes:{task:toolInterface('task').example.params,schema:{tool:'physical'},query:{question:'media-search'},observe:{selectors:[{class:'QTreeView'}],within:{class:'MediaPanel'},limit:8},model:{target:'OBSERVED_VIEW_ID',offset:0,limit:16},call:{operation:'timeline.inspect',params:{timeline_id:'OBSERVED_TIMELINE_ID'}},physical:{command:'click',target:{id:'OBSERVED_WIDGET_ID'}},focusedKey:{command:'key',target:{id:'OBSERVED_FOCUSED_CONTROL_ID'},key:'cmd+z',requireFocus:true},wait:{selector:{id:'OBSERVED_CHECKBOX_ID'},condition:'checked',expected:true}},
   checks:context.checks.filter(c=>c.id=== 'D-CLI-01'||c.proof).map(c=>({id:c.id,title:c.title})),
   guidance:['Functional scripts: '+path.join(ROOT,'docs/functional-testing-agent.md')+'. Declare fixtures/assertions; preserve script dependencies and required gestures.',
@@ -27,7 +27,7 @@ export function briefContext(context){
    'Bundle selectors with observe; details:true includes model geometry. Input is widget-local; itemRects are viewport-local.',
    'schema {} includes a read-only plan scaffold; schema {tool:NAME} shows step/gate shapes. Gates use array paths. Use operation for app schemas.',
    'Keep canvas focus. Save adds history even when empty: query timeline-history before Undo; verify each history step and domain outcome.',
-   'Batch known action, wait and readback steps. Stop at new geometry, unexpected dialogs or decisions. Prefer the persistent connection when the host supports it.',
+   'Batch known steps; stop at new geometry, dialogs or decisions. The persistent connection accepts task.runRequest after review. Never replay lost input.',
    'Read compact outcomes and completeness first; omitted values stay in the receipt. gateMatched proves only the declared comparison.',
    'Review summary.review outcomes and images together when available. Reuse each checkpoint artifact; old images never replace fresh input guards.',
    'Read a required value or full frozen check from fullContext or its retained receipt; compact output does not remove evidence.',
@@ -82,8 +82,9 @@ export async function prepareAgentTask(file,{recipe:id,values={}}={},execute){
  }
  const bound={...defaults,...values},compiled=await checkAgentRecipe(file,recipe,bound),directory=await mkdtemp(path.join(s.root,'task-')),planFile=path.join(directory,'plan.json'),valuesFile=path.join(directory,'values.json');
  await writeJSON(planFile,compiled.plan);await writeJSON(valuesFile,bound);
- const requestId=path.basename(directory)+'-'+id;
- return {format:'athanor-agent-task/v1',status:'Valid',executed:false,recipeId:id,recipeHash:compiled.recipeHash,valuesHash:compiled.valuesHash,plan:{path:planFile,sha256:await sha(planFile)},values:{path:valuesFile,sha256:await sha(valuesFile)},requestId,timing:{preparationMs:performance.now()-started,scope:'Discovery, independent baseline, geometry, compilation and retention; no app input'},
+ const requestId=path.basename(directory)+'-'+id,planReference={path:planFile,sha256:await sha(planFile)};
+ return {format:'athanor-agent-task/v1',status:'Valid',executed:false,recipeId:id,recipeHash:compiled.recipeHash,valuesHash:compiled.valuesHash,plan:planReference,values:{path:valuesFile,sha256:await sha(valuesFile)},requestId,timing:{preparationMs:performance.now()-started,scope:'Discovery, independent baseline, geometry, compilation and retention; no app input'},
+  runRequest:{id:requestId,operation:'plan-run',params:{plan:planReference},compact:true},
   reviewPlan:compiled.check.review,
   ...id==='inspector-edit-undo'?{fixture:{graphScope:values.graphScope,nodeId:values.nodeId,parameter:values.parameter,baselineValue:defaults.baselineGraph.nodes.find(n=>n.node_id===values.nodeId).params[values.parameter]}}:{},
   phases:compiled.plan.phases.map(p=>({id:p.id,steps:p.steps.map(s=>({operation:s.operation,title:s.params?.title||s.params?.operation||s.params?.command||s.operation,gate:s.expect!==undefined})),reviewAfter:p.next===null})),

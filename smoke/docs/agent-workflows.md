@@ -37,6 +37,15 @@ Use the reviewed plan once with its known request ID. Inspect its retained resul
 after a lost response. Never replay uncertain input. Compare assertions and
 captures before declaring the functional result.
 
+For a host that supports a persistent process, start the brief's
+`connection.command` once. After reviewing a prepared task, send its exact
+`runRequest` as one JSON line. It references the owned `plan.path` and SHA-256;
+the server loads those reviewed bytes, validates all paths, and uses the same
+request ID, guards and retained intent as ordinary plan execution. Changed,
+oversized, nonregular or outside-session files stop before any app request.
+Use the returned inspection command after a lost reply; never resend the mutation.
+The full plan-object protocol and task's ordinary CLI `run` command still work.
+
 ## Inspector example
 
 Select a known numeric node in the clip graph and open its Inspector. Ask:

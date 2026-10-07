@@ -8,7 +8,7 @@ import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 
 const maxBytes=65536;
 const decisionFields=['status','question','matched','state','reason','ready','name','expected','actual','targets','focus','identity','revision','generation','observedAt','complete','completion','inspectionComplete','inspectionIncomplete','truncated','hasMore','partial','next_cursor','nextCursor'];
-const taskFields=['format','status','executed','recipes','recipeId','requestId','plan','values','run','inspect','recipeHash','valuesHash','timing','fixture','reviewPlan','review'];
+const taskFields=['format','status','executed','recipes','recipeId','requestId','plan','values','run','runRequest','inspect','recipeHash','valuesHash','timing','fixture','reviewPlan','review'];
 // Keep whole values: a shortened list must never look like a complete observation.
 export function resultPreview(result,budget=1024){
  if(Buffer.byteLength(JSON.stringify(result))<=budget)return {encoding:'full',result};
@@ -129,6 +129,9 @@ export async function toolRequest(file,request){
  if(request.compact!==undefined&&typeof request.compact!=='boolean')throw proofError('invalid_sequence','compact must be boolean',['correct_parameters']);
  if(request.operation==='plan-inspect'){
   fields(request.params,['requestId'],'params');const {inspectAgentPlan}=await import('./agent-plan.mjs');return {id:request.id,...await inspectAgentPlan(file,request.params.requestId)};
+ }
+ if(request.operation==='plan-run'){
+  fields(request.params,['plan'],'params');const {runRetainedAgentPlan}=await import('./agent-plan.mjs');return {id:request.id,...await runRetainedAgentPlan(file,request.params.plan,undefined,{compact:request.compact===undefined?false:request.compact,requestId:request.id})};
  }
  if(request.operation==='recipe-check'){
   fields(request.params,['recipe','values'],'params');const {checkAgentRecipe}=await import('./agent-recipes.mjs');return {id:request.id,...await checkAgentRecipe(file,request.params.recipe,request.params.values)};
