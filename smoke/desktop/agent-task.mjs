@@ -26,7 +26,7 @@ export function briefContext(context){
    'Run preflight from the same execution context before editing. A denied process inspection needs that context repaired; never change OS permissions or treat a prepared build as permission.',
    'Bundle selectors with observe; details:true includes model geometry. Input is widget-local; itemRects are viewport-local.',
    'schema {} lists tools; schema {tool:NAME} returns the step shape. Use operation for app schemas.',
-   'Keep canvas focus for Undo/Redo. Settle fixture Save before baseline: it may add history. Verify each Undo.',
+   'Keep canvas focus. Save adds history even when empty: query timeline-history before Undo; verify each history step and domain outcome.',
    'Batch known action, wait and readback steps. Stop at new geometry, unexpected dialogs or decisions. Prefer the persistent connection when the host supports it.',
    'Inspect summary.steps observations and exact expectations first. Omitted fields require the retained receipt; gateMatched alone only proves its stated comparison.',
    'Review summary.evidence paths directly. Reuse a capture for that same checkpoint instead of taking another for a second report. Historical images never prove the current screen or replace fresh input guards.',

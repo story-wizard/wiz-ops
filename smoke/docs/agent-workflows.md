@@ -109,3 +109,22 @@ review checkpoint; use a fresh capture when the question concerns changed pixels
 A visual localizer remains a separate deferred experiment. Its proposed point
 would still need current process/window/content guards and independent readback.
 No Holo4 model is installed or required by this workflow.
+
+## Save and history
+
+Save can create an empty history commit. Settling fixture Save before baseline
+removes default-metadata churn but does not stop later Saves from adding history.
+An Undo may therefore undo Save before undoing the edit. A frozen check requiring
+one Undo retains its result; do not silently substitute a different procedure.
+
+For a functional script whose goal is restoration, ask `query` with
+`question:"timeline-history"`, `timelineId` and the baseline's exact
+`baselineRevision`. It reads at most eight first-parent steps of the owned .wiz,
+returns head/parent identities, operation labels, empty commits, completeness and
+`stepsRemaining`, and rejects changed/shared history. It sends no input. Plan
+only known reviewed steps. After each physical Undo, gate the observed history
+head/remaining count and domain state before another input. An unexpected step,
+merge, missing baseline, failed focus or Unknown stops for review. Once the
+baseline is restored, Redo the intended edit and verify its exact state; Save's
+empty history step need not be mistaken for the edit. Do not automatically consume
+an arbitrary number of Undo steps or declare restoration from a shortcut receipt.

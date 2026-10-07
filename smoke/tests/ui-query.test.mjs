@@ -8,6 +8,9 @@ import {modelItemPoint,defaultClickPoint} from '../desktop/physical-input.mjs';
 import {reviewAgentPlan} from '../desktop/agent-plan.mjs';
 import {digest} from '../runner/files.mjs';
 import {prepareAgentTask} from '../desktop/agent-task.mjs';
+import {execFileSync} from 'node:child_process';
+import {mkdir} from 'node:fs/promises';
+import {projectHistory} from '../desktop/project-history.mjs';
 import {observationBinding,observationChanges} from '../desktop/observations.mjs';
 
 const ui=()=>({actions:[{id:'name-mode',text:'Name',checkable:true,checked:true,enabled:true}],widgets:[{id:'main',class:'MainWindow'},{id:'media',class:'MediaPanel',parent:'main'},
@@ -132,4 +135,23 @@ test('ordinary right trim asserts exact semantics without freezing a valid proje
  const partial=structuredClone(after);partial.next_cursor='next';assert.throws(()=>rightTrimOutcome(base,partial,args));
  const controls={focus:'canvas',widgets:[{id:'window',keyWindow:true},{id:'canvas',window:'window',class:'TimelineWidget',clipIds:['clip'],clipIdsTruncated:false},{id:'tab',name:'panelSubtabSelector',window:'window',text:'Main'}]};
  assert.equal(timelineClipAnswer(controls,base,'clip').focus.canvasFocused,true);controls.focus='search';assert.equal(timelineClipAnswer(controls,base,'clip').focus.canvasFocused,false);
+});
+
+test('owned history distinguishes empty Save from the edit and refuses stale or unbounded advice',async()=>{
+ const root=await mkdtemp('/private/tmp/athanor-owned-history-'),bundle=root+'/Golden.wiz';await mkdir(bundle);
+ const env={PATH:'/usr/bin:/bin',LANG:'C',GIT_CONFIG_NOSYSTEM:'1',GIT_CONFIG_GLOBAL:'/dev/null'};
+ const git=(...args)=>execFileSync('/usr/bin/git',['-C',bundle,...args],{env,encoding:'utf8',stdio:['ignore','pipe','pipe']}).trim();
+ try{
+  git('init');git('config','user.name','Athanor fixture');git('config','user.email','fixture@example.invalid');
+  await writeFile(bundle+'/fixture.txt','1–5');git('add','fixture.txt');git('commit','-m','{"op":"fixture"}');const baseline=git('rev-parse','HEAD');
+  await writeFile(bundle+'/fixture.txt','1–3');git('add','fixture.txt');git('commit','-m','{"op":"macro"}');const trim=git('rev-parse','HEAD');
+  git('commit','--allow-empty','-m','{"op":"save_project"}');const saved=git('rev-parse','HEAD'),session={root,bundle};
+  const history=await projectHistory(session,baseline,saved);assert.equal(history.complete,true);assert.equal(history.stepsRemaining,2);assert.deepEqual(history.commits.map(c=>[c.operation,c.empty]),[['save_project',true],['macro',false]]);assert.equal(history.commits[0].parent,trim);
+  assert.equal((await projectHistory(session,baseline,trim).catch(e=>e)).code,'history_unsettled');
+  assert.equal((await projectHistory(session,saved,saved)).stepsRemaining,0);
+  for(const bad of ['HEAD',[baseline],baseline+' --all'])await assert.rejects(()=>projectHistory(session,bad,saved),e=>e.code==='invalid_history');
+  validateToolParams('query',{question:'timeline-history',timelineId:'timeline',baselineRevision:baseline});assert.throws(()=>validateToolParams('query',{question:'timeline-history',timelineId:'timeline',baselineRevision:[baseline]}));
+  for(let i=0;i<9;i++)git('commit','--allow-empty','-m','{"op":"save_project"}');const current=git('rev-parse','HEAD'),long=await projectHistory(session,baseline,current);assert.equal(long.complete,false);assert.equal(long.stepsRemaining,null);assert.equal(long.commits.length,8);
+  await writeFile(bundle+'/.git/commondir','/foreign');await assert.rejects(()=>projectHistory(session,baseline,current),e=>e.code==='history_scope_mismatch');
+ }finally{await rm(root,{recursive:true,force:true});}
 });

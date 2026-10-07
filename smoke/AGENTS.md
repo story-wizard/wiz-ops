@@ -263,3 +263,9 @@ Save may introduce its own history commit. `query timeline-trim` checks exact
 same-clock single-clip ordinary trim, valid source timing and preserved gaps/
 timeline extent. See `docs/agent-workflows.md`; never loosen global snapshots or
 repeat Undo blindly to force a pass.
+
+Save may add an empty history commit after setup. For restoration-oriented
+functional work, `query timeline-history` takes timelineId/baselineRevision and
+returns bounded owned first-parent history with head, parents and remaining steps.
+Review it before deliberate Undo, then verify history/domain after each key. Do
+not alter a frozen one-Undo test or consume unknown history automatically.

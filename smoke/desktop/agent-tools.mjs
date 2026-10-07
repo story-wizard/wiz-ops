@@ -7,6 +7,7 @@ import {nativeCall,desktopCall,verifyDesktopOwner,verifyDesktopPaths,captureDesk
 import {physicalInput,clipPoint} from './physical-input.mjs';
 import {nativeDesktopInput,physicalKeys,physicalKeyAliases} from './macos-input.mjs';
 import {retainObservation} from './observations.mjs';
+import {projectHistory} from './project-history.mjs';
 import {withinWidgets,mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer,rightTrimOutcome,readQuestionInputs} from './ui-query.mjs';
 import {recordPresented,recordingOptions} from './recorder.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
@@ -164,7 +165,8 @@ async function runAgentTool(file,operation,params={}){
    for(const read of reads)if(read.status==='rejected')throw read.reason;
    const [observed,ui]=reads.map(r=>r.value);result={pid:observed.pid,started:observed.started,permissions:observed.permissions,frontmost:observed.frontmost,frontWindow:observed.frontWindow,windows:observed.windows,keyWindow:ui.widgets.find(w=>w.id===w.window&&w.keyWindow)||null,focusedControl:ui.widgets.find(w=>w.id===ui.focus)||null,ready:observed.permissions?.input===true&&observed.permissions?.screenCapture===true,...params.question?{answer:mediaSearchAnswer(ui)}:{},timing:{durationMs:Date.now()-start,reads:'Window Server and Qt inspection overlap; not an atomic domain snapshot'}};
   }else if(operation==='query'){
-   if(['inspector-parameter','inspector-change','timeline-clip','timeline-trim'].includes(params.question)){
+   if(params.question==='timeline-history'){const observed=await desktopCall(file,'timeline.inspect',{timeline_id:params.timelineId});requireProof(observed.timeline?.timeline_id===params.timelineId,'wrong_fixture','Read the declared timeline',['observe']);result=await projectHistory(s,params.baselineRevision,observed.bundle_revision);}
+   else if(['inspector-parameter','inspector-change','timeline-clip','timeline-trim'].includes(params.question)){
     const graphRequest=()=>desktopCall(file,'graph.get_clip_graph',params.graphScope),timelineRequest=()=>desktopCall(file,'timeline.inspect',{timeline_id:params.timelineId??params.graphScope.timeline_id});
     const [a,b]=await readQuestionInputs(params.question,{ui:()=>nativeCall(file,'inspect'),graph:graphRequest,timeline:timelineRequest});
     if(params.question==='inspector-change')result=inspectorOutcome(params.baselineGraph,a,params.baselineTimeline,b,params);
