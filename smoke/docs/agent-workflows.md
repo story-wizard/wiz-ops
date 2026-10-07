@@ -108,9 +108,15 @@ package and equivalent new fixtures with fresh sequential actors. Include at
 least one functional brief without a completed recipe. Preserve failures and
 protocol deviations; do not subtract inconvenient recovery or recapture time.
 
-Elapsed time is the primary score; token usage is secondary. For short bounded
-procedures, let the tool wait for completion rather than repeatedly polling while
-it works. Keep the plan's execution budget and Unknown handling unchanged.
+Elapsed time is the primary score; token usage is secondary. For one-shot CLI
+commands, wait for completion. A persistent connection stays alive: its complete
+JSON reply finishes a request, not the process exit. Prefer a client that awaits
+that line in a host context supporting process inspection and native input.
+With terminal tools, choose the read window from retained operation timings:
+the local media pilot used 1 s for ~0.5 s task preparation and 15 s for its ~12 s
+plan. Read more only when the reply is unfinished; never resend the request.
+These are client read windows, separate from app readiness timeouts and the
+plan's execution budget. Preserve all gates, captures and Unknown handling.
 
 Plan replies and `plan-inspect` expose `summary.review.outcomes` and
 `summary.review.evidence` across all completed phases. They reuse the recorded

@@ -245,6 +245,14 @@ stop the owned session when finished. The connection does not extend its
 deadline. `agent-context.json` advertises this protocol and only application
 read operations supported by the selected build.
 
+Consume the complete JSON reply before sending another request. A long-lived
+terminal does not exit after replying, so fixed long read windows can delay an
+already finished operation. Use retained timings to choose a suitable read
+window; an unfinished read requires more reading, not another dispatch. After
+the final reply and reconciliation of any Unknown, close stdin with EOF, then
+verify client exit separately from the owned Wizard session cleanup. See
+[agent timing](agent-workflows.md#measure-the-agent-not-only-the-tool).
+
 Measure agent round trips, total elapsed time and actual tool execution
 separately. Batching removes pauses between known steps; a persistent process
 also avoids repeatedly starting Node. Neither changes model inference time.

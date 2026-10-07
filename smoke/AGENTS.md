@@ -293,5 +293,9 @@ For result review, start with `summary.review.outcomes` and
 across the executed phases without another app read or screenshot. Review the
 declared images together in one supported multi-image call, keeping their labels.
 Use full receipts for omitted or unfamiliar state and concrete failures. Measure
-elapsed time first and tokens second; avoid repeated polling of short bounded
-procedures. No summary removes a frozen assertion, capture or Unknown stop.
+elapsed time first and tokens second. One-shot commands finish on exit; persistent
+requests finish on their complete JSON reply. Choose terminal read windows from
+retained operation timings, read more only if unfinished and never resend pending
+input. Close idle clients with stdin EOF after final replies and reconciliation;
+verify their exit separately from Wizard cleanup. No summary removes a frozen
+assertion, capture or Unknown stop.
