@@ -186,6 +186,14 @@ Unknown. See `docs/agent-sequences.md#compose-recipes-before-dispatch`.
 
 ### Compact control entry
 
+Read [agent workflows](docs/agent-workflows.md) for compact plan review and the
+Inspector/timeline question tools. Review `task.reviewPlan` or `plan-check.review`
+before dispatch; inspect retained hashed baselines when their fixture meaning is
+unknown. `inspector-edit-undo` auto-binds a declared selected numeric parameter.
+`query inspector-parameter` and `query timeline-clip` combine domain/control reads;
+they do not reserve targets or form an atomic snapshot. Default physical Inspector
+slider clicks focus the current styled thumb. Keep independent outcomes and images.
+
 For the authored search → physical drop → optional format dialog → Undo path, use
 `task` with `recipe: "media-insert-undo"`. Read [media procedure](docs/media-procedure.md)
 for its declared expectations and empty V1/A1 fixture. Preparation binds targets

@@ -7,7 +7,7 @@ import {agentTool,compareObservation,isAgentMutation} from './agent-tools.mjs';
 import {validateSequence,sequenceAdvice,agentSequence,toolError} from './agent-connection.mjs';
 import {fields,proofError} from './agent-proof.mjs';
 import {verifyDesktopPaths} from './adapter.mjs';
-import {readJSON,writeJSON,sha,inside} from '../runner/files.mjs';
+import {readJSON,writeJSON,sha,inside,digest} from '../runner/files.mjs';
 import {bindingReferences,validatePlanBindings,readPlanBinding} from './plan-bindings.mjs';
 
 const readKinds=['observe','find','model','model_value','call','native','query'];
@@ -37,9 +37,18 @@ export function validateAgentPlan(plan,schema){
  visit(plan.start);if(visited.size!==phases.size)throw invalid('Every phase must be reachable from start');validatePlanBindings(plan,phases);
  return phases;
 }
+// Large fixture values remain in the checksummed plan; never silently omit a gate.
+export function reviewAgentPlan(plan){
+ const value=v=>{const bytes=Buffer.byteLength(JSON.stringify(v));return bytes<=512?v:{retainedInPlan:true,sha256:digest(v),bytes,...Array.isArray(v)?{items:v.length}:{}};};
+ return {format:'athanor-agent-plan-review/v1',planHash:digest(plan),start:plan.start,maxDurationMs:plan.maxDurationMs??planLimits.maxDurationMs,
+  bindings:plan.bindings||{},phases:plan.phases.map(p=>({id:p.id,steps:p.steps.map((s,index)=>({index,operation:s.operation,title:s.params?.title||s.params?.operation||s.params?.command||s.operation,
+   mutation:isAgentMutation(s.operation,s.params),params:Object.fromEntries(Object.entries(s.params||{}).filter(([k])=>k!=='title').map(([k,v])=>[k,value(v)])),...s.expect?{expect:Object.fromEntries(Object.entries(s.expect).map(([k,v])=>[k,value(v)]))}:{}})),next:p.next,reviewAfter:p.next===null})),
+  stops:['Failed expectation or tool error','Unexpected branch value or incomplete observation','Changed process/project or stale binding','Unknown input: inspect retained intent; never replay'],
+  retention:'Hashed values are available in the full plan. Inspect them when their meaning or fixture provenance is not established. This review performs no input.'};
+}
 export async function checkAgentPlan(file,plan){
  validateAgentPlan(plan,(await readJSON(file)).schema);
- return {format:'athanor-agent-plan-check/v1',status:'Valid',executed:false,validation:'all-paths-parameters-schema-and-acyclic-graph',limits:planLimits,maxDurationMs:plan.maxDurationMs??planLimits.maxDurationMs,phases:plan.phases.map(p=>({id:p.id,steps:p.steps.length,next:p.next,...sequenceAdvice(p.steps)}))};
+ return {format:'athanor-agent-plan-check/v1',status:'Valid',executed:false,validation:'all-paths-parameters-schema-and-acyclic-graph',limits:planLimits,maxDurationMs:plan.maxDurationMs??planLimits.maxDurationMs,review:reviewAgentPlan(plan),phases:plan.phases.map(p=>({id:p.id,steps:p.steps.length,next:p.next,...sequenceAdvice(p.steps)}))};
 }
 // Branches require complete snapshots. Delta views and partial pages cannot prove an alternate path.
 export function requireComplete(value){

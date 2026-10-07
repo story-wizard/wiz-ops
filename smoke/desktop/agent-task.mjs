@@ -5,10 +5,10 @@ import {checkAgentRecipe} from './agent-recipes.mjs';
 import {requireProof,fields} from './agent-proof.mjs';
 import {mediaInsertionOutcome} from './ui-query.mjs';
 
-export const taskRecipes=['project-identity','add-video-track','media-search','media-search-state','media-insert-undo','inspector-edit','timeline-undo','timeline-undo-save','enable-checkbox','spell-input-edit'];
+export const taskRecipes=['project-identity','add-video-track','media-search','media-search-state','media-insert-undo','inspector-edit','inspector-edit-undo','timeline-undo','timeline-undo-save','enable-checkbox','spell-input-edit'];
 const mediaInputs={timelineId:{type:'string'},query:{type:'string'},expectedName:{type:'string'},expectedStatus:{type:'string'},assetId:{type:'string'},durationSeconds:{type:'number'}};
 export async function taskCatalog(){
- return Promise.all(taskRecipes.map(async id=>{const recipe=await readJSON(new URL('../examples/recipes/'+id+'.json',import.meta.url));return {id,parameters:id==='media-insert-undo'?mediaInputs:id==='add-video-track'?{timelineId:{type:'string',required:false}}:recipe.parameters,autoBound:['add-video-track','media-insert-undo'].includes(id),...(id==='add-video-track'?{defaultTimeline:'Fixture main; supply timelineId for another displayed timeline'}:{}),source:'examples/recipes/'+id+'.json'};}));
+ return Promise.all(taskRecipes.map(async id=>{const recipe=await readJSON(new URL('../examples/recipes/'+id+'.json',import.meta.url));return {id,parameters:id==='inspector-edit-undo'?{graphScope:{type:'object'},nodeId:{type:'string'},parameter:{type:'string'},label:{type:'string'}}:id==='media-insert-undo'?mediaInputs:id==='add-video-track'?{timelineId:{type:'string',required:false}}:recipe.parameters,autoBound:['add-video-track','media-insert-undo','inspector-edit-undo'].includes(id),...(id==='add-video-track'?{defaultTimeline:'Fixture main; supply timelineId for another displayed timeline'}:{}),source:'examples/recipes/'+id+'.json'};}));
 }
 export function briefContext(context){
  const command=[...(context.workspace?['env','SMOKE_DATA_DIR='+context.workspace]:[]),'node',path.join(ROOT,'desktop/session.mjs')];
@@ -19,9 +19,9 @@ export function briefContext(context){
   connection:{command:[...command,'tools',context.session],protocol:'JSON lines; one reply per request',tool:{id:'unique-tool-id',operation:'observe',params:{selector:{class:'MainWindow'}},compact:true},plan:{id:'known-plan-id',plan:'REVIEWED_COMPILED_PLAN_OBJECT',compact:true},inspect:{id:'new-inspection-id',operation:'plan-inspect',params:{requestId:'known-plan-id'}},maxRequestBytes:65536},
   shapes:{query:{question:'media-search'},observe:{selectors:[{class:'QTreeView'}],within:{class:'MediaPanel'},limit:8},model:{target:'OBSERVED_VIEW_ID',offset:0,limit:16},call:{operation:'timeline.inspect',params:{timeline_id:'OBSERVED_TIMELINE_ID'}},physical:{command:'click',target:{id:'OBSERVED_WIDGET_ID'}},focusedKey:{command:'key',target:{id:'OBSERVED_FOCUSED_CONTROL_ID'},key:'cmd+z',requireFocus:true},wait:{selector:{id:'OBSERVED_CHECKBOX_ID'},condition:'checked',expected:true}},
   checks:context.checks.filter(c=>c.id=== 'D-CLI-01'||c.proof).map(c=>({id:c.id,title:c.title})),
-  guidance:['For a functional script, read '+path.join(ROOT,'docs/functional-testing-agent.md')+'. Define fixture-backed cases and independent assertions before grouping; preserve script dependencies and required gestures.',
+  guidance:['Functional scripts: '+path.join(ROOT,'docs/functional-testing-agent.md')+'. Declare fixtures/assertions; preserve script dependencies and required gestures.',
    'Choose an existing recipe with task before authoring steps. task compiles and retains a plan; it dispatches no app input.',
-   'media-insert-undo prepares search, physical drag to V1 at zero, the exact optional format dialog, independent insertion readback and physical Undo. Declare expected media identity/duration first. See docs/media-procedure.md for its bounded fixture/layout.',
+   'media-insert-undo: search, physical drop, exact format branch, verify and Undo. Declare media identity/duration; see docs/media-procedure.md. Inspector/timeline questions: docs/agent-workflows.md.',
    'Choose the route from the test: CLI for exact application state/setup, Qt for controls and models, screenshots for visual questions, physical input for tested gestures. Preserve a frozen check’s required route.',
    'Run preflight from the same execution context before editing. A denied process inspection needs that context repaired; never change OS permissions or treat a prepared build as permission.',
    'Bundle related selectors with observe; use details:true for selected rows/model geometry. Input points are widget-local; model itemRects are local to their returned viewport.',
@@ -29,13 +29,13 @@ export function briefContext(context){
    'Inspect summary.steps observations and exact expectations first. Omitted fields require the retained receipt; gateMatched alone only proves its stated comparison.',
    'Review summary.evidence paths directly. Reuse a capture for that same checkpoint instead of taking another for a second report. Historical images never prove the current screen or replace fresh input guards.',
    'Read a required value or full frozen check from fullContext or its retained receipt; compact output does not remove evidence.',
-   'Review the plan, execute once with the returned request ID, inspect outcome and captures, then choose the next phase.',
+   'Review task.reviewPlan or plan-check.review. Read hashed baselines in the full plan if unfamiliar. Execute once with its request ID, then review outcomes and captures.',
    'Scope is an observed ID string. Model itemRects belong to the returned viewport, not the enclosing view. Reveal clipped controls and refresh geometry before binding.',
    'Capture separate dialogs with their own window target. Verify checked/enabled after a checkbox click before dependent input. Review one capture per required result; retain additional evidence without duplicate image review.',
    'Task recipes are exploratory. Do not begin a frozen check unless adapting every action/assertion/capture to its full contract. Run a course for canonical testing.',
    'Unexpected dialogs, unavailable geometry and Unknown stop for review. Only an authored exact dialog branch may continue. Never replay a lost or uncertain mutation. Stop the owned session when finished.']};
 }
-// ponytail: auto-bind authored Add Track and empty-timeline media procedures only.
+// ponytail: auto-bind authored procedures only; unfamiliar routes stay agent-authored.
 export async function prepareAgentTask(file,{recipe:id,values={}}={},execute){
  const started=performance.now();
  const catalog=await taskCatalog();
@@ -58,6 +58,11 @@ export async function prepareAgentTask(file,{recipe:id,values={}}={},execute){
   one(w=>w.name==='panelChromeAction'&&w.text==='+ Video'&&w.enabled);
   // Save is window-scoped. A later Undo recipe needs its own focused timeline canvas.
   defaults={projectName:name.name,timelineId,timelineTarget:one(w=>w.class==='MainWindow'),captureTarget:one(w=>w.class==='MainWindow'),baselineTracks:before.tracks,expectedTrackCount:before.tracks.length+1,addSelector:{name:'panelChromeAction',text:'+ Video',enabled:true}};
+ }else if(id==='inspector-edit-undo'){
+  fields(values,['graphScope','nodeId','parameter','label'],'Inspector values');
+  const answer=await execute(file,'query',{question:'inspector-parameter',...values});
+  const baselineTimeline=await execute(file,'call',{operation:'timeline.inspect',params:{timeline_id:values.graphScope.timeline_id}});
+  defaults={timelineId:values.graphScope.timeline_id,baselineGraph:answer.graph,baselineTimeline,controlTarget:answer.targets.control,timelineTarget:answer.targets.canvas,captureTarget:answer.targets.capture};
  }else if(id==='media-insert-undo'){
   fields(values,Object.keys(mediaInputs),'media procedure values');
   requireProof(Object.entries(mediaInputs).every(([k,d])=>typeof values[k]===d.type)&&['timelineId','query','expectedName','expectedStatus','assetId'].every(k=>values[k].length>0&&values[k].length<=1024)&&Number.isFinite(values.durationSeconds)&&values.durationSeconds>0&&values.durationSeconds<=8640000,'invalid_fixture','Declare bounded timeline/query/name/status/asset values and a positive duration before input',['context']);
@@ -77,6 +82,8 @@ export async function prepareAgentTask(file,{recipe:id,values={}}={},execute){
  await writeJSON(planFile,compiled.plan);await writeJSON(valuesFile,bound);
  const requestId=path.basename(directory)+'-'+id;
  return {format:'athanor-agent-task/v1',status:'Valid',executed:false,recipeId:id,recipeHash:compiled.recipeHash,valuesHash:compiled.valuesHash,plan:{path:planFile,sha256:await sha(planFile)},values:{path:valuesFile,sha256:await sha(valuesFile)},requestId,timing:{preparationMs:performance.now()-started,scope:'Discovery, independent baseline, geometry, compilation and retention; no app input'},
+  reviewPlan:compiled.check.review,
+  ...id==='inspector-edit-undo'?{fixture:{graphScope:values.graphScope,nodeId:values.nodeId,parameter:values.parameter,baselineValue:defaults.baselineGraph.nodes.find(n=>n.node_id===values.nodeId).params[values.parameter]}}:{},
   phases:compiled.plan.phases.map(p=>({id:p.id,steps:p.steps.map(s=>({operation:s.operation,title:s.params?.title||s.params?.operation||s.params?.command||s.operation,gate:s.expect!==undefined})),reviewAfter:p.next===null})),
   run:['env','SMOKE_DATA_DIR='+s.dataDir,'node',path.join(ROOT,'desktop/session.mjs'),'plan',file,planFile,'--request-id',requestId,'--compact'],inspect:['env','SMOKE_DATA_DIR='+s.dataDir,'node',path.join(ROOT,'desktop/session.mjs'),'plan-inspect',file,requestId],
   review:'Inspect the compiled plan before dispatch. Review independent domain state and captures before the next phase; recipe completion does not qualify toolkit Pass.'};

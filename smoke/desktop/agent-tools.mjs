@@ -7,7 +7,7 @@ import {nativeCall,desktopCall,verifyDesktopOwner,verifyDesktopPaths,captureDesk
 import {physicalInput,clipPoint} from './physical-input.mjs';
 import {nativeDesktopInput,physicalKeys,physicalKeyAliases} from './macos-input.mjs';
 import {retainObservation} from './observations.mjs';
-import {withinWidgets,mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome} from './ui-query.mjs';
+import {withinWidgets,mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer} from './ui-query.mjs';
 import {recordPresented,recordingOptions} from './recorder.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
 import {briefContext,prepareAgentTask} from './agent-task.mjs';
@@ -164,7 +164,15 @@ async function runAgentTool(file,operation,params={}){
    for(const read of reads)if(read.status==='rejected')throw read.reason;
    const [observed,ui]=reads.map(r=>r.value);result={pid:observed.pid,started:observed.started,permissions:observed.permissions,frontmost:observed.frontmost,frontWindow:observed.frontWindow,windows:observed.windows,keyWindow:ui.widgets.find(w=>w.id===w.window&&w.keyWindow)||null,focusedControl:ui.widgets.find(w=>w.id===ui.focus)||null,ready:observed.permissions?.input===true&&observed.permissions?.screenCapture===true,...params.question?{answer:mediaSearchAnswer(ui)}:{},timing:{durationMs:Date.now()-start,reads:'Window Server and Qt inspection overlap; not an atomic domain snapshot'}};
   }else if(operation==='query'){
-   if(params.question==='media-insertion'){
+   if(['inspector-parameter','inspector-change','timeline-clip'].includes(params.question)){
+    const graphRequest=()=>desktopCall(file,'graph.get_clip_graph',params.graphScope),timelineRequest=()=>desktopCall(file,'timeline.inspect',{timeline_id:params.timelineId??params.graphScope.timeline_id});
+    const reads=await Promise.allSettled(params.question==='inspector-change'?[graphRequest(),timelineRequest()]:[nativeCall(file,'inspect'),params.question==='timeline-clip'?timelineRequest():graphRequest()]);
+    for(const read of reads)if(read.status==='rejected')throw read.reason;
+    const [a,b]=reads.map(r=>r.value);
+    if(params.question==='inspector-change')result=inspectorOutcome(params.baselineGraph,a,params.baselineTimeline,b,params);
+    else if(params.question==='inspector-parameter'){requireProof(b.timeline_id===params.graphScope.timeline_id&&b.clip_id===params.graphScope.clip_id,'wrong_fixture','Graph readback differs from the declared clip',['inspect']);result=inspectorParameterAnswer(a,b,params);}
+    else {result=timelineClipAnswer(a,b,params.clipId);const geometry=await nativeCall(file,'timeline-clip-rect',{target:result.targets.canvas.id,clipId:params.clipId});result={...result,geometry,points:{body:clipPoint(geometry),left:clipPoint(geometry,'left-edge'),right:clipPoint(geometry,'right-edge')}};}
+   }else if(params.question==='media-insertion'){
     const observed=await desktopCall(file,'timeline.inspect',{timeline_id:params.timelineId});result=mediaInsertionOutcome(params.baseline,observed,params);
     result={...result,timeline:observed};
    }else {const ui=await nativeCall(file,'inspect');result=params.question==='media-search'?mediaSearchAnswer(ui):formatDialogAnswer(ui);}

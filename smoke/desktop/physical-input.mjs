@@ -78,6 +78,11 @@ export function windowPoint(widget,window,native,x,y){
  return {x:widget.x+x,y:titleHeight+widget.y+y};
 }
 export function defaultClickPoint(widget){
+ if(widget.name==='InspectorSliderControl'){
+  const h=widget.handle,v=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height};
+  requireProof(Array.isArray(h)&&h.length===2&&h.every(Number.isFinite)&&h[0]>=v.x&&h[0]<v.x+v.width&&h[1]>=v.y&&h[1]<v.y+v.height,'clipped_slider_thumb','Reveal the current Inspector thumb before focusing it',['observe']);
+  return {x:h[0],y:h[1]};
+ }
  if(!widget.clickRect)return {x:widget.width/2,y:widget.height/2};
  const r=widget.clickRect,v=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height};
  assert(['x','y','width','height'].every(k=>Number.isFinite(r[k]))&&r.x>=0&&r.y>=0&&r.width>0&&r.height>0&&r.x+r.width<=widget.width&&r.y+r.height<=widget.height,'Invalid styled click rectangle');

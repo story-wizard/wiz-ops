@@ -1,10 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
-import {mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome} from '../desktop/ui-query.mjs';
+import {mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer} from '../desktop/ui-query.mjs';
 import {selectUI,readyUI} from '../desktop/agent-tools.mjs';
 import {validateToolParams,validateNativeParams} from '../desktop/agent-proof.mjs';
-import {modelItemPoint} from '../desktop/physical-input.mjs';
+import {modelItemPoint,defaultClickPoint} from '../desktop/physical-input.mjs';
+import {reviewAgentPlan} from '../desktop/agent-plan.mjs';
+import {digest} from '../runner/files.mjs';
 import {prepareAgentTask} from '../desktop/agent-task.mjs';
 import {observationBinding,observationChanges} from '../desktop/observations.mjs';
 
@@ -26,6 +28,35 @@ test('one media answer uses parent relationships and scoped waits ignore unrelat
  const snapshot=within=>({binding:observationBinding({pid:1},{within}),value:{matches:[]}});
  assert.throws(()=>observationChanges(snapshot({id:'media'}),snapshot({id:'other'})),e=>e.code==='observation_binding_changed');
  const wrongMode=ui();wrongMode.actions[0].checked=false;assert.equal(mediaSearchAnswer(wrongMode).searchMode,'unknown');
+});
+
+test('Inspector answers bind the selected graph node and exact row, and focusing uses the fresh thumb',()=>{
+ const graph={graph_id:'g',timeline_id:'timeline',clip_id:'clip',nodes:[{node_id:'node',params:{radius:16}}]},params={nodeId:'node',parameter:'radius',label:'Radius'};
+ const observation={widgets:[{id:'view',class:'RenderGraphView',window:'main',graphId:'g',timelineId:'timeline',sceneItems:[{nodeId:'node',selected:true}]},{id:'row'},{id:'label',name:'InspectorParamLabel',text:'Radius',parent:'row',window:'main',y:10},{id:'slider',name:'InspectorSliderControl',parent:'row',window:'main',y:10,enabled:true,value:16,handle:[20,8],width:100,height:16},{id:'canvas',class:'TimelineWidget',window:'main',clipIds:['clip']} ]};
+ assert.equal(inspectorParameterAnswer(observation,graph,params).value,16);assert.equal(inspectorParameterAnswer(observation,graph,params).targets.control.id,'slider');
+ for(const mutate of [u=>u.widgets[0].sceneItems[0].nodeId='other',u=>u.widgets[0].sceneItemsTruncated=true,u=>u.widgets[3].parent='other',u=>u.widgets.push({...u.widgets[3],id:'duplicate'}),u=>u.modalWindow='dialog']){const bad=structuredClone(observation);mutate(bad);assert.throws(()=>inspectorParameterAnswer(bad,graph,params));}
+ const slider=observation.widgets[3];assert.deepEqual(defaultClickPoint(slider),{x:20,y:8});assert.deepEqual(defaultClickPoint({...slider,handle:[40,8]}),{x:40,y:8});assert.throws(()=>defaultClickPoint({...slider,handle:[-1,8]}),e=>e.code==='clipped_slider_thumb');
+ validateToolParams('query',{question:'inspector-parameter',graphScope:{timeline_id:'timeline',clip_id:'clip'},...params});
+ assert.throws(()=>validateToolParams('query',{question:'inspector-parameter',graphScope:{timeline_id:'timeline',clip_id:'clip'},...params,parameter:'__proto__'}));
+});
+test('Inspector outcomes require one increasing parameter and unchanged graph wiring and timeline',()=>{
+ const graph={graph_id:'g',timeline_id:'timeline',clip_id:'clip',nodes:[{node_id:'node',type:'gaussian_blur',params:{radius:16,other:1}}],edges:[]},after=structuredClone(graph),timeline=before(),params={nodeId:'node',parameter:'radius',state:'changed'};after.nodes[0].params.radius=17;
+ assert.equal(inspectorOutcome(graph,after,timeline,timeline,params).matched,true);
+ for(const mutate of [g=>g.nodes[0].params.other=2,g=>g.edges.push({unexpected:true}),g=>g.clip_id='other',g=>g.nodes[0].params.radius=15]){const bad=structuredClone(after);mutate(bad);assert.equal(inspectorOutcome(graph,bad,timeline,timeline,params).matched,false);}
+ const changedTimeline=structuredClone(timeline);changedTimeline.tracks[0].name='other';assert.equal(inspectorOutcome(graph,after,timeline,changedTimeline,params).matched,false);
+ assert.equal(inspectorOutcome(graph,graph,timeline,timeline,{...params,state:'restored'}).matched,true);assert.equal(inspectorOutcome(graph,after,timeline,timeline,{...params,state:'restored'}).matched,false);
+});
+test('timeline clip questions reject a wrong or incomplete displayed canvas',()=>{
+ const timeline=before();timeline.tracks[0].items=[{kind:'clip',clip_id:'clip',source:{asset_id:'asset'}}];
+ const observation={widgets:[{id:'canvas',class:'TimelineWidget',window:'main',clipIds:['clip']},{id:'tab',name:'panelSubtabSelector',window:'main',text:'Main'}]};
+ assert.equal(timelineClipAnswer(observation,timeline,'clip').targets.canvas.id,'canvas');
+ for(const mutate of [u=>u.widgets[0].clipIdsTruncated=true,u=>u.widgets[1].text='Other',u=>u.widgets.push({...u.widgets[0],id:'duplicate'}),u=>u.popupWindow='popup']){const bad=structuredClone(observation);mutate(bad);assert.throws(()=>timelineClipAnswer(bad,timeline,'clip'));}
+ validateToolParams('query',{question:'timeline-clip',timelineId:'timeline',clipId:'clip'});assert.throws(()=>validateToolParams('query',{question:'timeline-clip',timelineId:'timeline',clipId:''}));
+});
+test('compact plan review retains every action, expectation and branch and fingerprints large baselines',()=>{
+ const baseline=Array.from({length:100},(_,i)=>({id:i,value:'retained'})),plan={format:'athanor-agent-plan/v1',start:'edit',phases:[{id:'edit',steps:[{operation:'physical',params:{command:'key',key:'right',target:{id:'slider'},requireFocus:true}},{operation:'call',params:{operation:'timeline.inspect',params:{timeline_id:'timeline'}},expect:{path:['tracks'],equals:baseline}}],next:{step:1,path:['ready'],cases:[{equals:true,phase:null}]}}]};
+ const review=reviewAgentPlan(plan);assert.equal(review.planHash,digest(plan));assert.equal(review.phases[0].steps[0].mutation,true);assert.equal(review.phases[0].steps[0].params.requireFocus,true);assert.deepEqual(review.phases[0].next,plan.phases[0].next);assert.equal(review.phases[0].steps[1].expect.equals.sha256,digest(baseline));assert.equal(review.phases[0].steps[1].expect.equals.items,100);assert(Buffer.byteLength(JSON.stringify(review))<Buffer.byteLength(JSON.stringify(plan)));
+ const altered=structuredClone(plan);altered.phases[0].steps[0].params.key='left';assert.notEqual(reviewAgentPlan(altered).planHash,review.planHash);
 });
 test('format branching recognises the complete exact dialog and rejects changed or missing content',()=>{
  const dialog={modalWindow:'dialog',widgets:[{id:'dialog',class:'QMessageBox'},
