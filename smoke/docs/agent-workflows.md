@@ -121,11 +121,19 @@ retained image does not provide fresh input geometry or prove a later screen.
 ## Toolkit step shapes
 
 Use `schema {}` to list toolkit names and `schema {"tool":"physical"}` for its
-fields and example. `schema {"operation":"timeline.inspect"}` still returns
+fields and example. Toolkit discovery is local metadata and works before Wizard
+starts or when a session is unavailable; it does not grant input or advertise
+the selected build's capabilities. From the command root, use
+`node desktop/session.mjs toolkit` or `node desktop/session.mjs toolkit physical`
+without a session. `schema {"operation":"timeline.inspect"}` still returns
 the selected build's application schema. A plan step is
 `{"operation":"physical","params":{"command":"drag",...}}`, not an operation
 named `drag`. Validation failures return the affected phase/step and toolkit
 interface before any input. This is local metadata, with no app request.
+
+Inspector outcomes require one finite numeric parameter and preserve graph
+inputs, outputs, wiring, unrelated parameters and timeline state. An unchanged
+number cannot establish restoration if its node is absent or ambiguous.
 
 ## Right-trim outcome
 

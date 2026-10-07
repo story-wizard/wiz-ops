@@ -132,6 +132,8 @@ async function journal(s,operation,params,start,result,status='Completed'){
 export async function agentTool(file,operation,params={}){
  try{
  validateToolParams(operation,params);
+ // Toolkit shapes describe the harness, not a live app or an input grant.
+ if(operation==='schema'&&params.operation===undefined)return toolInterface(params.tool);
  const s=await readJSON(file);verifyDesktopPaths(s);
  if(operation==='call')validateApplicationParams(s.schema,params.operation,params.params||{});
  if(operation==='native')validateNativeParams(params.operation,params.params||{});
@@ -179,8 +181,7 @@ async function runAgentTool(file,operation,params={}){
    }else {const ui=await nativeCall(file,'inspect');result=params.question==='media-search'?mediaSearchAnswer(ui):formatDialogAnswer(ui);}
    result={...result,observedAt:new Date().toISOString(),generation:s.generation,identity:{packageHash:s.guiHash,pid:s.pid,started:s.processStart}};
   }else if(operation==='schema'){
-   if(params.operation===undefined)result=toolInterface(params.tool);
-   else {assert(typeof params.operation==='string'&&Object.hasOwn(s.schema.operations,params.operation),'Choose an advertised application operation');result={operation:params.operation,params:s.schema.operations[params.operation],result:s.schema.results?.[params.operation],errors:s.schema.errors?.[params.operation]};}
+   assert(typeof params.operation==='string'&&Object.hasOwn(s.schema.operations,params.operation),'Choose an advertised application operation');result={operation:params.operation,params:s.schema.operations[params.operation],result:s.schema.results?.[params.operation],errors:s.schema.errors?.[params.operation]};
   }else if(operation==='evidence'){
    assert(s.currentCheck&&typeof params.file==='string'&&typeof params.title==='string','Begin a check and supply a file and title');
    assert(inside(s.root,await realpath(params.file)),'Evidence escaped the session');

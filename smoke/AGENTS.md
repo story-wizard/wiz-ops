@@ -256,6 +256,9 @@ other native mutations remain exclusive and retain their existing input guards.
 
 Toolkit discovery: `tool SESSION schema '{}'` lists names;
 `tool SESSION schema '{"tool":"physical"}'` returns the step envelope/fields.
+Before starting Wizard, `node desktop/session.mjs toolkit [TOOL_NAME]` exposes
+the same harness metadata without a process, desktop lease or session. Live
+application schemas, observations and input retain their normal session guards.
 Application schemas still use `operation`. Invalid plans return phase/step and
 interface hints before input. `query timeline-clip` reports focus; preserve it
 instead of clicking again. Settle fixture Save before freezing a baseline, since

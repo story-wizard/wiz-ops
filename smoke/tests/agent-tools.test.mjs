@@ -11,6 +11,15 @@ import {acquireDesktopLease} from '../desktop/desktop-lease.mjs';
 import {verifyTrimmedClip} from '../desktop/check-support.mjs';
 import {validateToolParams} from '../desktop/agent-proof.mjs';
 
+test('toolkit discovery works without a process or session while application reads still require one',async()=>{
+ const file='/missing-athanor-session/session.json';
+ for(const params of [{},{tool:'task'},{tool:'physical'}]){const reply=await agentTool(file,'schema',params);assert.equal(reply.format,'athanor-tool-interface/v1');assert.equal(reply.executed,false);assert(params.tool?reply.tool===params.tool:reply.tools.includes('query'));}
+ for(const [operation,params] of [['schema',{operation:'project.get_name'}],['observe',{selector:{class:'MainWindow'}}],['physical',{command:'key',target:{id:'fake'},key:'cmd+z'}]])await assert.rejects(()=>agentTool(file,operation,params),e=>e.code==='ENOENT');
+ await assert.rejects(()=>agentTool(file,'schema',{tool:'physical',operation:'project.get_name'}),e=>e.code==='invalid_params');
+ const cli=new URL('../desktop/session.mjs',import.meta.url).pathname,reply=spawnSync(process.execPath,[cli,'toolkit','task'],{encoding:'utf8'});assert.equal(reply.status,0);assert.equal(JSON.parse(reply.stdout).example.params.recipe,'inspector-edit-undo');
+ const invalid=spawnSync(process.execPath,[cli,'toolkit','physical','extra'],{encoding:'utf8'});assert.equal(invalid.status,3);assert.equal(JSON.parse(invalid.stdout).status,'Blocked');
+});
+
 test('prepared plan IDs resolve their actual definitions alongside physical candidates',()=>{
  const checks=sessionDefinitions({plan:{cases:['A-CLI-01','D-CLI-01']}});
  assert.match(checks.find(c=>c.id==='D-CLI-01').title,/connection/i);assert.ok(checks.find(c=>c.id==='P-TL-TRIM'));assert.equal(checks.filter(c=>c.id==='D-CLI-01').length,1);

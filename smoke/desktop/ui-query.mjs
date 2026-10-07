@@ -43,12 +43,14 @@ export function inspectorParameterAnswer(ui,graph,{nodeId,parameter,label}){
  return {question:'inspector-parameter',graphId:graph.graph_id,owner,nodeId,parameter,label,value:node.params[parameter],control:{id:control.id,window:control.window,value:control.value,handle:control.handle,focused:ui.focus===control.id},targets:{control:{id:control.id},canvas:{id:canvas.id},capture:{id:canvas.window},inspector:{id:field.window}},graph};
 }
 export function inspectorOutcome(beforeGraph,afterGraph,beforeTimeline,afterTimeline,{nodeId,parameter,state}){
- const pick=g=>({graph_id:g.graph_id,timeline_id:g.timeline_id,clip_id:g.clip_id,nodes:g.nodes?.map(({incoming,outgoing,...n})=>n),edges:g.edges});
+ const pick=g=>({graph_id:g.graph_id,timeline_id:g.timeline_id,clip_id:g.clip_id,nodes:g.nodes?.map(({incoming,outgoing,...n})=>n),edges:g.edges,inputs:g.inputs,outputs:g.outputs});
  const value=g=>{const nodes=g.nodes?.filter(n=>n.node_id===nodeId)||[];return nodes.length===1&&Number.isFinite(nodes[0].params?.[parameter])?nodes[0].params[parameter]:null;};
  const values={nodeId,param:parameter,before:value(beforeGraph),after:value(afterGraph)};
  try{
   requireProof(isDeepStrictEqual(snapshotState(afterTimeline),snapshotState(beforeTimeline)),'unexpected_timeline_change','Inspector edit changed the timeline',['inspect']);
+  if(values.before===null||values.after===null)return {matched:false,state,...values,reason:'The declared numeric parameter is absent, ambiguous or nonnumeric'};
   if(state==='restored')return {matched:isDeepStrictEqual(pick(beforeGraph),pick(afterGraph)),state,...values};
+  if(!isDeepStrictEqual(beforeGraph.inputs,afterGraph.inputs)||!isDeepStrictEqual(beforeGraph.outputs,afterGraph.outputs))return {matched:false,state,...values,reason:'Inspector edit changed graph inputs or outputs'};
   const result=verifyInspectorEdit(beforeGraph,afterGraph,nodeId,parameter);
   return {matched:result.after>result.before,state,...result};
  }catch(error){if(error.status==='Fail'||error.code==='unexpected_timeline_change')return {matched:false,state,...values,reason:error.message};throw error;}
