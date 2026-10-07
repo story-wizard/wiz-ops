@@ -65,6 +65,7 @@ export async function prepareAgentTask(file,{recipe:id,values={}}={},execute){
   for(const read of reads)if(read.status==='rejected')throw read.reason;
   const [flight,before]=reads.map(r=>r.value),answer=flight.answer,canvases=answer.timelineCanvases.slice().sort((a,b)=>a.y-b.y);
   requireProof(flight.ready&&flight.keyWindow?.class==='MainWindow'&&!answer.modalWindow&&!answer.popupWindow&&!answer.mouseGrabber,'desktop_not_ready','Use the owned main window without overlays',['preflight']);
+  requireProof(answer.searchMode==='Name','wrong_search_mode','Select Name search during fixture setup before preparing this procedure',['observe']);
   requireProof(before.timeline?.timeline_id===values.timelineId&&answer.timelineTabs.filter(t=>t.text?.replace(/ \(\d+\)$/,'')===before.timeline.name&&t.window===flight.keyWindow.id).length===1,'wrong_fixture','Open the declared timeline before preparing the procedure',['observe']);
   // Standard split timeline layout: video canvas above audio. Reject other layouts.
   requireProof(canvases.length===2&&canvases.every(w=>w.window===flight.keyWindow.id&&!w.clipIdsTruncated&&w.clipIds?.length===0)&&canvases[0].x===canvases[1].x&&canvases[0].y+canvases[0].height<=canvases[1].y,'unsupported_layout','Use one empty split timeline with its video canvas above audio',['observe']);

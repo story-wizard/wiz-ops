@@ -15,6 +15,7 @@
   "phases":[
    {"id":"baseline","steps":[
     {"operation":"preflight","params":{},"expect":{"path":["ready"],"equals":true}},
+    {"operation":"query","params":{"question":"media-search"},"expect":{"path":["searchMode"],"equals":"Name"}},
     {"operation":"query","params":{"question":"media-insertion","timelineId":{"$param":"timelineId"},"baseline":{"$param":"baseline"},"assetId":{"$param":"assetId"},"durationSeconds":{"$param":"durationSeconds"},"state":"restored"},"expect":{"path":["matched"],"equals":true}},
     {"operation":"capture","params":{"target":{"$param":"captureTarget"},"kind":"presented","title":"Before insertion"}}
    ],"next":"search"},

@@ -1,7 +1,7 @@
 # Prepare and run a media procedure
 
 Use `task` to prepare the authored `media-insert-undo` procedure. It searches for
-one declared media asset, physically drags it onto V1 at zero, keeps timeline
+one declared media asset in Name mode, physically drags it onto V1 at zero, keeps timeline
 settings if the exact empty-timeline format dialog appears, verifies insertion,
 then physically undoes the edit and verifies restoration. Captures are retained
 before editing, after search, at the optional dialog, after insertion and after Undo.
@@ -11,6 +11,7 @@ before editing, after search, at the optional dialog, after insertion and after 
 Start an exploratory session from the selected build. Open an empty, unlocked
 V1/A1 timeline in the standard split layout: video above audio, one timeline panel
 visible. Declare expectations from the fixture or functional script before input.
+Select Name search during fixture setup; preparation and execution verify it.
 The current procedure supports one whole video clip with a declared positive
 duration; it expects no trim, retiming, audio placement or new tracks.
 

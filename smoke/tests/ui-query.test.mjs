@@ -8,7 +8,7 @@ import {modelItemPoint} from '../desktop/physical-input.mjs';
 import {prepareAgentTask} from '../desktop/agent-task.mjs';
 import {observationBinding,observationChanges} from '../desktop/observations.mjs';
 
-const ui=()=>({widgets:[{id:'main',class:'MainWindow'},{id:'media',class:'MediaPanel',parent:'main'},
+const ui=()=>({actions:[{id:'name-mode',text:'Name',checkable:true,checked:true,enabled:true}],widgets:[{id:'main',class:'MainWindow'},{id:'media',class:'MediaPanel',parent:'main'},
  {id:'field',class:'MediaSearchField',parent:'media',text:'motion'},
  {id:'status',name:'mediaSearchStatus',parent:'media',text:'1 match in 1 clip'},
  {id:'view',class:'QTreeView',parent:'media',viewport:'viewport',rows:1,model:[['motion.mp4']],selectedRows:[0],itemRects:[{row:0,x:0,y:0,width:200,height:24}]},
@@ -25,6 +25,7 @@ test('one media answer uses parent relationships and scoped waits ignore unrelat
  for(const bad of [{within:{}},{within:{class:'MediaPanel'},scope:'other'},{question:'invented'}])assert.throws(()=>validateToolParams(bad.question?'query':'observe',bad));
  const snapshot=within=>({binding:observationBinding({pid:1},{within}),value:{matches:[]}});
  assert.throws(()=>observationChanges(snapshot({id:'media'}),snapshot({id:'other'})),e=>e.code==='observation_binding_changed');
+ const wrongMode=ui();wrongMode.actions[0].checked=false;assert.equal(mediaSearchAnswer(wrongMode).searchMode,'unknown');
 });
 test('format branching recognises the complete exact dialog and rejects changed or missing content',()=>{
  const dialog={modalWindow:'dialog',widgets:[{id:'dialog',class:'QMessageBox'},
@@ -61,5 +62,6 @@ test('media task overlaps independent preflight/baseline reads and retains a gua
   const execute=async(f,op,p)=>{calls.push(op);if(op==='geometry')return {target:'video',point:{x:0,y:80}};if(++began===2)release();await together;return op==='preflight'?{ready:true,keyWindow:{id:'main',class:'MainWindow'},answer}:before();};
   const task=await prepareAgentTask(file,{recipe:'media-insert-undo',values},execute),plan=JSON.parse(await readFile(task.plan.path));assert.equal(task.executed,false);assert.deepEqual(calls,['preflight','call','geometry']);assert.equal(plan.phases.length,7);assert(plan.phases.some(p=>p.id==='keep'));assert(plan.phases.find(p=>p.id==='undo').steps.some(s=>s.params?.requireFocus));
   answer.timelineTabs[0].text='Other';await assert.rejects(()=>prepareAgentTask(file,{recipe:'media-insert-undo',values},execute),e=>e.code==='wrong_fixture');
+  answer.timelineTabs[0].text='Main';answer.searchMode='unknown';await assert.rejects(()=>prepareAgentTask(file,{recipe:'media-insert-undo',values},execute),e=>e.code==='wrong_search_mode');
  }finally{await rm(root,{recursive:true,force:true});}
 });

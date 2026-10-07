@@ -19,7 +19,9 @@ export function mediaSearchAnswer(ui){
  requireProof(statuses.length===1||statuses.length===0&&field.text==='','ambiguous_target','An active search needs one visible status label',['observe']);
  const status=statuses[0];
  const complete=Number.isInteger(view.rows)&&view.rows===(view.model?.length??-1);
+ const nameModes=(ui.actions||[]).filter(a=>a.text==='Name'&&a.checkable===true&&a.checked===true&&a.enabled===true);
  return {question:'media-search',scope:scoped.scope,targets:{field:{id:field.id},status:status?{id:status.id}:null,view:{id:view.id},viewport:{id:view.viewport}},query:field.text,status:status?.text||null,
+  searchMode:nameModes.length===1?'Name':'unknown',
   pending:/searching|pending|loading/i.test(status?.text||''),error:/error|failed|unavailable/i.test(status?.text||''),
   names:view.model?.map(row=>row[0])||[],selectedRows:view.selectedRows||[],rows:view.rows,inspectionIncomplete:!complete,
   timelineCanvases:(ui.widgets||[]).filter(w=>w.class==='TimelineWidget').map(w=>Object.fromEntries(['id','window','x','y','width','height','clipIds','clipIdsTruncated'].map(k=>[k,w[k]]))),
