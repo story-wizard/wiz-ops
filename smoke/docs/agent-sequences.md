@@ -1,5 +1,10 @@
 # Plan agent sequences
 
+For a developer-supplied functional script, start with
+[functional testing agent guidance](functional-testing-agent.md). Define cases,
+fixture bindings, assertions and compatible execution groups before composing
+these shorter procedures.
+
 Use a batch for a short phase whose next actions are already known. Keep the
 agent's decisions at the points where new information could change the plan.
 The live Add Track pilot reduced eight requests to two and averaged 50.6 seconds

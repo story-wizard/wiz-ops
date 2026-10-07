@@ -12,7 +12,7 @@ For atomic calls and exploratory sessions, see [agent tools](agent-tools.md).
 - Run that plan, observe status, wait, cancel and obtain a local report.
 - Recover a lost start response using its request ID without duplicating execution.
 
-Each selected course adds its connection checks and any declared shared-fixture sequence. The plan lists those additions. Selection/bin checks prepare their own fixtures: choosing bin duplication adds only the packaged and desktop connection checks, while retaining its rename and save/reopen assertions. Neighboring selection, lock, targeting, gap, rename, delete and graphic checks run only when selected. Execution is serial: packaged checks, background services, then foreground desktop. Packaged checks own disposable projects. Desktop checks run in isolated script groups; only an authored setup/persistence sequence shares its fixture. Groups organize the report and do not create parallel execution.
+Each selected course adds its connection checks and any declared shared-fixture sequence. The plan lists those additions. Selection/bin checks prepare their own fixtures: choosing bin duplication adds only the packaged and desktop connection checks, while retaining its rename and save/reopen assertions. Neighboring selection, lock, targeting, gap, rename, delete and graphic checks run only when selected. Execution is serial: packaged checks, background services, then foreground desktop. Packaged checks own disposable projects. New selections default to grouped desktop execution: compatible drivers share an owned session with separate per-check fixtures; authored setup/persistence sequences retain their dependencies. Groups organize the report and do not create parallel execution.
 
 ## Default mixed course
 
@@ -23,9 +23,9 @@ node scripts/smoke.mjs plan --app /path/to/Wizard.app --course smoke-full --out 
 node scripts/smoke.mjs run --plan /tmp/full-plan.json --operator "Your name" --wait --server URL
 ```
 
-Preparation attaches the adapter to a disposable copy of that exact package. Keep the Mac unlocked and available for foreground stages. Every independent physical/checklist check gets a fresh project and owned session. Fail and Blocked continue into unrelated groups after confirmed cleanup; an uncertain action stops its session. A package missing required operations retains a Blocked result instead of substituting another build.
+Preparation attaches the adapter to a disposable copy of that exact package. Keep the Mac unlocked and available for foreground stages. Every desktop execution group gets a fresh project and owned session; compatible checks keep their own fixture state within that group. Fail and Blocked continue into unrelated groups after confirmed cleanup; an uncertain action stops its session. A package missing required operations retains a Blocked result instead of substituting another build.
 
-`automated-full` remains the accepted-only course. User-created courses remain accepted-only. Warm live-grade sampling stays outside the default because it does not establish Logan's cold-cache criterion. Idle CPU measurement is retained as a separate candidate probe; see [idle candidate](idle-candidate.md). The default revision is now 6. NAS remains deferred.
+`automated-full` remains the accepted-only course. User-created courses remain accepted-only. Warm live-grade sampling stays outside the default because it does not establish Logan's cold-cache criterion. Idle CPU measurement is retained as a separate candidate probe; see [idle candidate](idle-candidate.md). The default revision is now 9. NAS remains deferred.
 
 ## Acceptance boundary
 
@@ -120,7 +120,7 @@ A wait timeout does not cancel execution. Start is never automatically retried. 
 
 Desktop and service selections attach matching external tools to a disposable copy of the selected package. Prepare the build through the dashboard or `prepare` / `preparation --id ID`; readiness freezes the package, shipped CLI and adapter identities. A matching installed bundle supplies the tools. A source checkout can compile them with a matching SDK. Missing tools or capabilities produce a repair prompt. Legacy runtime descriptors are retained for historical tooling and must not substitute another app for the selected package.
 
-GUI search uses the search worker bundled in that selected package, covered by its package fingerprint. Service checks reject foreground input before dispatch. Independent desktop script groups use fresh projects and sessions; authored persistence families retain their own sequence.
+GUI search uses the search worker bundled in that selected package, covered by its package fingerprint. Service checks reject foreground input before dispatch. Desktop groups use fresh projects and sessions; compatible checks share a qualified driver, while authored persistence families retain their own sequence.
 
 `list --target desktop` filters discovery. Category selection defaults to packaged checks for compatibility; `plan --category color --target all` includes corresponding checks across targets. Explicit check IDs and saved courses can mix targets without this flag.
 
@@ -130,7 +130,7 @@ Fresh is the available empty starting project. A check's setup populates it as r
 
 Color-only plans use the six-file synthetic core pack and no speech model. Speech checks require the eight-file pack and pinned speech model; mixed-media import requires the eight files but does not require transcription. Core media and the ingest environment remain a shared preparation baseline in this first implementation, even for checks that use fewer assets.
 
-Current package compatibility remains conservative: the selected package must match the mapped operation schema. A local run kit retains the exact runtime inputs and lists required external libraries. It does not automatically qualify arbitrary new schemas. The separate [harness bundle](maintaining-harness.md) includes desktop libraries and an installation/update path.
+Current package compatibility uses conservative structural qualification against a retained reviewed contract. Additive operations and wider request enums may qualify automatically; other changes require review. Read the frozen plan and [build repair](build-repair.md) for the actual decision. A local run kit retains the exact runtime inputs and lists required external libraries. It does not automatically qualify arbitrary new schemas. The separate [harness bundle](maintaining-harness.md) includes desktop libraries and an installation/update path.
 
 The canonical full Smoke Test course and V1 scope remain distinct from a custom course. The maintained `packaged-full` selection represents the packaged engine checks, not the entire mixed course or every behavior in Logan's checklist.
 

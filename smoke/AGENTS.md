@@ -14,6 +14,7 @@ Work from the command root: `smoke/` in a checkout or `workspace/` in a bundle. 
 | Explore Wizard with mouse, keyboard and app operations | [Computer-use guide](docs/computer-use-agent.md) |
 | Understand how the CLI, Qt adapter and physical input work together | [Harness control](docs/harness-control.md) |
 | Plan and reuse short agent workflows | [Agent sequences](docs/agent-sequences.md) |
+| Turn a functional script into fixture-backed tests and execution groups | [Functional testing agent](docs/functional-testing-agent.md) |
 | Check the App caller of a Core persistence change | [Caller preflight](docs/caller-preflight.md) |
 | Compare or improve agent control tooling | [Control harness baseline](docs/control-comparison.md) |
 | Investigate failed checks and prepare bug drafts | [Investigations](docs/investigations.md) |
