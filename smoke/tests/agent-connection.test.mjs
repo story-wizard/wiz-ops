@@ -9,6 +9,7 @@ import {waitForObservation} from '../desktop/check-support.mjs';
 import {readyUI} from '../desktop/agent-tools.mjs';
 import {checkAgentPlan,runAgentPlan,inspectAgentPlan} from '../desktop/agent-plan.mjs';
 import {compileAgentRecipe,checkAgentRecipe,compileAgentWorkflow,checkAgentWorkflow} from '../desktop/agent-recipes.mjs';
+import {toolInterface} from '../desktop/agent-proof.mjs';
 
 async function fixture(run){
  const data=await realpath(await mkdtemp('/private/tmp/athanor-connection-')),previous=process.env.SMOKE_DATA_DIR;process.env.SMOKE_DATA_DIR=data;
@@ -414,4 +415,27 @@ test('authored plan rejection identifies the exact phase and step before executi
  const plan={format:'athanor-agent-plan/v1',start:'edit',phases:[{id:'edit',steps:[{operation:'call',params:{operation:'project.get_name'}},{operation:'physical',params:{action:'drag'}}],next:null}]};let calls=0;
  await assert.rejects(()=>runAgentPlan(file,plan,async()=>{calls++;}),e=>e.diagnostics.phase==='edit'&&e.diagnostics.step===1&&e.diagnostics.interface.example.operation==='physical');assert.equal(calls,0);
  plan.phases[0].steps={};await assert.rejects(()=>checkAgentPlan(file,plan),e=>e.code==='invalid_plan');
+}));
+
+test('discovered plan scaffold validates without input and gate errors teach the supported shape',async()=>fixture(async file=>{
+ const plan=toolInterface().planExample;plan.phases[0].steps[0].expect.equals='Golden';
+ assert.equal((await checkAgentPlan(file,plan)).executed,false);
+ let calls=0;const wrong=await runAgentPlan(file,plan,async()=>{calls++;return {name:'Wrong'};});
+ assert.equal(wrong.status,'Fail');assert.equal(calls,1);
+ plan.phases[0].steps[0].expect.path='name';calls=0;
+ await assert.rejects(()=>runAgentPlan(file,plan,async()=>{calls++;}),e=>e.diagnostics.phase==='review'&&e.diagnostics.step===0&&Array.isArray(e.diagnostics.expectation.example.path));
+ assert.equal(calls,0);
+ assert.deepEqual(toolInterface('query').expectation.example,{path:['matched'],equals:true});
+}));
+
+test('compact replies prioritize decisions and partial flags without truncating values or changing receipts',async()=>fixture(async file=>{
+ const result={...Object.fromEntries(Array.from({length:40},(_,i)=>['noise'+i,'x'.repeat(100)])),timeline:{tracks:Array(100).fill({asset:'large'})},matched:false,state:'restored',reason:'Wrong source range',inspectionIncomplete:true,identity:{pid:12,generation:3}};
+ const preview=resultPreview(result);
+ assert.equal(preview.summary.matched,false);assert.equal(preview.summary.inspectionIncomplete,true);assert.equal(preview.summary.reason,'Wrong source range');assert.deepEqual(preview.summary.identity,result.identity);
+ assert.equal(preview.completeResult,false);assert(preview.additionalFields>0);assert.equal(preview.summary.timeline,undefined);
+ const compact=await compactToolResult(file,'query',result);assert.equal(compact.encoding,'compact');assert.equal(compact.summary.matched,false);
+ assert.deepEqual(JSON.parse(await readFile(compact.receipt.path)).result,result);
+ const medium={state:'inserted',timeline:'x'.repeat(2500),matched:true};
+ assert.equal((await compactToolResult(file,'query',medium)).encoding,'compact');
+ assert(Buffer.byteLength(JSON.stringify(compact))<Buffer.byteLength(JSON.stringify(result))/2);
 }));

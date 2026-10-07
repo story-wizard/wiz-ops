@@ -269,3 +269,8 @@ functional work, `query timeline-history` takes timelineId/baselineRevision and
 returns bounded owned first-parent history with head, parents and remaining steps.
 Review it before deliberate Undo, then verify history/domain after each key. Do
 not alter a frozen one-Undo test or consume unknown history automatically.
+
+`schema {}` provides a read-only plan scaffold; expectations use array paths.
+Compact replies prioritize outcome and completeness while retaining full results
+over 2 KiB. Read omitted values from the checksummed receipt when needed. Reuse a
+capture only for its original checkpoint; never infer fresh screen state from it.

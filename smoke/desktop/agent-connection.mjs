@@ -7,12 +7,13 @@ import {fields,validateToolParams,validateApplicationParams,validateNativeParams
 import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 
 const maxBytes=65536;
+const decisionFields=['status','question','matched','state','reason','ready','name','expected','actual','targets','focus','identity','revision','generation','observedAt','complete','completion','inspectionComplete','inspectionIncomplete','truncated','hasMore','partial','next_cursor','nextCursor'];
 // Keep whole values: a shortened list must never look like a complete observation.
-export function resultPreview(result,budget=2048){
+export function resultPreview(result,budget=1024){
  if(Buffer.byteLength(JSON.stringify(result))<=budget)return {encoding:'full',result};
  if(result===null||typeof result!=='object'||Array.isArray(result))return {encoding:'summary',summary:{},omitted:[{field:null,bytes:Buffer.byteLength(JSON.stringify(result))}],completeResult:false};
  const summary=Object.create(null),omitted=[];let used=0;
- const entries=Object.entries(result);
+ const entries=[...decisionFields.filter(k=>Object.hasOwn(result,k)).map(k=>[k,result[k]]),...Object.entries(result).filter(([k])=>!decisionFields.includes(k))];
  for(const [key,value] of entries.slice(0,32)){
   const bytes=Buffer.byteLength(JSON.stringify({[key]:value}));
   if(used+bytes<=budget){summary[key]=value;used+=bytes;}
@@ -31,7 +32,7 @@ export function operationCategory(operation,params={}){
  return 'other';
 }
 export async function compactToolResult(file,operation,result){
- if(Buffer.byteLength(JSON.stringify(result))<=4096)return {encoding:'full',result};
+ if(Buffer.byteLength(JSON.stringify(result))<=2048)return {encoding:'full',result};
  try{const session=await readJSON(file);verifyDesktopPaths(session);const directory=await mkdtemp(path.join(session.root,'tool-reply-')),retained=path.join(directory,'receipt.json');await writeJSON(retained,{operation,result,session:file,build:{packageHash:session.guiHash},process:{pid:session.pid,started:session.processStart,generation:session.generation}});
   const preview=resultPreview(result);
   return {...preview,encoding:'compact',receipt:{path:retained,sha256:await sha(retained)},review:'Use the returned exact fields. Read omitted values from the receipt when needed; this summary cannot establish completeness of the full result.'};
@@ -51,7 +52,7 @@ export function validateSequence(steps,schema){
   if(step.params?.read)validateApplicationParams(schema,step.params.read.operation,step.params.read.params||{});
   if(step.params?.commit)validateApplicationParams(schema,'spellbook.inspect',{document_id:step.params.commit.documentId,view:'raw'});
   if(step.expect!==undefined){fields(step.expect,['path','equals','notEquals','length','includes'],'expect');compareObservation({},step.expect);}
-  }catch(error){error.diagnostics={...error.diagnostics,step:index};throw error;}
+  }catch(error){error.diagnostics={...error.diagnostics,step:index,...step?.expect!==undefined?{expectation:{path:'Array of property names or indexes',fields:['path','equals','notEquals','length','includes'],example:{path:['matched'],equals:true}}}:{}};throw error;}
  }
 }
 export async function checkSequence(file,steps){

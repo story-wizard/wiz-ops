@@ -128,3 +128,19 @@ merge, missing baseline, failed focus or Unknown stops for review. Once the
 baseline is restored, Redo the intended edit and verify its exact state; Save's
 empty history step need not be mistaken for the edit. Do not automatically consume
 an arbitrary number of Undo steps or declare restoration from a shortcut receipt.
+
+## Start small and read the decision
+
+`schema {}` includes an executable read-only `planExample`. Replace its observed
+project name, validate it with `plan-check`, and adapt it with the current task's
+steps. Expectations use array paths (`["matched"]`), never dotted strings. The
+interface and validation diagnostics advertise the same shape. Prefer an existing
+`task` recipe for known procedures; this scaffold does not plan an unfamiliar UI.
+
+Compact tool replies retain results over 2 KiB and prioritize status, outcome,
+expected/actual values, targets, focus, identity and completeness flags. Whole
+values are included or omitted; lists are never shortened to look complete. Read
+`encoding`, `completeResult` and `omitted`; use the checksummed receipt for omitted
+state. Plan gates still evaluate the full internal result. Read a retained image
+once for its checkpoint and use that same artifact in reports and scoring. A
+changed screen or a different declared checkpoint needs its own capture.
