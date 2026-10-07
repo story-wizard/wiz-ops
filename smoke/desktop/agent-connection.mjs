@@ -24,7 +24,7 @@ export function operationCategory(operation,params={}){
  if(operation==='capture'||operation==='physical'&&params.command==='screenshot')return 'capture';
  if(operation==='wait')return 'wait';
  if(operation==='physical')return 'physicalInput';
- if(['observe','find','model','model_value','geometry','preflight'].includes(operation))return 'observation';
+ if(['observe','find','model','model_value','geometry','preflight','query'].includes(operation))return 'observation';
  if(operation==='call')return isAgentMutation(operation,params)?'applicationEdit':'applicationRead';
  if(operation==='native')return isAgentMutation(operation,params)?'qtEdit':'qtRead';
  if(operation==='verify')return 'verification';

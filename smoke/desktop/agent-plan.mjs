@@ -10,7 +10,7 @@ import {verifyDesktopPaths} from './adapter.mjs';
 import {readJSON,writeJSON,sha,inside} from '../runner/files.mjs';
 import {bindingReferences,validatePlanBindings,readPlanBinding} from './plan-bindings.mjs';
 
-const readKinds=['observe','find','model','model_value','call','native'];
+const readKinds=['observe','find','model','model_value','call','native','query'];
 export const planLimits={maxPhases:8,maxDeclaredSteps:32,maxRequestBytes:65536,maxDurationMs:120000};
 const invalid=message=>proofError('invalid_plan',message,['correct_parameters']);
 export function validateAgentPlan(plan,schema){

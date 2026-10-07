@@ -9,6 +9,7 @@
 #include <QUuid>
 #include <dlfcn.h>
 #include <algorithm>
+#include <cmath>
 #include <objc/runtime.h>
 #include <objc/message.h>
 #include <ApplicationServices/ApplicationServices.h>
@@ -91,8 +92,9 @@ class SmokeBridge : public QObject {
         output.write(QJsonDocument(value).toJson());output.commit();
     }
     static QJsonObject capabilities(){
-        return {{"protocol",1},{"version",8},{"operations",QJsonArray{"capabilities","inspect","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
+        return {{"protocol",1},{"version",9},{"operations",QJsonArray{"capabilities","inspect","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
                 {"buttonClickGeometry",true},{"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
+                {"timelinePoint",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget7timeToXEd")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11trackHeightEi"))},
                 {"limits",QJsonObject{{"modelRows",64},{"modelPageRows",64},{"timelineClipIds",1024},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
                 {"captures",QJsonObject{{"screenshot","Qt widget raster"},{"snapshot-presented","Owned native window pixels"},{"snapshot-node-preview","Rendered graph preview"}}}};
     }
@@ -264,6 +266,18 @@ class SmokeBridge : public QObject {
             throw QString("Native panel window is unavailable");
         }
         if(op=="bug-report-prefill")return prefillBugReport(widget,request);
+        if(op=="timeline-point"){
+            using TimeX=int(*)(const QWidget*,double);using TrackValue=int(*)(const QWidget*,int);
+            auto timeX=reinterpret_cast<TimeX>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget7timeToXEd"));
+            auto trackY=reinterpret_cast<TrackValue>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi"));
+            auto trackH=reinterpret_cast<TrackValue>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11trackHeightEi"));
+            const auto indexValue=request["trackIndex"],timeValue=request["timeSeconds"];const int index=indexValue.toInt(-1);const double seconds=timeValue.toDouble(-1);
+            if(!timeX||!trackY||!trackH||!widget||!widget->isVisible()||!widget->isEnabled()||QString(widget->metaObject()->className())!="TimelineWidget"||!indexValue.isDouble()||indexValue.toDouble()!=index||index<0||index>=1024||!timeValue.isDouble()||!std::isfinite(seconds)||seconds<0||seconds>8640000)throw QString("Packaged track/time geometry unavailable; use an observed timeline canvas and bounded track index/time");
+            const int y=trackY(widget,index);if(y<0)throw QString("Track index is absent from this timeline canvas");const int height=trackH(widget,index);
+            const QPoint point(timeX(widget,seconds),y+height/2);const auto visible=widget->visibleRegion();
+            if(height<=0||!widget->rect().contains(point)||!visible.contains(point))throw QString("Track/time point is outside the visible canvas; scroll and observe again");
+            return {{"trackIndex",index},{"timeSeconds",seconds},{"point",QJsonObject{{"x",point.x()},{"y",point.y()}}},{"method","packaged TimelineWidget::timeToX/trackYForIndex/trackHeight"}};
+        }
         if(op=="timeline-clip-rect"){
             using ClipRect=QRect(*)(const QWidget*,const QString&);
             auto geometry=reinterpret_cast<ClipRect>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"));

@@ -28,7 +28,7 @@ export function validatePlanBindings(plan,phases){
  if(Object.keys(definitions).length>8)throw invalid('Use at most eight bindings');
  for(const [name,b] of Object.entries(definitions)){
   fields(b,['phase','step','path','uniquePath','type'],'binding');const source=phases.get(b.phase)?.steps[b.step];
-  if(!safe(name)||!['string','integer'].includes(b.type)||!Number.isInteger(b.step)||!source||!['observe','find','model','model_value','call'].includes(source.operation)||isAgentMutation(source.operation,source.params)||source.params?.since!==undefined||source.expect===undefined)throw invalid('Export only gated full read-only results with string or integer types');
+  if(!safe(name)||!['string','integer'].includes(b.type)||!Number.isInteger(b.step)||!source||!['observe','find','model','model_value','call','query'].includes(source.operation)||isAgentMutation(source.operation,source.params)||source.params?.since!==undefined||source.expect===undefined)throw invalid('Export only gated full read-only results with string or integer types');
   compareObservation({}, {path:b.path,equals:null});compareObservation({}, {path:b.uniquePath,length:1});
   if(!Array.isArray(b.path)||!Array.isArray(b.uniquePath)||!b.uniquePath.length||!isDeepStrictEqual(b.path.slice(0,b.uniquePath.length),b.uniquePath)||b.path[b.uniquePath.length]!==0)throw invalid('Export a property of the sole element in uniquePath');
   if(bindingReferences(source,definitions).used.length)throw invalid('Binding source reads must have literal parameters');

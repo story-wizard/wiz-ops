@@ -15,7 +15,7 @@ import {currentAction,withAgentAction,withAdapterAction,validateApplicationParam
 
 export const agentReadOperations=['project.get_name','timeline.inspect','playback.query_transport','graph.get_clip_graph','media.list_assets','media.resolve_path','media.probe','spellbook.inspect','spellbook.list'];
 // Observations and ownership-checked clipboard bookkeeping do not edit the test project.
-export const agentReadNative=['capabilities','inspect','model-page','model-value','timeline-clip-rect','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview','clipboard-save','clipboard-mark','clipboard-restore'];
+export const agentReadNative=['capabilities','inspect','model-page','model-value','timeline-clip-rect','timeline-point','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview','clipboard-save','clipboard-mark','clipboard-restore'];
 export async function markAgentMutation(file,session){
   if(!session.agentTracking)return;
   if(currentAction(file)?.purpose==='shutdown')return;
@@ -263,7 +263,8 @@ async function nativeCallOwned(file,op,params={}){
   const ready=await readJSON(path.join(session.native,'ready.json'));assert(ready.pid===session.pid&&ready.harness===session.harnessId,'Native bridge identity mismatch.');
   const capabilities=verifyNativeCapabilities(ready);
   if(!capabilities.operations.includes(op))throw new OutcomeError('Unsupported native operation: '+op,'Blocked');
-  if(op==='timeline-clip-rect'&&!capabilities.timelineGeometry)throw new OutcomeError('This package does not export clip geometry; inspect the visible timeline before choosing another input route','Blocked');
+    if(op==='timeline-clip-rect'&&!capabilities.timelineGeometry)throw new OutcomeError('This package does not export clip geometry; inspect the visible timeline before choosing another input route','Blocked');
+    if(op==='timeline-point'&&!capabilities.timelinePoint)throw new OutcomeError('This package does not export track/time geometry; use a fresh visual target or qualify a supported build','Blocked');
   const lock=path.join(session.root,'native-call.lock'),held=await acquireNativeLock(lock),id=randomUUID();
   const request={...params,id,generation:ready.generation,op};
   try{

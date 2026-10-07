@@ -186,6 +186,17 @@ Unknown. See `docs/agent-sequences.md#compose-recipes-before-dispatch`.
 
 ### Compact control entry
 
+For the authored search → physical drop → optional format dialog → Undo path, use
+`task` with `recipe: "media-insert-undo"`. Read [media procedure](docs/media-procedure.md)
+for its declared expectations and empty V1/A1 fixture. Preparation binds targets
+and retains a reviewed plan; it sends no input. `query` answers named media and
+dialog questions, `within` scopes widget observations through snapshot-local
+parent edges, and physical drags can resolve an exact model name and a track/time
+destination immediately before input. Unknown layouts/dialogs remain stops.
+Overlap independent read-only transports and compile known phases ahead of waits;
+desktop input and mailbox requests remain sequential. Inspect the returned timing
+and retained evidence rather than assuming a speed improvement.
+
 Start exploratory control from `agent-brief.json`. Use `tool SESSION.json task` to list recipes and prepare a reviewed existing plan before writing one. Add Track accepts only optional values.timelineId and binds the rest without input; the default fixture main must be displayed. Other recipes require explicit observed values. Returned run/inspection commands and the brief's persistent JSON-lines connection bind the session workspace. Scope is an observed ID string; model itemRects use the returned viewport. Default checkbox clicks use current styled clickRect metadata, followed by checked/enabled readback. Capture dialogs separately and review one image per required result. Single-tool CLI results over 4 KiB retain full checksummed receipts; read exact values there when needed. JSON-lines tool clients opt into `compact:true`. Saved Spell string typing may declare `commit:{documentId,inputId}` for exact readback and owned replacement-control verification. Other focus loss remains Unknown. Reobserve after rebuilds, keep independent assertions/captures, and never replay uncertain input.
 
 

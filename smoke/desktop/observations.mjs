@@ -8,7 +8,7 @@ import {requireProof} from './agent-proof.mjs';
 // Diagnostic observations are separate from verification and Pass evidence.
 export function observationBinding(session,params){
  return {pid:session.pid,started:session.processStart,generation:session.generation,packageHash:session.guiHash,
-  query:{kind:params.kind||'widgets',selector:params.selector||{},...(params.selectors!==undefined?{selectors:params.selectors}:{}),limit:params.limit??20,details:params.details??false,scope:params.scope??null}};
+  query:{kind:params.kind||'widgets',selector:params.selector||{},...(params.selectors!==undefined?{selectors:params.selectors}:{}),...(params.within!==undefined?{within:params.within}:{}),limit:params.limit??20,details:params.details??false,scope:params.scope??null}};
 }
 export function observationChanges(previous,current){
  requireProof(isDeepStrictEqual(previous.binding,current.binding),'observation_binding_changed','Use a full observation after changing process, generation or query',['observe_without_since']);

@@ -4,15 +4,17 @@ import {isDeepStrictEqual} from 'node:util';
 import {digest} from '../runner/files.mjs';
 import {nativeDesktopInput} from './macos-input.mjs';
 import {assert,pause,OutcomeError} from '../runner/engine.mjs';
-import {withAdapterAction,markUnknown,fields,requireProof} from './agent-proof.mjs';
+import {withAdapterAction,markUnknown,fields,requireProof,validateTimelinePoint} from './agent-proof.mjs';
 
-const inputFields={click:['x','y','chrome','button','modifiers','clickCount','clipId','expectedClip'],drag:['x','y','chrome','toTarget','toX','toY','button','modifiers','path','durationMs','clipId','expectedClip'],key:['key','requireFocus'],type:['text','commit'],scroll:['x','y','deltaX','deltaY'],screenshot:['crop']};
+const inputFields={click:['x','y','chrome','button','modifiers','clickCount','clipId','expectedClip'],drag:['x','y','chrome','toTarget','toX','toY','button','modifiers','path','durationMs','clipId','expectedClip','expectedToTarget','modelTarget','itemText','toTimelinePoint'],key:['key','requireFocus'],type:['text','commit'],scroll:['x','y','deltaX','deltaY'],screenshot:['crop']};
 export function validatePhysicalInput(command,params){
  requireProof(Object.hasOwn(inputFields,command),'unsupported_physical_command','Choose click, drag, key, type, scroll or screenshot',['correct_parameters']);
  fields(params,['target','expected',...inputFields[command]],'physical input');
  requireProof(typeof params.target==='string'&&params.target.length>0,'invalid_params','Supply the ID of an observed physical target',['observe']);
  if(params.requireFocus!==undefined)requireProof(command==='key'&&typeof params.requireFocus==='boolean','invalid_params','requireFocus is a boolean keyboard guard',['correct_parameters']);
  if(params.clipId!==undefined)requireProof(typeof params.clipId==='string'&&params.clipId.length>0,'invalid_params','Supply an observed clip identity',['observe']);
+ if(params.toTimelinePoint!==undefined){fields(params.toTimelinePoint,['trackIndex','timeSeconds'],'toTimelinePoint');validateTimelinePoint(params.toTimelinePoint);requireProof(!params.path&&!params.chrome,'invalid_geometry','Track/time drops cannot mix paths or chrome',['correct_parameters']);}
+ if(params.itemText!==undefined)requireProof(typeof params.itemText==='string'&&params.itemText.length>0&&params.itemText.length<=1024&&typeof params.modelTarget==='string'&&!params.path&&!params.chrome&&!params.clipId,'invalid_model_target','Declare an exact name and observed model view for the drag',['observe']);
  if(params.commit!==undefined){fields(params.commit,['documentId','inputId'],'commit');requireProof(command==='type'&&['documentId','inputId'].every(k=>typeof params.commit[k]==='string'&&params.commit[k].length>0&&params.commit[k].length<=128),'invalid_params','A text commit requires the observed Spell document and input IDs',['observe']);}
 }
 export function requireTargetGeometry(actual,expected){
@@ -55,6 +57,16 @@ export function clipPoint(geometry,part='body'){
  const x=part==='left-edge'?r.x:part==='right-edge'?r.x+r.width-1:v.x+(v.width-1)/2,y=v.y+(v.height-1)/2;
  assert(x>=v.x&&x<v.x+v.width&&y>=v.y&&y<v.y+v.height,'Requested clip edge is outside the visible viewport; scroll and observe again');return {x,y};
 }
+export function modelItemPoint(view,viewport,text){
+ requireProof(view?.viewport===viewport?.id&&view.rows===view.model?.length&&view.itemRects?.length===view.rows,'incomplete_observation','Model drag needs a complete current visible model',['observe']);
+ const rows=view.model.flatMap((row,i)=>row[0]===text?[i]:[]);
+ requireProof(rows.length===1,'ambiguous_target','Model drag needs one exact asset name',['observe']);
+ const rect=view.itemRects.find(r=>r.row===rows[0]),v=viewport.visibleRect||{x:0,y:0,width:viewport.width,height:viewport.height};
+ requireProof(rect&&[rect,v].every(r=>['x','y','width','height'].every(k=>Number.isFinite(r[k])))&&rect.width>0&&rect.height>0,'invalid_model_geometry','Model row has no current hit region',['observe']);
+ const x=Math.max(rect.x,v.x),y=Math.max(rect.y,v.y),right=Math.min(rect.x+rect.width,v.x+v.width),bottom=Math.min(rect.y+rect.height,v.y+v.height);
+ requireProof(right>x&&bottom>y,'clipped_model_target','Reveal the matching row before dragging',['reveal','observe']);
+ return {x:x+(right-x-1)/2,y:y+(bottom-y-1)/2,row:rows[0],text};
+}
 
 export function windowPoint(widget,window,native,x,y){
  assert(widget.window===window.id&&window.window===window.id,'Pointer widget differs from its observed top-level window');
@@ -89,6 +101,7 @@ async function physicalInputOwned(file,command,params={}){
  for(let i=0;i<5;i++){u=await nativeCall(file,'inspect');widget=u.widgets.find(w=>w.id===params.target);window=u.widgets.find(w=>w.id===widget?.window);if(widget&&window)break;await pause(100);}
  if(!widget||!window)throw new OutcomeError(`Physical input target ${params.target} (${widget?.class||'absent'}; window ${widget?.window||'absent'}) is not observable`,'Blocked');
  if(params.expected)requireTargetGeometry(widget,params.expected);
+ let modelBinding;if(params.itemText!==undefined){modelBinding=modelItemPoint(u.widgets.find(w=>w.id===params.modelTarget),widget,params.itemText);params={...params,x:modelBinding.x,y:modelBinding.y};}
  if(params.clipId){const fresh=await nativeCall(file,'timeline-clip-rect',{target:widget.id,clipId:params.clipId});requireClipGeometry(fresh.rect,params.expectedClip);}
  if(command==='type'&&!(widget.editableText===true&&u.focus===widget.id))throw new OutcomeError('Physically click the intended editable field before typing; secure and read-only fields are unavailable','Blocked');
  const readCommit=()=>adapter.desktopCall(file,'spellbook.inspect',{document_id:params.commit.documentId,view:'raw'});
@@ -113,6 +126,8 @@ async function physicalInputOwned(file,command,params={}){
   if(command==='drag'){
    const destination=u.widgets.find(w=>w.id===(params.toTarget||params.target));
    assert(destination,'Observe the drag destination');
+   if(params.expectedToTarget)requireTargetGeometry(destination,params.expectedToTarget);
+   if(params.toTimelinePoint){const geometry=await nativeCall(file,'timeline-point',{target:destination.id,...params.toTimelinePoint});params={...params,toX:geometry.point.x,toY:geometry.point.y};}
    const destinationWindow=u.widgets.find(w=>w.id===destination.window),targets=native.windows.filter(w=>w.title===destinationWindow?.title&&Math.abs(w.frame.width-destinationWindow.width)<=1&&Math.abs(w.frame.height-destinationWindow.height)<=80);
    assert(targets.length===1,'Native destination window is absent or ambiguous');
    const to=windowPoint(destination,destinationWindow,targets[0],params.toX,params.toY);request.toX=to.x;request.toY=to.y;request.toWindow=targets[0].window;request.toFrame=targets[0].frame;
@@ -126,6 +141,7 @@ async function physicalInputOwned(file,command,params={}){
  }
  measured('requestMappingMs');
  const receipt=await nativeDesktopInput(file,request);measured('nativeDispatchMs');
+ if(modelBinding)receipt.modelBinding=modelBinding;
  if(command==='type'||command==='click'&&widget.editableText){
   try{let after;for(let i=0;i<10;i++){after=await nativeCall(file,'inspect');if(after.focus===widget.id||commit&&!after.widgets.some(w=>w.id===widget.id))break;await pause(100);}if(commit)receipt.commit=verifySpellTextCommit(commit,await readCommit(),after,widget,receipt);else postInputFocus(after,widget,receipt,command);receipt.focus={target:widget.id,focused:after.focus,keyWindow:after.widgets.find(w=>w.keyWindow)?.nativeWindow,observedAt:new Date().toISOString()};}
   catch(e){e.status='Unknown';e.code=e.code||'post_input_observation_failed';e.nextActions=['observe','verify_resolution','resolve'];e.diagnostics={...e.diagnostics,receipt};throw e;}

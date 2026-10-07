@@ -7,6 +7,7 @@ import {nativeCall,desktopCall,verifyDesktopOwner,verifyDesktopPaths,captureDesk
 import {physicalInput,clipPoint} from './physical-input.mjs';
 import {nativeDesktopInput,physicalKeys,physicalKeyAliases} from './macos-input.mjs';
 import {retainObservation} from './observations.mjs';
+import {withinWidgets,mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome} from './ui-query.mjs';
 import {recordPresented,recordingOptions} from './recorder.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
 import {briefContext,prepareAgentTask} from './agent-task.mjs';
@@ -20,10 +21,11 @@ export {requirePassProof} from './agent-proof.mjs';
 
 const readOps=agentReadOperations,readNative=agentReadNative;
 export const isAgentMutation=(operation,params={})=>operation==='reveal'||operation==='physical'&&params.command!=='screenshot'||operation==='call'&&!readOps.includes(params.operation)||operation==='native'&&!readNative.includes(params.operation);
-const operations=['context','task','schema','preflight','observe','find','model','model_value','reveal','geometry','physical','native','call','wait','capture','recording','evidence','begin','verify','resolve','record','report'];
+const operations=['context','task','schema','preflight','query','observe','find','model','model_value','reveal','geometry','physical','native','call','wait','capture','recording','evidence','begin','verify','resolve','record','report'];
 export const agentSessionTimeoutMs=30*60*1000;
 
-export function selectUI(ui,{kind='widgets',selector,selectors,limit=20,details=false}={}){
+export function selectUI(ui,{kind='widgets',selector,selectors,limit=20,details=false,within}={}){
+ if(within){assert(kind==='widgets','Parent scopes apply to widgets');ui=withinWidgets(ui,within);}
  assert(['widgets','actions'].includes(kind)&&Number.isInteger(limit)&&limit>=1&&limit<=100,'Choose widgets/actions and a limit from 1 to 100');
  const queries=observationSelectors({selector,selectors});
  const matches=(ui[kind]||[]).filter(w=>queries.some(query=>Object.keys(query).filter(k=>k!=='contains').every(k=>query.contains&&typeof query[k]==='string'?typeof w[k]==='string'&&w[k].includes(query[k]):w[k]===query[k])));
@@ -45,6 +47,7 @@ export function uniqueTarget(ui,selector,kind='widgets'){
  return selected.matches[0];
 }
 export function readyUI(ui,params={}){
+ if(params.within){ui=withinWidgets(ui,params.within);params={...params,within:undefined};}
  if(params.conditions){
   const values=params.conditions.map(c=>readyUI(ui,{...c,kind:params.kind}));
   if(values.some(v=>!v))return false;
@@ -58,7 +61,7 @@ export function readyUI(ui,params={}){
  if(found.matchCount>1)throw new OutcomeError('Wait target is ambiguous; narrow the selector.','Blocked');
  if(found.matchCount===0)return false;const target=found.matches[0];
  if(condition==='geometry')return usableGeometry(ui,target);
- return condition==='exists'||['enabled','focused','keyWindow'].includes(condition)&&target[condition]===true||['value','text','checked'].includes(condition)&&isDeepStrictEqual(target[condition],params.expected)?target:false;
+ return condition==='exists'||['enabled','focused','keyWindow'].includes(condition)&&target[condition]===true||['value','text','checked'].includes(condition)&&isDeepStrictEqual(target[condition],params.expected)||condition==='modelNames'&&!target.modelTruncated&&target.rows===target.model?.length&&isDeepStrictEqual(target.model.map(row=>row[0]),params.expected)?target:false;
 }
 export function compareObservation(value,{path:keys=[],equals,notEquals,length,includes}={}){
  assert(Array.isArray(keys)&&keys.length<=20&&keys.every(k=>(typeof k==='string'||Number.isInteger(k))&&!['__proto__','constructor','prototype'].includes(k)),'Use a bounded array of property names or indexes');
@@ -134,7 +137,7 @@ export async function agentTool(file,operation,params={}){
  if(params.read)validateApplicationParams(s.schema,params.read.operation,params.read.params||{});
  if(params.commit)validateApplicationParams(s.schema,'spellbook.inspect',{document_id:params.commit.documentId,view:'raw'});
  // Reads can sample a held gesture; state admission and evidence capture must not race edits.
- if(['observe','find','model','model_value','wait','schema','preflight'].includes(operation))return await runAgentTool(file,operation,params);
+ if(['observe','find','model','model_value','wait','schema','preflight','query'].includes(operation))return await runAgentTool(file,operation,params);
  return await withAgentAction(file,()=>runAgentTool(file,operation,params),{operation,params});
  }catch(e){throw normalizeToolError(e);}
 }
@@ -156,7 +159,16 @@ async function runAgentTool(file,operation,params={}){
   if(mutating&&s.agentProof&&(s.agentProof.baseline||Object.keys(s.agentProof.checkpoints).length)&&!(operation==='physical'&&params.actionId)){s.agentProof.tainted=true;await writeJSON(file,s);}
   if(operation==='task')result=await prepareAgentTask(file,params,agentTool);
   else if(operation==='preflight'){
-   const observed=await nativeDesktopInput(file,{command:'inspect',mode:'window-server',depth:0});const ui=await nativeCall(file,'inspect');result={pid:observed.pid,started:observed.started,permissions:observed.permissions,frontmost:observed.frontmost,frontWindow:observed.frontWindow,windows:observed.windows,keyWindow:ui.widgets.find(w=>w.id===w.window&&w.keyWindow)||null,focusedControl:ui.widgets.find(w=>w.id===ui.focus)||null,ready:observed.permissions?.input===true&&observed.permissions?.screenCapture===true};
+   // Separate read-only transports may overlap; wait for both even on failure.
+   const reads=await Promise.allSettled([nativeDesktopInput(file,{command:'inspect',mode:'window-server',depth:0}),nativeCall(file,'inspect')]);
+   for(const read of reads)if(read.status==='rejected')throw read.reason;
+   const [observed,ui]=reads.map(r=>r.value);result={pid:observed.pid,started:observed.started,permissions:observed.permissions,frontmost:observed.frontmost,frontWindow:observed.frontWindow,windows:observed.windows,keyWindow:ui.widgets.find(w=>w.id===w.window&&w.keyWindow)||null,focusedControl:ui.widgets.find(w=>w.id===ui.focus)||null,ready:observed.permissions?.input===true&&observed.permissions?.screenCapture===true,...params.question?{answer:mediaSearchAnswer(ui)}:{},timing:{durationMs:Date.now()-start,reads:'Window Server and Qt inspection overlap; not an atomic domain snapshot'}};
+  }else if(operation==='query'){
+   if(params.question==='media-insertion'){
+    const observed=await desktopCall(file,'timeline.inspect',{timeline_id:params.timelineId});result=mediaInsertionOutcome(params.baseline,observed,params);
+    result={...result,timeline:observed};
+   }else {const ui=await nativeCall(file,'inspect');result=params.question==='media-search'?mediaSearchAnswer(ui):formatDialogAnswer(ui);}
+   result={...result,observedAt:new Date().toISOString(),generation:s.generation,identity:{packageHash:s.guiHash,pid:s.pid,started:s.processStart}};
   }else if(operation==='schema'){
    assert(typeof params.operation==='string'&&Object.hasOwn(s.schema.operations,params.operation),'Choose an advertised application operation');result={operation:params.operation,params:s.schema.operations[params.operation],result:s.schema.results?.[params.operation],errors:s.schema.errors?.[params.operation]};
   }else if(operation==='evidence'){
@@ -178,22 +190,24 @@ async function runAgentTool(file,operation,params={}){
    const captured=await recordPresented(file,params);result={binding:captured.binding,samples:captured.samples.length,elapsedMs:captured.elapsedMs,totalObservationCostMs:captured.totalObservationCostMs,artifacts:captured.artifacts,scope:captured.scope};
    if(s.currentCheck){await retain(s,params.title||'Timed playback observations',captured);for(const sample of captured.samples)await retain(s,'Presented playback sample',sample.image.output,'image');await retain(s,'Sampled playback with original capture intervals',captured.video.path,'video');}
   }else if(operation==='geometry'){
-   const target=uniqueTarget(await nativeCall(file,'inspect'),params.target||params.selector);result=await nativeCall(file,'timeline-clip-rect',{target:target.id,clipId:params.clipId});result={...result,target:target.id,point:clipPoint(result,params.part)};
+   const target=uniqueTarget(await nativeCall(file,'inspect'),params.target||params.selector);
+   result=params.trackIndex!==undefined?await nativeCall(file,'timeline-point',{target:target.id,trackIndex:params.trackIndex,timeSeconds:params.timeSeconds}):await nativeCall(file,'timeline-clip-rect',{target:target.id,clipId:params.clipId});result={...result,target:target.id,point:params.trackIndex!==undefined?result.point:clipPoint(result,params.part)};
   }else if(operation==='physical'){
    assert(['click','drag','key','type','scroll','screenshot'].includes(params.command),'Unsupported physical command');
    const ui=await nativeCall(file,'inspect'),target=uniqueTarget(ui,params.target||params.selector);
    const qualified=params.command==='screenshot'?null:physicalAction(s.agentProof,params,target);
    if(qualified)params={...params,stepId:qualified.stepId};
    const p={target:target.id,expected:target};for(const k of ['button','durationMs','chrome','key','text','deltaX','deltaY','modifiers','path','clickCount','commit','requireFocus'])if(params[k]!==undefined)p[k]=params[k];
+   if(params.itemText!==undefined){const viewport=uniqueTarget(ui,{id:target.viewport});p.target=viewport.id;p.expected=viewport;p.modelTarget=target.id;p.itemText=params.itemText;}
    if(!['key','type','screenshot'].includes(params.command)&&!(params.command==='click'&&['x','y','xRatio','yRatio'].every(k=>params[k]===undefined))){p.x=params.x??target.width*(params.xRatio??.5);p.y=params.y??target.height*(params.yRatio??.5);}
    if(params.clipId){assert(['click','drag'].includes(params.command),'Clip targeting supports click and drag');const geometry=await nativeCall(file,'timeline-clip-rect',{target:target.id,clipId:params.clipId});Object.assign(p,clipPoint(geometry,params.part),{clipId:params.clipId,expectedClip:geometry.rect});}
-   if(params.command==='drag'){const to=uniqueTarget(ui,params.toTarget||params.target||params.selector);p.toTarget=to.id;p.toX=params.toX??to.width*(params.toXRatio??.5);p.toY=params.toY??to.height*(params.toYRatio??.5);}
+   if(params.command==='drag'){const to=uniqueTarget(ui,params.toTarget||params.target||params.selector);p.toTarget=to.id;p.expectedToTarget=to;p.toX=params.toX??to.width*(params.toXRatio??.5);p.toY=params.toY??to.height*(params.toYRatio??.5);if(params.toTimelinePoint)p.toTimelinePoint=params.toTimelinePoint;}
    result=await physicalInput(file,params.command,p);
    if(qualified){const latest=await readJSON(file);requireProof(result.status==='Dispatched','physical_receipt_missing','The tested action has no dispatched physical receipt',['inspect','record_unknown']);latest.agentProof.actions.push({...qualified,receipt:result,revision:latest.agentRevision,eventId:currentAction(file).id});await writeJSON(file,latest);result={...result,testAction:qualified};}
    if(params.command==='screenshot')result.capture=await retain(s,params.title||'Owned native window',result.output,'image');
   }else if(operation==='call'||operation==='native')result=await (operation==='call'?desktopCall:nativeCall)(file,params.operation,params.params||{});
   else if(operation==='wait'){
-   let lastUI;const query=params.conditions?{kind:params.kind,scope:params.scope,selectors:params.conditions.map(c=>c.selector),details:params.details,limit:params.limit}:null;
+   let lastUI;const query=params.conditions?{kind:params.kind,scope:params.scope,within:params.within,selectors:params.conditions.map(c=>c.selector),details:params.details,limit:params.limit}:null;
    try{result=await waitForObservation(async()=>{lastUI=await nativeCall(file,'inspect',params.scope?{target:params.scope}:{});return readyUI(lastUI,params);},{description:params.title||(query?'All requested UI conditions':'Target '+(params.condition||'exists')),timeoutMs:params.timeoutMs??5000,intervalMs:params.intervalMs??150,stableForMs:params.stableForMs??(params.condition==='geometry'||params.conditions?.some(c=>c.condition==='geometry')?250:0)});}
    catch(error){if(query&&lastUI)error.diagnostics={...error.diagnostics,conditions:params.conditions,lastObservation:selectUI(lastUI,query),generation:s.generation,identity:{packageHash:s.guiHash,pid:s.pid,started:s.processStart}};throw error;}
    if(query)result=await retainObservation(s,query,{...result,observedAt:new Date().toISOString(),generation:s.generation,identity:{packageHash:s.guiHash,pid:s.pid,started:s.processStart}});
