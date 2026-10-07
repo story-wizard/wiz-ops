@@ -31,14 +31,20 @@
     },
     "captureTarget": {
       "type": "object"
+    },
+    "inspectorTarget": {
+      "type": "object"
+    },
+    "clipId": {
+      "type": "string"
     }
   },
   "plan": {
     "format": "athanor-agent-plan/v1",
-    "start": "edit",
+    "start": "baseline",
     "phases": [
       {
-        "id": "edit",
+        "id": "baseline",
         "steps": [
           {
             "operation": "query",
@@ -72,12 +78,28 @@
             "operation": "capture",
             "params": {
               "target": {
+                "$param": "inspectorTarget"
+              },
+              "kind": "presented",
+              "title": "Radius before edit"
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
                 "$param": "captureTarget"
               },
               "kind": "presented",
               "title": "Inspector before edit"
             }
-          },
+          }
+        ],
+        "next": "edit"
+      },
+      {
+        "id": "edit",
+        "steps": [
           {
             "operation": "physical",
             "params": {
@@ -170,6 +192,16 @@
             "operation": "capture",
             "params": {
               "target": {
+                "$param": "inspectorTarget"
+              },
+              "kind": "presented",
+              "title": "Radius after edit"
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
                 "$param": "captureTarget"
               },
               "kind": "presented",
@@ -189,7 +221,11 @@
               "target": {
                 "$param": "timelineTarget"
               },
-              "title": "Focus timeline for Undo"
+              "title": "Focus timeline for Undo",
+              "clipId": {
+                "$param": "clipId"
+              },
+              "part": "body"
             }
           },
           {
@@ -240,6 +276,16 @@
                 "matched"
               ],
               "equals": true
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
+                "$param": "inspectorTarget"
+              },
+              "kind": "presented",
+              "title": "Radius restored"
             }
           },
           {

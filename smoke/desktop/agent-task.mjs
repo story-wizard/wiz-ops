@@ -62,7 +62,7 @@ export async function prepareAgentTask(file,{recipe:id,values={}}={},execute){
   fields(values,['graphScope','nodeId','parameter','label'],'Inspector values');
   const answer=await execute(file,'query',{question:'inspector-parameter',...values});
   const baselineTimeline=await execute(file,'call',{operation:'timeline.inspect',params:{timeline_id:values.graphScope.timeline_id}});
-  defaults={timelineId:values.graphScope.timeline_id,baselineGraph:answer.graph,baselineTimeline,controlTarget:answer.targets.control,timelineTarget:answer.targets.canvas,captureTarget:answer.targets.capture};
+  defaults={timelineId:values.graphScope.timeline_id,clipId:values.graphScope.clip_id,baselineGraph:answer.graph,baselineTimeline,controlTarget:answer.targets.control,timelineTarget:answer.targets.canvas,captureTarget:answer.targets.capture,inspectorTarget:answer.targets.inspector};
  }else if(id==='media-insert-undo'){
   fields(values,Object.keys(mediaInputs),'media procedure values');
   requireProof(Object.entries(mediaInputs).every(([k,d])=>typeof values[k]===d.type)&&['timelineId','query','expectedName','expectedStatus','assetId'].every(k=>values[k].length>0&&values[k].length<=1024)&&Number.isFinite(values.durationSeconds)&&values.durationSeconds>0&&values.durationSeconds<=8640000,'invalid_fixture','Declare bounded timeline/query/name/status/asset values and a positive duration before input',['context']);

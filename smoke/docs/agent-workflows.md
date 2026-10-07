@@ -25,8 +25,10 @@ Select a known numeric node in the clip graph and open its Inspector. Ask:
 {"question":"inspector-parameter","graphScope":{"timeline_id":"TIMELINE_ID","clip_id":"CLIP_ID"},"nodeId":"NODE_ID","parameter":"radius","label":"Radius"}
 ```
 
-The answer binds the displayed graph, its sole selected node, the exact label
-row, enabled slider, styled thumb, canvas and owning window. It includes the
+The answer binds the displayed clip-owner graph, its sole selected node, the
+exact Inspector mutation-route row, enabled slider, styled thumb and canvas.
+Graph, Inspector and timeline may occupy separate windows; control and preview
+captures remain separate. It includes the
 independent graph value. Wrong selection, incomplete scene items, ambiguous rows
 and overlays are Blocked. An unpositioned physical click on an Inspector slider
 focuses its freshly observed thumb; explicit coordinates still have their usual
@@ -35,7 +37,8 @@ meaning. Verify that focusing preserved the value before pressing Right.
 `task` with `recipe:"inspector-edit-undo"` and those four declared values prepares
 a known increase-and-Undo procedure. It retains independent graph/timeline
 baselines, verifies only the numeric parameter increased, captures the edit,
-physically focuses the timeline, undoes and verifies exact restoration. Use
+physically focuses the same clip canvas, undoes and verifies exact restoration.
+Before/changed/restored retain both Inspector and main-window captures. Use
 `query` with `question:"inspector-change"`, the same graphScope/nodeId/parameter,
 `baselineGraph`, `baselineTimeline` and `state:"changed"` or `"restored"` to reuse
 that oracle independently. Changed means an increase, not an arbitrary edit.

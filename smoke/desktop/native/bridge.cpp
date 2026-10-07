@@ -92,7 +92,7 @@ class SmokeBridge : public QObject {
         output.write(QJsonDocument(value).toJson());output.commit();
     }
     static QJsonObject capabilities(){
-        return {{"protocol",1},{"version",9},{"operations",QJsonArray{"capabilities","inspect","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
+        return {{"protocol",1},{"version",10},{"operations",QJsonArray{"capabilities","inspect","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
                 {"buttonClickGeometry",true},{"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
                 {"timelinePoint",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget7timeToXEd")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11trackHeightEi"))},
                 {"limits",QJsonObject{{"modelRows",64},{"modelPageRows",64},{"timelineClipIds",1024},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
@@ -138,6 +138,11 @@ class SmokeBridge : public QObject {
             QJsonObject item{{"active",w->isActiveWindow()},{"id",id(w)},{"class",w->metaObject()->className()},{"name",w->objectName()},{"tooltip",w->toolTip()},{"parent",w->parentWidget()?id(w->parentWidget()):QString()},{"enabled",w->isEnabled()},{"title",w->windowTitle()},{"window",id(w->window())},{"width",w->width()},{"height",w->height()}};
             const auto pos=w->mapTo(w->window(),QPoint{});item["x"]=pos.x();item["y"]=pos.y();
             item["accessibleName"]=w->accessibleName();item["accessibleDescription"]=w->accessibleDescription();
+            if(w->objectName()=="InspectorParamControlRow"){
+                const auto key=w->property("inspectorInteractionKey").toString(),parameter=w->property("paramPath").toString();
+                item["inspectorBindingIncomplete"]=key.isEmpty()||key.size()>4096||parameter.isEmpty()||parameter.size()>256;
+                if(!item["inspectorBindingIncomplete"].toBool()){item["inspectorInteractionKey"]=key;item["paramPath"]=parameter;}
+            }
             const auto visible=w->visibleRegion().boundingRect();item["visibleRect"]=QJsonObject{{"x",visible.x()},{"y",visible.y()},{"width",visible.width()},{"height",visible.height()}};
             item["focused"]=w==qApp->focusWidget();
             if(w->isWindow()){NSView* view=(__bridge NSView*)reinterpret_cast<void*>(w->winId());item["nativeWindow"]=qint64(view.window.windowNumber);item["keyWindow"]=view.window.isKeyWindow;}

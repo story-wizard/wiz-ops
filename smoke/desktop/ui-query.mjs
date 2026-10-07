@@ -6,17 +6,21 @@ import {snapshotState,clips} from '../runner/engine.mjs';
 const one=(widgets,predicate,message)=>{const found=widgets.filter(predicate);requireProof(found.length===1,'ambiguous_target',message,['observe']);return found[0];};
 export function inspectorParameterAnswer(ui,graph,{nodeId,parameter,label}){
  requireProof(!ui.modalWindow&&!ui.popupWindow&&!ui.mouseGrabber,'desktop_not_ready','Dismiss unexpected overlays before Inspector input',['observe']);
- const view=one(ui.widgets,w=>w.class==='RenderGraphView'&&w.graphId===graph.graph_id&&w.timelineId===graph.timeline_id,'Open the declared clip graph');
+ const owner='clip:'+graph.timeline_id+':'+graph.clip_id;
+ const view=one(ui.widgets,w=>w.class==='RenderGraphView'&&w.graphId===owner&&w.timelineId===graph.timeline_id,'Open the declared clip graph');
  const selected=view.sceneItems?.filter(n=>n.selected)||[];
  requireProof(!view.sceneItemsTruncated&&selected.length===1&&selected[0].nodeId===nodeId,'wrong_selection','Select exactly the declared graph node',['observe']);
  const node=one(graph.nodes,n=>n.node_id===nodeId,'The declared node must exist exactly once');
  requireProof(Number.isFinite(node.params?.[parameter]),'unsupported_parameter','Use a numeric graph parameter',['schema']);
- const field=one(ui.widgets,w=>w.name==='InspectorParamLabel'&&w.text===label&&w.window===view.window,'The Inspector label must be unique in the graph window');
+ const panel=withinWidgets(ui,{class:'InspectorPanel'});
+ const field=one(panel.widgets,w=>w.name==='InspectorParamLabel'&&w.text===label,'The Inspector label must be unique');
  const row=withinWidgets(ui,{id:field.parent});
+ const route=row.widgets.find(w=>w.id===row.scope),parts=route.inspectorInteractionKey?.split('\u001f')||[];
+ requireProof(route.inspectorBindingIncomplete===false&&route.paramPath===parameter&&parts[0]==='render.graph_node'&&parts[1]===parameter&&parts.filter(p=>p.startsWith('graph_id=')).length===1&&parts.includes('graph_id='+owner)&&parts.filter(p=>p.startsWith('node_id=')).length===1&&parts.includes('node_id='+nodeId),'wrong_inspector_binding','The Inspector mutation row must identify the declared clip, node and parameter',['observe']);
  const control=one(row.widgets,w=>w.name==='InspectorSliderControl'&&w.window===field.window&&Math.abs(w.y-field.y)<5&&w.enabled,'The Inspector row must have one enabled slider');
  requireProof(Array.isArray(control.handle)&&control.handle.length===2&&control.handle.every(Number.isFinite),'missing_geometry','The slider must expose its current styled thumb',['observe']);
- const canvas=one(ui.widgets,w=>w.class==='TimelineWidget'&&w.window===view.window&&!w.clipIdsTruncated&&w.clipIds?.includes(graph.clip_id),'The declared clip must have one visible canvas');
- return {question:'inspector-parameter',graphId:graph.graph_id,nodeId,parameter,label,value:node.params[parameter],control:{id:control.id,window:control.window,value:control.value,handle:control.handle,focused:ui.focus===control.id},targets:{control:{id:control.id},canvas:{id:canvas.id},capture:{id:field.window}},graph};
+ const canvas=one(ui.widgets,w=>w.class==='TimelineWidget'&&!w.clipIdsTruncated&&w.clipIds?.includes(graph.clip_id),'The declared clip must have one visible canvas');
+ return {question:'inspector-parameter',graphId:graph.graph_id,owner,nodeId,parameter,label,value:node.params[parameter],control:{id:control.id,window:control.window,value:control.value,handle:control.handle,focused:ui.focus===control.id},targets:{control:{id:control.id},canvas:{id:canvas.id},capture:{id:canvas.window},inspector:{id:field.window}},graph};
 }
 export function inspectorOutcome(beforeGraph,afterGraph,beforeTimeline,afterTimeline,{nodeId,parameter,state}){
  const pick=g=>({graph_id:g.graph_id,timeline_id:g.timeline_id,clip_id:g.clip_id,nodes:g.nodes?.map(({incoming,outgoing,...n})=>n),edges:g.edges});
