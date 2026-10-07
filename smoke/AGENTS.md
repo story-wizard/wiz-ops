@@ -274,3 +274,9 @@ not alter a frozen one-Undo test or consume unknown history automatically.
 Compact replies prioritize outcome and completeness while retaining full results
 over 2 KiB. Read omitted values from the checksummed receipt when needed. Reuse a
 capture only for its original checkpoint; never infer fresh screen state from it.
+
+Compact `task` replies expose the full catalog or reviewed plan and exact run/
+inspection commands in `summary` (16 KiB task preview). Check `omitted`; read a
+missing review or unfamiliar hashed baseline from the retained receipt/plan.
+An unchanged prepared task has already passed all-path schema validation; review
+it and use its returned command once. Revalidate plans you edit or author.

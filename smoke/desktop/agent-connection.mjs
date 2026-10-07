@@ -8,6 +8,7 @@ import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 
 const maxBytes=65536;
 const decisionFields=['status','question','matched','state','reason','ready','name','expected','actual','targets','focus','identity','revision','generation','observedAt','complete','completion','inspectionComplete','inspectionIncomplete','truncated','hasMore','partial','next_cursor','nextCursor'];
+const taskFields=['format','status','executed','recipes','recipeId','requestId','plan','values','run','inspect','recipeHash','valuesHash','timing','fixture','reviewPlan','review'];
 // Keep whole values: a shortened list must never look like a complete observation.
 export function resultPreview(result,budget=1024){
  if(Buffer.byteLength(JSON.stringify(result))<=budget)return {encoding:'full',result};
@@ -34,7 +35,12 @@ export function operationCategory(operation,params={}){
 export async function compactToolResult(file,operation,result){
  if(Buffer.byteLength(JSON.stringify(result))<=2048)return {encoding:'full',result};
  try{const session=await readJSON(file);verifyDesktopPaths(session);const directory=await mkdtemp(path.join(session.root,'tool-reply-')),retained=path.join(directory,'receipt.json');await writeJSON(retained,{operation,result,session:file,build:{packageHash:session.guiHash},process:{pid:session.pid,started:session.processStart,generation:session.generation}});
-  const preview=resultPreview(result);
+  let preview=resultPreview(result);
+  if(operation==='task'&&result.format==='athanor-agent-task/v1'){
+   // Known procedures need their complete review and commands, not a second discovery turn.
+   const selected=Object.fromEntries(taskFields.filter(k=>Object.hasOwn(result,k)).map(k=>[k,result[k]])),view=resultPreview(selected,16384);
+   preview={summary:view.result??view.summary,omitted:[...(view.omitted||[]),...Object.entries(result).filter(([k])=>!taskFields.includes(k)).map(([field,value])=>({field,bytes:Buffer.byteLength(JSON.stringify(value))}))],completeResult:false};
+  }
   return {...preview,encoding:'compact',receipt:{path:retained,sha256:await sha(retained)},review:'Use the returned exact fields. Read omitted values from the receipt when needed; this summary cannot establish completeness of the full result.'};
  }catch(error){return {encoding:'full',result,retentionError:{code:'receipt_retention_failed',error:error.message}};}
 }

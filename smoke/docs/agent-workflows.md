@@ -13,6 +13,17 @@ are represented by checksums and sizes; they remain in the retained full plan.
 Read them if the fixture or their meaning is not established. Smaller values stay
 literal. The review sends no application input and does not reserve targets.
 
+Compact `task` replies keep the complete recipe catalog or the prepared task's
+review, plan identity, request ID and run/inspection commands together in
+`summary`. They omit the duplicate phase listing and retain the full result in
+the checksummed receipt. This task preview allows 16 KiB so ordinary plan reviews
+remain usable; oversized whole fields are explicitly listed in `omitted`.
+If `reviewPlan` is omitted, read it from the receipt before dispatch. A known
+fixture's hashed baseline does not need another read; an unfamiliar baseline
+does. Task preparation already validates every path against the selected schema,
+so unchanged task output does not need a second `plan-check`. An edited or
+agent-authored plan still needs validation and review.
+
 Use the reviewed plan once with its known request ID. Inspect its retained result
 after a lost response. Never replay uncertain input. Compare assertions and
 captures before declaring the functional result.

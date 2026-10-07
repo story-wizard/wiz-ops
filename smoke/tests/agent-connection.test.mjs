@@ -25,6 +25,16 @@ test('sequences reject malformed later steps before executing the first step',as
  }
  assert.throws(()=>validateSequence([{operation:'physical',params:{text:'x'.repeat(65536)}}]));
 }));
+test('task replies expose complete recipe discovery and review commands while retaining omitted data',async()=>fixture(async file=>{
+ const catalog={format:'athanor-agent-task/v1',executed:false,recipes:Array.from({length:11},(_,i)=>({id:'recipe-'+i,parameters:{timelineId:{type:'string'}},source:'x'.repeat(180)}))};
+ const listing=await compactToolResult(file,'task',catalog);assert.deepEqual(listing.summary.recipes,catalog.recipes);
+ const plan=routingPlan(),review=(await checkAgentPlan(file,plan)).review;
+ const result={format:'athanor-agent-task/v1',status:'Valid',executed:false,recipeId:'example',requestId:'known-request',plan:{path:'/retained/plan.json',sha256:'a'.repeat(64)},reviewPlan:review,run:['node','session.mjs','plan',file,'/retained/plan.json','--request-id','known-request'],inspect:['node','session.mjs','plan-inspect',file,'known-request'],phases:[{duplicate:'x'.repeat(3000)}],futureField:{complete:true}};
+ const reply=await compactToolResult(file,'task',result);assert.equal(reply.summary.executed,false);assert.deepEqual(reply.summary.reviewPlan,review);assert.deepEqual(reply.summary.run,result.run);assert.deepEqual(reply.summary.inspect,result.inspect);assert.equal(reply.summary.requestId,result.requestId);
+ assert.equal(reply.completeResult,false);assert(reply.omitted.some(x=>x.field==='phases'));assert(reply.omitted.some(x=>x.field==='futureField'));
+ const bytes=await readFile(reply.receipt.path);assert.deepEqual(JSON.parse(bytes).result,result);assert.equal(reply.receipt.sha256,createHash('sha256').update(bytes).digest('hex'));
+ const oversized=await compactToolResult(file,'task',{...result,reviewPlan:{...review,large:'x'.repeat(20000)}});assert.equal(oversized.summary.reviewPlan,undefined);assert(oversized.omitted.some(x=>x.field==='reviewPlan'));assert.deepEqual(JSON.parse(await readFile(oversized.receipt.path)).result.reviewPlan.large,'x'.repeat(20000));
+}));
 test('sequence steps remain ordered and a false readback prevents the dependent edit',async()=>fixture(async file=>{
  const seen=[],steps=[{operation:'physical',params:{command:'click'}},{operation:'call',params:{operation:'project.get_name'},expect:{path:['name'],equals:'expected'}},{operation:'physical',params:{command:'key',key:'cmd+z'}}];
  const reply=await agentSequence(file,steps,async(_file,op)=>{seen.push(op);return op==='call'?{name:'wrong'}:{status:'Dispatched'};});

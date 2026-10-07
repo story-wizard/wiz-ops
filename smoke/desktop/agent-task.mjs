@@ -88,5 +88,5 @@ export async function prepareAgentTask(file,{recipe:id,values={}}={},execute){
   ...id==='inspector-edit-undo'?{fixture:{graphScope:values.graphScope,nodeId:values.nodeId,parameter:values.parameter,baselineValue:defaults.baselineGraph.nodes.find(n=>n.node_id===values.nodeId).params[values.parameter]}}:{},
   phases:compiled.plan.phases.map(p=>({id:p.id,steps:p.steps.map(s=>({operation:s.operation,title:s.params?.title||s.params?.operation||s.params?.command||s.operation,gate:s.expect!==undefined})),reviewAfter:p.next===null})),
   run:['env','SMOKE_DATA_DIR='+s.dataDir,'node',path.join(ROOT,'desktop/session.mjs'),'plan',file,planFile,'--request-id',requestId,'--compact'],inspect:['env','SMOKE_DATA_DIR='+s.dataDir,'node',path.join(ROOT,'desktop/session.mjs'),'plan-inspect',file,requestId],
-  review:'Inspect the compiled plan before dispatch. Review independent domain state and captures before the next phase; recipe completion does not qualify toolkit Pass.'};
+  review:'Review reviewPlan and unfamiliar hashed baselines before dispatch. Execute once with the returned request ID. Review independent domain results and captures at authored review exits; recipe completion does not qualify toolkit Pass.'};
 }
