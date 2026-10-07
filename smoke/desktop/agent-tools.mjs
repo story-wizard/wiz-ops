@@ -7,7 +7,7 @@ import {nativeCall,desktopCall,verifyDesktopOwner,verifyDesktopPaths,captureDesk
 import {physicalInput,clipPoint} from './physical-input.mjs';
 import {nativeDesktopInput,physicalKeys,physicalKeyAliases} from './macos-input.mjs';
 import {retainObservation} from './observations.mjs';
-import {withinWidgets,mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer,readQuestionInputs} from './ui-query.mjs';
+import {withinWidgets,mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer,rightTrimOutcome,readQuestionInputs} from './ui-query.mjs';
 import {recordPresented,recordingOptions} from './recorder.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
 import {briefContext,prepareAgentTask} from './agent-task.mjs';
@@ -16,7 +16,7 @@ import {ROOT,readJSON,writeJSON,inside,sha} from '../runner/files.mjs';
 import {OutcomeError,assert} from '../runner/engine.mjs';
 import {rawChecks} from '../runner/catalog.mjs';
 import {testSpecification,candidateChecks,actionHistory,stepHistory} from '../test-details.mjs';
-import {validateToolParams,validateApplicationParams,validateNativeParams,observationSelectors,withAgentAction,currentAction,markUnknown,jsonLines,terminalResult,closeAttempt,beginProof,physicalAction,verifyCheckpoint,resolveUnknown,requirePassProof,requireProof,proofError,normalizeToolError} from './agent-proof.mjs';
+import {toolInterface,validateToolParams,validateApplicationParams,validateNativeParams,observationSelectors,withAgentAction,currentAction,markUnknown,jsonLines,terminalResult,closeAttempt,beginProof,physicalAction,verifyCheckpoint,resolveUnknown,requirePassProof,requireProof,proofError,normalizeToolError} from './agent-proof.mjs';
 export {requirePassProof} from './agent-proof.mjs';
 
 const readOps=agentReadOperations,readNative=agentReadNative;
@@ -164,11 +164,12 @@ async function runAgentTool(file,operation,params={}){
    for(const read of reads)if(read.status==='rejected')throw read.reason;
    const [observed,ui]=reads.map(r=>r.value);result={pid:observed.pid,started:observed.started,permissions:observed.permissions,frontmost:observed.frontmost,frontWindow:observed.frontWindow,windows:observed.windows,keyWindow:ui.widgets.find(w=>w.id===w.window&&w.keyWindow)||null,focusedControl:ui.widgets.find(w=>w.id===ui.focus)||null,ready:observed.permissions?.input===true&&observed.permissions?.screenCapture===true,...params.question?{answer:mediaSearchAnswer(ui)}:{},timing:{durationMs:Date.now()-start,reads:'Window Server and Qt inspection overlap; not an atomic domain snapshot'}};
   }else if(operation==='query'){
-   if(['inspector-parameter','inspector-change','timeline-clip'].includes(params.question)){
+   if(['inspector-parameter','inspector-change','timeline-clip','timeline-trim'].includes(params.question)){
     const graphRequest=()=>desktopCall(file,'graph.get_clip_graph',params.graphScope),timelineRequest=()=>desktopCall(file,'timeline.inspect',{timeline_id:params.timelineId??params.graphScope.timeline_id});
     const [a,b]=await readQuestionInputs(params.question,{ui:()=>nativeCall(file,'inspect'),graph:graphRequest,timeline:timelineRequest});
     if(params.question==='inspector-change')result=inspectorOutcome(params.baselineGraph,a,params.baselineTimeline,b,params);
     else if(params.question==='inspector-parameter'){requireProof(b.timeline_id===params.graphScope.timeline_id&&b.clip_id===params.graphScope.clip_id,'wrong_fixture','Graph readback differs from the declared clip',['inspect']);result=inspectorParameterAnswer(a,b,params);}
+    else if(params.question==='timeline-trim')result={...timelineClipAnswer(a,b,params.clipId),question:'timeline-trim',...rightTrimOutcome(params.baseline,b,params)};
     else {result=timelineClipAnswer(a,b,params.clipId);const geometry=await nativeCall(file,'timeline-clip-rect',{target:result.targets.canvas.id,clipId:params.clipId});result={...result,geometry,points:{body:clipPoint(geometry),left:clipPoint(geometry,'left-edge'),right:clipPoint(geometry,'right-edge')}};}
    }else if(params.question==='media-insertion'){
     const observed=await desktopCall(file,'timeline.inspect',{timeline_id:params.timelineId});result=mediaInsertionOutcome(params.baseline,observed,params);
@@ -176,7 +177,8 @@ async function runAgentTool(file,operation,params={}){
    }else {const ui=await nativeCall(file,'inspect');result=params.question==='media-search'?mediaSearchAnswer(ui):formatDialogAnswer(ui);}
    result={...result,observedAt:new Date().toISOString(),generation:s.generation,identity:{packageHash:s.guiHash,pid:s.pid,started:s.processStart}};
   }else if(operation==='schema'){
-   assert(typeof params.operation==='string'&&Object.hasOwn(s.schema.operations,params.operation),'Choose an advertised application operation');result={operation:params.operation,params:s.schema.operations[params.operation],result:s.schema.results?.[params.operation],errors:s.schema.errors?.[params.operation]};
+   if(params.operation===undefined)result=toolInterface(params.tool);
+   else {assert(typeof params.operation==='string'&&Object.hasOwn(s.schema.operations,params.operation),'Choose an advertised application operation');result={operation:params.operation,params:s.schema.operations[params.operation],result:s.schema.results?.[params.operation],errors:s.schema.errors?.[params.operation]};}
   }else if(operation==='evidence'){
    assert(s.currentCheck&&typeof params.file==='string'&&typeof params.title==='string','Begin a check and supply a file and title');
    assert(inside(s.root,await realpath(params.file)),'Evidence escaped the session');

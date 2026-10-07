@@ -409,3 +409,9 @@ test('timeline Undo recipes require a focused timeline and carry that guard to k
   if(target.class==='TimelineWidget'){assert.equal(reply.status,'Completed');assert.equal(keys[0].key,'cmd+z');assert.equal(keys[0].requireFocus,true);}else{assert.notEqual(reply.status,'Completed');assert.equal(keys.length,0);}
  }
 }));
+
+test('authored plan rejection identifies the exact phase and step before executing any prefix',async()=>fixture(async file=>{
+ const plan={format:'athanor-agent-plan/v1',start:'edit',phases:[{id:'edit',steps:[{operation:'call',params:{operation:'project.get_name'}},{operation:'physical',params:{action:'drag'}}],next:null}]};let calls=0;
+ await assert.rejects(()=>runAgentPlan(file,plan,async()=>{calls++;}),e=>e.diagnostics.phase==='edit'&&e.diagnostics.step===1&&e.diagnostics.interface.example.operation==='physical');assert.equal(calls,0);
+ plan.phases[0].steps={};await assert.rejects(()=>checkAgentPlan(file,plan),e=>e.code==='invalid_plan');
+}));

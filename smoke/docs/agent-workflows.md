@@ -62,7 +62,11 @@ physical drag can use the observed canvas, `clipId`, `part:"right-edge"` and
 Both source edge and destination are resolved afresh before dispatch. Check exact
 asset identity, source/timeline ranges, frame alignment and unrelated state after
 the drag. Split at unrecognised dialogs or interpretation. Physically focus the
-canvas before Undo/Redo; use `requireFocus:true` on those keyboard actions.
+canvas only if it is not already focused. `timeline-clip.focus` reports canvas
+focus and owning key window. Keep established focus; use `requireFocus:true`
+on Undo/Redo. A body click may change selection. Save can materialize defaults
+as a separate history commit: settle Save during fixture setup before freezing
+the baseline, and verify the result after each Undo instead of repeating keys.
 Save where the script requires it, and retain separate changed/restored/redone
 captures. An observed edge or dispatched drag does not establish success.
 
@@ -74,3 +78,34 @@ input/output tokens, not sums of overlapping nested timers. Compare the same
 package and equivalent new fixtures with fresh sequential actors. Include at
 least one functional brief without a completed recipe. Preserve failures and
 protocol deviations; do not subtract inconvenient recovery or recapture time.
+
+## Toolkit step shapes
+
+Use `schema {}` to list toolkit names and `schema {"tool":"physical"}` for its
+fields and example. `schema {"operation":"timeline.inspect"}` still returns
+the selected build's application schema. A plan step is
+`{"operation":"physical","params":{"command":"drag",...}}`, not an operation
+named `drag`. Validation failures return the affected phase/step and toolkit
+interface before any input. This is local metadata, with no app request.
+
+## Right-trim outcome
+
+`query` with `question:"timeline-trim"`, `timelineId`, `clipId`, complete
+`baseline`, desired `endSeconds` and `state:"changed"` or `"restored"` combines
+the displayed canvas/focus with independent domain readback. The narrow oracle
+supports one timed same-clock speed-1 clip. Ordinary trim retains the timeline
+extent and fills the vacated interval with a gap; ripple trim is different.
+Source/track/clip identities, exact ranges, clock, links, other fields and source
+integrity remain checked. Both `exact` and valid `carrier` source projections
+are accepted; unavailable/rejected timing and diagnostic errors are rejected.
+Redo must reproduce the verified changed state after verified restoration.
+
+## Ideas borrowed from Holo4
+
+Use one small observation to answer the immediate question, typed actions,
+short validated procedures and explicit failure feedback. Existing Qt/CLI reads
+supply these without another model call. Reuse a retained image for the same
+review checkpoint; use a fresh capture when the question concerns changed pixels.
+A visual localizer remains a separate deferred experiment. Its proposed point
+would still need current process/window/content guards and independent readback.
+No Holo4 model is installed or required by this workflow.

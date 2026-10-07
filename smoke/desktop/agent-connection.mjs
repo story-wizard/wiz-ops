@@ -43,13 +43,15 @@ export function toolError(error){
 }
 export function validateSequence(steps,schema){
  if(!Array.isArray(steps)||steps.length<1||steps.length>8||Buffer.byteLength(JSON.stringify(steps))>maxBytes)throw proofError('invalid_sequence','Use 1–8 steps within 64 KiB',['correct_parameters']);
- for(const step of steps){
+ for(const [index,step] of steps.entries()){
+  try{
   fields(step,['operation','params','expect'],'step');validateToolParams(step.operation,step.params===undefined?{}:step.params);
   if(step.operation==='call')validateApplicationParams(schema,step.params?.operation,step.params?.params||{});
   if(step.operation==='native')validateNativeParams(step.params?.operation,step.params?.params||{});
   if(step.params?.read)validateApplicationParams(schema,step.params.read.operation,step.params.read.params||{});
   if(step.params?.commit)validateApplicationParams(schema,'spellbook.inspect',{document_id:step.params.commit.documentId,view:'raw'});
   if(step.expect!==undefined){fields(step.expect,['path','equals','notEquals','length','includes'],'expect');compareObservation({},step.expect);}
+  }catch(error){error.diagnostics={...error.diagnostics,step:index};throw error;}
  }
 }
 export async function checkSequence(file,steps){

@@ -22,7 +22,8 @@ export function validateAgentPlan(plan,schema){
  for(const phase of plan.phases){
   fields(phase,['id','steps','next','continuationRead'],'phase');
   if(typeof phase.id!=='string'||! /^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(phase.id)||phases.has(phase.id))throw invalid('Supply distinct phase IDs of 1–64 letters, digits, underscores or hyphens');
-  validateSequence(phase.steps.map(step=>bindingReferences(step,plan.bindings||{}).step),schema);count+=phase.steps.length;phases.set(phase.id,phase);
+  if(!Array.isArray(phase.steps))throw invalid('Phase steps must be an array');
+  try{validateSequence(phase.steps.map(step=>bindingReferences(step,plan.bindings||{}).step),schema);}catch(error){error.diagnostics={...error.diagnostics,phase:phase.id};throw error;}count+=phase.steps.length;phases.set(phase.id,phase);
   if(phase.continuationRead!==undefined){const i=phase.continuationRead,source=phase.steps[i];if(!Number.isInteger(i)||i!==phase.steps.findLastIndex(s=>s.operation!=='capture')||!source||source.expect===undefined||!readKinds.includes(source.operation)||isAgentMutation(source.operation,source.params)||source.params?.since!==undefined)throw invalid('continuationRead must name the final gated full read-only step, followed only by captures');}
   if(phase.next===null||typeof phase.next==='string')continue;
   fields(phase.next,['step','path','cases'],'next');const source=phase.steps[phase.next.step];

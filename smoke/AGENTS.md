@@ -253,3 +253,13 @@ separate preparation and finish timestamps, group/session identity and per-check
 evidence. These are measurement boundaries for future profiling, not a profiler.
 Window Server inspection and presented captures can run during a held native drag;
 other native mutations remain exclusive and retain their existing input guards.
+
+Toolkit discovery: `tool SESSION schema '{}'` lists names;
+`tool SESSION schema '{"tool":"physical"}'` returns the step envelope/fields.
+Application schemas still use `operation`. Invalid plans return phase/step and
+interface hints before input. `query timeline-clip` reports focus; preserve it
+instead of clicking again. Settle fixture Save before freezing a baseline, since
+Save may introduce its own history commit. `query timeline-trim` checks exact
+same-clock single-clip ordinary trim, valid source timing and preserved gaps/
+timeline extent. See `docs/agent-workflows.md`; never loosen global snapshots or
+repeat Undo blindly to force a pass.

@@ -2,12 +2,13 @@ import {requireProof} from './agent-proof.mjs';
 import {isDeepStrictEqual} from 'node:util';
 import {verifyInspectorEdit} from './checklist-proof.mjs';
 import {snapshotState,clips} from '../runner/engine.mjs';
+import {verifyTrimmedClip,requireValidSourceTiming} from './check-support.mjs';
 
 const one=(widgets,predicate,message)=>{const found=widgets.filter(predicate);requireProof(found.length===1,'ambiguous_target',message,['observe']);return found[0];};
 export async function readQuestionInputs(question,{ui,graph,timeline}){
  // The two domain reads share call.lock. Only Qt/CLI transports may overlap.
  if(question==='inspector-change')return [await graph(),await timeline()];
- const reads=await Promise.allSettled([ui(),question==='timeline-clip'?timeline():graph()]);
+ const reads=await Promise.allSettled([ui(),question.startsWith('timeline-')?timeline():graph()]);
  for(const read of reads)if(read.status==='rejected')throw read.reason;
  return reads.map(r=>r.value);
 }
@@ -57,7 +58,35 @@ export function timelineClipAnswer(ui,timeline,clipId){
  requireProof(!ui.modalWindow&&!ui.popupWindow&&!ui.mouseGrabber,'desktop_not_ready','Dismiss unexpected overlays before canvas input',['observe']);
  const tabs=ui.widgets.filter(w=>w.name==='panelSubtabSelector'&&w.window===canvas.window&&w.text?.replace(/ \(\d+\)$/,'')===timeline.timeline.name);
  requireProof(tabs.length===1,'wrong_fixture','The declared timeline must be displayed',['observe']);
- return {question:'timeline-clip',clip:item,timeline:timeline.timeline,targets:{canvas:{id:canvas.id},capture:{id:canvas.window}},coordinateSpace:'Clip rectangle and hit points are local to the canvas; physical input refreshes them.'};
+ return {question:'timeline-clip',clip:item,timeline:timeline.timeline,targets:{canvas:{id:canvas.id},capture:{id:canvas.window}},focus:{canvasFocused:ui.focus===canvas.id,keyWindow:ui.widgets.find(w=>w.id===canvas.window)?.keyWindow===true,focusedControl:ui.focus||null},coordinateSpace:'Clip rectangle and hit points are local to the canvas; physical input refreshes them.'};
+}
+
+// Ordinary same-clock right trim: retain the timeline extent and fill the vacated interval.
+// Narrow fixture policy; ripple/cross-rate/multiclip procedures need their own contract.
+export function rightTrimOutcome(before,after,{clipId,endSeconds,state}){
+ snapshotState(before);snapshotState(after);
+ const original=clips(before),item=original[0];
+ requireProof(original.length===1&&item?.clip_id===clipId&&item.source?.timing==='timed'&&item.speed===1&&item.source.fps===before.timeline.fps&&Number.isFinite(endSeconds)&&endSeconds>item.timeline_range.start_seconds&&endSeconds<item.timeline_range.end_seconds&&['changed','restored'].includes(state),'unsupported_fixture','Use a declared same-clock single-clip right trim',['prepare_fixture']);
+ requireValidSourceTiming(item.source);
+ const pick=s=>({...snapshotState(s),multicam_catalogs:s.multicam_catalogs});
+ if(state==='restored'){
+  try{const actual=clips(after);requireProof(actual.length===1,'unexpected_clip_change','Restoration must retain one clip',['inspect']);requireValidSourceTiming(actual[0].source);const expected=structuredClone(before);clips(expected)[0].source.projection_status=actual[0].source.projection_status;return {matched:isDeepStrictEqual(pick(expected),pick(after)),state};}
+  catch(error){return {matched:false,state,reason:error.message};}
+ }
+ try{
+  const observed=clips(after);requireProof(observed.length===1,'unexpected_clip_change','The trim must retain exactly one clip',['inspect']);
+  const actual=observed[0];verifyTrimmedClip(item,actual,before.timeline.fps);
+  const expected=structuredClone(before),target=clips(expected)[0];
+  target.timeline_range.end_seconds=endSeconds;
+  target.source.source_range.end_seconds=item.source.source_range.end_seconds-(item.timeline_range.end_seconds-endSeconds);
+  // Both valid projections describe the asserted physical interval; integrity is checked above.
+  target.source.projection_status=actual.source.projection_status;
+  const track=expected.tracks.find(t=>t.track_id===item.track_id),index=track.items.findIndex(i=>i.clip_id===clipId),next=track.items[index+1];
+  if(next){requireProof(next.kind==='gap'&&next.timeline_range.start_seconds===item.timeline_range.end_seconds,'unsupported_fixture','Only a trailing gap may follow this fixture clip',['prepare_fixture']);next.timeline_range.start_seconds=endSeconds;}
+  else track.items.push({kind:'gap',timeline_range:{start_seconds:endSeconds,end_seconds:item.timeline_range.end_seconds}});
+  const matched=isDeepStrictEqual(pick(expected),pick(after));
+  return {matched,state,...matched?{}:{reason:'Clip, gap or unrelated timeline state differs from the declared ordinary trim'},expected:{timelineEnd:endSeconds,sourceEnd:target.source.source_range.end_seconds,durationSeconds:before.timeline.duration_seconds},sourceRange:actual.source.source_range,timelineRange:actual.timeline_range,projection:actual.source.projection_status,durationSeconds:after.timeline.duration_seconds};
+ }catch(error){return {matched:false,state,reason:error.message};}
 }
 
 // Snapshot-local parent edges only. Never cache IDs or geometry across observations.

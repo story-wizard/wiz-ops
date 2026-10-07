@@ -25,23 +25,37 @@ export function fields(value,allowed,label='parameters'){
  requireProof(!unknown.length,'unknown_parameter','Unknown '+label+' field: '+unknown.join(', '),['correct_parameters']);
 }
 const selectors=['id','class','name','text','tooltip','title','window','parent','enabled','active','focused','editableText','keyWindow','accessibleName','accessibleDescription','contains'];
-const toolFields={context:['detail'],task:['recipe','values'],report:[],preflight:['question'],query:['question','timelineId','baseline','assetId','durationSeconds','state','graphScope','nodeId','parameter','label','baselineGraph','baselineTimeline','clipId'],schema:['operation'],observe:['selector','selectors','kind','limit','details','scope','within','since'],find:['selector','kind','scope'],model:['target','selector','offset','limit','cursor'],model_value:['target','selector','offset','column','role','cursor'],reveal:['target','selector','offset','cursor'],geometry:['target','selector','clipId','part','trackIndex','timeSeconds'],
+const toolFields={context:['detail'],task:['recipe','values'],report:[],preflight:['question'],query:['question','timelineId','baseline','assetId','durationSeconds','state','graphScope','nodeId','parameter','label','baselineGraph','baselineTimeline','clipId','endSeconds'],schema:['operation','tool'],observe:['selector','selectors','kind','limit','details','scope','within','since'],find:['selector','kind','scope'],model:['target','selector','offset','limit','cursor'],model_value:['target','selector','offset','column','role','cursor'],reveal:['target','selector','offset','cursor'],geometry:['target','selector','clipId','part','trackIndex','timeSeconds'],
  physical:['command','target','selector','toTarget','x','y','toX','toY','xRatio','yRatio','toXRatio','toYRatio','button','durationMs','chrome','key','text','deltaX','deltaY','clipId','part','actionId','modifiers','path','clickCount','commit','requireFocus','itemText','toTimelinePoint'],
  call:['operation','params'],native:['operation','params'],wait:['selector','kind','scope','within','condition','expected','conditions','details','limit','timeoutMs','intervalMs','stableForMs'],capture:['target','selector','kind','assertion'],recording:['target','timelineTarget','timelineId','durationMs','intervalMs','maxSamples'],evidence:['file','kind'],
  begin:['id','mode'],verify:['assertion','target','read','selector','kind','expect','fixture'],resolve:['actionId','verification','note'],record:['status','note']};
+const queryQuestions=['media-search','format-dialog','media-insertion','inspector-parameter','inspector-change','timeline-clip','timeline-trim'];
+export function toolInterface(tool){
+ const example={physical:{operation:'physical',params:{command:'drag',target:{id:'OBSERVED_CANVAS_ID'},clipId:'OBSERVED_CLIP_ID',part:'right-edge',toTarget:{id:'OBSERVED_CANVAS_ID'},toTimelinePoint:{trackIndex:0,timeSeconds:3},durationMs:1000}},query:{operation:'query',params:{question:'timeline-clip',timelineId:'OBSERVED_TIMELINE_ID',clipId:'OBSERVED_CLIP_ID'}},schema:{operation:'schema',params:{tool:'physical'}}};
+ return {format:'athanor-tool-interface/v1',...(Object.hasOwn(toolFields,tool)?{tool,fields:[...toolFields[tool],'title','stepId'],...tool==='physical'?{commands:['click','drag','key','type','scroll','screenshot']}:tool==='query'?{questions:queryQuestions}:{},...example[tool]?{example:example[tool]}:{}}:{tools:Object.keys(toolFields)}),step:{operation:'TOOL_NAME',params:'TOOL_PARAMETER_OBJECT',expect:'OPTIONAL_READBACK_GATE'},discovery:{operation:'schema',params:{tool:Object.hasOwn(toolFields,tool)?tool:'physical'}},executed:false};
+}
 export function validateToolParams(operation,params){
+ try{return validateToolParameters(operation,params);}catch(error){
+  if(['unknown_tool','unknown_parameter','invalid_params'].includes(error.code))error.diagnostics={...error.diagnostics,interface:toolInterface(operation)};
+  throw error;
+ }
+}
+function validateToolParameters(operation,params){
  requireProof(Object.hasOwn(toolFields,operation),'unknown_tool','Unknown agent tool: '+operation,['context']);
  fields(params,[...toolFields[operation],'title','stepId']);
+ if(operation==='schema')requireProof(!(params.tool!==undefined&&params.operation!==undefined)&&(params.tool===undefined||Object.hasOwn(toolFields,params.tool)),'invalid_params','Choose a toolkit tool or an application operation, not both',['schema']);
+ if(operation==='physical')requireProof(['click','drag','key','type','scroll','screenshot'].includes(params.command),'invalid_params','Use physical params.command: click, drag, key, type, scroll or screenshot',['correct_parameters']);
  if(operation==='context')requireProof(params.detail===undefined||['brief','full'].includes(params.detail),'invalid_params','Choose brief or full context',['correct_parameters']);
  if(operation==='task'&&params.values!==undefined)requireProof(params.values&&typeof params.values==='object'&&!Array.isArray(params.values)&&Buffer.byteLength(JSON.stringify(params.values))<=65536,'invalid_params','Supply bounded recipe values as an object',['correct_parameters']);
  if(params.requireFocus!==undefined)requireProof(operation==='physical'&&params.command==='key'&&typeof params.requireFocus==='boolean','invalid_params','requireFocus is a boolean keyboard guard',['correct_parameters']);
  if(params.commit!==undefined){fields(params.commit,['documentId','inputId'],'commit');requireProof(operation==='physical'&&params.command==='type'&&['documentId','inputId'].every(k=>typeof params.commit[k]==='string'&&params.commit[k].length>0&&params.commit[k].length<=128),'invalid_params','A text commit requires observed Spell document and input IDs',['observe']);}
  if(operation==='observe')observationSelectors(params);
  if(operation==='query'){
-  requireProof(['media-search','format-dialog','media-insertion','inspector-parameter','inspector-change','timeline-clip'].includes(params.question),'invalid_question','Choose an advertised media, Inspector or timeline question',['context']);
+  requireProof(queryQuestions.includes(params.question),'invalid_question','Choose an advertised media, Inspector or timeline question',['context']);
   if(params.question==='media-insertion')requireProof(typeof params.timelineId==='string'&&params.timelineId.length>0&&params.baseline?.timeline?.timeline_id===params.timelineId&&typeof params.assetId==='string'&&params.assetId.length>0&&Number.isFinite(params.durationSeconds)&&params.durationSeconds>0&&['inserted','restored'].includes(params.state)&&Buffer.byteLength(JSON.stringify(params))<=65536,'invalid_outcome','Declare the empty baseline, expected asset/duration and inserted/restored state',['correct_parameters']);
-  else if(params.question==='timeline-clip'){
-   fields(params,['question','title','stepId','timelineId','clipId'],'query');requireProof(['timelineId','clipId'].every(k=>typeof params[k]==='string'&&params[k].length>0&&params[k].length<=256),'invalid_fixture','Declare bounded timeline and clip IDs',['context']);
+  else if(['timeline-clip','timeline-trim'].includes(params.question)){
+   fields(params,['question','title','stepId','timelineId','clipId',...params.question==='timeline-trim'?['baseline','endSeconds','state']:[]],'query');requireProof(['timelineId','clipId'].every(k=>typeof params[k]==='string'&&params[k].length>0&&params[k].length<=256),'invalid_fixture','Declare bounded timeline and clip IDs',['context']);
+   if(params.question==='timeline-trim')requireProof(params.baseline?.timeline?.timeline_id===params.timelineId&&Number.isFinite(params.endSeconds)&&params.endSeconds>=0&&['changed','restored'].includes(params.state)&&Buffer.byteLength(JSON.stringify(params))<=65536,'invalid_fixture','Declare a same-timeline baseline, desired right edge and changed/restored state',['correct_parameters']);
   }else if(params.question.startsWith('inspector-')){
    fields(params,['question','title','stepId','graphScope','nodeId','parameter',...params.question==='inspector-parameter'?['label']:['state','baselineGraph','baselineTimeline']],'query');
    fields(params.graphScope,['timeline_id','clip_id'],'graphScope');

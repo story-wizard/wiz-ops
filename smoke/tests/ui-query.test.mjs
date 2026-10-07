@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {mkdtemp,writeFile,readFile,rm} from 'node:fs/promises';
-import {mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer,inspectorRowBinding,readQuestionInputs} from '../desktop/ui-query.mjs';
+import {mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer,rightTrimOutcome,inspectorRowBinding,readQuestionInputs} from '../desktop/ui-query.mjs';
 import {selectUI,readyUI} from '../desktop/agent-tools.mjs';
-import {validateToolParams,validateNativeParams} from '../desktop/agent-proof.mjs';
+import {toolInterface,validateToolParams,validateNativeParams} from '../desktop/agent-proof.mjs';
 import {modelItemPoint,defaultClickPoint} from '../desktop/physical-input.mjs';
 import {reviewAgentPlan} from '../desktop/agent-plan.mjs';
 import {digest} from '../runner/files.mjs';
@@ -109,4 +109,27 @@ test('media task overlaps independent preflight/baseline reads and retains a gua
   answer.timelineTabs[0].text='Other';await assert.rejects(()=>prepareAgentTask(file,{recipe:'media-insert-undo',values},execute),e=>e.code==='wrong_fixture');
   answer.timelineTabs[0].text='Main';answer.searchMode='unknown';await assert.rejects(()=>prepareAgentTask(file,{recipe:'media-insert-undo',values},execute),e=>e.code==='wrong_search_mode');
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('toolkit discovery and invalid step feedback expose the public envelope before input',()=>{
+ assert(toolInterface().tools.includes('physical'));
+ assert.deepEqual(toolInterface('physical').example.params.toTimelinePoint,{trackIndex:0,timeSeconds:3});
+ validateToolParams('schema',{});validateToolParams('schema',{tool:'physical'});
+ for(const params of [{tool:'drag'},{tool:'physical',operation:'timeline.inspect'}])assert.throws(()=>validateToolParams('schema',params));
+ for(const [tool,params] of [['drag',{}],['physical',{action:'drag'}],['physical',{command:'invented'}]])assert.throws(()=>validateToolParams(tool,params),e=>e.status==='Blocked'&&e.diagnostics.interface.executed===false&&e.diagnostics.interface.discovery.params.tool==='physical');
+});
+test('ordinary right trim asserts exact semantics without freezing a valid projection representation',()=>{
+ const base=before();base.timeline.duration_seconds=5;
+ const range={start_seconds:1,end_seconds:5};
+ const item={kind:'clip',clip_id:'clip',track_id:'v',speed:1,enabled:true,link_group:null,source:{kind:'asset',asset_id:'asset',timing:'timed',fps:24,source_availability:'bounded',projection_status:'exact',projection_diagnostics:[],source_range:{...range}},timeline_range:{...range}};
+ base.tracks[0].has_placed_items=true;base.tracks[0].items=[{kind:'gap',timeline_range:{start_seconds:0,end_seconds:1}},item];base.tracks[1].items=[{kind:'gap',timeline_range:{start_seconds:0,end_seconds:5}}];
+ const after=structuredClone(base),trim=after.tracks[0].items[1];trim.timeline_range.end_seconds=3;trim.source.source_range.end_seconds=3;trim.source.projection_status='carrier';after.tracks[0].items.push({kind:'gap',timeline_range:{start_seconds:3,end_seconds:5}});
+ const args={clipId:'clip',endSeconds:3,state:'changed'};validateToolParams('query',{question:'timeline-trim',timelineId:'timeline',baseline:base,...args});
+ assert.equal(rightTrimOutcome(base,after,args).matched,true);
+ const exact=structuredClone(after);exact.tracks[0].items[1].source.projection_status='exact';assert.equal(rightTrimOutcome(base,exact,args).matched,true);
+ for(const change of [x=>x.tracks[0].items[1].timeline_range.end_seconds=3-1/24,x=>x.tracks[0].items[1].source.source_range.end_seconds=3-1/24,x=>x.tracks[0].items[1].source.asset_id='wrong',x=>x.tracks[0].items[1].speed=2,x=>x.tracks[0].items[1].source.projection_status='authority_rejected',x=>x.tracks[0].items[1].source.projection_diagnostics=['source_range_invalid'],x=>x.tracks[0].items[1].source.source_availability='out_of_bounds',x=>x.timeline.duration_seconds=3,x=>x.timeline.fps=25,x=>x.tracks[0].items[2].timeline_range.start_seconds=4,x=>x.tracks[1].items[0].timeline_range.end_seconds=3,x=>x.links.push({wrong:true}),x=>x.multicam_catalogs.push({wrong:true})]){const bad=structuredClone(after);change(bad);assert.equal(rightTrimOutcome(base,bad,args).matched,false);}
+ assert.equal(rightTrimOutcome(base,base,{...args,state:'restored'}).matched,true);const restoredCarrier=structuredClone(base);restoredCarrier.tracks[0].items[1].source.projection_status='carrier';assert.equal(rightTrimOutcome(base,restoredCarrier,{...args,state:'restored'}).matched,true);restoredCarrier.tracks[0].items[1].source.projection_diagnostics=['source_range_invalid'];assert.equal(rightTrimOutcome(base,restoredCarrier,{...args,state:'restored'}).matched,false);assert.equal(rightTrimOutcome(base,after,{...args,state:'restored'}).matched,false);
+ const partial=structuredClone(after);partial.next_cursor='next';assert.throws(()=>rightTrimOutcome(base,partial,args));
+ const controls={focus:'canvas',widgets:[{id:'window',keyWindow:true},{id:'canvas',window:'window',class:'TimelineWidget',clipIds:['clip'],clipIdsTruncated:false},{id:'tab',name:'panelSubtabSelector',window:'window',text:'Main'}]};
+ assert.equal(timelineClipAnswer(controls,base,'clip').focus.canvasFocused,true);controls.focus='search';assert.equal(timelineClipAnswer(controls,base,'clip').focus.canvasFocused,false);
 });
