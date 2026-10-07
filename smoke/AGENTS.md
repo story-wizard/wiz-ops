@@ -280,3 +280,11 @@ inspection commands in `summary` (16 KiB task preview). Check `omitted`; read a
 missing review or unfamiliar hashed baseline from the retained receipt/plan.
 An unchanged prepared task has already passed all-path schema validation; review
 it and use its returned command once. Revalidate plans you edit or author.
+
+For result review, start with `summary.review.outcomes` and
+`summary.review.evidence`. These group recorded comparisons and original captures
+across the executed phases without another app read or screenshot. Review the
+declared images together in one supported multi-image call, keeping their labels.
+Use full receipts for omitted or unfamiliar state and concrete failures. Measure
+elapsed time first and tokens second; avoid repeated polling of short bounded
+procedures. No summary removes a frozen assertion, capture or Unknown stop.

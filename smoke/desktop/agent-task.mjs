@@ -29,7 +29,7 @@ export function briefContext(context){
    'Keep canvas focus. Save adds history even when empty: query timeline-history before Undo; verify each history step and domain outcome.',
    'Batch known action, wait and readback steps. Stop at new geometry, unexpected dialogs or decisions. Prefer the persistent connection when the host supports it.',
    'Read compact outcomes and completeness first; omitted values stay in the receipt. gateMatched proves only the declared comparison.',
-   'Review summary.evidence once per checkpoint; reuse that artifact. Historical images do not prove current pixels or replace fresh input guards.',
+   'Review summary.review outcomes and images together when available. Reuse each checkpoint artifact; old images never replace fresh input guards.',
    'Read a required value or full frozen check from fullContext or its retained receipt; compact output does not remove evidence.',
    'Review task.reviewPlan or plan-check.review. Read hashed baselines in the full plan if unfamiliar. Execute once with its request ID, then review outcomes and captures.',
    'Scope is an observed ID string. Model itemRects belong to the returned viewport, not the enclosing view. Reveal clipped controls and refresh geometry before binding.',

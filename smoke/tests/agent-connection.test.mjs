@@ -368,6 +368,26 @@ test('phase replies explain gates, return decision values and reference the orig
  const measured=sequenceSummary(steps,{...reply,results:steps.map((s,index)=>({index,operation:s.operation,result:{},durationMs:(index+1)*10}))});
  assert.deepEqual(measured.timing.operationMs,{physicalInput:10,wait:20,applicationRead:30,capture:40});assert.equal(measured.timing.totalOperationMs,100);
 }));
+test('plan review groups every recorded outcome and original artifact without hiding failed or uncertain work',async()=>fixture(async file=>{
+ const read=expected=>({operation:'call',params:{operation:'project.get_name'},expect:{path:['name'],equals:expected}}),capture={operation:'capture',params:{target:{id:'window'}}};
+ const plan={format:'athanor-agent-plan/v1',start:'before',phases:[{id:'before',steps:[read('Golden'),capture],next:'edit'},{id:'edit',steps:[{operation:'physical',params:{command:'click'}},read('Edited'),capture],next:'restore'},{id:'restore',steps:[read('Golden'),capture],next:null}]};
+ for(const mode of ['complete','false-gate','uncertain']){
+  let reads=0,images=0,inputs=0;
+  const reply=await runAgentPlan(file,plan,async(_file,operation)=>{
+   if(operation==='physical'){inputs++;if(mode==='uncertain')throw Object.assign(Error('Lost response'),{status:'Unknown'});return {status:'Dispatched'};}
+   if(operation==='capture')return {path:'/retained/image-'+ ++images+'.png',sha256:String(images).repeat(64),kind:'image',identity:{pid:123},generation:1,revision:images,target:'window'};
+   return {name:++reads===2?(mode==='false-gate'?'Wrong':'Edited'):'Golden'};
+  },{compact:true,requestId:'grouped-review-'+mode});
+  const review=reply.summary.review;
+  assert.equal(reply.status,mode==='complete'?'Completed':mode==='false-gate'?'Fail':'Unknown');assert.equal(inputs,1);
+  assert.deepEqual(review.outcomes.map(s=>s.phase),mode==='complete'?['before','edit','restore']:mode==='false-gate'?['before','edit']:['before']);
+  assert.deepEqual(review.outcomes.map(s=>s.gateMatched),mode==='false-gate'?[true,false]:Array(reads).fill(true));
+  assert.equal(review.outcomes.at(-1).expectation.result.actual,mode==='false-gate'?'Wrong':'Golden');
+  assert.equal(images,mode==='complete'?3:1);assert.equal(review.evidence.length,images);assert.equal(review.evidence[0].path,'/retained/image-1.png');assert.equal(review.evidence[0].revision,1);
+  const retained=JSON.parse(await readFile(reply.receipt.path));assert.deepEqual(retained.summary.review,review);assert.deepEqual((await inspectAgentPlan(file,reply.requestId)).summary.review,review);
+  assert.equal(reply.summary.continuation.automatic,false);
+ }
+}));
 test('enable-checkbox recipe skips an already enabled checkbox and stops after a failed readiness wait',async()=>fixture(async file=>{
  const recipe=JSON.parse(await readFile(new URL('../examples/recipes/enable-checkbox.json',import.meta.url)));const compiled=compileAgentRecipe(recipe,{checkbox:{id:'box'},dependentField:{id:'field'}});
  for(const initial of [true,false]){

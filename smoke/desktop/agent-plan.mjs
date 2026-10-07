@@ -64,7 +64,11 @@ export function validatePlanRequestId(id){
 }
 const planDirectory=(session,id)=>path.join(session.root,'plan-'+createHash('sha256').update(validatePlanRequestId(id)).digest('hex'));
 const identity=s=>({packageHash:s.guiHash??null,pid:s.pid??null,started:s.processStart??null,generation:s.generation??null,bundle:s.bundle??null});
-function planSummary(state){return {phases:state.phases.map(p=>({id:p.id,status:p.result.status,summary:p.result.summary,branch:p.branch,next:p.next})),activePhase:state.activePhase,activeStep:state.activeStep,returnedActiveSteps:(state.activeResults||[]).map(r=>({index:r.index,operation:r.operation})),continuation:state.continuation};}
+function planSummary(state){return {phases:state.phases.map(p=>({id:p.id,status:p.result.status,summary:p.result.summary,branch:p.branch,next:p.next})),
+ review:{outcomes:state.phases.flatMap(p=>(p.result.summary?.steps||[]).filter(s=>s.gateMatched!==undefined).map(s=>({phase:p.id,...s}))),
+  evidence:state.phases.flatMap(p=>(p.result.summary?.evidence||[]).map(e=>({phase:p.id,...e}))),
+  scope:'Recorded gates and retained artifacts only. Review declared images; these records do not prove the current screen.'},
+ activePhase:state.activePhase,activeStep:state.activeStep,returnedActiveSteps:(state.activeResults||[]).map(r=>({index:r.index,operation:r.operation})),continuation:state.continuation};}
 export async function inspectAgentPlan(file,requestId){
  const session=await readJSON(file);verifyDesktopPaths(session);const directory=planDirectory(session,requestId),canonical=await realpath(directory);
  if(!inside(await realpath(session.root),canonical))throw invalid('Plan inspection escaped the owned session');

@@ -44,12 +44,14 @@ export function inspectorParameterAnswer(ui,graph,{nodeId,parameter,label}){
 }
 export function inspectorOutcome(beforeGraph,afterGraph,beforeTimeline,afterTimeline,{nodeId,parameter,state}){
  const pick=g=>({graph_id:g.graph_id,timeline_id:g.timeline_id,clip_id:g.clip_id,nodes:g.nodes?.map(({incoming,outgoing,...n})=>n),edges:g.edges});
+ const value=g=>{const nodes=g.nodes?.filter(n=>n.node_id===nodeId)||[];return nodes.length===1&&Number.isFinite(nodes[0].params?.[parameter])?nodes[0].params[parameter]:null;};
+ const values={nodeId,param:parameter,before:value(beforeGraph),after:value(afterGraph)};
  try{
   requireProof(isDeepStrictEqual(snapshotState(afterTimeline),snapshotState(beforeTimeline)),'unexpected_timeline_change','Inspector edit changed the timeline',['inspect']);
-  if(state==='restored')return {matched:isDeepStrictEqual(pick(beforeGraph),pick(afterGraph)),state};
+  if(state==='restored')return {matched:isDeepStrictEqual(pick(beforeGraph),pick(afterGraph)),state,...values};
   const result=verifyInspectorEdit(beforeGraph,afterGraph,nodeId,parameter);
   return {matched:result.after>result.before,state,...result};
- }catch(error){if(error.status==='Fail'||error.code==='unexpected_timeline_change')return {matched:false,state,reason:error.message};throw error;}
+ }catch(error){if(error.status==='Fail'||error.code==='unexpected_timeline_change')return {matched:false,state,...values,reason:error.message};throw error;}
 }
 export function timelineClipAnswer(ui,timeline,clipId){
  snapshotState(timeline);

@@ -99,6 +99,25 @@ package and equivalent new fixtures with fresh sequential actors. Include at
 least one functional brief without a completed recipe. Preserve failures and
 protocol deviations; do not subtract inconvenient recovery or recapture time.
 
+Elapsed time is the primary score; token usage is secondary. For short bounded
+procedures, let the tool wait for completion rather than repeatedly polling while
+it works. Keep the plan's execution budget and Unknown handling unchanged.
+
+Plan replies and `plan-inspect` expose `summary.review.outcomes` and
+`summary.review.evidence` across all completed phases. They reuse the recorded
+comparisons and original artifact references. A false gate remains false; an
+uncertain step is still visible in the status and continuation. Inspect the
+per-phase summary or checksummed receipt if required values are omitted.
+Inspector restoration reports both the baseline and observed numeric value;
+equal values alone do not establish that the rest of the graph was restored.
+
+Read the outcomes first, then open the declared captures together in one
+multi-image call when your agent supports it. Preserve each image's label and
+checkpoint. Read full plans or receipts for unfamiliar baselines, missing data
+or a failure that needs deeper inspection. A known fixture and complete review
+do not need duplicate reads of the same plan, values and receipt. Viewing a
+retained image does not provide fresh input geometry or prove a later screen.
+
 ## Toolkit step shapes
 
 Use `schema {}` to list toolkit names and `schema {"tool":"physical"}` for its

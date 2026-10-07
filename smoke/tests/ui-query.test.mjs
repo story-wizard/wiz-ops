@@ -47,7 +47,9 @@ test('Inspector outcomes require one increasing parameter and unchanged graph wi
  assert.equal(inspectorOutcome(graph,after,timeline,timeline,params).matched,true);
  for(const mutate of [g=>g.nodes[0].params.other=2,g=>g.edges.push({unexpected:true}),g=>g.clip_id='other',g=>g.nodes[0].params.radius=15]){const bad=structuredClone(after);mutate(bad);assert.equal(inspectorOutcome(graph,bad,timeline,timeline,params).matched,false);}
  const changedTimeline=structuredClone(timeline);changedTimeline.tracks[0].name='other';assert.equal(inspectorOutcome(graph,after,timeline,changedTimeline,params).matched,false);
- assert.equal(inspectorOutcome(graph,graph,timeline,timeline,{...params,state:'restored'}).matched,true);assert.equal(inspectorOutcome(graph,after,timeline,timeline,{...params,state:'restored'}).matched,false);
+ const restored=inspectorOutcome(graph,graph,timeline,timeline,{...params,state:'restored'});assert.equal(restored.matched,true);assert.equal(restored.before,16);assert.equal(restored.after,16);
+ const unrestored=inspectorOutcome(graph,after,timeline,timeline,{...params,state:'restored'});assert.equal(unrestored.matched,false);assert.equal(unrestored.after,17);
+ const unrelated=structuredClone(graph);unrelated.nodes[0].params.other=2;const wrong=inspectorOutcome(graph,unrelated,timeline,timeline,{...params,state:'restored'});assert.equal(wrong.after,16);assert.equal(wrong.matched,false,'Equal numeric values cannot hide an unrelated graph change');
 });
 test('packaged Inspector identities use strict bounded versioned fields, not substring matching',()=>{
  const encode=parts=>parts.map(s=>s.length+':'+s).join(''),target=encode(['target-v1','graph_node','wiz.render','timeline_id','timeline','clip_id','clip','graph_id','clip:timeline:clip','node_id','node']),instance=encode(['instance-v1',target,'render.graph_node']),key=encode(['interaction-v1',instance,'radius']),row={paramPath:'radius',inspectorBindingIncomplete:false,inspectorInteractionKey:key};
