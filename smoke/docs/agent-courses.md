@@ -412,3 +412,34 @@ Use `investigation create/show/triage/link/review/export` and `investigations --
 ## Project lifecycle candidates
 
 `smoke-full` revision 4 adds `D-PROJECT-NEW`, `D-PROJECT-SAVE-AS` and `D-PREFERENCES-PROJECTLESS`. Select each independently with a maintained-course subset. Each starts in its own owned project and uses Qt controls for the user action, CLI/file readbacks for content, normal Quit acknowledgments and a fresh process for reopening. They remain candidates until lead review. The original project is compared after creating or editing a separate bundle.
+
+
+## Grouped and isolated execution
+
+`smoke-full` revision 9 freezes the same 177 checks as revision 8, with grouped
+desktop execution. Compatible checks from one driver reuse its owned Wizard
+session while creating their separate test timelines or Spells. The current full
+selection plans 34 desktop groups instead of 56. Project lifecycle, external
+reload, preference changes, long history and selected import probes still use
+separate sessions. Save/reopen assertions keep their required process restarts.
+
+Choose `smoke-isolated` in the dashboard for the previous layout, or prepare the
+same selection using `--desktop-mode isolated`. Existing authored shared-fixture
+families stay together in both modes. For example:
+
+```sh
+node scripts/smoke.mjs prepare --app /path/to/Wizard.app --course smoke-full --server URL
+node scripts/smoke.mjs prepare --app /path/to/Wizard.app --course smoke-isolated --server URL
+```
+
+A selection file may set `"desktopMode": "grouped"` or `"isolated"`. The frozen
+plan records the policy; old plans without the field keep the earlier layout.
+Check membership and acceptance are independent of execution mode. Failures keep
+their evidence. Unknown is never replayed; after verified cleanup, checks that
+never started can get one new session. A second setup failure remains Blocked.
+
+Desktop group receipts record `startedAt`, `preparedAt`, `finishedAt` and
+`durationMs`, plus the source report and session identity. Wall time includes
+package/fixture preparation and cleanup. Keep these separate from action timings
+and model reasoning time when comparing performance. Profiling collectors remain
+future work.

@@ -13,7 +13,8 @@ import {failureStatus,assert,pause,OutcomeError,clips,bounds,near} from '../runn
 export function desktopScriptTimeout(cases){
  const budgets=cases.filter(c=>c.scriptTimeoutMs!==undefined).map(c=>c.scriptTimeoutMs);
  assert(budgets.every(ms=>Number.isInteger(ms)&&ms>=1000&&ms<=600000),'Desktop driver budgets must be 1000–600000 milliseconds');
- return Math.max(120000,...budgets);
+ // Each declared per-check budget survives aggregation; ordinary authored drivers retain their default.
+ return Math.max(120000,budgets.reduce((total,ms)=>total+ms,0));
 }
 export function requireScriptReceipt(receipt,name){
  if(receipt.timedOut||receipt.overflow||receipt.aborted){const e=new OutcomeError(name+' was interrupted before a terminal report; outcome unknown. Inspect the retained receipts before retrying.','Unknown');e.diagnostics={timedOut:!!receipt.timedOut,overflow:!!receipt.overflow,aborted:!!receipt.aborted,exitCode:receipt.code,signal:receipt.signal||null};throw e;}

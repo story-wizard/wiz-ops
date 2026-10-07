@@ -63,7 +63,9 @@ export async function nativeUIInput(dataDir,runId,request){
 async function nativeInput(dataDir,root,executable,packageHash,request,context={}){
  const started=performance.now(),startedAt=new Date().toISOString();
  await mkdir(path.join(root,'evidence'),{recursive:true});
- const held=await open(path.join(root,request.command==='screenshot'?'native-capture.lock':'native-input.lock'),'wx'),id=randomUUID(),requestFile=path.join(root,'evidence',`native-${id}-request.txt`),receiptFile=path.join(root,'evidence',`native-${id}-receipt.txt`);
+ // Window Server inspection is read-only and must remain available during a held drag.
+ const lock=path.join(root,request.command==='screenshot'?'native-capture.lock':request.command==='inspect'&&request.mode==='window-server'?'native-observe.lock':'native-input.lock');
+ const held=await open(lock,'wx'),id=randomUUID(),requestFile=path.join(root,'evidence',`native-${id}-request.txt`),receiptFile=path.join(root,'evidence',`native-${id}-receipt.txt`);
  let receipt;
  try{
   const {driver,manifest,sourceHash}=await nativeInputDriver(dataDir);
@@ -76,7 +78,7 @@ async function nativeInput(dataDir,root,executable,packageHash,request,context={
   await appendFile(path.join(root,'native-input.jsonl'),JSON.stringify({at:new Date().toISOString(),startedAt,durationMs:performance.now()-started,...context,command:request.command,input:request,request:path.relative(root,requestFile),receipt:path.relative(root,receiptFile),status:receipt.status})+'\n');
   if(receipt.output&&!inside(path.join(root,'evidence'),receipt.output))throw Error('Native screenshot output escaped the run.');
   return {...receipt,artifacts:[path.relative(root,requestFile),path.relative(root,receiptFile),...(receipt.output?[path.relative(root,receipt.output)]:[])]};
- }finally{await held.close();await unlink(path.join(root,request.command==='screenshot'?'native-capture.lock':'native-input.lock'));}
+ }finally{await held.close();await unlink(lock);}
 }
 
 export async function nativeDesktopInput(file,request){

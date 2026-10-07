@@ -34,7 +34,7 @@ test('displayed identity proof rejects stale, missing or capped clip lists',()=>
 });
 
 test('long physical sequences get an explicit bounded budget without lengthening ordinary drivers',()=>{
- assert.equal(desktopScriptTimeout([]),120000);assert.equal(desktopScriptTimeout([{id:'ordinary'}]),120000);assert.equal(desktopScriptTimeout([{scriptTimeoutMs:480000}]),480000);
+ assert.equal(desktopScriptTimeout([{scriptTimeoutMs:240000},{scriptTimeoutMs:240000}]),480000);assert.equal(desktopScriptTimeout([]),120000);assert.equal(desktopScriptTimeout([{id:'ordinary'}]),120000);assert.equal(desktopScriptTimeout([{scriptTimeoutMs:480000}]),480000);
  for(const ms of [0,-1,NaN,1000.5,600001,'480000'])assert.throws(()=>desktopScriptTimeout([{scriptTimeoutMs:ms}]));
 });
 test('interrupted scripts retain Unknown with diagnostics before a missing report can mask the timeout',()=>{

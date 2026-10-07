@@ -61,6 +61,6 @@ test('new candidates resolve individually, run in isolated groups and carry usab
   assert.match(context.commands.plan,/--file \/tmp\/smoke-selection.json/);assert.match(context.commands.run,/scripts\/smoke.mjs run/);assert.match(context.selectionInstructions,/Save/);
   assert.deepEqual(desktopGroups([id],map).map(g=>g.ids),[[id]]);
  }
- assert.equal(desktopGroups(ids,map).length,ids.length);
+ assert.equal(desktopGroups(ids,map).length,1);assert.equal(desktopGroups(ids,map,'isolated').length,ids.length);
  }finally{db.close();}
 });

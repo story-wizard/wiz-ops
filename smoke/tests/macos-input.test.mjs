@@ -66,3 +66,28 @@ test('native paths and held modifiers are bounded before any event is dispatched
  assert.doesNotThrow(()=>validateNativeRequest({...base,command:'click',path:undefined,modifiers:[],durationMs:undefined,clickCount:2}));
  assert.throws(()=>validateNativeRequest({...base,clickCount:2}));
 });
+
+test('Window Server sampling runs during a held drag while a second mutation remains excluded',async()=>{
+ const root=await mkdtemp('/private/tmp/athanor-capture-lock-');
+ try{
+  const source=await readFile(new URL('../desktop/macos-input.mjs',import.meta.url),'utf8'),start=source.indexOf('async function nativeInput('),end=source.indexOf('\nexport async function nativeDesktopInput(',start);
+  assert.ok(start>=0&&end>start);
+  const file=root+'/lock-probe.mjs';
+  await writeFile(file,`import path from 'node:path';import {mkdir,open,unlink,appendFile} from 'node:fs/promises';import {randomUUID} from 'node:crypto';import {promisify} from 'node:util';import {writeJSON,inside} from '${new URL('../runner/files.mjs',import.meta.url).href}';
+   export let release,entered;export const dispatched=new Promise(r=>entered=r);
+   const nativeInputDriver=async()=>({driver:'platform-boundary',manifest:{driverHash:'fixture'},sourceHash:'fixture'});
+   function execFile(driver,args,options,callback){const input=args.at(-1);import('node:fs/promises').then(async fs=>{const request=JSON.parse(await fs.readFile(input));const finish=()=>callback(null,JSON.stringify({status:request.command==='drag'?'Dispatched':'Observed'}),'');if(request.command==='drag'){release=finish;entered();}else finish();});}
+   execFile[promisify.custom]=(...args)=>new Promise((resolve,reject)=>execFile(...args,(error,stdout,stderr)=>error?reject(error):resolve({stdout,stderr})));
+  `+source.slice(start,end)+`\nexport {nativeInput};`);
+  const {pathToFileURL}=await import('node:url'),probe=await import(pathToFileURL(file).href),request={command:'drag',mode:'window-server',durationMs:1000};
+  const held=probe.nativeInput(root,root,'fixture','package',request);await probe.dispatched;
+  try{
+   assert.equal((await probe.nativeInput(root,root,'fixture','package',{command:'inspect',mode:'window-server'})).status,'Observed');
+   assert.equal((await probe.nativeInput(root,root,'fixture','package',{command:'screenshot',mode:'window-server'})).status,'Observed');
+   await assert.rejects(()=>probe.nativeInput(root,root,'fixture','package',{command:'click',mode:'window-server'}),e=>e.code==='EEXIST');
+   await readFile(root+'/native-input.lock','utf8');
+  }finally{probe.release();await held;}
+  await assert.rejects(()=>readFile(root+'/native-input.lock'),e=>e.code==='ENOENT');
+  const rows=(await readFile(root+'/native-input.jsonl','utf8')).trim().split('\n').map(JSON.parse);assert.deepEqual(new Set(rows.map(r=>r.command)),new Set(['inspect','screenshot','drag']));
+ }finally{await rm(root,{recursive:true,force:true});}
+});

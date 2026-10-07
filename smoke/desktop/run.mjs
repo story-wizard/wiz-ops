@@ -95,16 +95,29 @@ try{
 }
 finally{
   if(live&&live.child.exitCode===null&&!live.child.signalCode)try{await stopDesktop(file);await live.closed;}catch(e){try{await terminateOwnedDesktop(file,live);report.cleanupRecovery={error:e.message,terminated:true};}catch(cleanup){report.cleanupError=cleanup.message;}}
-  for(const c of course.cases)if(!report.results.some(r=>r.id===c.id))report.results.push({id:c.id,status:'Blocked',error:'Not executed because an earlier check or restoration failed. '+(report.error||''),evidence:report.failureEvidence||null});
+  let events=[];try{events=(await readFile(path.join(session.root,'check-events.jsonl'),'utf8')).split('\n').filter(Boolean).map(JSON.parse);}catch(e){if(e.code!=='ENOENT')throw e;}
+  report.results.push(...missingDesktopResults(course.cases,report.results,events,report.error,report.failureEvidence));
   report.qtCocoa=(await readJSON(file)).qtCocoa;report.finishedAt=new Date().toISOString();report.status=!report.error&&!report.cleanupError&&report.results.length===total&&report.results.every(r=>r.status==='Pass')?'Pass':'Fail';
   await writeJSON(path.join(session.root,'desktop-course-report.json'),report);console.log(JSON.stringify({report:path.join(session.root,'desktop-course-report.json'),status:report.status,passed:report.results.filter(r=>r.status==='Pass').length,total},null,2));
 }
 
 return {report,sessionFile:file,root:session.root};
 }
-export function desktopGroups(ids,map){
+export function missingDesktopResults(cases,results,events,error='',evidence=null){
+ return cases.filter(c=>!results.some(r=>r.id===c.id)).map(c=>{
+  const started=events.some(e=>e.id===c.id&&e.status==='Running');
+  return {id:c.id,status:started?'Unknown':'Blocked',notExecuted:!started,error:(started?'Check began without a safely completed driver report; inspect retained actions. ':'Not executed because an earlier check or restoration failed. ')+error,evidence};
+ });
+}
+export function desktopGroups(ids,map,mode='grouped'){
+  assert(['grouped','isolated'].includes(mode),'Unknown desktop execution mode');
   const remaining=new Set(ids),groups=[];
-  for(const name of ['check-physical-editor.mjs','check-physical.mjs','check-checklist.mjs','check-checklist-expansion.mjs','check-projects.mjs','check-volume-search.mjs','check-media-search-ui.mjs','check-colour-panels.mjs','check-controls-audio.mjs','check-recorded-playback.mjs'])for(const id of map[name]||[])if(remaining.delete(id))groups.push({name:name+'#'+id,ids:[id]});
+  for(const name of ['check-physical-editor.mjs','check-physical.mjs','check-checklist.mjs','check-checklist-expansion.mjs','check-projects.mjs','check-volume-search.mjs','check-media-search-ui.mjs','check-colour-panels.mjs','check-controls-audio.mjs','check-recorded-playback.mjs'])for(const id of map[name]||[])if(remaining.delete(id)){
+    // Lifecycle, disk reload and preference-changing gestures keep their own session.
+    const isolated=mode==='isolated'||name==='check-projects.mjs'||['D-EXTERNAL-RELOAD','D-SHORTCUT-CONFLICT','D-DOCK-MODIFIER','D-HISTORY-50','D-IMPORT-DIALOG','D-INGEST-SEARCH-LIVE'].includes(id);
+    const nameKey=isolated?name+'#'+id:name,group=groups.find(g=>g.name===nameKey);
+    if(group)group.ids.push(id);else groups.push({name:nameKey,ids:[id],recoverUnstarted:mode==='grouped'&&!isolated});
+  }
   for(const [name,members] of Object.entries({...map,'check-core.mjs':[...map['check-core.mjs'],'D-LP-02-RELAUNCH']})){
     const selected=members.filter(id=>remaining.delete(id));if(selected.length)groups.push({name,ids:selected});
   }
@@ -114,22 +127,27 @@ export function desktopGroups(ids,map){
 }
 export async function executeDesktop(prepared={}, {onResult=async()=>{},isCancelled=()=>false,signal,executeGroup=executeDesktopGroup}={}){
   const original=await readJSON(new URL('./course.json',import.meta.url)),full={...original,cases:[...original.cases,...physicalChecks]},ids=prepared?.ids||full.cases.map(c=>c.id),map=await readJSON(new URL('./check-map.json',import.meta.url));
-  const groups=desktopGroups(ids,map),directory=prepared.directory||path.join(dataDirectory(prepared.dataDir),'desktop-runs'),runtime=prepared.runtime||{app:process.argv[2],qtPlugin:process.argv[3],cli:process.argv[4]};await mkdir(directory,{recursive:true});const root=await mkdtemp(path.join(directory,'desktop-course-'));
-  const report={course:{...full,cases:full.cases.filter(c=>ids.includes(c.id))},startedAt:new Date().toISOString(),scope:'Fresh owned project and session per independent desktop group',results:[],groups:[]};
+  const mode=prepared.plan?(prepared.plan.recipe?.selection?.desktopMode||'isolated'):'grouped',groups=desktopGroups(ids,map,mode),directory=prepared.directory||path.join(dataDirectory(prepared.dataDir),'desktop-runs'),runtime=prepared.runtime||{app:process.argv[2],qtPlugin:process.argv[3],cli:process.argv[4]};await mkdir(directory,{recursive:true});const root=await mkdtemp(path.join(directory,'desktop-course-'));
+  const report={course:{...full,cases:full.cases.filter(c=>ids.includes(c.id))},startedAt:new Date().toISOString(),scope:'Fresh owned project and session per independent desktop group',desktopMode:mode,results:[],groups:[]};
   let sessionFile;
   for(const group of groups){
     if(isCancelled()||report.cleanupError)break;
     // Keep report identities intact; '#' becomes a URL fragment in renderer file URLs.
-    const owned=path.join(root,'groups',group.name.replace('.mjs','').replaceAll('#','--'));await mkdir(owned,{recursive:true});let session,offset=0,pending=Promise.resolve();
+    const groupStartedAt=new Date().toISOString(),owned=path.join(root,'groups',group.name.replace('.mjs','').replaceAll('#','--'));await mkdir(owned,{recursive:true});let session,offset=0,pending=Promise.resolve();
     const poll=()=>pending=pending.then(async()=>{if(!session)return;let text;try{text=await readFile(path.join(session.root,'check-events.jsonl'),'utf8');}catch(e){if(e.code==='ENOENT')return;throw e;}
       const lines=text.split('\n').filter(Boolean);for(const line of lines.slice(offset)){let event;try{event=JSON.parse(line);}catch{break;}offset++;if(group.ids.includes(event.id))await appendFile(path.join(root,'check-events.jsonl'),line+'\n');}
     });
     const timer=setInterval(()=>void poll().catch(()=>{}),500);
     try{
-      const result=await executeGroup({...prepared,runtime,directory:owned,ids:[...new Set(['D-CLI-01',...group.ids])]},{isCancelled,signal,onSession:s=>{session=s;},onResult:async r=>{if(group.ids.includes(r.id))await onResult(r,root);}});
-      await poll();sessionFile=result.sessionFile;report.guiHash=result.report.guiHash;report.cliHash=result.report.cliHash;
-      report.groups.push({name:group.name,root:result.root,sessionFile,status:result.report.status,error:result.report.error||null,cleanupRecovery:result.report.cleanupRecovery||null});
-      for(const id of group.ids){const value=result.report.results.find(r=>r.id===id)||{id,status:'Blocked',error:'Group did not retain this observation.'};report.results.push({...value,group:group.name,source:path.join(result.root,'desktop-course-report.json')});}
+      const result=await executeGroup({...prepared,runtime,directory:owned,ids:[...new Set(['D-CLI-01',...group.ids])]},{isCancelled,signal,onSession:s=>{session=s;},onResult:async()=>{}});
+      clearInterval(timer);await poll();sessionFile=result.sessionFile;report.guiHash=result.report.guiHash;report.cliHash=result.report.cliHash;
+      report.groups.push({name:group.name,root:result.root,sessionFile,status:result.report.status,error:result.report.error||null,cleanupRecovery:result.report.cleanupRecovery||null,startedAt:groupStartedAt,preparedAt:result.report.startedAt||null,finishedAt:result.report.finishedAt||new Date().toISOString(),durationMs:Date.now()-Date.parse(groupStartedAt)});
+      for(const id of group.ids){const value=result.report.results.find(r=>r.id===id)||{id,status:'Blocked',error:'Group did not retain this observation.'};if(value.notExecuted&&group.recoverUnstarted&&!group.recovery&&!isCancelled()&&!result.report.cleanupError){
+        // Only untouched checks may start in a fresh session. Never replay an attempted mutation.
+        groups.push({name:group.name+'#unstarted-'+id,ids:[id],recovery:true});continue;
+      }
+      const final={...value,group:group.name,source:path.join(result.root,'desktop-course-report.json')};report.results.push(final);
+      await appendFile(path.join(root,'check-events.jsonl'),JSON.stringify({...final,final:true,at:new Date().toISOString()})+'\n');await onResult(final,root);}
       for(const filename of ['operations.jsonl','native-events.jsonl','native-input.jsonl','agent-tools.jsonl','agent-results.jsonl','steps.jsonl']){try{const lines=(await readFile(path.join(result.root,filename),'utf8')).split('\n').filter(Boolean);for(const line of lines){const receipt=JSON.parse(line);await appendFile(path.join(root,filename),JSON.stringify({...receipt,source:receipt.source||path.join(result.root,filename)})+'\n');}}catch(e){if(e.code!=='ENOENT')throw e;}}
       if(result.report.cleanupError)report.cleanupError=result.report.cleanupError;
     }catch(e){report.error=e.message;break;}

@@ -80,3 +80,28 @@ test('an ordinary completed assertion failure preserves Fail and still executes 
   assert.deepEqual(events,[{id:'S-MGFX-UNDO-PUBLISH',status:'Fail'},{id:'D-CLI-01',status:'Pass'}]);
  }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test('desktop live progress publishes a verified reopen before later groups and preserves the first Fail',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-live-reopen-')),events=[];
+ try{
+  const mock=path.join(root,'executors.mjs');await writeFile(mock,`
+   import {mkdir,appendFile} from 'node:fs/promises';import path from 'node:path';
+   export async function executeService(){throw Error('No service selected');}
+   export async function executeDesktop(p){
+    const root=path.join(p.directory,'owned');await mkdir(root);const file=path.join(root,'check-events.jsonl');
+    const emit=async(id,status,final=false)=>appendFile(file,JSON.stringify({id,status,...(final?{final:true}:{})})+'\\n');
+    await emit('D-BIN-DUPLICATE','Running');await emit('D-BIN-DUPLICATE','Pass');await emit('D-BIN-DUPLICATE','Pass',true);
+    await new Promise(r=>setTimeout(r,650));await globalThis.liveCheckpoint('reopen');
+    await emit('D-DOCUMENT-EDIT','Running');await emit('D-DOCUMENT-EDIT','Fail');await emit('D-DOCUMENT-EDIT','Blocked');await emit('D-DOCUMENT-EDIT','Fail',true);
+    await new Promise(r=>setTimeout(r,650));await globalThis.liveCheckpoint('failure');
+    return {root,report:{completed:true,status:'Fail',results:[{id:'D-BIN-DUPLICATE',status:'Pass'},{id:'D-DOCUMENT-EDIT',status:'Fail'}]}};
+   }
+  `);
+  globalThis.liveCheckpoint=phase=>{
+   if(phase==='reopen')assert.ok(events.some(e=>e.id==='D-BIN-DUPLICATE'&&e.status==='Pass'),'Reopen must become Pass while later groups are still pending');
+   else{assert.ok(events.some(e=>e.id==='D-DOCUMENT-EDIT'&&e.status==='Fail'));assert.ok(!events.some(e=>e.id==='D-DOCUMENT-EDIT'&&e.status==='Blocked'),'Dependency verification must not hide the original failure');}
+  };
+  const {executeStages}=await boundaryModule('runner/stages.mjs',path.join(root,'stages.mjs'),{'../desktop/run.mjs':pathToFileURL(mock).href,'../desktop/service-run.mjs':pathToFileURL(mock).href});
+  await executeStages({plan:{runtime:{}},course:{cases:[{id:'D-BIN-DUPLICATE'},{id:'D-DOCUMENT-EDIT'}]},root,dataDir:root,isCancelled:()=>false,onResult:async(c,status)=>events.push({id:c.id,status})});
+ }finally{delete globalThis.liveCheckpoint;await rm(root,{recursive:true,force:true});}
+});

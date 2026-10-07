@@ -123,7 +123,7 @@ See `docs/build-repair.md`; compatibility is separate from a passing course.
 
 A fresh launcher defaults to `smoke-full`: accepted core checks plus the maintained allowlist of physical/checklist qualification candidates. `automated-full` remains accepted-only; custom courses cannot promote candidates. Read `docs/agent-courses.md` for current composition. New physical groups must expose their selected definitions in `agent-context.json`, execute in fresh owned projects, preserve failures and retain native-input receipts in the course report. Stage executors run from the retained source snapshot. Keep the Mac unlocked for desktop checks; never attempt to bypass the lock screen or change system security settings.
 
-The default `smoke-full` revision 8 excludes `S-PF-IDLE`. It adds ten qualification candidates for project search across timeline focus, physical blur Inspector editing, mask clipboard/history, vectorscope tap response, New Project, Save As, projectless Preferences, missing-term search, 100-clip clipboard and 50-step physical history. Read the current qualification notes in `docs/harness-control.md`; lead acceptance remains separate. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.
+The default `smoke-full` revision 9 excludes `S-PF-IDLE`. It adds ten qualification candidates for project search across timeline focus, physical blur Inspector editing, mask clipboard/history, vectorscope tap response, New Project, Save As, projectless Preferences, missing-term search, 100-clip clipboard and 50-step physical history. Read the current qualification notes in `docs/harness-control.md`; lead acceptance remains separate. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.
 
 ## Local investigations
 
@@ -139,9 +139,9 @@ Read [Studio hosting](docs/studio-hosting.md) for the proposed single-runner pil
 
 Project workflow candidates use `desktop/check-projects.mjs` with pure assertions in `desktop/project-proof.mjs`. Rebind the session only after the visible MainWindow confirms the owned destination. New Project and Save As must verify fresh-process persistence and unchanged original timelines; projectless Preferences must start at the hub. Pointer guarding excludes only the system cursor at its reserved Window Server layer; real overlays still block input.
 
-Volume and search candidates use `desktop/check-volume-search.mjs` and pure assertions in `desktop/volume-proof.mjs`. Every selected candidate has its own fixture group. History latency includes physical dispatch and independent readback; retain it as a measurement until a performance policy is reviewed.
+Volume and search candidates use `desktop/check-volume-search.mjs` and pure assertions in `desktop/volume-proof.mjs`. Volume checks keep separate per-test timelines; long history retains its own desktop session. History latency includes physical dispatch and independent readback; retain it as a measurement until a performance policy is reviewed.
 
-Long foreground driver sequences may declare `scriptTimeoutMs` (1000–600000 ms). The executor uses the largest selected declaration, with a 120000 ms default. This is an execution budget, separate from performance acceptance. Interrupted drivers retain Unknown before a missing report can mask the cause.
+Long foreground driver sequences may declare `scriptTimeoutMs` (1000–600000 ms). A shared driver sums the selected declarations, with a 120000 ms default for ordinary drivers. This is an execution budget, separate from performance acceptance. Interrupted drivers retain Unknown before a missing report can mask the cause.
 
 
 Readiness helpers live in `desktop/check-support.mjs` and
@@ -211,3 +211,25 @@ and evidence from compact `summary.continuation.context` before opening a full
 failure receipt. Group related scoped observations, preserve the same assertions
 and captures, and keep GUI readiness separate from agent reasoning time in
 measurements. See the focus/recovery section of `docs/agent-sequences.md`.
+
+
+### Grouped course execution
+
+New selections freeze `desktopMode: "grouped"` by default. `smoke-full` revision 9
+runs compatible driver families in one owned session; every check keeps its own
+authored fixture, assertions and captures. Lifecycle, external disk reload,
+preference-changing gestures, long history and import/live-indexing probes remain
+isolated. The maintained `smoke-isolated` course uses the previous session layout
+with the same check membership. CLI selections may set `--desktop-mode isolated`;
+JSON selections may set `desktopMode`. Old frozen selections without this field
+keep their earlier layout. Never edit a frozen plan to change modes: prepare anew.
+
+Ordinary assertion failures continue. Unknown ends its session and is never
+replayed. Only checks with no retained begin event may continue in a fresh session,
+at most once and after confirmed cleanup; earlier outcomes remain intact. Reopen
+checks publish their merged terminal result when their group closes, not at the
+end of the whole desktop stage. Group receipts retain wall time including setup,
+separate preparation and finish timestamps, group/session identity and per-check
+evidence. These are measurement boundaries for future profiling, not a profiler.
+Window Server inspection and presented captures can run during a held native drag;
+other native mutations remain exclusive and retain their existing input guards.
