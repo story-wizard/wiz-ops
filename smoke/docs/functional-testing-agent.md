@@ -5,6 +5,12 @@ it, then review the results later. The agent translates that script into tests,
 uses suitable fixtures and groups compatible work. Start with the existing
 catalog and recipes; create a new check only for behavior they do not cover.
 
+For ordinary trim/edit/history exploration, use the
+[task packet](task-packets.md) to gather current context and valid request shapes
+in one reply. After a run, its offline learning command exports review facts for
+improving a parameterized recipe. Rebind every new run; old targets and outcomes
+remain historical evidence.
+
 ## Turn the script into a plan
 
 1. Retain the original script outside Git. Record the selected build, requested

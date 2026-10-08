@@ -114,7 +114,7 @@ export async function runAgentPlan(file,plan,execute=agentTool,{compact=false,re
  verifyDesktopPaths(session);const directory=planDirectory(session,requestId);
  try{await mkdir(directory);}catch(e){if(e.code==='EEXIST')throw proofError('plan_request_exists','This request ID has retained intent; inspect it instead of resending',['plan-inspect']);throw e;}
  const progress=path.join(directory,'progress.json'),started=performance.now();
- const state={format:'athanor-agent-plan/v1',requestId,status:'Running',session:file,identity:identity(session),build:{packageHash:session.guiHash},process:{pid:session.pid,started:session.processStart,generation:session.generation},plan,phases:[],bindings:{},bindingReads:[],activePhase:null,activeStep:null,activeResults:[],startedAt:new Date().toISOString()};
+ const state={format:'athanor-agent-plan/v1',requestId,status:'Running',session:file,identity:identity(session),schemaHash:digest(session.schema),build:{packageHash:session.guiHash},process:{pid:session.pid,started:session.processStart,generation:session.generation},plan,phases:[],bindings:{},bindingReads:[],activePhase:null,activeStep:null,activeResults:[],startedAt:new Date().toISOString()};
  const budget=()=>{if(performance.now()-started>= (plan.maxDurationMs??planLimits.maxDurationMs))throw proofError('plan_budget_exceeded','Plan dispatch budget expired; inspect returned steps before further work',['inspect']);};
  const retain=async()=>writeJSON(progress,state);
  let next=plan.start,storageError;

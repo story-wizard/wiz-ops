@@ -7,8 +7,12 @@ import {normalizeToolError,proofError} from './agent-proof.mjs';
 import {agentSequence,checkSequence,serveAgentTools,toolError,compactToolResult} from './agent-connection.mjs';
 import {runAgentPlan,checkAgentPlan,inspectAgentPlan} from './agent-plan.mjs';
 import {checkAgentRecipe,checkAgentWorkflow} from './agent-recipes.mjs';
+import {learnProcedure} from './agent-learning.mjs';
 const [action,target,operation,params]=process.argv.slice(2);
-if(action==='toolkit'){
+if(action==='learn'){
+ try{if(process.argv.slice(2).length!==4||operation!=='--sha256')throw proofError('invalid_params','Use learn RECEIPT.json --sha256 HASH',['correct_parameters']);console.log(JSON.stringify(await learnProcedure(target,params),null,2));}
+ catch(e){console.log(JSON.stringify(toolError(e)));process.exitCode=3;}
+}else if(action==='toolkit'){
  try{if(process.argv.slice(2).length>2)throw proofError('invalid_params','Use toolkit [TOOL_NAME]',['correct_parameters']);console.log(JSON.stringify(await agentTool('', 'schema',target===undefined?{}:{tool:target}),null,2));}
  catch(e){console.log(JSON.stringify(toolError(e)));process.exitCode=3;}
 }else if(action==='start'||action==='resume'){
@@ -56,4 +60,4 @@ else if(['batch','batch-check','plan','plan-check'].includes(action)){
 }
 else if(action==='stop')await stopDesktop(target);
 else if(action==='schema')console.log(JSON.stringify(await readJSON(new URL('../runner/contracts/desktop-schema.json',import.meta.url)),null,2));
-else throw new Error('Usage: toolkit [TOOL_NAME] | workflow-check SESSION.json WORKFLOW.json | schema | start --plan PLAN.json | start SOURCE.app [COCOA_PLUGIN] | resume SESSION.json | tool SESSION.json operation JSON | batch-check SESSION.json STEPS.json | batch SESSION.json STEPS.json [--compact] | recipe-check SESSION.json RECIPE.json VALUES.json | plan-check SESSION.json PLAN.json | plan SESSION.json PLAN.json [--compact] [--request-id ID] | plan-inspect SESSION.json REQUEST_ID | tools SESSION.json (JSON lines on stdin) | call SESSION.json operation JSON | native SESSION.json operation JSON | stop SESSION.json');
+else throw new Error('Usage: learn RECEIPT.json --sha256 HASH | toolkit [TOOL_NAME] | workflow-check SESSION.json WORKFLOW.json | schema | start --plan PLAN.json | start SOURCE.app [COCOA_PLUGIN] | resume SESSION.json | tool SESSION.json operation JSON | batch-check SESSION.json STEPS.json | batch SESSION.json STEPS.json [--compact] | recipe-check SESSION.json RECIPE.json VALUES.json | plan-check SESSION.json PLAN.json | plan SESSION.json PLAN.json [--compact] [--request-id ID] | plan-inspect SESSION.json REQUEST_ID | tools SESSION.json (JSON lines on stdin) | call SESSION.json operation JSON | native SESSION.json operation JSON | stop SESSION.json');

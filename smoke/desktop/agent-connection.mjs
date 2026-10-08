@@ -8,7 +8,7 @@ import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 
 const maxBytes=65536;
 const decisionFields=['status','question','matched','state','reason','ready','name','expected','actual','targets','focus','identity','revision','generation','observedAt','complete','completion','inspectionComplete','inspectionIncomplete','truncated','hasMore','partial','next_cursor','nextCursor'];
-const taskFields=['format','status','executed','recipes','recipeId','requestId','plan','values','run','runRequest','inspect','recipeHash','valuesHash','timing','fixture','reviewPlan','review'];
+const taskFields=['format','status','executed','intent','intents','decisions','reuse','baselineHash','schemaHash','context','requests','procedure','recipes','recipeId','requestId','plan','values','run','runRequest','inspect','recipeHash','valuesHash','timing','fixture','reviewPlan','review'];
 // Keep whole values: a shortened list must never look like a complete observation.
 export function resultPreview(result,budget=1024){
  if(Buffer.byteLength(JSON.stringify(result))<=budget)return {encoding:'full',result};

@@ -174,7 +174,7 @@ async function runAgentTool(file,operation,params={}){
     if(params.question==='inspector-change')result=inspectorOutcome(params.baselineGraph,a,params.baselineTimeline,b,params);
     else if(params.question==='inspector-parameter'){requireProof(b.timeline_id===params.graphScope.timeline_id&&b.clip_id===params.graphScope.clip_id,'wrong_fixture','Graph readback differs from the declared clip',['inspect']);result=inspectorParameterAnswer(a,b,params);}
     else if(params.question==='timeline-trim')result={...timelineClipAnswer(a,b,params.clipId),question:'timeline-trim',...rightTrimOutcome(params.baseline,b,params)};
-    else {result=timelineClipAnswer(a,b,params.clipId);const geometry=await nativeCall(file,'timeline-clip-rect',{target:result.targets.canvas.id,clipId:params.clipId});result={...result,geometry,points:{body:clipPoint(geometry),left:clipPoint(geometry,'left-edge'),right:clipPoint(geometry,'right-edge')}};}
+     else {result=timelineClipAnswer(a,b,params.clipId,{includeBaseline:params.includeBaseline});const geometry=await nativeCall(file,'timeline-clip-rect',{target:result.targets.canvas.id,clipId:params.clipId});result={...result,geometry,points:{body:clipPoint(geometry),left:clipPoint(geometry,'left-edge'),right:clipPoint(geometry,'right-edge')}};}
    }else if(params.question==='media-insertion'){
     const observed=await desktopCall(file,'timeline.inspect',{timeline_id:params.timelineId});result=mediaInsertionOutcome(params.baseline,observed,params);
     result={...result,timeline:observed};

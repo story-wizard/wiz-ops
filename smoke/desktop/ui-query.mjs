@@ -55,14 +55,14 @@ export function inspectorOutcome(beforeGraph,afterGraph,beforeTimeline,afterTime
   return {matched:result.after>result.before,state,...result};
  }catch(error){if(error.status==='Fail'||error.code==='unexpected_timeline_change')return {matched:false,state,...values,reason:error.message};throw error;}
 }
-export function timelineClipAnswer(ui,timeline,clipId){
+export function timelineClipAnswer(ui,timeline,clipId,{includeBaseline=false}={}){
  snapshotState(timeline);
  const item=one(clips(timeline),c=>c.clip_id===clipId,'The declared clip must exist exactly once');
  const canvas=one(ui.widgets,w=>w.class==='TimelineWidget'&&!w.clipIdsTruncated&&w.clipIds?.includes(clipId),'Open one complete canvas displaying the declared clip');
  requireProof(!ui.modalWindow&&!ui.popupWindow&&!ui.mouseGrabber,'desktop_not_ready','Dismiss unexpected overlays before canvas input',['observe']);
  const tabs=ui.widgets.filter(w=>w.name==='panelSubtabSelector'&&w.window===canvas.window&&w.text?.replace(/ \(\d+\)$/,'')===timeline.timeline.name);
  requireProof(tabs.length===1,'wrong_fixture','The declared timeline must be displayed',['observe']);
- return {question:'timeline-clip',clip:item,timeline:timeline.timeline,targets:{canvas:{id:canvas.id},capture:{id:canvas.window}},focus:{canvasFocused:ui.focus===canvas.id,keyWindow:ui.widgets.find(w=>w.id===canvas.window)?.keyWindow===true,focusedControl:ui.focus||null},coordinateSpace:'Clip rectangle and hit points are local to the canvas; physical input refreshes them.'};
+ return {question:'timeline-clip',clip:item,timeline:timeline.timeline,...includeBaseline?{baseline:timeline}:{},targets:{canvas:{id:canvas.id},capture:{id:canvas.window}},focus:{canvasFocused:ui.focus===canvas.id,keyWindow:ui.widgets.find(w=>w.id===canvas.window)?.keyWindow===true,focusedControl:ui.focus||null},coordinateSpace:'Clip rectangle and hit points are local to the canvas; physical input refreshes them.'};
 }
 
 // Ordinary same-clock right trim: retain the timeline extent and fill the vacated interval.
