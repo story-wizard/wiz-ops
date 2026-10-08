@@ -2,7 +2,10 @@
 
 Athanor is the app name. Preserve the existing CLI names, formats and WizardSmoke workspace paths.
 
-Use Athanor in outward-facing messages, status replies, report/course titles and generated agent prompts. Use Athanor MacBook or Athanor Mini when distinguishing workers. Poddy remains an internal name for existing hosts, paths, repositories, branches and identifiers; preserve quoted historical evidence and earlier run records.
+Use Athanor in outward-facing messages, status replies, report/course titles and generated agent prompts. Poddy is the internal execution platform name; preserve host names, paths, repositories, branches, identifiers and historical evidence.
+
+Developer clones use the harness locally with their agent; worker scheduling and delivery are optional. For QA on the managed MBP or Mini workers, read [interim reporting and administration](docs/poddy-qa-reporting.md). Worker results go only to Charles's verified Slack DM until he sanctions wider distribution; keep Jira read-only and automatic email disabled. Developer runs report locally to the requesting user. Other Wiz automation has its own reporting policy.
+
 
 The October 3 local slice adds fourteen further UI/playback candidates, scoped model observations, native gestures and timed evidence recording. Read [harness control](docs/harness-control.md) for how these layers work and the retained qualification state. Candidate availability is not lead acceptance.
 
