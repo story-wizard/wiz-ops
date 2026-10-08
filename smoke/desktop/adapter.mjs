@@ -10,6 +10,7 @@ import {checkPrepared} from '../runner/prepare.mjs';
 import {ROOT,dataDirectory,externalPath,readJSON,writeJSON,fingerprint,inside,sha} from '../runner/files.mjs';
 import {runtimeEnvironment} from '../runner/runtime.mjs';
 import {attachSelectedBuild} from './attach.mjs';
+import {recordFixtureVersion} from './fixture-version.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
 import {currentAction,withAgentAction,withAdapterAction,validateApplicationParams,validateNativeParams,markUnknown,requireProof,jsonLines,terminalResult} from './agent-proof.mjs';
 
@@ -69,7 +70,9 @@ export async function prepareDesktop(sourceApp,qtCocoaPlugin,pairedCli,prepared)
   const identity=await fingerprint(app,{packageTree:true});await cp(plan.fixtureRoot,path.join(root,'media'),{recursive:true});
   const engine=new PackagedEngine(plan,root,path.basename(root),schema),c=new ProjectSession(engine,path.basename(root),fixtures);
   try{await engine.start();await c.setup();await c.call('project.checkpoint');}finally{await engine.stop();}
+  const fixtureVersion=await recordFixtureVersion({root,bundle:c.bundle,app,packageHash:identity.sha256});
   const session={format:'wizard-smoke-desktop/v1',scope:'Selected packaged build with external test tools',dataDir,root,app,sourceApp,executable:path.join(app,'Contents/MacOS/wizard'),guiHash:identity.sha256,cliApp:plan.app,cliPackageHash:plan.packageHash,fixtureHash:plan.fixtureHash,bundle:c.bundle,main:c.main,alternate:c.alternate,clip:c.a,assets:c.assets,harnessId:path.basename(root),generation:0,counter:engine.counter,schema,plan};
+  session.fixtureVersion=fixtureVersion;
   if(qtCocoaPlugin){const source=realpathSync(qtCocoaPlugin);assert(path.basename(source)==='libqcocoa.dylib','Choose the local Cocoa plugin explicitly.');session.qtCocoa={source,sha256:await sha(source)};}
   await pairDesktopCli(session,pairedCli);return session;
 }

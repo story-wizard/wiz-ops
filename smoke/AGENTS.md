@@ -123,6 +123,12 @@ directory. Changed defaults, descriptions, responses and constraints still need
 review. Do not replace baselines or suppress application dialogs to get Ready.
 See `docs/build-repair.md`; compatibility is separate from a passing course.
 
+Fresh desktop fixtures retain `fixture-version.json`: after the creator engine
+closes, Athanor records its selected package version only when the newly created
+project has no writer stamp. Existing stamps and supplied projects remain
+unchanged. A migration dialog on other inputs requires review; never click
+through it or stamp an older project to force readiness.
+
 A fresh launcher defaults to `smoke-full`: accepted core checks plus the maintained allowlist of physical/checklist qualification candidates. `automated-full` remains accepted-only; custom courses cannot promote candidates. Read `docs/agent-courses.md` for current composition. New physical groups must expose their selected definitions in `agent-context.json`, execute in fresh owned projects, preserve failures and retain native-input receipts in the course report. Stage executors run from the retained source snapshot. Keep the Mac unlocked for desktop checks; never attempt to bypass the lock screen or change system security settings.
 
 The default `smoke-full` revision 9 excludes `S-PF-IDLE`. It adds ten qualification candidates for project search across timeline focus, physical blur Inspector editing, mask clipboard/history, vectorscope tap response, New Project, Save As, projectless Preferences, missing-term search, 100-clip clipboard and 50-step physical history. Read the current qualification notes in `docs/harness-control.md`; lead acceptance remains separate. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.

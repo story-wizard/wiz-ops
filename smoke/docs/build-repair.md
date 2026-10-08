@@ -66,6 +66,17 @@ Compatibility permits test execution; independent assertions still decide Pass.
 A new application dialog, such as the fresh-project version warning, needs a
 separate startup-flow repair and cannot be handled by schema comparison.
 
+For a newly generated desktop Golden Project, `prepareDesktop` closes its
+headless engine before recording the selected package's `CFBundleVersion` as
+`wizard_version`. The October 8 shipped headless creator omits the stamp that
+the GUI's ProjectManager supplies. This records the actual fixture creator;
+it leaves `wiz_format_version`, timelines and media unchanged. The external
+`fixture-version.json` receipt retains the selected package identity and
+before/after manifest hashes. Existing differing or empty writer stamps,
+redirected paths and other project names are blocked. Supplied projects and
+older-format migration tests do not use this repair. Do not dismiss migration
+dialogs or rewrite historical project stamps to make a check pass.
+
 ## Reviewed nightly: 2026.10.08-45854f6
 
 The retained shipped schema has 166 operations and structured hash
