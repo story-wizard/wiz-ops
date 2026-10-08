@@ -66,6 +66,38 @@ Compatibility permits test execution; independent assertions still decide Pass.
 A new application dialog, such as the fresh-project version warning, needs a
 separate startup-flow repair and cannot be handled by schema comparison.
 
+## Reviewed nightly: 2026.10.08-45854f6
+
+The retained shipped schema has 166 operations and structured hash
+`77462be3c4ea7d5efad8894a6b183d0bf26a56b592d90ecff9a0c36fabb82db3`.
+Its results, errors and other top-level fields match the unchanged baseline.
+Compared with the October 6 reviewed contract, it adds `media.add_assets`, adds
+optional `media.sample_frames.keyframe_tolerance`, and changes four document
+operation descriptions. No current runner or desktop check calls those two
+media operations. Omitting keyframe tolerance still requests exact frames.
+
+Document rename now moves the Markdown file and changes its project-relative
+path and identity. `A-UI-04` chooses its assertions from the qualified rename
+description: old contracts must preserve identity and path; the new contract
+must move to the requested filename, remove the old file and use the new path
+as identity. Both routes verify saved content after reopening, preserve the
+imported document and source file, and delete only the selected imported copy.
+The check retains `document-lifecycle.json` beside its owned project.
+`D-DOCUMENT-EDIT` uses the create response's path and identity and never renames,
+so its requests need no change.
+
+Filesystem-backed component tests cover both contracts and reject stale IDs,
+retained old files, lost contents and incorrect deletion. They validate the
+harness assertions. Application behavior still needs a new preparation and
+focused run on this exact package; this review does not turn the earlier 177
+Blocked outcomes into Pass. Keep the separate desktop schema gate.
+
+When transferring this repair to a checkout with local work, preserve its
+existing October 7 qualification, startup/signature fixes and fixture files.
+Merge the new qualification entry and retained operation definitions; do not
+replace the destination qualification file wholesale. Prepare a new plan after
+changing the runner, and retain the old source version and workspace for rollback.
+
 ## Copyable request
 
 > Repair Athanor for this build or feature: [identity]. Intended course or checks: [selection]. Failure or missing behavior: [observation]. Read AGENTS.md and docs/build-repair.md. Inspect and compare the actual contract, update the mapping or affected checks as needed, validate the repair and retain the evidence. Preserve old results and the review gate for accepted tests.

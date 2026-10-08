@@ -80,3 +80,23 @@ test('structural compatibility never widens response, semantic, composition or o
  const future=structuredClone(captured);future.operations.extra={type:'object'};
  assert.throws(()=>assertMappedPackagedSchema(future,captured,broken),/definitions no longer match/);
 });
+
+test('October 8 document semantics require exact review and leave old contracts and rejection gates intact',async()=>{
+ const operations=JSON.parse(await readFile(new URL('../runner/contracts/packaged-schema-2026.10.08-operations.json',import.meta.url)));
+ const nightly={...captured,operations:Object.fromEntries(Object.entries({...captured.operations,...operations}).sort(([a],[b])=>a.localeCompare(b)))};
+ const hash='77462be3c4ea7d5efad8894a6b183d0bf26a56b592d90ecff9a0c36fabb82db3';
+ assert.equal(digest(nightly),hash);assert.equal(Object.keys(nightly.operations).length,166);
+ assert.equal(assertMappedPackagedSchema(nightly,captured,qualified).mode,'reviewed-exact');
+ const prior={...qualified,reviewed:qualified.reviewed.filter(r=>r.schemaHash!==hash)};
+ assert.throws(()=>assertMappedPackagedSchema(nightly,captured,prior),e=>e.schemaCompatibility.issues.includes('operations.documents.rename.properties.name.description'));
+ assert.equal(assertMappedPackagedSchema(captured,captured,qualified).mode,'baseline');
+ for(const mutate of [
+  s=>s.operations['documents.rename'].properties.name.description='Identity is now something else',
+  s=>s.operations['documents.create'].required.push('new_required'),
+  s=>s.operations['media.sample_frames'].properties.keyframe_tolerance.maximum=20,
+  s=>delete s.operations['documents.delete'],
+  s=>s.results.changed={type:'string'},
+ ]){const changed=structuredClone(nightly);mutate(changed);assert.throws(()=>assertMappedPackagedSchema(changed,captured,qualified),/different command schema/);}
+ const extension=structuredClone(nightly);extension.operations['new.read']={type:'object'};
+ assert.equal(assertMappedPackagedSchema(extension,captured,qualified).anchorHash,hash);
+});
