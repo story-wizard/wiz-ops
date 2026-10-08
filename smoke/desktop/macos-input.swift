@@ -151,6 +151,11 @@ func sampleRGB(_ image: CGImage) throws -> Data {
         var dispatched = false, pointerCleanupReleased = false, modifierCleanupReleased=false
         do {
             let args = CommandLine.arguments
+            if args.count == 2 && args[1] == "--permissions" {
+                emit(["status":"Observed","command":"permissions","pid":getpid(),"uid":getuid(),
+                      "permissions":["input":CGPreflightPostEventAccess(),"screenCapture":CGPreflightScreenCaptureAccess(),"accessibility":AXIsProcessTrusted()],
+                      "inputDispatched":false,"permissionRequests":false]);return
+            }
             if args.count == 2 && args[1] == "--desktop-lease" {
                 let file="/private/tmp/athanor-desktop-\(getuid()).lock", fd=open(file,O_CREAT|O_RDWR|O_NOFOLLOW,mode_t(0o600))
                 try require(fd>=0,"Cannot open the shared foreground lease")

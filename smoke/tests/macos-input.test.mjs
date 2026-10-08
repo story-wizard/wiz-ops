@@ -1,8 +1,22 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validateNativeRequest,physicalKeys,normalizePhysicalKey} from '../desktop/macos-input.mjs';
+import {validateNativeRequest,physicalKeys,normalizePhysicalKey,nativeInputDriver} from '../desktop/macos-input.mjs';
 import {mkdtemp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
+
+test('actual native helper can inspect permissions without a Wizard target or input',{skip:process.platform!=='darwin'},async()=>{
+ const root=await mkdtemp('/private/tmp/athanor-permissions-');
+ try{
+  const {driver}=await nativeInputDriver(root);
+  const result=JSON.parse(execFileSync(driver,['--permissions'],{encoding:'utf8',timeout:10000}));
+  assert.equal(result.status,'Observed');assert.equal(result.command,'permissions');
+  assert.equal(result.uid,process.getuid());assert.ok(result.pid>0);
+  assert.equal(result.inputDispatched,false);assert.equal(result.permissionRequests,false);
+  assert.deepEqual(Object.keys(result.permissions).sort(),['accessibility','input','screenCapture']);
+  for(const value of Object.values(result.permissions))assert.equal(typeof value,'boolean');
+  assert.throws(()=>execFileSync(driver,['--permissions','--click'],{encoding:'utf8',timeout:5000}),e=>JSON.parse(e.stdout).status==='Blocked');
+ }finally{await rm(root,{recursive:true,force:true});}
+});
 
 test('native input blocks stale authority, escaped coordinates and unsupported requests before activation',()=>{
  const click={command:'click',pid:123,started:'observed start',window:10,frame:{x:100,y:100,width:500,height:400},x:20,y:30};

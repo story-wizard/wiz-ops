@@ -69,3 +69,39 @@ It attaches to a disposable copy and prints the owned session. It stops after tw
 Framework checks start loopback HTTP servers and inspect local processes with `ps`. Run them where those operations are permitted. Errors such as `listen EPERM` or `spawnSync /bin/ps EPERM` describe the agent's sandbox restrictions. Request narrowly scoped execution outside that sandbox through the agent's normal approval mechanism; do not change macOS permissions or bypass protections.
 
 Actual desktop checks also need an unlocked desktop. Screen capture and physical input have their own macOS permissions. Report a missing permission precisely and let the user handle the system prompt.
+
+### SSH and desktop permissions
+
+SSH connectivity, the logged-in desktop and macOS privacy grants are separate
+prerequisites. A permission probe run by `swift -e` over SSH does not qualify the
+helper used by a local Codex or Terminal session. Test the actual cached native
+helper from the intended launch context, without launching Wizard or posting input:
+
+```sh
+# Work from smoke/ and use the same external workspace as the intended service.
+export SMOKE_DATA_DIR="$HOME/Library/Application Support/Athanor/workspace"
+TASK_NATIVE_DRIVER="$(node --input-type=module -e 'import {nativeInputDriver} from "./desktop/macos-input.mjs"; console.log((await nativeInputDriver(process.env.SMOKE_DATA_DIR)).driver)')"
+"$TASK_NATIVE_DRIVER" --permissions
+```
+
+The result reports `permissions.accessibility`, `permissions.input` and
+`permissions.screenCapture` for that helper's execution context. This command
+does not request grants, inspect an app or dispatch input. Bound the process
+wait; a timeout is an incomplete observation, not a false permission result.
+True permissions do not establish an unlocked desktop, ownership or passing tests.
+
+If SSH returns false, repeat from the logged-in local agent before prescribing
+privacy changes. A GUI launch job can have different permission attribution from
+Codex or Terminal. Switching launch contexts does not grant access. If the actual
+execution context still lacks access, the user must enable the relevant app/helper
+in System Settings → Privacy & Security → Accessibility and Screen & System Audio
+Recording. Recheck in the same context afterward. Do not edit TCC databases,
+disable protections or grant unrelated SSH processes broad access.
+
+For a new remote desktop worker, use an external Application Support workspace
+rather than Documents/Desktop/Downloads: protected-folder access is an additional
+permission boundary for independently launched helpers. Keep historical workspaces
+intact; create a new workspace instead of silently migrating frozen plans. On Poddy,
+the identical helper stalled in dyld opening its Documents executable but returned
+normally from Application Support. Keep that startup finding distinct from the
+subsequent privacy results.
