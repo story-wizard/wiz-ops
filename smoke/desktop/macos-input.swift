@@ -62,6 +62,18 @@ func pointerOverlay(_ entry:[String:Any]) -> Bool {
     (entry[kCGWindowOwnerName as String] as? String) == "Window Server" &&
     (entry[kCGWindowLayer as String] as? NSNumber)?.int32Value == CGWindowLevelForKey(.cursorWindow)
 }
+func topVisibleWindow(_ entries:[[String:Any]],displays:[CGRect],at:CGPoint?=nil) -> [String:Any]? {
+    entries.first { entry in
+        if pointerOverlay(entry) { return false }
+        guard (at != nil || (entry[kCGWindowLayer as String] as? NSNumber)?.intValue == 0),
+              (entry[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1 > 0,
+              let bounds=entry[kCGWindowBounds as String] as? [String:Any],
+              let rect=CGRect(dictionaryRepresentation:bounds as CFDictionary),
+              !rect.isEmpty,!rect.isInfinite,rect.minX.isFinite,rect.minY.isFinite,
+              displays.contains(where: { $0.intersects(rect) }) else { return false }
+        return at.map { point in rect.contains(point) && displays.contains(where: { $0.contains(point) }) } ?? true
+    }
+}
 func requirePointerWindow(_ top:[String:Any]?,at point:CGPoint,pid:pid_t,window:NSNumber,starting:Bool) throws {
     var facts:[String:Any]=["point":[point.x,point.y],"expectedPid":pid,"expectedWindow":window]
     guard let top=top else { throw InputError(message:"Pointer target has no visible window",code:"pointer_target_unavailable",diagnostics:facts) }
@@ -192,11 +204,9 @@ func sampleRGB(_ image: CGImage) throws -> Data {
             try require(windowServer || !windows.isEmpty,"The verified PID did not expose AXWindows")
             func topWindow(_ at: CGPoint? = nil) -> [String:Any]? {
                 let entries=CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]] ?? []
-                return entries.first { entry in
-                    if pointerOverlay(entry) { return false }
-                    guard (at != nil || (entry[kCGWindowLayer as String] as? NSNumber)?.intValue==0), (entry[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1 > 0,let b=entry[kCGWindowBounds as String] as? [String:Any],let r=CGRect(dictionaryRepresentation:b as CFDictionary) else { return false }
-                    return at.map(r.contains) ?? true
-                }
+                var displayIDs=[CGDirectDisplayID](repeating:0,count:32),count:UInt32=0
+                guard CGGetActiveDisplayList(UInt32(displayIDs.count),&displayIDs,&count) == .success else { return nil }
+                return topVisibleWindow(entries,displays:displayIDs.prefix(Int(count)).map { CGDisplayBounds($0) },at:at)
             }
             func foreground() -> Bool { windowServer ? (topWindow()?[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == pid : attribute(app,kAXFrontmostAttribute) as? Bool == true }
             let inventory = CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements], kCGNullWindowID) as? [[String:Any]] ?? []
@@ -292,7 +302,13 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                     try require(CGPreflightPostEventAccess(),"Native input permission is unavailable; no permission changes were attempted")
                     try verifyOwner()
                     if !windowServer { try require(AXUIElementSetAttributeValue(app,kAXFrontmostAttribute as CFString,kCFBooleanTrue) == .success,"Unable to activate the verified PID"); AXUIElementPerformAction(window,kAXRaiseAction as CFString) }
-                    if windowServer { result["foregroundWaitMs"] = try await waitForForeground(foreground) }
+                    if windowServer {
+                        do { result["foregroundWaitMs"] = try await waitForForeground(foreground) }
+                        catch let error as InputError {
+                            let top=topWindow() ?? [:]
+                            throw InputError(message:error.message,code:error.code,diagnostics:["expectedPid":pid,"frontWindow":["pid":top[kCGWindowOwnerPID as String] ?? 0,"window":top[kCGWindowNumber as String] ?? 0,"owner":top[kCGWindowOwnerName as String] ?? "","layer":top[kCGWindowLayer as String] ?? 0,"frame":top[kCGWindowBounds as String] ?? [:]]])
+                        }
+                    }
                     else { try await Task.sleep(nanoseconds:200_000_000) }
                     try verifyOwner()
                     try require(foreground(),"Verified PID did not remain frontmost")

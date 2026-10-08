@@ -6,6 +6,12 @@ import {physicalInput,clipPoint} from './physical-input.mjs';
 import {assert,clips,OutcomeError} from '../runner/engine.mjs';
 import {writeJSON} from '../runner/files.mjs';
 
+export function mediaSearchAction(ui,source){
+ const choices=ui.actions.filter(a=>a.enabled&&a.checkable&&a.mediaSearchSource===source);
+ if(choices.length!==1)throw new OutcomeError('Media search source is absent or ambiguous: '+source,'Blocked');
+ return choices[0];
+}
+
 // Shared authored setup, physical actions and retained observations. Assertions
 // stay in the check or its pure oracle; these helpers never manufacture Pass.
 export async function uiWorkflows(file,reportName){
@@ -35,8 +41,8 @@ export async function uiWorkflows(file,reportName){
  async function modelRow(name){return modelEntry(surface(await ui(),w=>w.class==='QTreeView'&&Array.isArray(w.model),'Media list'),name);}
  async function value(row,column,role){return n('model-value',{target:row.view.id,offset:row.row,column,role,cursor:row.page.cursor});}
  async function search(text,source='Name'){
-  const choices=(await ui()).actions.filter(a=>a.enabled&&a.text.replace(/\t\d+$/,'')===source);
-  if(choices.length!==1)throw new OutcomeError('Search source is absent or ambiguous: '+source,'Blocked');await n('action',{target:choices[0].id});
+  await n('action',{target:mediaSearchAction(await ui(),source).id});
+  await until(async()=>mediaSearchAction(await ui(),source).checked,{description:'Media search source '+source+' selected'});
   const field=unique(await ui(),w=>w.class==='MediaSearchField','Media search field');await type(field,text);
   return until(async()=>{const u=await ui(),status=unique(u,w=>w.name==='mediaSearchStatus','Search status').text||'',view=unique(u,w=>w.class==='QTreeView'&&Array.isArray(w.model),'Search results');
    if(/unavailable|error/i.test(status))throw new OutcomeError('Search backend unavailable: '+status,'Blocked');

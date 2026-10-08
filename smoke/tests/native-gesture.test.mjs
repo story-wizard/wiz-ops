@@ -56,3 +56,28 @@ ${helper}
   execFileSync('/usr/bin/swiftc',['-parse-as-library','-module-cache-path',root+'/cache',root+'/probe.swift','-o',root+'/probe'],{timeout:60000});assert.match(execFileSync(root+'/probe',{encoding:'utf8',timeout:5000}),/readiness verified/);
  }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test('native window ownership ignores off-display placeholders but preserves real occlusion and secondary displays',{skip:process.platform!=='darwin'},async()=>{
+ const root=await mkdtemp('/private/tmp/athanor-window-ownership-');
+ try{
+  const source=await readFile(new URL('../desktop/macos-input.swift',import.meta.url),'utf8'),helpers=source.slice(source.indexOf('func pointerOverlay('),source.indexOf('func requirePointerWindow('));
+  await writeFile(root+'/probe.swift',`import Foundation
+import CoreGraphics
+${helpers}
+func window(_ pid:Int,_ rect:CGRect,_ layer:Int=0) -> [String:Any] { [kCGWindowOwnerPID as String:pid,kCGWindowOwnerName as String:"App",kCGWindowLayer as String:layer,kCGWindowAlpha as String:1.0,kCGWindowBounds as String:rect.dictionaryRepresentation] }
+let displays=[CGRect(x:0,y:0,width:1920,height:1080),CGRect(x:-1920,y:0,width:1920,height:1080)]
+let placeholder=window(1,CGRect(x:1e9,y:1e9,width:1,height:1)),wizard=window(2,CGRect(x:0,y:0,width:900,height:800)),secondary=window(3,CGRect(x:-1500,y:20,width:500,height:500))
+func pid(_ value:[String:Any]?) -> Int? { (value?[kCGWindowOwnerPID as String] as? NSNumber)?.intValue }
+precondition(pid(topVisibleWindow([placeholder,wizard],displays:displays))==2)
+precondition(pid(topVisibleWindow([placeholder,secondary,wizard],displays:displays))==3)
+let overlay=window(4,CGRect(x:100,y:100,width:300,height:200),8)
+precondition(pid(topVisibleWindow([overlay,wizard],displays:displays))==2)
+precondition(pid(topVisibleWindow([overlay,wizard],displays:displays,at:CGPoint(x:150,y:150)))==4)
+precondition(topVisibleWindow([wizard],displays:[])==nil)
+precondition(topVisibleWindow([placeholder],displays:displays,at:CGPoint(x:1e9,y:1e9))==nil)
+precondition(pid(topVisibleWindow([window(5,CGRect.zero),wizard],displays:displays))==2)
+print("Display-bounded ownership verified")
+`);
+  execFileSync('/usr/bin/swiftc',['-module-cache-path',root+'/cache',root+'/probe.swift','-o',root+'/probe'],{timeout:60000});assert.match(execFileSync(root+'/probe',{encoding:'utf8',timeout:5000}),/ownership verified/);
+ }finally{await rm(root,{recursive:true,force:true});}
+});

@@ -6,6 +6,7 @@ import {verifyEmptySearch,verifyLargePaste,verifyNudgeState,verifyDisplayedClips
 import {physicalInput,clipPoint} from './physical-input.mjs';
 import {assert,same,clips,snapshotState,OutcomeError} from '../runner/engine.mjs';
 import {writeJSON} from '../runner/files.mjs';
+import {mediaSearchAction} from './ui-workflows.mjs';
 const file=process.argv[2],{s,n,c,ui,until,check:runCheck,step,openTimeline,finish}=await checks(file,'desktop-volume-report.json');
 const inspect=timeline_id=>c('timeline.inspect',{timeline_id,page:{max_items:500}}),physical=(op,p)=>physicalInput(file,op,p),stage=(id,title,phase,fn)=>step({id,title,phase},fn);
 const artifacts=new Map();let sequence=0;
@@ -28,7 +29,7 @@ await check('D-SEARCH-EMPTY',async()=>{
  }
  let uncertain=false;
  try{
-  const positive=await stage('positive','Select Name search and find a known clip','prepare',async()=>{const actions=(await ui()).actions.filter(a=>a.enabled&&/^Name(?:\t\d+)?$/.test(a.text));if(actions.length!==1)throw new OutcomeError('Name search choice is absent or ambiguous','Blocked');await n('action',{target:actions[0].id});return search('pattern_24');});await keep(id,'before',positive);await capture(id,'before',positive.target);
+  const positive=await stage('positive','Select Name search and find a known clip','prepare',async()=>{await n('action',{target:mediaSearchAction(await ui(),'Name').id});await until(async()=>mediaSearchAction(await ui(),'Name').checked,{description:'Media Name source selected'});return search('pattern_24');});await keep(id,'before',positive);await capture(id,'before',positive.target);
   const empty=await stage('missing','Physically search for a term absent from the project','execute',()=>search(query,true));await keep(id,'empty',empty);await capture(id,'after',empty.target);
   const restored=await stage('restore','Repeat the known query and compare results','verify',()=>search('pattern_24'));await keep(id,'restored',restored);await capture(id,'restored',restored.target);
   const result=verifyEmptySearch(positive,empty,restored,{query,name:'pattern_24.mov'});same(snapshotState(await inspect(s.main.id)),snapshotState(before),'Search preserves timeline');return result;

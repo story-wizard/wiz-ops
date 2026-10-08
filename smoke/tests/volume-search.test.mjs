@@ -7,6 +7,14 @@ import {verifyEmptySearch,verifyLargePaste,verifyNudgeState,verifyDisplayedClips
 import {checkRegistry,fullSmokeCourse,resolveSelection,initializeCourses,selectedRecipe,validateRecipe} from '../runner/catalog.mjs';
 import {desktopGroups} from '../desktop/run.mjs';
 import {agentContext} from '../test-details.mjs';
+import {mediaSearchAction} from '../desktop/ui-workflows.mjs';
+test('media search binds application-owned source identity despite duplicate timeline labels',()=>{
+ for(const source of ['Name','Transcript']){
+  const media={id:'media',enabled:true,checkable:true,mediaSearchSource:source,text:source+'\t12'},timeline={id:'timeline',name:'timelineSearchSource_'+source.toLowerCase(),enabled:true,checkable:true,text:source};
+  assert.equal(mediaSearchAction({actions:[timeline,media]},source).id,'media');
+  for(const actions of [[timeline],[{...media,enabled:false},timeline],[media,{...media,id:'duplicate'}],[{...media,checkable:false}]])assert.throws(()=>mediaSearchAction({actions},source),e=>e.status==='Blocked');
+ }
+});
 const snapshot=(id='src',count=0)=>({timeline:{timeline_id:id,name:'History',frame_rate:{numerator:24,denominator:1}},tracks:[{track_id:id+'v',address:'V1',enabled:true,locked:false,has_placed_items:count>0,items:Array.from({length:count},(_,i)=>({kind:'clip',clip_id:id+i,track_id:id+'v',enabled:true,timeline_range:{start_seconds:1+i/24,end_seconds:1+(i+1)/24},source:{asset_id:'plate',source_range:{start_seconds:i/24,end_seconds:(i+1)/24}}}))}],links:[]});
 test('empty search requires positive, explicit complete zero-match, and restored controls',()=>{
  const positive={query:'pattern',status:'1 match',names:['pattern.mov']},empty={query:'absent',status:'0 matches in 0 clips',names:[]},restored=structuredClone(positive),expected={query:'absent',name:'pattern.mov'};

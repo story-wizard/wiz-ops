@@ -55,9 +55,13 @@ export const extendedCases={
       const file=path.resolve(c.bundle,doc.relative_path);
       assert(inside(c.bundle,file)&&inside(await realpath(c.bundle),await realpath(file)),'Document path escapes bundle.');
       if(pathIdentity)same(doc.document_id,doc.relative_path,'Path-based document identity');
-      same(await readFile(file,'utf8'),text,'Saved document contents');
+      const contents=await readFile(file,'utf8');if(text!==undefined)same(contents,text,'Saved document contents');return contents;
     };
     const absent=async(relative,label)=>{try{await lstat(path.join(c.bundle,relative));assert(false,label);}catch(e){if(e.code!=='ENOENT')throw e;}};
+    await reopen(c);
+    const baseline=await c.call('documents.list'),contents=new Map();
+    for(const doc of baseline.documents)contents.set(doc.document_id,await verify(doc));
+    const verifyBaseline=async(documents)=>{for(const doc of baseline.documents){same(documents.find(d=>d.document_id===doc.document_id),doc,'Existing document identity');await verify(doc,contents.get(doc.document_id));}};
     const created=await c.call('documents.create',{name:'Smoke notes',markdown});
     const source=path.join(path.dirname(c.bundle),'import.md'),importedText=markdown+'\nImported copy.\n';
     await writeFile(source,importedText);
@@ -66,7 +70,7 @@ export const extendedCases={
     await verify(created,markdown);await verify(imported,importedText);
     await c.call('documents.rename',{document_id:created.document_id,name:'renamed-notes'});
     await reopen(c);
-    const listed=await c.call('documents.list');same(listed.documents.length,2,'Documents after rename/reopen');
+    const listed=await c.call('documents.list');same(listed.documents.length,baseline.documents.length+2,'Documents after rename/reopen');await verifyBaseline(listed.documents);
     const matches=listed.documents.filter(d=>d.name==='renamed-notes');same(matches.length,1,'Renamed document count');const renamed=matches[0];
     if(pathIdentity){
       same(renamed.relative_path,path.posix.join(path.posix.dirname(created.relative_path),'renamed-notes.md'),'Renamed file path');
@@ -80,10 +84,10 @@ export const extendedCases={
     const retainedImport=listed.documents.filter(d=>d.document_id===imported.document_id);same(retainedImport.length,1,'Imported document after rename');
     same(retainedImport[0].relative_path,imported.relative_path,'Imported document path');await verify(retainedImport[0],importedText);
     await c.call('documents.delete',{document_id:imported.document_id});
-    const afterDelete=await c.call('documents.list');same(afterDelete.documents,[renamed],'Delete removed the wrong document');
-    await verify(afterDelete.documents[0],markdown);await absent(imported.relative_path,'Deleted document file remains.');
+    const afterDelete=await c.call('documents.list');same(afterDelete.documents.filter(d=>!contents.has(d.document_id)),[renamed],'Delete removed the wrong document');same(afterDelete.documents.length,baseline.documents.length+1,'Delete removed the wrong document');await verifyBaseline(afterDelete.documents);
+    await verify(renamed,markdown);await absent(imported.relative_path,'Deleted document file remains.');
     same(await readFile(source,'utf8'),importedText,'Import source after deletion');
-    await writeJSON(path.join(path.dirname(c.bundle),'document-lifecycle.json'),{pathIdentity,created,imported,afterReopen:listed,afterDelete});
+    await writeJSON(path.join(path.dirname(c.bundle),'document-lifecycle.json'),{pathIdentity,baseline,created,imported,afterReopen:listed,afterDelete});
     return 'Markdown create/import contents, independent identities, rename, reopen and targeted delete are verified. Rich editor/chips remain manual.';
   },
   async 'A-AU-01'(c){const {t}=await audio(c),base=await mixReport(c,t,'baseline');const target={timeline_id:t.id,track_id:t.audio};await c.call('audio.set_track',{...target,gain_db:-6});dbClose((await mixReport(c,t,'minus-six')).master.rms_db,base.master.rms_db-6,'Track attenuation');await c.call('audio.set_track',{...target,gain_db:0,mute:true});assert((await mixReport(c,t,'muted')).master.peak_db< -90,'Muted track still emits sound.');await c.call('audio.set_track',{...target,mute:false,solo:true});dbClose((await mixReport(c,t,'solo')).master.rms_db,base.master.rms_db,'Solo level');await c.call('audio.set_track',{...target,solo:false});await c.call('timeline.manage_tracks',{id:'empty-audio',timeline_id:t.id,edits:[{id:'empty',action:'add',kind:'audio',name:'Empty solo control'}]});const empty=(await c.inspect(t)).tracks.find(track=>track.name==='Empty solo control');assert(empty,'Empty solo control track is absent.');await c.call('audio.set_track',{timeline_id:t.id,track_id:empty.track_id,solo:true});assert((await mixReport(c,t,'empty-track-solo')).master.peak_db< -90,'Soloing the empty track did not suppress the populated track.');await c.call('audio.set_track',{timeline_id:t.id,track_id:empty.track_id,solo:false});await reopen(c);dbClose((await mixReport(c,t,'restored')).master.rms_db,base.master.rms_db,'Restored level');return 'Rendered audio follows -6 dB gain, mute, solo and restored mixer state after reopening.';},

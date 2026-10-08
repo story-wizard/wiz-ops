@@ -58,6 +58,23 @@ export function requireValidSourceTiming(source){
  for(const value of [range.start_seconds,range.end_seconds])near(value*source.fps,Math.round(value*source.fps),'Source frame alignment');
  return source.projection_status;
 }
+export function requireOrdinaryTimingFixture(snapshot,clipId){
+ try{
+  const matches=clips(snapshot).filter(c=>c.clip_id===clipId),rate=snapshot.timeline?.fps;
+  assert(matches.length===1&&snapshot.next_cursor==null,'Incomplete or ambiguous timing fixture');
+  const item=matches[0];requireValidSourceTiming(item.source);
+  assert(item.source.timing==='timed'&&item.speed===1&&Number.isFinite(rate)&&rate>0&&item.source.fps===rate,'Fixture needs ordinary same-clock timing');
+  near(item.source.source_range.end_seconds-item.source.source_range.start_seconds,item.timeline_range.end_seconds-item.timeline_range.start_seconds,'Fixture source duration');
+  for(const value of [item.timeline_range.start_seconds,item.timeline_range.end_seconds])near(value*rate,Math.round(value*rate),'Fixture timeline frame alignment');
+ }catch(e){throw new OutcomeError('Source timing fixture is not ordinary: '+e.message,'Blocked');}
+}
+export function timelineDockToOpen(ui){
+ const canvases=ui.widgets.filter(w=>w.class==='TimelineWidget');
+ if(canvases.length===1)return null;
+ const tabs=ui.widgets.filter(w=>w.name==='dockWidgetTabLabel'&&w.text==='Timeline');
+ if(canvases.length||tabs.length!==1)throw new OutcomeError('Timeline dock is absent or ambiguous','Blocked');
+ return tabs[0];
+}
 export function scopeSelections(type,tap){
  const modes=['Histogram','Waveform (Luma)','Waveform (RGB)','RGB Parade'],taps=['Post IDT','Post Primary','Pre DVT'];
  assert(modes.every(mode=>type?.items?.includes(mode))&&taps.every(value=>tap?.items?.includes(value)),'Required scope modes or taps are absent');
@@ -242,7 +259,7 @@ export async function checks(file,name){
     const actions=menu.menuItems.filter(a=>a.text===label&&a.enabled);assert(actions.length===1,'Menu action is ambiguous');const a=actions[0];
     await n('click',{target:menu.id,x:a.x+Math.floor(a.width/2),y:a.y+Math.floor(a.height/2)});await until(async()=>!(await ui()).widgets.some(w=>w.id===menu.id));
   }
-  async function openTimeline(name){const view=await mediaItem(name);await activate(view);await n('item-click',{target:view.id,text:name,double:true});await until(async()=>(await ui()).widgets.some(w=>w.name==='panelSubtabSelector'&&selectorNamesTimeline(w.text,name)));const v=(await ui()).widgets.filter(w=>w.class==='TimelineWidget').sort((a,b)=>a.y-b.y)[0];assert(v,'Timeline is unavailable');await activate(v);return v;}
+  async function openTimeline(name){const tab=timelineDockToOpen(await ui());if(tab){await n('click',{target:tab.id});await until(async()=>(await ui()).widgets.some(w=>w.class==='TimelineWidget'),{description:'Timeline dock is visible'});}const view=await mediaItem(name);await activate(view);await n('item-click',{target:view.id,text:name,double:true});await until(async()=>(await ui()).widgets.some(w=>w.name==='panelSubtabSelector'&&selectorNamesTimeline(w.text,name)),{description:'Timeline '+name+' is open'});const canvases=(await ui()).widgets.filter(w=>w.class==='TimelineWidget');if(canvases.length!==1)throw new OutcomeError('Timeline canvas is absent or ambiguous','Blocked');const v=canvases[0];await activate(v);return v;}
   function finish(){report.completed=true;writeFileSync(output,JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(report.results.some(r=>r.status!=='Pass'))process.exitCode=1;}
   return {s,report,n,c,ui,until,check,step:(definition,fn)=>recordStep(file,definition,fn),activate,action,mediaItem,mediaMenu,openTimeline,finish};
 }

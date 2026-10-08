@@ -1,7 +1,7 @@
 import {testSpecification,evidenceCaption} from '../test-details.mjs';
 import path from 'node:path';
 import {copyFile} from 'node:fs/promises';
-import {checks,livePreviewEvidence,widgetPixelDifference,requireExactTimingFixture,verifyTrimmedClip} from './check-support.mjs';
+import {checks,livePreviewEvidence,widgetPixelDifference,requireOrdinaryTimingFixture,verifyTrimmedClip} from './check-support.mjs';
 import {agentTool} from './agent-tools.mjs';
 import {physicalInput,clipPoint} from './physical-input.mjs';
 import {requireProof} from './agent-proof.mjs';
@@ -59,7 +59,7 @@ await check('P-TL-BIN-OVERWRITE',async()=>{
 async function proofPoint(f,assertion){const target=f.proofView?.id||f.v.id,verified=await agentTool(file,'verify',{assertion,...(assertion==='baseline'?{target}:{}),read:{operation:f.proofGraph?'graph.get_clip_graph':'timeline.inspect',params:f.proofGraph?f.scope:{timeline_id:f.id}},title:'Verify '+assertion});if(assertion==='baseline')return verified;return agentTool(file,'capture',{assertion,target,title:'Displayed '+assertion+' state'});}
 await check('P-TL-TRIM',async()=>{
  const id='P-TL-TRIM',f=await staged(id,'setup',()=>fixture('Physical right trim')),before=clips(f.before)[0];await screen(id+'-before');
- requireExactTimingFixture(f.before);
+ requireOrdinaryTimingFixture(f.before,before.clip_id);
  await proofPoint(f,'baseline');
  const geometry=await agentTool(file,'geometry',{target:f.v.id,clipId:before.clip_id,part:'right-edge'});
  await staged(id,'trim',()=>physical('drag',{actionId:'trim',target:f.v.id,clipId:before.clip_id,part:'right-edge',toX:geometry.rect.x+geometry.rect.width*.75-1,toY:geometry.point.y}));

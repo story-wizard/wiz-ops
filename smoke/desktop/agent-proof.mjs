@@ -5,7 +5,7 @@ import {open,unlink,readFile,appendFile} from 'node:fs/promises';
 import path from 'node:path';
 import {readJSON,writeJSON,digest} from '../runner/files.mjs';
 import {clips,snapshotState} from '../runner/engine.mjs';
-import {verifyTrimmedClip,requireExactTimingFixture} from './check-support.mjs';
+import {verifyTrimmedClip,requireOrdinaryTimingFixture} from './check-support.mjs';
 import {editorCheckpoint} from './editor-proof.mjs';
 import {volumeContract} from './volume-contract.mjs';
 import {volumeCheckpoint} from './volume-agent-proof.mjs';
@@ -235,7 +235,7 @@ export function verifyCheckpoint(proof,assertion,observed,ui,session){
    const name=observed.timeline?.name;requireProof(name&&ui.widgets.some(w=>w.name==='panelSubtabSelector'&&w.text?.replace(/ \(\d+\)$/,'')===name),'wrong_fixture','Open the timeline being inspected',['open_fixture']);
    requireProof(observed.timeline&&Array.isArray(observed.tracks)&&observed.tracks.every(t=>Array.isArray(t.items))&&observed.next_cursor==null,'invalid_fixture_observation','Use a complete timeline observation',['inspect']);const items=clips(observed);
    if(proof.definition.id==='P-TRACK-ADD')requireProof(items.length===0&&observed.tracks.length===2&&observed.tracks.some(t=>t.address==='V1')&&observed.tracks.some(t=>t.address==='A1'),'wrong_fixture','Add Track needs the fresh empty two-track timeline',['prepare_fixture']);
-   else{requireProof(items.length===1&&items[0].source.asset_id===session.assets.plate&&items[0].timeline_range.start_seconds===0&&items[0].timeline_range.end_seconds===4&&isDeepStrictEqual(observed.timeline.frame_rate,{numerator:24,denominator:1}),'wrong_fixture','Trim needs the four-second Fresh plate clip at 24 fps',['prepare_fixture']);requireExactTimingFixture(observed);}
+   else{requireProof(items.length===1&&items[0].source.asset_id===session.assets.plate&&items[0].timeline_range.start_seconds===0&&items[0].timeline_range.end_seconds===4&&isDeepStrictEqual(observed.timeline.frame_rate,{numerator:24,denominator:1}),'wrong_fixture','Trim needs the four-second Fresh plate clip at 24 fps',['prepare_fixture']);requireOrdinaryTimingFixture(observed,items[0].clip_id);}
    snapshotState(observed);return {matched:true,binding:{timelineId:observed.timeline.timeline_id,target:target[0].id,window:target[0].window,clipId:items[0]?.clip_id||null},observed};
   }
   if(assertion==='resolve-unchanged'){requireProof(proof.baseline,'resolution_unavailable','No frozen state is available for resolution');const previous=proof.lastObserved||proof.baseline;return {matched:isDeepStrictEqual(snapshotState(observed),snapshotState(previous)),observed};}

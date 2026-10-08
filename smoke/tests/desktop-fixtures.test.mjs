@@ -3,13 +3,25 @@ import assert from 'node:assert/strict';
 import {mkdtemp,rm,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {checks,requirePassed,requireExactTimingFixture,gapFixture} from '../desktop/check-support.mjs';
+import {checks,requirePassed,requireExactTimingFixture,requireOrdinaryTimingFixture,timelineDockToOpen,gapFixture} from '../desktop/check-support.mjs';
 import {writeJSON} from '../runner/files.mjs';
 test('a rejected timing fixture blocks a gesture instead of blaming the edit',()=>{
  const snapshot=status=>({tracks:[{items:[{kind:'clip',clip_id:'fixture',source:{timing:'timed',projection_status:status,projection_diagnostics:status==='exact'?[]:['exact_authority_carrier_mismatch']}}]}]});
  assert.doesNotThrow(()=>requireExactTimingFixture(snapshot('exact')));
  for(const status of ['authority_rejected','carrier','projection_unavailable'])assert.throws(()=>requireExactTimingFixture(snapshot(status)),e=>e.status==='Blocked'&&/fixture/.test(e.message));
  assert.throws(()=>requireExactTimingFixture({tracks:[{items:[]}]}),e=>e.status==='Blocked');
+});
+test('opening a timeline restores its dock after a prior Mixer check without choosing an arbitrary canvas',()=>{
+ const tab={id:'tab',name:'dockWidgetTabLabel',text:'Timeline'},mixer={id:'mixer',name:'panelSubtabSelector',text:'Mixer (6)'},canvas={id:'canvas',class:'TimelineWidget'};
+ assert.equal(timelineDockToOpen({widgets:[mixer,tab]}).id,'tab');assert.equal(timelineDockToOpen({widgets:[canvas,tab]}),null);
+ for(const widgets of [[mixer],[tab,{...tab,id:'other'}],[canvas,{...canvas,id:'other'},tab]])assert.throws(()=>timelineDockToOpen({widgets}),e=>e.status==='Blocked');
+});
+
+test('ordinary UI fixtures accept a valid carrier while rejecting retime, mixed clocks and invalid authority',()=>{
+ const snapshot={timeline:{fps:24},tracks:[{items:[{kind:'clip',clip_id:'fixture',speed:1,timeline_range:{start_seconds:0,end_seconds:4},source:{timing:'timed',projection_status:'carrier',projection_diagnostics:[],source_availability:'bounded',fps:24,source_range:{start_seconds:1,end_seconds:5}}}]}]};
+ assert.doesNotThrow(()=>requireOrdinaryTimingFixture(snapshot,'fixture'));
+ for(const mutate of [s=>s.tracks[0].items[0].speed=2,s=>s.tracks[0].items[0].source.fps=25,s=>s.tracks[0].items[0].source.projection_status='authority_rejected',s=>s.tracks[0].items[0].source.projection_diagnostics=['mismatch'],s=>s.tracks[0].items[0].source.source_range.end_seconds=6,s=>s.tracks[0].items[0].timeline_range.start_seconds=.01,s=>s.next_cursor='more']){const bad=structuredClone(snapshot);mutate(bad);assert.throws(()=>requireOrdinaryTimingFixture(bad,'fixture'),e=>e.status==='Blocked');}
+ assert.throws(()=>requireOrdinaryTimingFixture(snapshot,'other'),e=>e.status==='Blocked');
 });
 
 test('failed and absent prerequisites block dependent actions and retain the original failure',async()=>{

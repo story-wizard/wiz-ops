@@ -3,6 +3,33 @@ import {stat} from 'node:fs/promises';
 import {command,assert,pause} from '../runner/engine.mjs';
 import {writeJSON} from '../runner/files.mjs';
 import {readPPM,pixelStats} from '../runner/pixels.mjs';
+import {observedWidget} from './checklist-proof.mjs';
+
+const control=(ui,dialog,fn,label)=>observedWidget(ui,w=>w.window===dialog&&fn(w),label);
+export async function setExportOutput({n,ui},dialog,output){
+ const state=await ui(),named=state.widgets.some(w=>w.window===dialog&&w.name==='exportNameEdit');
+ if(named){
+  const name=control(state,dialog,w=>w.name==='exportNameEdit','Export file name'),location=control(state,dialog,w=>w.name==='exportLocationEdit','Export location');
+  await n('text',{target:location.id,text:path.dirname(output)});await n('text',{target:name.id,text:path.basename(output)});
+ }else await n('text',{target:control(state,dialog,w=>w.class==='QLineEdit'&&/\.(mp4|jpg|jpeg|png)$/i.test(w.text),'Export output').id,text:output});
+}
+export async function configureExport(h,dialog,output,{still=false,seconds=2}={}){
+ const {n,ui,until}=h,state=await ui(),old=state.widgets.some(w=>w.window===dialog&&w.name==='exportFormatCombo');
+ if(old){
+  const format=control(state,dialog,w=>w.name==='exportFormatCombo','Export format');assert(Array.isArray(format.items),'Export format choices are unavailable');const index=format.items.indexOf(still?'Still at Playhead':'MP4 (H.264)');assert(index>=0,'Requested export format is unavailable');await n('select',{target:format.id,index});
+ }else{
+  const preset=control(state,dialog,w=>w.name==='exportPreset_'+(still?'still':'h264')&&w.enabled,'Export preset');await n('click',{target:preset.id});
+  await until(async()=>{const latest=await ui();return control(latest,dialog,w=>w.id===preset.id,'Selected export preset').checked?latest:null;},{description:'Export preset selected'});
+ }
+ if(!still){
+  let latest=await ui();
+  if(!old){const custom=control(latest,dialog,w=>w.name==='exportRange2'&&w.enabled,'Custom export range');await n('click',{target:custom.id});latest=await ui();}
+  const start=control(latest,dialog,w=>w.name==='exportStartEdit'&&w.enabled,'Export start'),end=latest.widgets.some(w=>w.window===dialog&&w.name==='exportEndEdit')?control(latest,dialog,w=>w.name==='exportEndEdit'&&w.enabled,'Export end'):control(latest,dialog,w=>w.class==='QLineEdit'&&w.y===control(latest,dialog,w=>w.class==='QLabel'&&w.text==='End','End label').y,'Export end');
+  await n('text',{target:start.id,text:'00:00:00:00'});await n('text',{target:end.id,text:`00:00:${String(seconds).padStart(2,'0')}:00`});
+ }
+ await setExportOutput(h,dialog,output);
+ return control(await ui(),dialog,w=>w.class==='QPushButton'&&w.text==='Export'&&w.enabled,'Export command');
+}
 
 export function completedExportClose(ui){
  const dialogs=ui.widgets.filter(w=>w.window===w.id&&w.title==='Export'&&ui.widgets.some(child=>child.window===w.id&&child.text==='Export Complete'));
@@ -17,16 +44,13 @@ async function closeCompletedExport({n,ui,until}){
 // The application prepares the export, including its authorized MGFX bindings.
 export async function exportDialog({s,n,ui,until},output,seconds=2){
   await closeCompletedExport({n,ui,until});
-  const u=await ui();await n('action',{target:u.actions.find(a=>a.name==='exportVideoAction').id});
+  const u=await ui(),actions=u.actions.filter(a=>a.name==='exportVideoAction'&&a.enabled);assert(actions.length===1,'Export action is absent or ambiguous');await n('action',{target:actions[0].id});
   const opened=await until(async()=>{const a=await ui();return a.widgets.some(w=>w.name==='exportDialog')?a:null;});
-  const dialog=opened.widgets.find(w=>w.name==='exportDialog'),ws=opened.widgets.filter(w=>w.window===dialog.id),end=ws.find(w=>w.class==='QLabel'&&w.text==='End');
+  const dialog=observedWidget(opened,w=>w.name==='exportDialog','Export dialog');
   let uncertain=false;
   try{
-    const format=ws.find(w=>w.name==='exportFormatCombo');await n('select',{target:format.id,index:format.items.indexOf('MP4 (H.264)')});
-    await n('text',{target:ws.find(w=>w.name==='exportStartEdit').id,text:'00:00:00:00'});
-    await n('text',{target:ws.find(w=>w.class==='QLineEdit'&&w.y===end.y).id,text:`00:00:${String(seconds).padStart(2,'0')}:00`});
-    await n('text',{target:ws.find(w=>w.class==='QLineEdit'&&w.text.endsWith('.mp4')).id,text:output});
-    await writeJSON(output+'.controls.json',await ui());await n('click',{target:ws.find(w=>w.class==='QPushButton'&&w.text==='Export').id});
+    const button=await configureExport({n,ui,until},dialog.id,output,{seconds});
+    await writeJSON(output+'.controls.json',await ui());await n('click',{target:button.id});
     const macos=path.join(s.cliApp,'Contents/MacOS');let probe;
     for(let i=0;i<100;i++){
       try{await stat(output);const p=await command(path.join(macos,'ffprobe'),['-v','error','-show_streams','-of','json',output],{timeout:2000});if(p.code===0){probe=JSON.parse(p.stdout);break;}}catch(e){if(e.code!=='ENOENT')throw e;}
@@ -45,14 +69,12 @@ export async function exportDialog({s,n,ui,until},output,seconds=2){
 
 export async function exportStillDialog({s,n,ui,until},output){
   await closeCompletedExport({n,ui,until});
-  await n('action',{target:(await ui()).actions.find(a=>a.name==='exportVideoAction').id});
+  const actions=(await ui()).actions.filter(a=>a.name==='exportVideoAction'&&a.enabled);assert(actions.length===1,'Export action is absent or ambiguous');await n('action',{target:actions[0].id});
   let u=await until(async()=>{const a=await ui();return a.widgets.some(w=>w.name==='exportDialog')?a:null;});
-  const d=u.widgets.find(w=>w.name==='exportDialog'),format=u.widgets.find(w=>w.name==='exportFormatCombo');
+  const d=observedWidget(u,w=>w.name==='exportDialog','Export dialog');
   let uncertain=false;
   try{
-    await n('select',{target:format.id,index:format.items.indexOf('Still at Playhead')});u=await ui();
-    const field=u.widgets.find(w=>w.window===d.id&&w.class==='QLineEdit'&&/\.(jpg|jpeg|png)$/i.test(w.text));assert(field,'Still output field is unavailable');
-    await n('text',{target:field.id,text:output});await writeJSON(output+'.controls.json',await ui());await n('click',{target:u.widgets.find(w=>w.window===d.id&&w.class==='QPushButton'&&w.text==='Export').id});
+    const button=await configureExport({n,ui,until},d.id,output,{still:true});await writeJSON(output+'.controls.json',await ui());await n('click',{target:button.id});
     await until(async()=>{try{return (await stat(output)).size>0;}catch(e){if(e.code==='ENOENT')return false;throw e;}});
     const decoded=output+'.ppm',r=await command(path.join(s.cliApp,'Contents/MacOS/ffmpeg'),['-v','error','-i',output,'-frames:v','1','-pix_fmt','rgb24',decoded]);assert(r.code===0,'Application still cannot be decoded');return {output,decoded,pixels:pixelStats(await readPPM(decoded))};
   }catch(e){uncertain=e.status==='Unknown';throw e;}finally{if(!uncertain){const cancel=(await ui()).widgets.find(w=>w.window===d.id&&w.text==='Cancel'&&w.class==='QPushButton');if(cancel)await n('click',{target:cancel.id});await closeCompletedExport({n,ui,until});}}

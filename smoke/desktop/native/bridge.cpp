@@ -198,7 +198,7 @@ class SmokeBridge : public QObject {
                 QJsonArray rects;for(int r=0;r<qMin(64,m->rowCount(p->rootIndex()));r++){auto rect=p->visualRect(m->index(r,0,p->rootIndex()));rects.append(QJsonObject{{"row",r},{"x",rect.x()},{"y",rect.y()},{"width",rect.width()},{"height",rect.height()}});}item["itemRects"]=rects;
             }
             widgets.append(item);
-            for(auto* a:w->findChildren<QAction*>(QString{},scope?Qt::FindDirectChildrenOnly:Qt::FindChildrenRecursively))if(!seen.contains(a)){seen.insert(a);actions.append(QJsonObject{{"id",id(a)},{"text",a->text()},{"name",a->objectName()},{"enabled",a->isEnabled()},{"checked",a->isChecked()},{"checkable",a->isCheckable()},{"shortcut",a->shortcut().toString()}});}
+            for(auto* a:w->findChildren<QAction*>(QString{},scope?Qt::FindDirectChildrenOnly:Qt::FindChildrenRecursively))if(!seen.contains(a)){seen.insert(a);QJsonObject action{{"id",id(a)},{"text",a->text()},{"name",a->objectName()},{"enabled",a->isEnabled()},{"checked",a->isChecked()},{"checkable",a->isCheckable()},{"shortcut",a->shortcut().toString()}};if(a->property("mediaSearchBaseLabel").isValid())action["mediaSearchSource"]=a->property("mediaSearchBaseLabel").toString();actions.append(action);}
         }
         QString focus=qApp->focusWidget()?id(qApp->focusWidget()):QString();
         // Native file panels are AppKit surfaces. Read public view/window APIs;

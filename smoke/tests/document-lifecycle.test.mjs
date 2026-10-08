@@ -7,13 +7,13 @@ import {extendedCases} from '../runner/extended-checks.mjs';
 import {ProjectSession} from '../runner/interactions.mjs';
 
 // Filesystem-backed boundary double; this qualifies the harness oracle, not Wizard.
-async function exercise(pathIdentity,fault){
+async function exercise(pathIdentity,fault,{existing=false}={}){
  const root=await mkdtemp(path.join(tmpdir(),'athanor-documents-'));
  try{
   let documents=[],saved=[],next=0;
   const engine={root,schema:{operations:{'documents.rename':{properties:{name:{description:fault==='unknown-contract'?'Unreviewed rename meaning':pathIdentity?'New document filename stem (moves the file and changes its path and identity)':'New document name (user-facing only; the file path is stable)'}}}}},async call(bundle,op,p={}){
    assert.notEqual(fault,'unknown-contract','Unknown semantics must reject before any mutation');
-   if(op==='project.create'){await mkdir(path.join(bundle,'documents'),{recursive:true});return {};}
+   if(op==='project.create'){await mkdir(path.join(bundle,'documents'),{recursive:true});if(existing){const relative_path='documents/story.md';documents.push({document_id:pathIdentity?relative_path:'story',relative_path,name:'story'});await writeFile(path.join(bundle,relative_path),'Existing story');}return {};}
    if(op==='project.checkpoint'){saved=structuredClone(documents);return {};}
    if(op==='project.close'){documents=[];return {};}
    if(op==='project.open'){documents=structuredClone(saved);return {};}
@@ -38,6 +38,7 @@ async function exercise(pathIdentity,fault){
     if(fault!=='retained-deleted-file')await unlink(path.join(bundle,selected.relative_path));
     documents=documents.filter(d=>d!==selected);
     if(fault==='wrong-delete')documents=[];
+    if(fault==='changed-existing')await writeFile(path.join(bundle,'documents/story.md'),'Wrong story');
     return {};
    }
    if(op==='documents.list')return {documents:structuredClone(documents)};
@@ -58,6 +59,16 @@ test('document lifecycle follows the selected stable-ID or path-ID contract and 
   assert.equal(renamed.relative_path===receipt.created.relative_path,!pathIdentity);
   assert.deepEqual(receipt.afterDelete.documents,[renamed]);
  }
+});
+
+test('document lifecycle preserves existing project documents and their bytes',async()=>{
+ for(const pathIdentity of [true,false]){
+  const receipt=await exercise(pathIdentity,undefined,{existing:true});
+  assert.equal(receipt.afterReopen.documents.length,3);
+  assert.equal(receipt.afterDelete.documents.length,2);
+ }
+ await assert.rejects(()=>exercise(true,'wrong-delete',{existing:true}),/wrong document/);
+ await assert.rejects(()=>exercise(true,'changed-existing',{existing:true}),/Saved document contents/);
 });
 
 test('document lifecycle rejects stale identity, retained old files, content loss and incorrect deletion',async()=>{
