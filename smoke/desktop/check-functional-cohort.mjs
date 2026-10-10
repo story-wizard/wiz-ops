@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {mkdir,copyFile,lstat} from 'node:fs/promises';
 import {uiWorkflows} from './ui-workflows.mjs';
+import {ingestFixture} from './ingest-fixture.mjs';
 import {withMissingSource,mediaPlacementState,rawNotesHistory} from './functional-cohort-proof.mjs';
 import {waitForPreview} from './recorder.mjs';
 import {widgetPixelDifference} from './check-support.mjs';
@@ -10,6 +11,7 @@ const {s,c,ui,until,check,physical,openTimeline,activate,observe,capture,unique,
 if(!verify)await check('D-MISSING-MEDIA-LIVE',async()=>{
  const id='D-MISSING-MEDIA-LIVE',directory=path.join(s.root,'availability-fixture'),source=path.join(directory,'availability.mov');await mkdir(directory);await copyFile((await c('media.resolve_path',{asset_id:s.assets.plate})).path,source);
  await c('media.add_media_root',{path:directory});const asset=(await c('media.import_asset',{path:source})).asset_id;assert(asset,'Availability fixture import has no identity');
+ await ingestFixture(file,[{asset_id:asset,media_path:source}]);
  const t=await c('timeline.create',{name:'Live source availability',video_format:{preset:'hd_1080p_24'},audio:{sample_rate:48000,channels:2}}),track=t.tracks.find(t=>t.kind==='video').track_id;
  await c('timeline.place_cuts',{id:'availability-fixture',timeline_id:t.timeline_id,cuts:[{id:'source',source:{asset_id:asset},source_range:{start_seconds:0,end_seconds:8},streams:'video_only',destination:{at:{seconds:0,track}}}]});
  const view=await openTimeline('Live source availability',track),before=await c('timeline.inspect',{timeline_id:t.timeline_id}),placement=mediaPlacementState(before);assert(clips(before).length===1,'Availability fixture has extra clips');

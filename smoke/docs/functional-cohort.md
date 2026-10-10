@@ -39,6 +39,8 @@ check uses the existing background-service session and does not dispatch physica
 input. Full-course runs keep their ordinary grouped behavior elsewhere.
 
 The source-loss helper restores its owned file even when a UI assertion fails.
+Its copied source completes the selected package's offline ingest before placement,
+so missing technical metadata cannot prevent the availability test from starting.
 It rejects symlinks, outside-root sources and an occupied offline destination.
 If another file appears at the original path or the moved bytes change, it keeps
 both files and returns Unknown instead of overwriting them. Inspect retained
