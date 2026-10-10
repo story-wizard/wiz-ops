@@ -38,12 +38,12 @@ test('busy worker defers preparation and cancellation never starts it',async()=>
 }));
 test('a lost preparation response is recovered by its original ID without another POST',async()=>fixture(async store=>{
  const job=store.submit(request,selection,digest(profile));store.update(job.id,{state:'Imported',imported:{app:request.build.value}});const calls=[];
- const controller=new JobController(store,{profile,call:async(route,body)=>{calls.push({route,body});if(route==='/api/worker')return idle;if(body)throw Object.assign(Error('response lost'),{responseLost:true});return {id:job.preparationId,state:'Preparing'};}});
+ const controller=new JobController(store,{profile,call:async(route,body)=>{calls.push({route,body});if(route==='/api/worker')return idle;if(body)throw Object.assign(Error('response lost'),{responseLost:true});return {id:job.preparationId,state:'Preparing',app:request.build.value,runnerHash:profile.runnerHash,selection};}});
  await controller.tick();assert.equal(store.get(job.id).state,'Preparing');await controller.tick();assert.equal(calls.filter(c=>c.body).length,1);assert.equal(calls.at(-1).route,'/api/preparations/'+job.preparationId);assert.equal(calls.find(c=>c.body).body.preparationId,job.preparationId);
 }));
 test('lost Start is recovered by request ID, and missing intent is Unknown without replay',async()=>fixture(async store=>{
  const job=store.submit(request,selection,digest(profile));store.update(job.id,{state:'Ready',planHash:'b'.repeat(64)});let posts=0;
- const call=async(route,body)=>{if(route==='/api/worker')return idle;if(body){posts++;throw Object.assign(Error('lost'),{responseLost:true});}return {id:'original-run'};};
+ const call=async(route,body)=>{if(route==='/api/worker')return idle;if(body){posts++;throw Object.assign(Error('lost'),{responseLost:true});}return {id:'original-run',operator:request.operator,execution:{plan_hash:'b'.repeat(64)}};};
  await new JobController(store,{profile,call}).tick();assert.equal(store.get(job.id).state,'Starting');await new JobController(store,{profile,call}).tick();assert.equal(store.get(job.id).runId,'original-run');assert.equal(posts,1);
  store.update(job.id,{state:'Starting',runId:null});await new JobController(store,{profile,call:async()=>{throw Object.assign(Error('not found'),{status:404});}}).tick();assert.equal(store.get(job.id).outcome,'Unknown');assert.equal(posts,1);
 }));
@@ -77,7 +77,7 @@ test('Slack sender validates the exact owner before a single dispatch and retain
 }));
 test('all stages survive independent controller instances and retain the failed run beside 161 unexecuted assertions',async()=>fixture(async(store,root)=>{
  const {checkRegistry}=await import('../runner/catalog.mjs'),catalog=checkRegistry(),job=store.submit(request,selection,digest(profile)),posts=[];
- const preparation={id:job.preparationId,state:'Ready',version:'synthetic-version',packageHash:'b'.repeat(64),planHash:'c'.repeat(64),runnerHash:profile.runnerHash};
+ const preparation={id:job.preparationId,app:request.build.value,selection,runnerHash:profile.runnerHash,state:'Ready',version:'synthetic-version',packageHash:'b'.repeat(64),planHash:'c'.repeat(64),runnerHash:profile.runnerHash};
  const run={id:'synthetic-run',execution:{state:'Failed',package:{packageHash:preparation.packageHash,runnerHash:profile.runnerHash,version:preparation.version},recipe:{selection}},results:[{test_id:'A-CLI-01',status:'Fail',snapshot:{title:'Connection'},note:'Synthetic independent failure'}]};
  const call=async(route,body)=>{
   if(body)posts.push({route,body});if(route==='/api/worker')return idle;if(route==='/api/builds/import')return {app:request.build.value};if(route.startsWith('/api/preparations'))return preparation;
@@ -102,6 +102,38 @@ test('a listener rebound to another source or workspace cannot import, prepare o
   store.update(job.id,{state,resolved:{input:{path:request.build.value}},imported:{app:request.build.value},planHash:'b'.repeat(64)});
   const controller=new JobController(store,{profile,call:async(route,body)=>{if(body)writes++;return {...idle,dataDir:'/different/worker'};}});
   await controller.tick();assert.equal(store.get(job.id).state,'Reporting');assert.match(store.get(job.id).error,/differs from the pinned worker/);
+ }
+ assert.equal(writes,0);
+}));
+test('HTTP 500 after admission is reconciled to the original attempt, never reported as no execution',async()=>fixture(async store=>{
+ const job=store.submit(request,selection,digest(profile));let posts=0;
+ for(const stage of ['Imported','Ready']){
+  store.update(job.id,{state:stage,imported:{app:request.build.value},planHash:'b'.repeat(64),dispatchStatus:null,runId:null});
+  const controller=new JobController(store,{profile,call:async(route,body)=>{if(route==='/api/worker')return idle;if(body){posts++;throw Object.assign(Error('server failed after recording intent'),{status:500});}return stage==='Imported'?{id:job.preparationId,state:'Preparing',app:request.build.value,runnerHash:profile.runnerHash,selection}:{id:'retained-run',operator:request.operator,execution:{plan_hash:'b'.repeat(64)}};}});
+  await controller.tick();assert.equal(store.get(job.id).state,stage==='Imported'?'Preparing':'Starting');await controller.tick();assert.equal(store.get(job.id).state,stage==='Imported'?'Preparing':'Running');
+ }
+ assert.equal(posts,2);assert.equal(store.get(job.id).runId,'retained-run');
+}));
+test('an explicit rejection with no retained request is Blocked after lookup, while 500 remains Unknown',async()=>fixture(async store=>{
+ const job=store.submit(request,selection,digest(profile));
+ for(const status of [409,500]){
+  store.update(job.id,{state:'Ready',planHash:'b'.repeat(64),dispatchStatus:null});let posts=0;
+  const controller=new JobController(store,{profile,call:async(route,body)=>{if(route==='/api/worker')return idle;if(body){posts++;throw Object.assign(Error('rejected'),{status});}throw Object.assign(Error('not found'),{status:404});}});
+  await controller.tick();await controller.tick();assert.equal(store.get(job.id).outcome,status===409?'Blocked':'Unknown');assert.equal(posts,1);
+ }
+}));
+test('a prepared package differing from the imported bytes is Unknown before Start',async()=>fixture(async store=>{
+ const job=store.submit(request,selection,digest(profile));store.update(job.id,{state:'Preparing',imported:{app:request.build.value,packageHash:'b'.repeat(64)}});let writes=0;
+ const preparation={id:job.preparationId,app:request.build.value,selection,runnerHash:profile.runnerHash,state:'Ready',version:'synthetic',packageHash:'c'.repeat(64),planHash:'d'.repeat(64)};
+ const controller=new JobController(store,{profile,call:async(route,body)=>{if(body)writes++;return route.startsWith('/api/plans/')?{...preparation,runnerHash:profile.runnerHash,recipe:{selection}}:preparation;}});
+ await controller.tick();assert.equal(store.get(job.id).outcome,'Unknown');assert.match(store.get(job.id).error,/package\/selection differs/);assert.equal(writes,0);
+}));
+test('conflicting preparation or run identities are never adopted or cancelled',async()=>fixture(async store=>{
+ const job=store.submit(request,selection,digest(profile));let writes=0;
+ for(const stage of ['Preparing','Starting']){
+  store.update(job.id,{state:stage,imported:{app:request.build.value},planHash:'b'.repeat(64),runId:null});
+  const controller=new JobController(store,{profile,call:async(route,body)=>{if(body)writes++;return stage==='Preparing'?{id:job.preparationId,app:'/Another/Wizard.app',runnerHash:profile.runnerHash,selection,state:'Ready'}:{id:'another-run',operator:'Another tester',execution:{plan_hash:'b'.repeat(64)}};}});
+  await controller.tick();assert.equal(store.get(job.id).outcome,'Unknown');assert.equal(store.get(job.id).runId,null);
  }
  assert.equal(writes,0);
 }));

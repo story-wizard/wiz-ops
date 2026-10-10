@@ -78,28 +78,30 @@ export class JobController{
   if(job.state==='Importing')return this.stop(job,'Build import response was interrupted. Inspect the verified cache and create a new job; import was not replayed.','Unknown');
   if(job.state==='Imported'){
    if(busy(await this.worker()))return {id:job.id,state:'Waiting',reason:'Worker busy; preparation intent not dispatched.'};
-   job=this.change(job,{state:'Preparing'},'Preparation intent '+job.preparationId+' retained before dispatch.');
-   try{const preparation=await this.call('/api/preparations',{app:job.imported.app,selection:job.request.selection,preparationId:job.preparationId});return this.change(job,{preparation},'Preparation admitted.');}catch(e){if(e.responseLost)throw e;return this.stop(job,e.message);}
+   job=this.change(job,{state:'Preparing',dispatchStatus:null},'Preparation intent '+job.preparationId+' retained before dispatch.');
+   try{const preparation=await this.call('/api/preparations',{app:job.imported.app,selection:job.request.selection,preparationId:job.preparationId});return this.change(job,{preparation},'Preparation admitted.');}catch(e){return this.change(job,{lastError:e.message,dispatchStatus:e.status||null},'Preparation reply failed; inspect its original ID before deciding the outcome.');}
   }
   if(job.state==='Preparing'){
-   const preparation=await this.lookup('/api/preparations/'+job.preparationId);if(!preparation)return this.stop(job,'Retained preparation ID was not found after interruption; no setup replay.','Unknown');
+   const preparation=await this.lookup('/api/preparations/'+job.preparationId);if(!preparation)return this.stop(job,'Retained preparation ID was not found after the failed reply; no setup replay.',job.dispatchStatus&&job.dispatchStatus<500?'Blocked':'Unknown');
+   if(preparation.id!==job.preparationId||preparation.app!==job.imported.app||preparation.runnerHash!==this.profile.runnerHash||digest(preparation.selection)!==digest(job.selection))return this.stop(job,'Preparation record belongs to another app, source or selection.','Unknown');
    if(preparation.state==='Preparing')return {id:job.id,state:job.state};
    job=this.change(job,{preparation},'Preparation settled: '+preparation.state);
    if(preparation.state!=='Ready')return this.stop(job,preparation.error||'Preparation did not reach Ready.');
    if(cancel)return this.stop(job,'Preparation settled after cancellation/deadline; course was not started.',job.cancelRequested?'Cancelled':'Blocked');
    const plan=await this.call('/api/plans/'+preparation.planHash);
-   if(plan.runnerHash!==this.profile.runnerHash||plan.packageHash!==preparation.packageHash||plan.version!==preparation.version||digest(plan.recipe?.selection)!==digest(job.selection))return this.stop(job,'Prepared source/package/selection differs from the retained job.','Unknown');
+   if(plan.runnerHash!==this.profile.runnerHash||plan.packageHash!==preparation.packageHash||job.imported.packageHash&&plan.packageHash!==job.imported.packageHash||plan.version!==preparation.version||digest(plan.recipe?.selection)!==digest(job.selection))return this.stop(job,'Prepared source/package/selection differs from the retained job.','Unknown');
    const {checks}=await this.call('/api/checks'),nightlyPlan=createNightlyPlan(await readJSON(path.join(ROOT,'examples/nightly/suite.json')),checks,{build:plan.version,packageHash:plan.packageHash,runnerHash:plan.runnerHash,dataDir:this.store.dataDir,releaseChanges:job.resolved.releaseNotes?[{tag:job.resolved.tag,notes:job.resolved.releaseNotes}]:[]},await readJSON(path.join(ROOT,'examples/nightly/mapping.json')),{executionSelection:job.selection});
    await retain(path.join(this.store.dataDir,'controller-plans',job.id+'.json'),nightlyPlan);
    return this.change(job,{state:'Ready',planHash:plan.planHash,nightlyPlan},'Selection and report plan frozen.');
   }
   if(job.state==='Ready'){
    if(busy(await this.worker()))return {id:job.id,state:'Waiting',reason:'Worker busy; no Start dispatched.'};
-   job=this.change(job,{state:'Starting'},'Run request '+job.runRequestId+' retained before Start.');
-   try{const admitted=await this.call('/api/runner/start',{planHash:job.planHash,requestId:job.runRequestId,operator:job.request.operator});return this.change(job,{state:'Running',runId:admitted.runId},'Run admitted.');}catch(e){if(e.responseLost)throw e;return this.stop(job,e.message);}
+   job=this.change(job,{state:'Starting',dispatchStatus:null},'Run request '+job.runRequestId+' retained before Start.');
+   try{const admitted=await this.call('/api/runner/start',{planHash:job.planHash,requestId:job.runRequestId,operator:job.request.operator});return this.change(job,{state:'Running',runId:admitted.runId},'Run admitted.');}catch(e){return this.change(job,{lastError:e.message,dispatchStatus:e.status||null},'Start reply failed; inspect its original request ID before deciding the outcome.');}
   }
   if(job.state==='Starting'){
-   const run=await this.lookup('/api/requests/'+job.runRequestId);if(!run)return this.stop(job,'Run request not found after interruption. Inspect before a new job; Start was not replayed.','Unknown');
+   const run=await this.lookup('/api/requests/'+job.runRequestId);if(!run)return this.stop(job,'Run request not found after the failed reply. Inspect before a new job; Start was not replayed.',job.dispatchStatus&&job.dispatchStatus<500?'Blocked':'Unknown');
+   if(run.execution?.plan_hash!==job.planHash||run.operator!==job.request.operator)return this.stop(job,'Retained request belongs to another plan or operator; its run was not adopted.','Unknown');
    return this.change(job,{state:'Running',runId:run.id},'Original run recovered by request ID.');
   }
   if(job.state==='Running'){
