@@ -1,8 +1,9 @@
 import path from 'node:path';
 import {readFile,realpath,access,mkdir,readdir} from 'node:fs/promises';
-import {execFileSync} from 'node:child_process';
 import {constants,existsSync} from 'node:fs';
-import {dataDirectory,fingerprint,sha,digest,readJSON,writeJSON} from './files.mjs';
+import {readCliSchema} from './cli-schema.mjs';
+import {assertMappedPackagedSchema} from './schema-compatibility.mjs';
+import {ROOT,dataDirectory,fingerprint,sha,digest,readJSON,writeJSON} from './files.mjs';
 import {setupAttachmentTools,verifyAttachmentTools} from '../desktop/attachment-tools.mjs';
 
 export async function selectedBuildRuntime(app,dataDir){
@@ -33,8 +34,8 @@ export async function runtimeIdentity(input,configuredDataDir){
  const bytes=await readFile(binary);
  for(const marker of ['WIZ_HARNESS_RUN_ID','WIZ_AUTOMATION_PROJECT'])if(!bytes.includes(Buffer.from(marker)))throw Error('Selected desktop app lacks '+marker+'; isolated desktop execution is unavailable.');
  if(path.basename(paths.qtPlugin)!=='libqcocoa.dylib')throw Error('Choose the smoke Cocoa plugin explicitly.');
- const schema=JSON.parse(execFileSync(paths.cli,['project','create','--schema','--no-spawn'],{encoding:'utf8',timeout:15000,maxBuffer:8*1024*1024,env:{...process.env,...runtimeEnvironment(paths)}}));
- if(digest(schema)!=='d073ecf91a99dc3969955af45185d6ebc76885676e4d06627a1d30f570ad1f46')throw Error('Paired desktop CLI schema differs from the mapped smoke contract. Qualify its operations before execution.');
+ const schema=readCliSchema(paths.cli,{env:{...process.env,...runtimeEnvironment(paths)}});
+ if(digest(schema)!=='d073ecf91a99dc3969955af45185d6ebc76885676e4d06627a1d30f570ad1f46')assertMappedPackagedSchema(schema,await readJSON(path.join(ROOT,'runner/contracts/installed-schema.json')),await readJSON(path.join(ROOT,'runner/contracts/packaged-schema-qualifications.json')));
  if(!schema.operations?.['project.get_name']||!schema.operations?.['timeline.inspect'])throw Error('Paired CLI does not expose the required desktop operations.');
  const bridge=await realpath(input.bridge||path.join(dataDirectory(configuredDataDir),'native/styles/libwizard_smoke.dylib'));await access(bridge);
  return {...paths,bridge,appHash:(await fingerprint(paths.app,{packageTree:true})).sha256,cliHash:await sha(paths.cli),qtHash:await sha(paths.qtPlugin),bridgeHash:await sha(bridge),schemaHash:digest(schema),scope:'Instrumented desktop/service app; packaged preparation identity is recorded separately'};

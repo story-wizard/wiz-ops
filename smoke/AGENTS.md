@@ -128,6 +128,10 @@ review failures name paths and retain a receipt in the external `schema-reviews`
 directory. Changed defaults, descriptions, responses and constraints still need
 review. Do not replace baselines or suppress application dialogs to get Ready.
 See `docs/build-repair.md`; compatibility is separate from a passing course.
+Use `runner/cli-schema.mjs` for full-registry discovery; `project create --schema`
+can return only one operation on newer builds. GUI pairing must match the frozen
+plan’s registry hash. Native MGFX fixture contracts come from the selected app,
+not a different checkout’s manuals. See `docs/maintaining-harness.md`.
 
 Fresh desktop fixtures retain `fixture-version.json`: after the creator engine
 closes, Athanor records its selected package version only when the newly created

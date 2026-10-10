@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp,writeFile,rm,readFile,lstat} from 'node:fs/promises';
 import {execFileSync} from 'node:child_process';
 import {pathToFileURL} from 'node:url';
-import {createNightlyPlan,consolidateNightly,nightlyHTML,nightlyCases} from '../runner/nightly.mjs';
+import {createNightlyPlan,consolidateNightly,nightlyHTML,nightlyCases,releaseTestProposals} from '../runner/nightly.mjs';
 import {digest,sha} from '../runner/files.mjs';
 const suite={cases:[{id:'CORE-01',area:'Startup',steps:['Open the selected build'],expected:['Correct build','Responsive window']}]};
 const catalog=[{id:'A-CLI-01',definitionHash:'d'.repeat(64),accepted:true}];
@@ -41,6 +41,20 @@ test('consolidation requires exact run identity, retained evidence and all asser
 
 test('invalid, empty and duplicate functional specifications fail before planning',()=>{
  for(const cases of [[],[...suite.cases,...suite.cases],[{...suite.cases[0],expected:[]}],[{...suite.cases[0],steps:['']}],[{...suite.cases[0],id:'../../escape'}]])assert.throws(()=>nightlyCases({cases}));
+});
+
+test('unified planning keeps every catalog check and legacy assertion; release proposals never become accepted tests',async()=>{
+ const root=await mkdtemp('/private/tmp/athanor-unified-plan-');
+ try{
+  const input={format:'athanor-release-test-proposals/v1',build:identity.build,packageHash:identity.packageHash,proposals:[{id:'change-1',source:{url:'https://example.test/release',kind:'developer-changelog',summary:'Synthetic marker change',retention:'summary',contentHash:digest('Synthetic marker change')},reason:'Exercise the changed marker behavior',prerequisites:['Local graphic runtime'],checkIds:['A-CLI-01','MISSING'],case:{id:'CHANGE-01',steps:['Render the changed fixture'],expected:['Marker appears at its expected frame position']}}]};
+  const checks=[...catalog,{id:'CANDIDATE',definitionHash:'c'.repeat(64),accepted:false,executable:false}],plan=createNightlyPlan(suite,checks,{...identity,dataDir:root},{},{cadence:'weekly',proposals:input});
+  assert.equal(plan.cadence,'weekly');assert.deepEqual(plan.catalogInventory.map(c=>[c.id,c.status]),[['A-CLI-01','NOT_RUN'],['CANDIDATE','NOT_RUN']]);assert.equal(plan.catalogInventory[1].executable,false);assert.equal(plan.cases.length,1);assert.equal(plan.cases[0].assertions.length,2);
+  assert.equal(plan.releaseTestProposals[0].status,'Proposed');assert.equal(plan.releaseTestProposals[0].candidates[1].available,false);assert.equal(checks[1].accepted,false);
+  const report=await consolidateNightly(plan,run());assert.deepEqual(report.catalogInventoryCounts,{Pass:1,NOT_RUN:1});assert.deepEqual(report.assertionCounts,{NOT_RUN:2});assert.equal(report.releaseTestProposals[0].status,'Proposed');
+  for(const bad of [{...input,build:'other'},{...input,packageHash:'f'.repeat(64)},{...input,proposals:[...input.proposals,...input.proposals]},{...input,proposals:[{...input.proposals[0],status:'Accepted'}]},{...input,proposals:[{...input.proposals[0],source:{...input.proposals[0].source,url:'file:///private/secret'}}]}])assert.throws(()=>releaseTestProposals(bad,checks,identity));
+  assert.throws(()=>createNightlyPlan(suite,checks,{...identity,dataDir:root},{},{proposals:{...input,proposals:[{...input.proposals[0],case:suite.cases[0]}]}}),/replace/);
+  assert.throws(()=>createNightlyPlan(suite,checks,{...identity,dataDir:root},{},{cadence:'hourly'}));assert.throws(()=>createNightlyPlan(suite,[...checks,checks[0]],{...identity,dataDir:root}),/Duplicate catalog/);
+ }finally{await rm(root,{recursive:true,force:true});}
 });
 
 

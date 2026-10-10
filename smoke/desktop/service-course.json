@@ -1,9 +1,29 @@
 {
   "id": "local-services-v1",
-  "revision": 3,
+  "revision": 4,
   "title": "Local application services",
   "target": "Owned background GUI services and app export worker; no keyboard/mouse or foreground UI acceptance",
   "cases": [
+    {
+      "id": "S-MGFX-MOTION",
+      "sourceId": "OZ-12",
+      "title": "Local animated graphic renders across its range",
+      "expected": "The native local generation completes for its exact revision; decoded frames 0, 24 and 47 show the authored marker at the correct distinct positions in a 1080p24 timeline.",
+      "steps": [
+        "Read the selected package\u2019s Remotion authoring facts and create a local moving-marker graphic.",
+        "Wait for the exact job, generation and revision to succeed; independently read its placement and content identity.",
+        "Decode early, middle and late frames; verify marker position, raster and changing pixels."
+      ],
+      "evidence": [
+        {
+          "id": "motion",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Three independently rendered early, middle and late frames, with measured marker positions and file hashes."
+        }
+      ]
+    },
     {
       "id": "S-MGFX-DUPLICATE-DEFAULT",
       "sourceId": "OZ-08",

@@ -189,11 +189,12 @@
     },
     {
       "file": "desktop/service-course.json",
-      "sha256": "89e69c0f5f4569c6f208fb3a2d0b2d94f07da608a5b5aa7f6c80de860af1448a",
+      "sha256": "233729da9fe0fc4c0dafdee32ea0d4a8f6b14f4e8a110488d055aacc8ec2f8ab",
       "id": "local-services-v1",
-      "revision": 3,
+      "revision": 4,
       "target": "Owned background GUI services and app export worker; no keyboard/mouse or foreground UI acceptance",
       "requiredCheckIds": [
+        "S-MGFX-MOTION",
         "S-MGFX-DUPLICATE-DEFAULT",
         "S-MGFX-DUPLICATE",
         "S-MGFX-CLIP-COPY",
@@ -1381,7 +1382,8 @@
       "disposition": "Partial",
       "checkIds": [
         "D-MGFX-01",
-        "S-MGFX-PERSIST"
+        "S-MGFX-PERSIST",
+        "S-MGFX-MOTION"
       ],
       "originalProjectVariants": [
         "Fresh",

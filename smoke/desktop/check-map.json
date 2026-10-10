@@ -16,6 +16,7 @@
     "D-CURVE-HUE-RESET"
   ],
   "check-generated.mjs": [
+    "S-MGFX-MOTION",
     "S-MGFX-PERSIST",
     "S-MGFX-DUPLICATE-DEFAULT",
     "S-MGFX-DUPLICATE",

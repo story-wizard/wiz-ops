@@ -42,7 +42,7 @@ Legacy v1 bundles and `bundle --runtime FILE` remain available for historical to
 
 The baseline is `runner/contracts/installed-schema.json`. Extra reviewed package schemas are recorded by their exact hashes in `runner/contracts/packaged-schema-qualifications.json`, tied to that baseline hash. Preparation accepts the baseline, reviewed schemas, and conservative structural extensions of retained reviewed definitions. New operations and wider request enums can roll forward without a daily patch. Existing response, constraint, default and semantic-description changes still require review. The plan retains the compatibility decision and freezes the actual schema hash; readiness rechecks that exact identity. See [build repair](build-repair.md) for the complete policy. The instrumented desktop CLI has its own contract.
 
-To qualify a new schema, read it using `wiz-cli project create --schema --no-spawn`, compare every operation against the baseline, inspect changes against the checks' requests and assertions, and add a qualification with its hash and review basis. Run the regression checks and prepare the actual package. Missing or unreviewed changes stay blocked. Updating the baseline requires reviewing its qualifications again.
+To qualify a new schema, read the full registry using `wiz-cli project --schema --no-spawn` (the shared discovery helper handles older CLIs), compare every operation against the baseline, inspect changes against the checks' requests and assertions, and add a qualification with its hash and review basis. Run the regression checks and prepare the actual package. Missing or unreviewed changes stay blocked. Updating the baseline requires reviewing its qualifications again.
 
 The October 1 nightly differs only in `render.set_render_mode`: its mode enum adds `eighth` and the description clarifies preview resolution. The existing values and all other 161-operation contract fields are unchanged. This qualification makes that package usable with the mapped checks; it adds no new assertion for eighth-resolution playback.
 
@@ -94,3 +94,25 @@ select both sides of the boundary and inspect exact source identities. It is
 read-only planning; build/test results, CI and packaged acceptance remain separate.
 
 Managed MBP/Mini deployments use [pinned worker profiles](workers.md). Qualify updates in a new version and switch the owned supervisor only when idle; nightly execution never rebases a live checkout. Developer clones need no worker profile or scheduler.
+
+## Native local graphics fixtures
+
+Fresh MGFX fixtures read the selected app’s installed `remotion-4-0-532/authoring-contract.json` and `AUTHORING.md`. Missing or changed required facts block before project mutation. The fixture uses local TSX, the declared authorable parameter profile and direct generation placement; it never calls retired `generate.renderers` or a paid provider. Its receipt retains the contract, manual and source hashes.
+
+Admission is followed by a bounded read-only `generate.status` wait for the exact job, generation, owner revision and parameter revision. `generate.status` and `generate.inspect` are classified as reads: they remain available while an earlier edit is unresolved, and a lost read does not create a new uncertain mutation. Independent timeline and generation reads must match the admitted clip, track, timeline and content IDs. Existing duplication, clipboard and persistence checks retain their pixel and independence assertions. `S-MGFX-MOTION` is a new qualification candidate: it decodes frames 0, 24 and 47, measures the moving marker’s position and retains the images. It is not in the accepted default course until live qualification and lead review.
+
+Attachment acquires the desktop lease before changing a live session’s plugin, endpoint directory or receipt. A rejected second attachment leaves the first receipt intact; setup failure releases the acquired lease.
+
+## Next native Spellbook qualification
+
+Use one fresh matched App/CLI/Core/Oz package for these checks. The earlier local proof package predates callable-video support. Keep fixture projects disposable and provider generation disabled. Retain exact package, schema and adapter identities with every result.
+
+| Check | Independent evidence | Current status |
+| --- | --- | --- |
+| Repaired MGFX duplication, clipboard, compound export and persistence | Exact independent generation/content/placement IDs, local job completion, decoded pixels and fresh-process readback | Harness repaired; matched-build qualification pending |
+| `S-MGFX-MOTION` | Frames 0, 24 and 47, marker positions, changing pixels and image hashes | New candidate; component oracle checked |
+| Closed-timeline Clip Tap image/video and native effect capture | Correct active timeline/playhead/trim, decoded frame count and rate, smaller aspect-preserving capture, unchanged 4K timeline | Focused executable assertions still to add |
+| Typed saved image/video calls | Published ports, exact wires, pinned fingerprint, scalar overrides, readiness and atomic wrong-kind rejection | Fresh matched package and focused executable assertions still needed |
+| Repeated preparation, ordered placement and reopening | Stable input asset IDs, separate labels, no duplicate ingest, full-range decoded output, restored graph and timeline IDs in a new process | Fresh matched package and focused executable assertions still needed |
+
+Live provider output is a separate test that needs explicit authorization. Native component fixtures do not provide that evidence.

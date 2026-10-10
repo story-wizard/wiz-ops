@@ -4,7 +4,7 @@ import path from 'node:path';
 import {tmpdir} from 'node:os';
 import {mkdtemp,rm,mkdir,readFile,writeFile,realpath,open,unlink} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
-import {generatedPlacement,createLocalGraphic} from '../desktop/generated-fixture.mjs';
+import {generatedPlacement,createLocalGraphic,waitForGraphic} from '../desktop/generated-fixture.mjs';
 import {verifyNativeCapabilities,parseNativeResponse,acquireNativeLock} from '../desktop/adapter.mjs';
 import {waitForObservation,recordStep,endCheck} from '../desktop/check-support.mjs';
 import {executeDesktop,desktopGroups,missingDesktopResults} from '../desktop/run.mjs';
@@ -98,17 +98,32 @@ test('failure collection keeps the original error, observed UI and actual captur
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
-test('MGFX admission accepts both reviewed placement shapes and verifies actual clip readback',async()=>{
+test('native MGFX requires terminal identity-matched completion and independent placement readback',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'athanor-mgfx-contract-'));
  try{
+  const contractFile=path.join(root,'App.app/Contents/Resources/renderers/web/WebRender.app/Contents/Resources/adapters/remotion-4-0-532/authoring-contract.json');await mkdir(path.dirname(contractFile),{recursive:true});
+  const facts={schema_version:1,adapter:{id:'remotion-4-0-532'},renderer:{id:'web'},entry:{entry_file:'src/index.tsx',export_name:'default'},profile:{profile_id:'wiz.mgfx.authorable/v1',profile_version:1},execution:{network:'disabled'},build:{network:'disabled'},parameter_access:{accepted_static_forms:['props.params["<param_path>"]']},parameter_support:[{param_type:'string'},{param_type:'int'}]};
+  await writeJSON(contractFile,facts);await writeFile(path.join(path.dirname(contractFile),'AUTHORING.md'),'Installed authoring facts');
+  const session={app:path.join(root,'App.app'),bundle:root,root};
   for(const kind of ['direct_generation','compound']){
    const destination={kind:'timeline',state:'committed',parent:{timeline_id:'timeline',track_id:'track',clip_id:'clip'},...(kind==='direct_generation'?{schema_version:2,placement_kind:kind}:{nested:{kind,timeline_id:'child'}})};
-   const calls=[],call=async(op,p)=>{calls.push(op);if(op==='generate.renderers')return {profile:{},renderers:[{id:'web',adapters:[{id:'hyperframes',contract:{execution:{network:'disabled'},entry:{scaffold:[{path:'src/index.html',content:'<body></body>'}]}}}]}]};if(op==='timeline.create')return {timeline_id:'timeline',tracks:[{kind:'video',track_id:'track'}]};if(op==='generate.graphics')return {destination};if(op==='timeline.inspect')return {tracks:[{track_id:'track',items:[{kind:'clip',clip_id:'clip',track_id:'track'}]}]};throw Error(op);};
-   assert.equal((await createLocalGraphic(call,{bundle:root})).placement.kind,kind);
-   assert.ok(calls.includes('timeline.inspect'),'Admission alone does not prove placement');
-   await assert.rejects(()=>createLocalGraphic((op,p)=>op==='timeline.inspect'?Promise.resolve({tracks:[]}):call(op,p),{bundle:root}),/independent timeline readback/);
+   const generation={generation_id:'gen_fixture',content_id:'content_fixture',owner_revision:'1',params_rev:1},admission={destination,generation,artifact:{job:{job_id:'job_fixture'}}};
+   const completion={job_id:'job_fixture',generation_id:'gen_fixture',target_owner_revision:1,target_params_revision:1,state:'succeeded'},calls=[];
+   const inspected={...generation,parameters:[{descriptor:{param_path:'title.text'},value:'Synthetic smoke title'},{descriptor:{param_path:'motion.travel'},value:0}]};
+   const call=async(op,p)=>{calls.push(op);if(op==='timeline.create')return {timeline_id:'timeline',tracks:[{kind:'video',track_id:'track'}]};if(op==='generate.graphics'){assert.equal(p.renderer.adapter,'remotion-4-0-532');assert.equal(p.content.entry,'src/index.tsx');assert.equal(p.placement_mode,'direct_generation');assert.equal(p.parameters.profile_hash,undefined);return admission;}if(op==='generate.status')return completion;if(op==='generate.inspect')return inspected;if(op==='timeline.inspect')return {tracks:[{track_id:'track',items:[{kind:'clip',clip_id:'clip',track_id:'track'}]}]};throw Error(op);};
+   assert.equal(generatedPlacement(admission).kind,kind);
+   if(kind==='compound'){await assert.rejects(()=>createLocalGraphic(call,session),/honor direct/);continue;}
+   assert.equal((await createLocalGraphic(call,session)).placement.kind,kind);
+   assert.ok(calls.includes('timeline.inspect'));assert.ok(calls.includes('generate.status'));assert.ok(!calls.includes('generate.renderers'));
+   await assert.rejects(()=>createLocalGraphic((op,p)=>op==='timeline.inspect'?Promise.resolve({tracks:[]}):call(op,p),session),/independent timeline readback/);
+   for(const change of [{state:'failed'},{generation_id:'gen_other'},{target_params_revision:2},{job_id:'job_other'}])await assert.rejects(()=>waitForGraphic(async()=>({...completion,...change}),admission),/MGFX/);
+   await assert.rejects(()=>waitForGraphic(async()=>({...completion,state:'queued'}),admission,{timeoutMs:1}),e=>e.diagnostics.lastStatus.state==='queued');
+   await assert.rejects(()=>createLocalGraphic((op,p)=>op==='generate.inspect'?Promise.resolve({...generation,content_id:'wrong'}):call(op,p),session),/identity differs/);
+   await assert.rejects(()=>createLocalGraphic((op,p)=>op==='generate.inspect'?Promise.resolve({...inspected,params_rev:2}):call(op,p),session),/revision differs/);
+   await assert.rejects(()=>createLocalGraphic((op,p)=>op==='generate.inspect'?Promise.resolve({...inspected,parameters:[]}):call(op,p),session),/parameter differs/);
   }
   for(const d of [null,{state:'queued'},{kind:'timeline',state:'committed',placement_kind:'future',parent:{clip_id:'c',timeline_id:'t',track_id:'v'}}])assert.throws(()=>generatedPlacement({destination:d}),e=>e.status==='Blocked');
+  facts.execution.network='enabled';await writeJSON(contractFile,facts);let dispatched=false;await assert.rejects(()=>createLocalGraphic(async()=>{dispatched=true},session),e=>e.status==='Blocked');assert.equal(dispatched,false,'Unreviewed runtime facts must block before project mutation');
  }finally{await rm(root,{recursive:true,force:true});}
 });
 
