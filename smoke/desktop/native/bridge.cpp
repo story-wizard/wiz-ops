@@ -163,6 +163,15 @@ class SmokeBridge : public QObject {
             if(auto* p=qobject_cast<QGraphicsView*>(w);p&&p->scene()){QJsonArray entries;item["sceneTextTruncated"]=false;for(auto* g:p->scene()->items()){QString text;if(auto* t=qgraphicsitem_cast<QGraphicsTextItem*>(g))text=t->toPlainText();if(auto* t=qgraphicsitem_cast<QGraphicsSimpleTextItem*>(g))text=t->text();if(text.isEmpty())continue;if(entries.size()>=256){item["sceneTextTruncated"]=true;break;}auto r=p->mapFromScene(g->sceneBoundingRect()).boundingRect();entries.append(QJsonObject{{"text",text},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}});}item["sceneText"]=entries;item["viewport"]=id(p->viewport());}
 
             if(QString(w->metaObject()->className())=="TimelineWidget"){
+                for(auto* owner=w->parentWidget();owner;owner=owner->parentWidget())if(QString(owner->metaObject()->className())=="TimelinePanel"){
+                    item["timelinePanel"]=id(owner);
+                    using TrackId=QString(*)(const QWidget*,int,bool);
+                    using TrackY=int(*)(const QWidget*,int);
+                    auto trackId=reinterpret_cast<TrackId>(dlsym(RTLD_DEFAULT,"_ZN13TimelinePanel15trackIdForIndexEPK14TimelineWidgetib"));
+                    auto trackY=reinterpret_cast<TrackY>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi"));
+                    if(trackId&&trackY){QJsonArray tracks;int index=0;for(;index<1024&&trackY(w,index)>=0;index++)tracks.append(trackId(w,index,false));item["trackIds"]=tracks;item["trackIdsTruncated"]=index==1024;}
+                    break;
+                }
                 using Getter=QSet<QString>(*)(const QWidget*);
                 auto getter=reinterpret_cast<Getter>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget10allClipIdsEv"));
                 if(getter){auto ids=getter(w).values();std::sort(ids.begin(),ids.end());QJsonArray clips;

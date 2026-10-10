@@ -27,6 +27,7 @@ import {startPreparation,readPreparation} from './runner/preparations.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = dataDirectory();
+const startedSourceHash=(await fingerprint(root)).sha256,startedRunnerHash=await sourceIdentity();
 const historyUrl=()=>existsSync(path.join(dataDir,'history.html'))?'/history':null;
 mkdirSync(dataDir,{recursive:true});
 const explainer=createExplainer(root,dataDir);
@@ -193,6 +194,7 @@ const server=http.createServer(async(req,res)=>{
         try{body=JSON.parse(text);}catch{fail(400,'Invalid JSON.');}
         if(!body||typeof body!=='object'||Array.isArray(body))fail(400,'An object is required.');
       }
+      if(process.env.ATHANOR_WORKER_NAME&&req.method==='POST'&&(['/api/preparations','/api/plans','/api/runner/start','/api/desktop/start'].includes(url.pathname)||parts[1]==='investigations'&&['prepare','start'].includes(parts[3]))&&(await fingerprint(root)).sha256!==startedSourceHash)fail(409,'Managed worker source changed. Qualify and restart its pinned version before new execution.');
       if(url.pathname==='/api/tower/live'&&req.method==='GET')return send(200,towerLive({db,dataDir,selected:url.searchParams.get('run'),definitions:[...desktopCourse.cases,...serviceCourse.cases]}));
       if(url.pathname==='/api/tower'&&req.method==='GET')return send(200,{...towerSnapshot({runner:await runnerStatus(),desktop:desktopState(dataDir),runs:db.prepare('SELECT id FROM runs ORDER BY created_at DESC').all().map(r=>getRun(r.id)),guide:explainer.build(),details:id=>jobDetails(dataDir,id)}),historyUrl:historyUrl()});
       if(url.pathname==='/api/explainer'&&req.method==='GET')return send(200,explainer.build());
@@ -202,6 +204,13 @@ const server=http.createServer(async(req,res)=>{
         if(!file)fail(404,'Evidence file not found.');
         const type=({'.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.mp4':'video/mp4','.mov':'video/quicktime','.wav':'audio/wav','.json':'application/json'})[path.extname(file)]||'text/plain; charset=utf-8';
         res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"});return res.end(readFileSync(file));
+      }
+      if(url.pathname==='/api/worker'&&req.method==='GET'){
+        const runner=await runnerStatus(),desktop=desktopState(dataDir),active=runner.active;
+        return send(200,{format:'athanor-worker-status/v1',name:process.env.ATHANOR_WORKER_NAME||'Local Athanor',dataDir,sourceHash:startedRunnerHash,fullSourceHash:startedSourceHash,sourceMatches:(await fingerprint(root)).sha256===startedSourceHash,preparing,
+          active:active?{run_id:active.run_id,state:active.state,url:`http://${host}/#run/${active.run_id}`} : null,
+          ownedSessions:desktop.ownedSessions,activeDesktopJobs:desktop.jobs.filter(j=>['Preparing','Ready','Running'].includes(j.state)),
+          desktopReadiness:'Requires owned unlocked-session qualification',delivery:'Local reports; managed workers follow their configured reporting policy'});
       }
       if(url.pathname==='/api/desktop'&&req.method==='GET')return send(200,desktopState(dataDir));
       if(url.pathname==='/api/desktop/start'&&req.method==='POST'){

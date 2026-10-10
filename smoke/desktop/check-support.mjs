@@ -70,10 +70,22 @@ export function requireOrdinaryTimingFixture(snapshot,clipId){
 }
 export function timelineDockToOpen(ui){
  const canvases=ui.widgets.filter(w=>w.class==='TimelineWidget');
- if(canvases.length===1)return null;
+ if(canvases.length){
+  const panels=new Set(canvases.map(w=>w.timelinePanel)),windows=new Set(canvases.map(w=>w.window));
+  if(canvases.length===1||panels.size===1&&!panels.has(undefined)&&windows.size===1&&!windows.has(undefined))return null;
+  throw new OutcomeError('Timeline dock is ambiguous across panels','Blocked');
+ }
  const tabs=ui.widgets.filter(w=>w.name==='dockWidgetTabLabel'&&w.text==='Timeline');
- if(canvases.length||tabs.length!==1)throw new OutcomeError('Timeline dock is absent or ambiguous','Blocked');
+ if(tabs.length!==1)throw new OutcomeError('Timeline dock is absent or ambiguous','Blocked');
  return tabs[0];
+}
+export function timelineCanvas(ui,trackId){
+ const canvases=ui.widgets.filter(w=>w.class==='TimelineWidget');
+ timelineDockToOpen(ui);
+ const matches=trackId?canvases.filter(w=>w.trackIdsTruncated===false&&w.trackIds?.includes(trackId))
+  :canvases.length===1?canvases:canvases.filter(w=>w.clipIdsTruncated===false&&w.clipIds?.length);
+ if(matches.length!==1)throw new OutcomeError('Timeline canvas is absent or ambiguous; supply the intended track identity','Blocked');
+ return matches[0];
 }
 export function scopeSelections(type,tap){
  const modes=['Histogram','Waveform (Luma)','Waveform (RGB)','RGB Parade'],taps=['Post IDT','Post Primary','Pre DVT'];
@@ -259,7 +271,7 @@ export async function checks(file,name){
     const actions=menu.menuItems.filter(a=>a.text===label&&a.enabled);assert(actions.length===1,'Menu action is ambiguous');const a=actions[0];
     await n('click',{target:menu.id,x:a.x+Math.floor(a.width/2),y:a.y+Math.floor(a.height/2)});await until(async()=>!(await ui()).widgets.some(w=>w.id===menu.id));
   }
-  async function openTimeline(name){const tab=timelineDockToOpen(await ui());if(tab){await n('click',{target:tab.id});await until(async()=>(await ui()).widgets.some(w=>w.class==='TimelineWidget'),{description:'Timeline dock is visible'});}const view=await mediaItem(name);await activate(view);await n('item-click',{target:view.id,text:name,double:true});await until(async()=>(await ui()).widgets.some(w=>w.name==='panelSubtabSelector'&&selectorNamesTimeline(w.text,name)),{description:'Timeline '+name+' is open'});const canvases=(await ui()).widgets.filter(w=>w.class==='TimelineWidget');if(canvases.length!==1)throw new OutcomeError('Timeline canvas is absent or ambiguous','Blocked');const v=canvases[0];await activate(v);return v;}
+  async function openTimeline(name,trackId){const tab=timelineDockToOpen(await ui());if(tab){await n('click',{target:tab.id});await until(async()=>(await ui()).widgets.some(w=>w.class==='TimelineWidget'),{description:'Timeline dock is visible'});}const view=await mediaItem(name);await activate(view);await n('item-click',{target:view.id,text:name,double:true});await until(async()=>(await ui()).widgets.some(w=>w.name==='panelSubtabSelector'&&selectorNamesTimeline(w.text,name)),{description:'Timeline '+name+' is open'});const v=timelineCanvas(await ui(),trackId);await activate(v);return v;}
   function finish(){report.completed=true;writeFileSync(output,JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(report.results.some(r=>r.status!=='Pass'))process.exitCode=1;}
   return {s,report,n,c,ui,until,check,step:(definition,fn)=>recordStep(file,definition,fn),activate,action,mediaItem,mediaMenu,openTimeline,finish};
 }

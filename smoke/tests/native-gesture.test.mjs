@@ -63,6 +63,7 @@ test('native window ownership ignores off-display placeholders but preserves rea
   const source=await readFile(new URL('../desktop/macos-input.swift',import.meta.url),'utf8'),helpers=source.slice(source.indexOf('func pointerOverlay('),source.indexOf('func requirePointerWindow('));
   await writeFile(root+'/probe.swift',`import Foundation
 import CoreGraphics
+import ApplicationServices
 ${helpers}
 func window(_ pid:Int,_ rect:CGRect,_ layer:Int=0) -> [String:Any] { [kCGWindowOwnerPID as String:pid,kCGWindowOwnerName as String:"App",kCGWindowLayer as String:layer,kCGWindowAlpha as String:1.0,kCGWindowBounds as String:rect.dictionaryRepresentation] }
 let displays=[CGRect(x:0,y:0,width:1920,height:1080),CGRect(x:-1920,y:0,width:1920,height:1080)]

@@ -92,3 +92,5 @@ If Start loses its response, use **Check start status**. If no admission is foun
 For Core/App persistence changes, use [caller preflight](caller-preflight.md) to
 select both sides of the boundary and inspect exact source identities. It is
 read-only planning; build/test results, CI and packaged acceptance remain separate.
+
+Managed MBP/Mini deployments use [pinned worker profiles](workers.md). Qualify updates in a new version and switch the owned supervisor only when idle; nightly execution never rebases a live checkout. Developer clones need no worker profile or scheduler.

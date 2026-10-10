@@ -43,10 +43,10 @@ await check('D-CLIPBOARD-LARGE',async()=>{
   const cuts=Array.from({length:100},(_,i)=>{const length=1+i%3,start=i%72;const cut={id:'cut-'+i,source:{asset_id:s.assets.plate},source_range:{start_seconds:start/24,end_seconds:(start+length)/24},streams:'video_only',destination:{at:{seconds:frame/24,track:src.track}}};frame+=length;return cut;});
   await c('timeline.place_cuts',{id:'large-cuts',timeline_id:src.id,cuts});const before=await inspect(src.id),empty=await inspect(dst.id);requireExactTimingFixture(before);assert(clips(before).length===100,'Large clipboard source is incomplete');await keep(id,'before',{before,empty});return {src,dst,before,empty};
  });
- const source=await openTimeline(f.before.timeline.name);await focusClip(source,clips(f.before)[0].clip_id);await keep(id,'displayed-before',verifyDisplayedClips(observedWidget(await ui(),w=>w.id===source.id,'Source timeline'),f.before));await n('clipboard-save');let marked=false;
+ const source=await openTimeline(f.before.timeline.name,f.before.tracks.find(t=>t.address==='V1')?.track_id);await focusClip(source,clips(f.before)[0].clip_id);await keep(id,'displayed-before',verifyDisplayedClips(observedWidget(await ui(),w=>w.id===source.id,'Source timeline'),f.before));await n('clipboard-save');let marked=false;
  try{
   await stage('copy','Physically select and copy all 100 clips','execute',async()=>{await physical('key',{target:source.id,key:'cmd+a'});await physical('key',{target:source.id,key:'cmd+c'});assert((await n('clipboard-mark')).formats.includes('application/x-wizard-timeline-clips'),'Timeline clipboard payload missing');marked=true;});
-  const target=await openTimeline(f.empty.timeline.name);await physical('click',{target:target.id,x:target.width/2,y:target.height-30});await c('playback.seek',{time:0});
+  const target=await openTimeline(f.empty.timeline.name,f.empty.tracks.find(t=>t.address==='V1')?.track_id);await physical('click',{target:target.id,x:target.width/2,y:target.height-30});await c('playback.seek',{time:0});
   await stage('paste','Physically paste into the empty timeline','execute',()=>physical('key',{target:target.id,key:'cmd+v'}));
   const after=await until(async()=>{const a=await inspect(f.dst.id);return clips(a).length===100?a:null;},{description:'All 100 pasted clips'});await keep(id,'pasted',after);await keep(id,'displayed-after',verifyDisplayedClips(observedWidget(await ui(),w=>w.id===target.id,'Destination timeline'),after));await capture(id,'after',target.id);
   const result=await stage('verify','Check independent IDs, sources, ordering and exact timing','verify',async()=>{const result=verifyLargePaste(f.before,f.empty,after);same(snapshotState(await inspect(f.src.id)),snapshotState(f.before),'Copy preserves source timeline');return result;});
@@ -62,7 +62,7 @@ await check('D-HISTORY-50',async()=>{
  const id='D-HISTORY-50',f=await stage('setup','Seed history and prepare a single exact-timing clip','prepare',async()=>{
   const f=await timeline('Long history initial');await c('timeline.place_cuts',{id:'history-source',timeline_id:f.id,cuts:[{id:'source',source:{asset_id:s.assets.plate},source_range:{start_seconds:1,end_seconds:3},streams:'video_only',destination:{at:{seconds:1,track:f.track}}}]});
   for(let i=1;i<=50;i++)await c('timeline.update',{id:'seed-'+i,timeline_id:f.id,changes:{name:'Long history seed '+i}});
-  f.before=await inspect(f.id);requireExactTimingFixture(f.before);f.clipId=clips(f.before)[0].clip_id;f.view=await openTimeline(f.before.timeline.name);await focusClip(f.view,f.clipId);await keep(id,'before',f.before);await capture(id,'before',f.view.id);return f;
+  f.before=await inspect(f.id);requireExactTimingFixture(f.before);f.clipId=clips(f.before)[0].clip_id;f.view=await openTimeline(f.before.timeline.name,f.before.tracks.find(t=>t.address==='V1')?.track_id);await focusClip(f.view,f.clipId);await keep(id,'before',f.before);await capture(id,'before',f.view.id);return f;
  }),samples=[];
  async function sequence(phase,key,frames){
   for(const frame of frames){const startedAt=Date.now();await physical('key',{target:f.view.id,key});const observed=await until(async()=>{const a=await inspect(f.id),clip=clips(a).find(c=>c.clip_id===f.clipId);return clip&&Math.abs(clip.timeline_range.start_seconds-(1+frame/24))<1e-6?a:null;},{description:phase+' frame '+frame});

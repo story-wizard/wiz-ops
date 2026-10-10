@@ -86,3 +86,7 @@ git archive --format=tar.gz --output="$HOME/Library/Application Support/WizardSm
 This includes committed `smoke/` source only. It does not collect ignored runtime data or upload the archive. Record the Ops commit ID alongside the archive.
 
 Build discovery displays 50 records per page by default. Filters search all retained metadata before pagination. Agents can use `builds --author me --page 2`, `--page-size all` for the cached catalog, and `--github-page N` to load older metadata in batches of 50. Inspect `nextGitHubPage` and `hasMoreGitHub` before requesting the next provider page.
+
+## Optional worker platform
+
+Developer clones need only the ordinary local service and agent CLI. Managed MBP/Mini deployments add a pinned external profile and existing scheduler; see [workers](workers.md). The worker layer is optional and uses the same admission, evidence and investigation contracts.

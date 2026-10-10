@@ -15,6 +15,7 @@ Work from the command root: `smoke/` in a checkout or `workspace/` in a bundle. 
 
 | Task | Start here |
 | --- | --- |
+| Administer a managed MBP/Mini or consolidate nightly assertions | [Workers and nightly reports](docs/workers.md) |
 | Run or compose an existing course | [Agent courses](docs/agent-courses.md) |
 | Explore Wizard with mouse, keyboard and app operations | [Computer-use guide](docs/computer-use-agent.md) |
 | Understand how the CLI, Qt adapter and physical input work together | [Harness control](docs/harness-control.md) |

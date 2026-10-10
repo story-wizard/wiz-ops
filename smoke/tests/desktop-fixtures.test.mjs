@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp,rm,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {checks,requirePassed,requireExactTimingFixture,requireOrdinaryTimingFixture,timelineDockToOpen,gapFixture} from '../desktop/check-support.mjs';
+import {checks,requirePassed,requireExactTimingFixture,requireOrdinaryTimingFixture,timelineDockToOpen,timelineCanvas,gapFixture} from '../desktop/check-support.mjs';
 import {writeJSON} from '../runner/files.mjs';
 test('a rejected timing fixture blocks a gesture instead of blaming the edit',()=>{
  const snapshot=status=>({tracks:[{items:[{kind:'clip',clip_id:'fixture',source:{timing:'timed',projection_status:status,projection_diagnostics:status==='exact'?[]:['exact_authority_carrier_mismatch']}}]}]});
@@ -15,6 +15,20 @@ test('opening a timeline restores its dock after a prior Mixer check without cho
  const tab={id:'tab',name:'dockWidgetTabLabel',text:'Timeline'},mixer={id:'mixer',name:'panelSubtabSelector',text:'Mixer (6)'},canvas={id:'canvas',class:'TimelineWidget'};
  assert.equal(timelineDockToOpen({widgets:[mixer,tab]}).id,'tab');assert.equal(timelineDockToOpen({widgets:[canvas,tab]}),null);
  for(const widgets of [[mixer],[tab,{...tab,id:'other'}],[canvas,{...canvas,id:'other'},tab]])assert.throws(()=>timelineDockToOpen({widgets}),e=>e.status==='Blocked');
+});
+
+test('paired video/audio canvases select by track identity and reject foreign panels',()=>{
+ const video={id:'video',class:'TimelineWidget',window:'main',timelinePanel:'panel',trackIds:['video-id'],trackIdsTruncated:false,clipIds:['clip'],clipIdsTruncated:false};
+ const audio={...video,id:'audio',trackIds:['audio-id'],clipIds:[]};
+ const ui={widgets:[audio,video]};
+ assert.equal(timelineDockToOpen(ui),null);
+ assert.equal(timelineCanvas(ui,'video-id').id,'video');
+ assert.equal(timelineCanvas(ui,'audio-id').id,'audio');
+ assert.equal(timelineCanvas(ui).id,'video');
+ assert.equal(timelineCanvas({widgets:[{...video,clipIds:[]},audio]},'video-id').id,'video');
+ for(const widgets of [[video,{...audio,timelinePanel:'other'}],[video,{...audio,window:'foreign'}],[video,{...video,id:'clone'}],[{...video,trackIdsTruncated:true},audio]])assert.throws(()=>timelineCanvas({widgets},'video-id'),e=>e.status==='Blocked');
+ assert.throws(()=>timelineCanvas({widgets:[{...video,clipIds:[]},audio]}),e=>e.status==='Blocked');
+ assert.throws(()=>timelineCanvas(ui,'missing'),e=>e.status==='Blocked');
 });
 
 test('ordinary UI fixtures accept a valid carrier while rejecting retime, mixed clocks and invalid authority',()=>{

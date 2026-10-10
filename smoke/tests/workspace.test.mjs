@@ -31,6 +31,8 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     assert.ok(setup.courses.every(c=>!c.checkpoint));assert.deepEqual(setup.runtimes,[]);
     assert.equal((await fetch(base+'/run-setup.js')).status,200);assert.equal((await fetch(base+'/wizard-tokens.css')).status,200);
     assert.deepEqual((await request('/runs')).data,[],'Opening run setup must not launch tests');
+    const worker=(await request('/worker')).data;assert.equal(worker.name,'Local Athanor');assert.equal(worker.sourceMatches,true);assert.equal(worker.dataDir,realpathSync(dir));assert.equal(worker.active,null);assert.deepEqual(worker.ownedSessions,[]);assert.match(worker.desktopReadiness,/qualification/);
+
     const transferId='aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
     assert.equal((await request('/builds/progress/'+transferId)).status,404);
     assert.equal((await request('/builds/import','POST',{url:'http://example.com/build.zip',progressId:'../bad'})).status,400);

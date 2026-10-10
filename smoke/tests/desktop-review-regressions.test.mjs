@@ -51,6 +51,7 @@ test('pointer hit testing excludes the system cursor and still blocks real overl
   const source=await readFile(path.join(smoke,'desktop/macos-input.swift'),'utf8'),start=source.indexOf('func pointerOverlay('),end=source.indexOf('func children(',start);assert.ok(start>=0&&end>start);
   const program=`import Foundation
 import CoreGraphics
+import ApplicationServices
 struct InputError:Error {let message:String,code:String,diagnostics:[String:Any]}
 ${source.slice(start,end)}
 let cursor:[String:Any]=[kCGWindowOwnerName as String:"Window Server",kCGWindowOwnerPID as String:433,kCGWindowLayer as String:NSNumber(value:CGWindowLevelForKey(.cursorWindow))]
@@ -212,6 +213,7 @@ test('the production Swift pointer scope balances its down on focus loss, owner 
   const guardStart=original.indexOf('func requirePointerWindow('),guardEnd=original.indexOf('func children(',guardStart);assert.ok(guardStart>=0&&guardEnd>guardStart);
   const program=`import Foundation
 import CoreGraphics
+import ApplicationServices
 struct InputError: Error { let message:String; var code="input_denied"; var diagnostics:[String:Any]=[:] }
 func require(_ condition:Bool,_ message:String)throws{if !condition{throw InputError(message:message)}}
 enum CGEventType {case leftMouseDown,leftMouseDragged,leftMouseUp}
@@ -264,5 +266,35 @@ for scenario in ["focus-lost","owner-lost","normal","preinput-denial"]{
   const rows=Object.fromEntries(execFileSync(binary,[],{encoding:'utf8',timeout:5000}).trim().split('\n').map(x=>x.split(':')));
   for(const scenario of ['focus-lost','owner-lost'])assert.equal(rows[scenario],'down,up',scenario+' must release the driver’s outstanding press');
   assert.equal(rows.normal,'down,drag,up','Normal input releases exactly once');assert.equal(rows['preinput-denial'],'','Denied input emits no events');
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('only a verified system Dock no-hit admits the underlying owned pointer target',{skip:process.platform!=='darwin'},async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-dock-hit-'));
+ try{
+  const source=await readFile(path.join(smoke,'desktop/macos-input.swift'),'utf8'),start=source.indexOf('func pointerOverlay('),end=source.indexOf('func children(',start);
+  const program=`import Foundation
+import CoreGraphics
+import ApplicationServices
+struct InputError:Error {let message:String,code:String,diagnostics:[String:Any]}
+${source.slice(start,end)}
+let dock:[String:Any]=[kCGWindowOwnerName as String:"Dock",kCGWindowOwnerPID as String:123,kCGWindowNumber as String:9,kCGWindowLayer as String:20,kCGWindowBounds as String:["X":0,"Y":0,"Width":200,"Height":100]]
+let target:[String:Any]=[kCGWindowOwnerPID as String:456,kCGWindowNumber as String:10,kCGWindowLayer as String:0,kCGWindowBounds as String:["X":0,"Y":0,"Width":200,"Height":100]]
+let point=CGPoint(x:30,y:30),displays=[CGRect(x:0,y:0,width:200,height:100)],systemDock="/System/Library/CoreServices/Dock.app/Contents/MacOS/Dock"
+for status in [AXError.success,.cannotComplete,.apiDisabled,.failure,.noValue] {
+ let passes:([String:Any],CGPoint)->Bool={entry,p in dockHostingWindowPasses(entry,at:p,executable:{_ in systemDock},hitTest:{_,_ in status})}
+ let top=topVisibleWindow([dock,target],displays:displays,at:point,dockPasses:passes)
+ if status == .noValue {try requirePointerWindow(top,at:point,pid:456,window:10,starting:true)}
+ else {do{try requirePointerWindow(top,at:point,pid:456,window:10,starting:true);fatalError("Dock hit or unavailable inspection allowed")}catch let e as InputError{precondition(e.code=="pointer_occluded")}}
+}
+for executable in ["/tmp/Dock",""] {precondition(!dockHostingWindowPasses(dock,at:point,executable:{_ in executable},hitTest:{_,_ in .noValue}))}
+var fake=dock;fake[kCGWindowOwnerName as String]="Screenshot"
+precondition(!dockHostingWindowPasses(fake,at:point,executable:{_ in systemDock},hitTest:{_,_ in .noValue}))
+precondition((topVisibleWindow([dock,target],displays:displays,at:point)?[kCGWindowOwnerPID as String] as? NSNumber)?.intValue == 123)
+print("Verified no-hit passed; hits, failures and impostors blocked")
+`;
+  const file=path.join(root,'dock.swift'),binary=path.join(root,'dock');await writeFile(file,program);
+  execFileSync('/usr/bin/swiftc',['-module-cache-path',path.join(root,'module-cache'),file,'-o',binary],{encoding:'utf8',timeout:60000});
+  assert.match(execFileSync(binary,[],{encoding:'utf8',timeout:5000}),/failures and impostors blocked/);
  }finally{await rm(root,{recursive:true,force:true});}
 });

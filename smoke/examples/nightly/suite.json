@@ -1,0 +1,1197 @@
+{
+  "format": "athanor-functional-suite/v1",
+  "name": "Athanor nightly functional specification",
+  "cases": [
+    {
+      "id": "CORE-01",
+      "area": "Startup",
+      "steps": [
+        "Install selected Nightly through Wizard Updater.",
+        "Launch Wizard and confirm the installed build matches the updater.",
+        "Create a fresh project."
+      ],
+      "expected": [
+        "Correct nightly installed and launched.",
+        "Main window remains responsive without startup error."
+      ]
+    },
+    {
+      "id": "CORE-02",
+      "area": "Import and playback",
+      "steps": [
+        "Import the MP4 using the Media bin context menu > Import > Files. Do not use Start Ingestion, which starts an agent workflow.",
+        "Double-click imported media to verify source preview, then drag its observed media row onto the first video track near time zero. Inspect all AXWindows and handle the delayed Use Clip Settings dialog; use source 24-fps settings. Zoom in so the 8-second linked video/audio clips are visible. Verify actual timeline contents; clean up any exploratory duplicate clips in the disposable project.",
+        "Play, pause, scrub, and inspect early and late frames."
+      ],
+      "expected": [
+        "One 8-second 24-fps media asset imports.",
+        "Video and audio appear on the timeline.",
+        "Preview advances during playback and stops on pause; frames remain visible when scrubbing."
+      ],
+      "fixture": "fixtures/pattern.mp4"
+    },
+    {
+      "id": "CORE-03",
+      "area": "Persistence",
+      "steps": [
+        "Save the disposable project in the test workspace.",
+        "Close and reopen it.",
+        "Inspect imported media and timeline."
+      ],
+      "expected": [
+        "Project reopens without missing media or errors.",
+        "Timeline structure and settings match the saved state."
+      ]
+    },
+    {
+      "id": "CORE-04",
+      "area": "Export",
+      "steps": [
+        "Export the full synthetic timeline to a new MP4 in the test workspace.",
+        "Inspect the file with ffprobe and sample beginning/middle/end frames."
+      ],
+      "expected": [
+        "Export completes and produces a decodable 8-second video with an audio stream.",
+        "Sampled frames contain the expected test pattern; no blank output or missing end."
+      ]
+    },
+    {
+      "id": "LOOP-01",
+      "area": "Loop playback",
+      "steps": [
+        "Set In at 2 seconds and Out at 4 seconds on the synthetic timeline.",
+        "Enable looping with Cmd+L.",
+        "Play long enough to observe two wraps.",
+        "Pause and wait longer than the loop duration."
+      ],
+      "expected": [
+        "Playhead wraps from Out to In repeatedly within one frame of the selected range.",
+        "Pause stops playback and no queued wrap moves the paused playhead."
+      ]
+    },
+    {
+      "id": "LOOP-02",
+      "area": "Loop edge cases",
+      "steps": [
+        "Set a reversed In/Out range and press Cmd+L.",
+        "Test an In point at or beyond content end.",
+        "Restore a valid range and turn looping off."
+      ],
+      "expected": [
+        "Invalid ranges do not start an infinite loop or crash.",
+        "Disabling loop resumes normal playback behavior."
+      ]
+    },
+    {
+      "id": "LOOP-03",
+      "area": "Loop ownership",
+      "steps": [
+        "Create a second timeline with different In/Out points.",
+        "Start looping the first timeline and switch the visible timeline.",
+        "Pause and resume using the active preview controls."
+      ],
+      "expected": [
+        "Loop range belongs to the timeline that owns playback.",
+        "Switching panels/timelines does not apply another timeline's range or crash."
+      ]
+    },
+    {
+      "id": "PANEL-01",
+      "area": "Panel maximization",
+      "steps": [
+        "Use the exposed maximize-panel control or menu on Preview.",
+        "Restore it.",
+        "Repeat on Timeline and Inspector if available."
+      ],
+      "expected": [
+        "Selected panel expands and restores correctly.",
+        "Other panels, tabs, contents, and timeline selection survive restoration."
+      ]
+    },
+    {
+      "id": "AUDIO-01",
+      "area": "Audio mixer",
+      "steps": [
+        "Open Audio Mixer on the synthetic timeline.",
+        "Adjust a track fader and pan.",
+        "Toggle mute and solo and restore defaults.",
+        "Undo and redo a mixer edit."
+      ],
+      "expected": [
+        "Controls remain visible and responsive.",
+        "Displayed values persist through panel switching.",
+        "Mute/solo and undo/redo affect the intended track; audible assertions require actual audio evidence."
+      ],
+      "fixture": "fixtures/tone.wav"
+    },
+    {
+      "id": "AUDIO-02",
+      "area": "Voice isolation",
+      "steps": [
+        "Import the recording.",
+        "Enable voice isolation and compare a short phrase with it off/on.",
+        "Save and reopen."
+      ],
+      "expected": [
+        "Isolation preserves intelligible speech and reduces background noise without silence/crash.",
+        "Enabled state persists."
+      ]
+    },
+    {
+      "id": "RAW-01",
+      "area": "Sony ARW import",
+      "steps": [
+        "Import the ARW.",
+        "Inspect thumbnail, source metadata, and RAW Development in Inspector.",
+        "Use the exposed embedded-JPEG child or Extract JPEG action, then drag the resulting JPEG onto a local timeline."
+      ],
+      "expected": [
+        "ARW imports with a visible preview and coherent metadata.",
+        "Embedded JPEG is usable and its thumbnail survives a preview decode failure if that condition can be reproduced."
+      ]
+    },
+    {
+      "id": "RAW-02",
+      "area": "RAW development",
+      "steps": [
+        "Change exposure and the exposed white-balance controls through Inspector; include values near rounding boundaries.",
+        "Toggle automatic exposure, reset, undo, and redo.",
+        "Save and reopen the project."
+      ],
+      "expected": [
+        "Preview and displayed applied exposure agree.",
+        "Reset returns to auto and undo/redo restore expected values.",
+        "Values persist without accumulating rounding drift or stale metadata."
+      ]
+    },
+    {
+      "id": "RAW-03",
+      "area": "RAW locks and restoration",
+      "steps": [
+        "Lock the track/timeline and attempt RAW control edits.",
+        "Unlock and edit again.",
+        "Reopen twice and select different RAW assets."
+      ],
+      "expected": [
+        "Locked content cannot be modified.",
+        "Unlocked controls work.",
+        "No stale metadata or cross-asset auto-exposure values appear."
+      ]
+    },
+    {
+      "id": "OZ-01",
+      "area": "Oz project attachments",
+      "steps": [
+        "Open Oz/Agent Workspace in the disposable project.",
+        "Enter a harmless unsent prompt.",
+        "Drag a project reference into the composer.",
+        "Resize/switch panels and inspect attachment labels and prompt.",
+        "Remove the attachment and clear the unsent prompt."
+      ],
+      "expected": [
+        "Project reference is accepted as an attachment.",
+        "Prompt and attachment label remain visible.",
+        "No prompt is submitted and no external generation is triggered."
+      ]
+    },
+    {
+      "id": "MGFX-01",
+      "area": "Motion graphics split",
+      "steps": [
+        "Put the motion graphic on a timeline and record frames at several known times.",
+        "Split the clip away from its beginning.",
+        "Inspect equivalent frames in the tail; extend the tail.",
+        "Undo and redo the split."
+      ],
+      "expected": [
+        "Tail uses the original source-time offset without restarting the animation.",
+        "Extending and undo/redo preserve timing and source-range validity."
+      ]
+    },
+    {
+      "id": "MGFX-02",
+      "area": "Motion graphics duplicate",
+      "steps": [
+        "Copy and paste a split-tail clip elsewhere on the timeline.",
+        "Inspect corresponding source frames and save/reopen."
+      ],
+      "expected": [
+        "Pasted duplicate retains the source offset and animation timing.",
+        "Timing persists after reopen."
+      ]
+    },
+    {
+      "id": "MASK-01",
+      "area": "Shape tool reset",
+      "steps": [
+        "On synthetic video select Rectangle mask and draw a mask.",
+        "Inspect selected tool after creation.",
+        "Create a second mask and undo/redo."
+      ],
+      "expected": [
+        "Tool returns to Select after drawing.",
+        "Existing empty Apply Matte is reused where applicable; no unintended extra matte nodes.",
+        "Undo/redo and preview remain consistent."
+      ]
+    },
+    {
+      "id": "EXPORT-02",
+      "area": "Export stream selection",
+      "steps": [
+        "On a fresh local 8-second linked pattern/tone timeline, open the redesigned export window.",
+        "Export video+audio, video-only, and audio-only to distinct local files using formats exposed by the UI.",
+        "Disable both streams and inspect validation; re-enable them and verify a valid export remains possible.",
+        "Decode each export and inspect stream types, duration and representative frames/audio."
+      ],
+      "expected": [
+        "Requested streams are present and excluded streams absent.",
+        "Both-disabled state cannot silently produce an invalid or empty successful export.",
+        "Changing toggles preserves valid range/path settings; progress and output match."
+      ]
+    },
+    {
+      "id": "SEARCH-01",
+      "area": "Live timeline search",
+      "steps": [
+        "Place multiple uniquely named local clips and a duplicated clip on the active timeline; keep a different matching clip on a second timeline.",
+        "Type a name fragment, edit it quickly, clear it, and search a no-match term.",
+        "Activate results and verify selection/playhead locations; switch timelines and repeat."
+      ],
+      "expected": [
+        "Results update to the final query without stale entries.",
+        "Results belong to the selected timeline and cover repeated matching clips.",
+        "Selecting a result navigates to the correct clip; clearing restores the normal view."
+      ]
+    },
+    {
+      "id": "SEARCH-02",
+      "area": "Timeline search completeness",
+      "steps": [
+        "Build a local timeline with labelled clips spanning early and late times and multiple video/audio tracks.",
+        "Search through all available results, including offscreen/later clips, and compare against the saved timeline structure.",
+        "Switch timelines and repeat a shared search term without submitting an Oz request."
+      ],
+      "expected": [
+        "All applicable matching clips are represented, without duplicates or cross-timeline leakage.",
+        "Result timestamps, labels and clip references agree with saved local timeline data.",
+        "Any unavailable semantic/agent search prerequisite is reported explicitly; label-search success does not stand in for it."
+      ]
+    },
+    {
+      "id": "OZ-02",
+      "area": "Oz composer while working",
+      "steps": [
+        "Verify idle unsent draft entry, wrapping, scrolling and resize behavior in the local project.",
+        "If an already-authorized Oz run is available, type/edit a harmless unsent draft during that run and verify it survives completion.",
+        "Clear the draft without sending. Do not launch paid/external generation to manufacture this prerequisite."
+      ],
+      "expected": [
+        "Idle and working-state composers preserve the draft and remain editable without sending it.",
+        "Caret/scrollbar and wrapping stay inside the composer when resized.",
+        "If no authorized active run exists, record partial idle coverage and the unexecuted working-state assertion."
+      ]
+    },
+    {
+      "id": "BUG-01",
+      "area": "Report Bug menu and evidence",
+      "steps": [
+        "Open Report Bug from the exposed menu on a disposable local project with saved edits.",
+        "Inspect the form and available evidence/history/revision information.",
+        "Close/cancel without submitting or uploading a report."
+      ],
+      "expected": [
+        "Menu action opens a responsive report UI without crashing.",
+        "Displayed project/version/history evidence belongs to the disposable project and agrees with local saved data.",
+        "Cancel exits safely; no external report is submitted."
+      ]
+    },
+    {
+      "id": "VERSION-01",
+      "area": "Project version warning and backup",
+      "steps": [
+        "Create/save a fresh project with the tested build and inspect its recorded writer version.",
+        "Use a disposable local copy of the prior-build QA project to open a project written by a different version.",
+        "Inspect the version warning and create a backup in a sibling directory if offered.",
+        "Attempt a backup destination inside the disposable project and verify rejection. Test cancel before continuing and reopen the resulting safe copy."
+      ],
+      "expected": [
+        "Fresh saves record the running writer version.",
+        "Cross-version warning identifies the actual versions and supports cancellation.",
+        "An inside-project backup is rejected; an outside-project backup reopens and preserves assets/timelines.",
+        "Original fixture is preserved and no unrelated project is modified."
+      ]
+    },
+    {
+      "id": "AUDIO-03",
+      "area": "Audio scrubbing",
+      "steps": [
+        "Scrub tone and generated speech through known regions at several speeds and around clip boundaries.",
+        "Compare normal playback/export reference with available Wizard-only audio capture or direct listening evidence.",
+        "Repeat after pausing/resuming and changing preview owner."
+      ],
+      "expected": [
+        "Audio scrubbing remains responsive without crashes or stale-owner playback.",
+        "No robotic artifact is asserted resolved solely from visual/timecode evidence.",
+        "If output audio cannot be observed, report UI coverage separately from the unverified audible assertion."
+      ],
+      "fixture": "fixtures/pattern.mp4, fixtures/tone.wav, fixtures/noisy-speech.wav"
+    },
+    {
+      "id": "UI-01",
+      "area": "Project name after File Open",
+      "steps": [
+        "Open a saved local QA project from the startup recent-project list.",
+        "Use File > Open to open the same project again.",
+        "Inspect the window title and saved project name."
+      ],
+      "expected": [
+        "The window title keeps the project name after File > Open."
+      ]
+    },
+    {
+      "id": "COMPAT-03",
+      "area": "Spellbook accessibility compatibility",
+      "steps": [
+        "Save the disposable QA project.",
+        "Use View > Add Panel > Spellbook with exact-PID native accessibility.",
+        "Inspect the new panel and the verified process."
+      ],
+      "expected": [
+        "Spellbook opens and Wizard remains running under native accessibility inspection."
+      ]
+    },
+    {
+      "id": "PP-01",
+      "area": "Preview Preparation",
+      "steps": [
+        "Add an expensive effect or generator."
+      ],
+      "expected": [
+        "A contributing effect creates an expensive render."
+      ]
+    },
+    {
+      "id": "PP-02",
+      "area": "Preview Preparation",
+      "steps": [
+        "Enable automatic idle preparation."
+      ],
+      "expected": [
+        "Automatically Prepare While Idle is selected."
+      ]
+    },
+    {
+      "id": "PP-03",
+      "area": "Preview Preparation",
+      "steps": [
+        "Play the expensive section twice."
+      ],
+      "expected": [
+        "Two foreground passes run through the expensive section."
+      ]
+    },
+    {
+      "id": "PP-04",
+      "area": "Preview Preparation",
+      "steps": [
+        "Pause near the section for two seconds."
+      ],
+      "expected": [
+        "Preparation starts after the idle delay."
+      ]
+    },
+    {
+      "id": "PP-05",
+      "area": "Preview Preparation",
+      "steps": [
+        "Check the status and reason tooltip."
+      ],
+      "expected": [
+        "The status and reason describe the preparation state."
+      ]
+    },
+    {
+      "id": "PP-06",
+      "area": "Preview Preparation",
+      "steps": [
+        "Play or seek into a ready frame."
+      ],
+      "expected": [
+        "A ready frame appears correctly when selected."
+      ]
+    },
+    {
+      "id": "PP-07",
+      "area": "Preview Preparation",
+      "steps": [
+        "Set In and Out around a short section."
+      ],
+      "expected": [
+        "The selected range encloses the intended short section."
+      ]
+    },
+    {
+      "id": "PP-08",
+      "area": "Preview Preparation",
+      "steps": [
+        "Disable automatic preparation."
+      ],
+      "expected": [
+        "The automatic menu item has no check mark."
+      ]
+    },
+    {
+      "id": "PP-09",
+      "area": "Preview Preparation",
+      "steps": [
+        "Prepare the selected In/Out range."
+      ],
+      "expected": [
+        "The manual command works with automatic preparation off."
+      ]
+    },
+    {
+      "id": "PP-10",
+      "area": "Preview Preparation",
+      "steps": [
+        "Keep the playhead in place during preparation."
+      ],
+      "expected": [
+        "Preparation does not move the playhead."
+      ]
+    },
+    {
+      "id": "PP-11",
+      "area": "Preview Preparation",
+      "steps": [
+        "Start another preparation job."
+      ],
+      "expected": [
+        "An uncached range starts a new job."
+      ]
+    },
+    {
+      "id": "PP-12",
+      "area": "Preview Preparation",
+      "steps": [
+        "Scrub during the active job."
+      ],
+      "expected": [
+        "The foreground seek is accepted."
+      ]
+    },
+    {
+      "id": "PP-13",
+      "area": "Preview Preparation",
+      "steps": [
+        "Check foreground priority."
+      ],
+      "expected": [
+        "Preparation defers to foreground work."
+      ]
+    },
+    {
+      "id": "PP-14",
+      "area": "Preview Preparation",
+      "steps": [
+        "Change a contributing effect or source."
+      ],
+      "expected": [
+        "An effect change invalidates the previous rendered pixels."
+      ]
+    },
+    {
+      "id": "PP-15",
+      "area": "Preview Preparation",
+      "steps": [
+        "Check playback uses fresh pixels."
+      ],
+      "expected": [
+        "Playback and a repeated seek use the new effect value."
+      ]
+    },
+    {
+      "id": "PP-16",
+      "area": "Preview Preparation",
+      "steps": [
+        "Enable Low Power Mode."
+      ],
+      "expected": [
+        "macOS reports Low Power Mode for the active power source."
+      ]
+    },
+    {
+      "id": "PP-17",
+      "area": "Preview Preparation",
+      "steps": [
+        "Check the resource-block reason."
+      ],
+      "expected": [
+        "Preparation is blocked with the Low Power Mode reason."
+      ]
+    },
+    {
+      "id": "FB-01",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Open a timeline project and Feedback panel"
+      ],
+      "expected": [
+        "Created a fresh local QA project through the GUI. Imported the generated eight-second pattern.mp4, applied clip settings, and opened Feedback."
+      ]
+    },
+    {
+      "id": "FB-02",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Start recording and allow microphone access"
+      ],
+      "expected": [
+        "Record requests microphone access if needed and starts an actual microphone recording; Stop and Cancel become enabled."
+      ]
+    },
+    {
+      "id": "FB-03",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Play, speak, check levels, seek and pause"
+      ],
+      "expected": [
+        "During actual capture, timeline playback and seeking work, microphone levels respond to speech, and playback pauses between comments."
+      ]
+    },
+    {
+      "id": "FB-04",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Pause and resume recording"
+      ],
+      "expected": [
+        "The red button pauses and resumes capture. The paused clock freezes and the paused level strip is gray."
+      ]
+    },
+    {
+      "id": "FB-05",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Stop recording and wait for comment cards"
+      ],
+      "expected": [
+        "Stop ends actual capture; processing completes and speech becomes timestamped comment cards."
+      ]
+    },
+    {
+      "id": "FB-06",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Click a card to move the playhead"
+      ],
+      "expected": [
+        "Clicked the first card timecode. The preview and timeline playhead moved to 00:00:00:12 (500 ms) at 24 fps."
+      ]
+    },
+    {
+      "id": "FB-07",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Settle a comment"
+      ],
+      "expected": [
+        "Ticked Move this cut earlier by one frame. Settled (1) appeared, and the session document saved the done flag."
+      ]
+    },
+    {
+      "id": "FB-08",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Drag a comment onto another to merge"
+      ],
+      "expected": [
+        "Dragged the last Speaker 2 card onto the preceding Speaker 2 card. One card kept both texts at 00:00:04:00. The source card was removed."
+      ]
+    },
+    {
+      "id": "FB-09",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Flag all open cards and send them to Oz"
+      ],
+      "expected": [
+        "Oz: all selected both open cards. The arrow created two persisted timeline review comments at frames 12 and 96, set Sent on the cards, and staged the expected chat draft. No prompt was submitted. The settled card was excluded."
+      ]
+    },
+    {
+      "id": "FB-10",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Play the recording and rename the session"
+      ],
+      "expected": [
+        "Play the recording starts playback of valid recorded audio. A name entered and committed with Return appears in the picker and persists."
+      ]
+    },
+    {
+      "id": "FB-11",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Start a new recording and cancel it"
+      ],
+      "expected": [
+        "Start a new actual recording, cancel with X, and verify the discarded session is deleted while earlier sessions remain."
+      ]
+    },
+    {
+      "id": "FB-12",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Export a transcript with each edit timecode"
+      ],
+      "expected": [
+        "Saved exported-feedback.txt through the GUI. All three comments, including the settled and merged comments, include the correct 24 fps edit timecode, speaker and complete text."
+      ]
+    },
+    {
+      "id": "FB-13",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Reimport the export and click a card"
+      ],
+      "expected": [
+        "Import transcript created a new session with the same three comment texts, speakers and timecodes. Clicking its first card moved the playhead to 500 ms. Exported text does not contain the settled or sent flags."
+      ]
+    },
+    {
+      "id": "FB-14",
+      "area": "Feedback Sessions",
+      "steps": [
+        "Split a comment at the caret"
+      ],
+      "expected": [
+        "Placed the caret inside the first comment and used the context menu Split Comment action. Two cards retain Speaker 1 and 00:00:00:12. They contain the text before and after the caret, including a split inside Reduce. Four cards remain."
+      ]
+    },
+    {
+      "id": "BRAW-01",
+      "area": "Blackmagic RAW",
+      "steps": [
+        "Import the official camera-original BRAW sample, inspect source and metadata, place it on a fresh timeline, scrub/play, export and reopen."
+      ],
+      "expected": [
+        "BRAW renders nonblank frames and exports a decodable result; the project reopens with the same source."
+      ]
+    },
+    {
+      "id": "TIME-01",
+      "area": "Time remap and clip automation",
+      "steps": [
+        "Use GUI clip-time automation and time remap on deterministic clock video; seek, trim, split, undo/redo and reopen."
+      ],
+      "expected": [
+        "Evaluated source time and parameter keyframes stay attached to the clip clock across edits."
+      ]
+    },
+    {
+      "id": "STAB-01",
+      "area": "Stabilization",
+      "steps": [
+        "Connect Stabilize in Render Graph through the GUI; run Analyze, inspect its take, compare motion before/after, edit and reopen."
+      ],
+      "expected": [
+        "Analysis completes on the evaluated graph. The take persists, rejects stale inputs and reduces measured shake."
+      ]
+    },
+    {
+      "id": "CACHE-01",
+      "area": "Preview composites and temporal inputs",
+      "steps": [
+        "Change a contributing effect, seek repeated frames, undo/redo, and inspect scope freshness where available."
+      ],
+      "expected": [
+        "Displayed pixels reflect current parameters and source times after edits and Undo; scopes remain current."
+      ]
+    },
+    {
+      "id": "INGEST-01",
+      "area": "Quick Ingest",
+      "steps": [
+        "Import local copies of three validated NAS speech excerpts; run Quick Ingest, inspect partial states and transcript/speakers, then Parallelized Ingest and inspect final states."
+      ],
+      "expected": [
+        "Quick Ingest produces transcripts/speakers and Partial state; the full pass produces Ingested state without external Oz prompts."
+      ]
+    },
+    {
+      "id": "IMPORT-03",
+      "area": "Keep Timeline Settings",
+      "steps": [
+        "Import a valid video whose format differs from an empty timeline.",
+        "Drag it onto V1. Select Keep Timeline Settings.",
+        "Repeat with Use Clip Settings as a control."
+      ],
+      "expected": [
+        "Keep Timeline Settings keeps the clip on the timeline and preserves the timeline format.",
+        "Use Clip Settings keeps the clip and applies its source format."
+      ]
+    },
+    {
+      "id": "EDIT-01",
+      "area": "Core editing",
+      "steps": [
+        "Split linked video and audio at two seconds through the Cut tool.",
+        "Undo and redo the split.",
+        "Copy the tail and paste it after the original content.",
+        "Undo the paste and split. Save the restored timeline."
+      ],
+      "expected": [
+        "The split changes both linked clips. Undo and Redo restore the correct structure.",
+        "The pasted tail keeps its source offset. Undo restores the original eight-second clip."
+      ]
+    },
+    {
+      "id": "PEN-01",
+      "area": "Pen drawing, playback, width and Undo",
+      "steps": [
+        "Open local video in a timeline preview. Focus the preview, press logical P, and draw two strokes.",
+        "Play and seek. Hold physical Control and move the pointer vertically to adjust width; draw another stroke.",
+        "Use Cmd+Z then Cmd+Shift+Z without an intermediate Save."
+      ],
+      "expected": [
+        "Strokes stay over live video. The physical Control dial changes stroke width. Undo and Redo remove and restore the last stroke."
+      ]
+    },
+    {
+      "id": "PEN-02",
+      "area": "Pen capture to an Oz draft",
+      "steps": [
+        "Focus the active pen preview. Press Cmd+Shift+P. Inspect the draft attachment.",
+        "Type local test instructions without Return or Send. Observe the unsent draft."
+      ],
+      "expected": [
+        "An annotated frame is added to the draft. Typed instructions remain local until explicit submission. Never submit during QA."
+      ]
+    },
+    {
+      "id": "PEN-03",
+      "area": "Mutable pen still in Media Bin",
+      "steps": [
+        "Draw a stroke, then press P to hide. Inspect the Media Bin and Stills count before reopening.",
+        "Press P, add another stroke, hide again, and open the still from the Media Bin.",
+        "Check read-only project asset IDs and decoded PNGs as supporting evidence."
+      ],
+      "expected": [
+        "The first capture immediately appears as one Pen Drawing still for this timeline.",
+        "Later captures update the same asset without duplicate entries and show the new pixels."
+      ]
+    },
+    {
+      "id": "PEN-04",
+      "area": "Pen sharing and timeline isolation",
+      "steps": [
+        "Open a second preview of the same timeline. Enable its overlay.",
+        "Hide the first preview overlay and inspect the second.",
+        "Switch to a different local timeline, then return to the original."
+      ],
+      "expected": [
+        "The drawing is shared across previews of one timeline, but visibility is independent.",
+        "The other timeline does not display the first drawing. Returning preserves the first drawing."
+      ]
+    },
+    {
+      "id": "PEN-05",
+      "area": "Pen reopen and clear Undo",
+      "steps": [
+        "Save and quit Wizard, handle all save dialogs, and verify the process exits. Relaunch and rediscover exact PID.",
+        "Open the local project and select the original timeline. Inspect hidden overlay, then press P.",
+        "With the overlay visibly active and focused, press Escape then Cmd+Z."
+      ],
+      "expected": [
+        "A complete close/reopen restores the drawing with its overlay hidden.",
+        "P reveals the persisted strokes. Escape clears them and Undo restores all strokes."
+      ]
+    },
+    {
+      "id": "DISKPREVIEW-01",
+      "area": "Rendered preview configuration and population",
+      "steps": [
+        "Open Preferences > Application > System. Record initial cache ownership. Set cache limit 2 GiB and reserve below available disk space. Apply and fully restart.",
+        "Use a fresh local project with deterministic file video and Gaussian Blur. Keep Scopes closed. Visit three identified frames.",
+        "Inspect Rendered Preview Usage and owned disk entries."
+      ],
+      "expected": [
+        "Cache limit and reserve persist after restart.",
+        "Usage increases and valid rendered preview entries exist."
+      ]
+    },
+    {
+      "id": "DISKPREVIEW-02",
+      "area": "Rendered preview persistence and pixels",
+      "steps": [
+        "Record baseline preview crops, unchanged source SHA-256, authored graph and owned cache entries.",
+        "Save, fully quit, restart the same build and reopen the project. Keep Scopes closed.",
+        "Revisit the identical frames. Compare pixels and use exact-build cache read semantics or available hit diagnostics to verify reuse."
+      ],
+      "expected": [
+        "Pixels remain identical.",
+        "Persisted previews are actually read; identical pixels alone do not prove cache reuse."
+      ]
+    },
+    {
+      "id": "DISKPREVIEW-03",
+      "area": "Rendered preview invalidation",
+      "steps": [
+        "Change a contributing Gaussian Blur setting through the GUI.",
+        "Revisit the baseline frames and compare rendered pixels with the prior settings."
+      ],
+      "expected": [
+        "Fresh pixels reflect the changed blur settings; stale cached pixels are not displayed."
+      ]
+    },
+    {
+      "id": "DISKPREVIEW-04",
+      "area": "Rendered preview cleanup and disable",
+      "steps": [
+        "Verify that only previews created by this QA run are targets. Select the current timeline and Clear Selected Timeline.",
+        "Verify zero owned entries, then play or seek and verify rendering still works.",
+        "Clear All Previews only when every entry is owned by this QA run; otherwise do not remove unrelated entries. Verify usage and files.",
+        "Verify source media SHA-256 and project availability. Set cache limit zero, apply and restart."
+      ],
+      "expected": [
+        "Cleanup removes regenerable previews only, while playback and sources remain available.",
+        "Cache limit zero persists after restart and disables disk previews."
+      ]
+    },
+    {
+      "id": "PEN-06",
+      "area": "Immutable pen capture retention",
+      "steps": [
+        "Capture two different annotated frames to the local Oz draft.",
+        "Change the drawing and undo project changes. Inspect earlier capture originals."
+      ],
+      "expected": [
+        "Earlier PNG bytes and capture-time frame context do not change. Originals remain available after Undo. No Oz message is submitted."
+      ]
+    },
+    {
+      "id": "PEN-07",
+      "area": "Portable pen capture access",
+      "steps": [
+        "Save annotated draft captures in a disposable local QA project.",
+        "Copy the complete project to a second local test path. Open the copy through the GUI.",
+        "Inspect the original image and capture context in the restored local draft without submitting it."
+      ],
+      "expected": [
+        "The capture is available after local relocation. References resolve within the copied project. Capture-time context is preserved."
+      ]
+    },
+    {
+      "id": "GAIN-01",
+      "area": "Clip volume shortcuts and waveform gain",
+      "steps": [
+        "Select linked video/audio and step clip gain with Cmd+Up/Down. Inspect exact saved gain, waveform scaling, playback/export amplitude, Undo/Redo, save/reopen. Verify unselected clips remain unchanged."
+      ],
+      "expected": [
+        "Each shortcut changes the selected clip gain by the documented step; waveform and rendered audio follow the gain. Undo/Redo and reopen retain the correct value."
+      ]
+    },
+    {
+      "id": "MOVE-01",
+      "area": "Linked and batch clip spacing",
+      "steps": [
+        "Create linked clips with different native offsets and a multi-clip group. Physically drag across time/tracks with snapping off and on; inspect exact saved ranges and Undo/Redo."
+      ],
+      "expected": [
+        "Relative native spacing and source offsets remain unchanged for linked/batch moves."
+      ]
+    },
+    {
+      "id": "SCOPES-01",
+      "area": "Scope tap reattachment",
+      "steps": [
+        "Open scopes for local video. Switch preview owner, close/reopen its source timeline, and seek distinct frames. Observe scope refresh and compare displayed scope samples."
+      ],
+      "expected": [
+        "Scope display reattaches when its tap channel retires and responds to current pixels without stale output."
+      ]
+    },
+    {
+      "id": "LAYOUT-01",
+      "area": "Preview resize and filmstrips",
+      "steps": [
+        "Play local video, switch or resize dock layouts, maximize/restore Preview and Timeline, and inspect filmstrip continuity and displayed video."
+      ],
+      "expected": [
+        "Filmstrips remain present during layout interactions and Preview returns to correct size and fresh pixels without blank or shrink glitches."
+      ]
+    },
+    {
+      "id": "IDLE-01",
+      "area": "Idle resource use",
+      "steps": [
+        "On the ordinary uninstrumented selected build, stop playback, allow idle settling and sample exact-process CPU/resource use for a bounded period. Compare with active playback and record measurements without an unqualified performance threshold."
+      ],
+      "expected": [
+        "No persistent unexpected repaint/activity loop is observed. Numeric resource evidence and comparison limitations are reported."
+      ]
+    },
+    {
+      "id": "MGFX-03",
+      "area": "Retime pins preserve source timing",
+      "steps": [
+        "Use a native deterministic animated graphic, set/move retime pins through the GUI and inspect equivalent source frames before/after pin edits, Undo/Redo and reopen."
+      ],
+      "expected": [
+        "Retime pin moves preserve expected MGFX source-clock timing."
+      ]
+    },
+    {
+      "id": "TRACES-01",
+      "area": "Elevated AI traces",
+      "steps": [
+        "Inspect current available Oz activity traces without starting or submitting an external run. Verify wrapping, expansion and project attribution."
+      ],
+      "expected": [
+        "Available traces display safely and coherently. Live-run assertions require an existing authorized run; never create one for this case."
+      ]
+    },
+    {
+      "id": "INGEST-EFFORT-01",
+      "area": "Unassigned",
+      "steps": [
+        "Import three validated speech excerpts.",
+        "Open media-bin crystal-ball control and expand effort.",
+        "Physically select Light, Medium, High, Extra and Max; read each visible label and selected summary."
+      ],
+      "expected": [
+        "Each available level selects coherently; retain actual names and bounds."
+      ]
+    },
+    {
+      "id": "INGEST-EFFORT-02",
+      "area": "Unassigned",
+      "steps": [
+        "Select Medium with Hybrid off.",
+        "Start an ingest on the imported speech clips.",
+        "Capture active progress and actual job identity; wait for completion and inspect transcripts/speakers/asset state."
+      ],
+      "expected": [
+        "Medium starts and completes without stuck badges, errors or UI freeze. Transcript evidence agrees with fixture speech."
+      ]
+    },
+    {
+      "id": "INGEST-ADVANCED-01",
+      "area": "Unassigned",
+      "steps": [
+        "Open Advanced from the effort control.",
+        "Change one per-job value through physical input.",
+        "Return and read Custom effort label; restore the original value."
+      ],
+      "expected": [
+        "A changed per-job value produces Custom. Original value can be restored."
+      ]
+    },
+    {
+      "id": "INGEST-HYBRID-01",
+      "area": "Unassigned",
+      "steps": [
+        "Select Medium; enable Hybrid.",
+        "Start a distinct new ingest job.",
+        "Correlate its Light completion and Medium start through independently retained job/stage timestamps."
+      ],
+      "expected": [
+        "Light finishes before Medium starts. Progress reaches a terminal state without orphaned badges."
+      ]
+    },
+    {
+      "id": "SEARCH-LIVE-01",
+      "area": "Unassigned",
+      "steps": [
+        "Before ingest search a known spoken phrase absent from filenames and retain the actual zero-match state.",
+        "During Medium ingest submit the same physical query.",
+        "Prove a transcript match while the correlated job is still active; retain query, source, result and timestamps."
+      ],
+      "expected": [
+        "Current query refreshes before job completion. Filename matches alone are not transcript evidence.",
+        "Wizard remains responsive and running while Media search results refresh."
+      ]
+    },
+    {
+      "id": "INGEST-LOCAL-01",
+      "area": "Unassigned",
+      "steps": [
+        "Read the local-media preference and unreadable-file notice controls without sending Oz requests.",
+        "Verify per-job/privacy option availability; preserve original settings."
+      ],
+      "expected": [
+        "Controls and descriptions match the selected release. No broader egress is enabled during the check."
+      ]
+    },
+    {
+      "id": "MODEL-PICKER-01",
+      "area": "Oz model picker",
+      "steps": [
+        "Open the model picker without sending a prompt. Inspect available model labels and long-label layout."
+      ],
+      "expected": [
+        "Available models have readable labels and usable rows. No paid generation or prompt is sent."
+      ]
+    },
+    {
+      "id": "DOCUMENT-01",
+      "area": "Disk-backed documents",
+      "steps": [
+        "Create a local document, edit text in its GUI, save, rename, close and reopen. Independently check its file contents and current identity."
+      ],
+      "expected": [
+        "Saved text persists; rename moves the document without losing text or keeping a stale identity."
+      ]
+    },
+    {
+      "id": "PLAY-HIDDEN-01",
+      "area": "Playback without Preview",
+      "steps": [
+        "Start timeline playback while Preview is hidden; verify advancing transport and pause. Show Preview during playback and inspect displayed frames."
+      ],
+      "expected": [
+        "Timeline playback advances without Preview. A newly shown Preview displays current frames."
+      ]
+    },
+    {
+      "id": "COMMENT-TEXT-01",
+      "area": "Selectable comments",
+      "steps": [
+        "Create a disposable local comment. Select and copy its text through physical GUI input; read the copied text without external sharing."
+      ],
+      "expected": [
+        "The selected text can be copied and matches the comment."
+      ]
+    },
+    {
+      "id": "NOTES-UNDO-01",
+      "area": "Raw notes persistence",
+      "steps": [
+        "Set raw notes on an owned clip or timeline. Perform an independent edit and Undo/Redo; inspect notes before save and after reopen."
+      ],
+      "expected": [
+        "Notes remain unchanged through Undo/Redo and reopen."
+      ]
+    },
+    {
+      "id": "FLOAT-TABS-01",
+      "area": "Floating panel tabs",
+      "steps": [
+        "Float and redock an owned multi-tab panel, inspecting each displayed tab and its content."
+      ],
+      "expected": [
+        "Tabs remain visible and their content can be selected in the floating panel and after redock."
+      ]
+    },
+    {
+      "id": "STAGED-INGEST-01",
+      "area": "Staged ingestion",
+      "steps": [
+        "Stage two deterministic local media sources through the Media Bin tray, without starting ingestion.",
+        "Add one overlapping source again. Inspect the staged entries.",
+        "Remove an entry and cancel staging."
+      ],
+      "expected": [
+        "Sources are staged before ingestion starts.",
+        "An overlapping source is represented once; removing one entry preserves other entries.",
+        "Cancellation leaves the owned project usable and does not start Oz or paid generation."
+      ]
+    },
+    {
+      "id": "STAGED-INGEST-02",
+      "area": "Staged ingestion keyboard and image sequences",
+      "steps": [
+        "Stage a deterministic numbered local image sequence.",
+        "Use Tab, Space and arrow keys to operate the staging tray; capture the focus ring.",
+        "Cancel staging."
+      ],
+      "expected": [
+        "The image-sequence locator is staged as a sequence.",
+        "The tray is keyboard operable and shows the focused header."
+      ]
+    },
+    {
+      "id": "MGFX-OFFLINE-01",
+      "area": "Offline authored motion graphics",
+      "steps": [
+        "Create authored motion graphics using deterministic local code and resources, without paid generation.",
+        "Save and reopen. Render preview and export without Internet assets.",
+        "Undo and redo an edit."
+      ],
+      "expected": [
+        "Authored code and referenced resources persist.",
+        "Preview and export render the saved graphic offline.",
+        "History preserves authored code and resource identity."
+      ]
+    },
+    {
+      "id": "PP-RANGE-01",
+      "area": "Selected-range Preview Preparation",
+      "steps": [
+        "On the ordinary build select a timeline range and prepare it.",
+        "Inspect timeline ruler coverage and replay that range.",
+        "Select a different timeline panel and check range ownership; change color/Auto-size and verify invalidation."
+      ],
+      "expected": [
+        "Only the selected timeline range is prepared and shown on the ruler.",
+        "Prepared replay preserves pixels and temporal inputs.",
+        "Readiness, ownership and invalidation match the current selected timeline."
+      ]
+    },
+    {
+      "id": "PP-MEMORY-01",
+      "area": "Preview memory preferences",
+      "steps": [
+        "Open Preferences on the ordinary build.",
+        "Record the current preview memory-cache limit, adjust it within safe local capacity, verify and restore it.",
+        "Compare memory and disk rendered-cache labels and coverage."
+      ],
+      "expected": [
+        "The memory limit is configurable and displayed correctly.",
+        "The previous limit is restored.",
+        "Cache details fit in Preferences and memory/disk coverage uses the documented blue tier."
+      ]
+    },
+    {
+      "id": "AUTOSAVE-PLAYBACK-01",
+      "area": "Autosave during transport",
+      "steps": [
+        "Use an owned ordinary-build timeline.",
+        "Start continuous playback and record project write activity across the autosave interval.",
+        "Stop playback and confirm pending edits can be saved."
+      ],
+      "expected": [
+        "Automatic saves are not queued while transport is moving.",
+        "Playback remains responsive and stopped edits save correctly."
+      ]
+    },
+    {
+      "id": "OZ-DICTATION-01",
+      "area": "Oz prompt dictation",
+      "steps": [
+        "Inspect bundled voice-input resources and the ordinary-build composer.",
+        "Inspect the dictation control without sending a prompt or starting paid generation.",
+        "Only if available within current permissions, dictate deterministic local text into a draft and clear it."
+      ],
+      "expected": [
+        "Bundled voice-input support is present and the control is available on macOS.",
+        "Any exercised dictation produces draft text only; no prompt is sent."
+      ]
+    },
+    {
+      "id": "MISSING-MEDIA-01",
+      "area": "Playback availability changes",
+      "steps": [
+        "Use a disposable copy of a local media fixture in an owned ordinary-build project.",
+        "Rename only that local copy and inspect playback and timeline availability.",
+        "Restore the fixture name and inspect recovery."
+      ],
+      "expected": [
+        "Missing-media availability changes reach playback and timeline marks.",
+        "Restoring local media clears stale missing status without a playback stall."
+      ]
+    }
+  ]
+}

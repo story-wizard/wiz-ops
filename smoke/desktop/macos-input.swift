@@ -62,7 +62,14 @@ func pointerOverlay(_ entry:[String:Any]) -> Bool {
     (entry[kCGWindowOwnerName as String] as? String) == "Window Server" &&
     (entry[kCGWindowLayer as String] as? NSNumber)?.int32Value == CGWindowLevelForKey(.cursorWindow)
 }
-func topVisibleWindow(_ entries:[[String:Any]],displays:[CGRect],at:CGPoint?=nil) -> [String:Any]? {
+func dockHitBlocksPointer(_ error: AXError) -> Bool { error != .noValue }
+func dockHostingWindowPasses(_ entry:[String:Any],at:CGPoint,executable:(pid_t)->String?,hitTest:(pid_t,CGPoint)->AXError) -> Bool {
+    guard entry[kCGWindowOwnerName as String] as? String == "Dock",
+          let owner=(entry[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value,
+          executable(owner) == "/System/Library/CoreServices/Dock.app/Contents/MacOS/Dock" else { return false }
+    return !dockHitBlocksPointer(hitTest(owner,at))
+}
+func topVisibleWindow(_ entries:[[String:Any]],displays:[CGRect],at:CGPoint?=nil,dockPasses:([String:Any],CGPoint)->Bool={_,_ in false}) -> [String:Any]? {
     entries.first { entry in
         if pointerOverlay(entry) { return false }
         guard (at != nil || (entry[kCGWindowLayer as String] as? NSNumber)?.intValue == 0),
@@ -71,7 +78,8 @@ func topVisibleWindow(_ entries:[[String:Any]],displays:[CGRect],at:CGPoint?=nil
               let rect=CGRect(dictionaryRepresentation:bounds as CFDictionary),
               !rect.isEmpty,!rect.isInfinite,rect.minX.isFinite,rect.minY.isFinite,
               displays.contains(where: { $0.intersects(rect) }) else { return false }
-        return at.map { point in rect.contains(point) && displays.contains(where: { $0.contains(point) }) } ?? true
+        if let point=at,(!rect.contains(point) || !displays.contains(where: { $0.contains(point) }) || dockPasses(entry,point)) { return false }
+        return true
     }
 }
 func requirePointerWindow(_ top:[String:Any]?,at point:CGPoint,pid:pid_t,window:NSNumber,starting:Bool) throws {
@@ -206,7 +214,13 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                 let entries=CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]] ?? []
                 var displayIDs=[CGDirectDisplayID](repeating:0,count:32),count:UInt32=0
                 guard CGGetActiveDisplayList(UInt32(displayIDs.count),&displayIDs,&count) == .success else { return nil }
-                return topVisibleWindow(entries,displays:displayIDs.prefix(Int(count)).map { CGDisplayBounds($0) },at:at)
+                return topVisibleWindow(entries,displays:displayIDs.prefix(Int(count)).map { CGDisplayBounds($0) },at:at,dockPasses:{entry,point in
+                    // Query only the verified system Dock. Hits and inspection errors still block.
+                    dockHostingWindowPasses(entry,at:point,executable:{try? ps(["-p",String($0),"-o","comm="])},hitTest:{owner,point in
+                        var hit:AXUIElement?
+                        return AXUIElementCopyElementAtPosition(AXUIElementCreateApplication(owner),Float(point.x),Float(point.y),&hit)
+                    })
+                })
             }
             func foreground() -> Bool { windowServer ? (topWindow()?[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == pid : attribute(app,kAXFrontmostAttribute) as? Bool == true }
             let inventory = CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements], kCGNullWindowID) as? [[String:Any]] ?? []
