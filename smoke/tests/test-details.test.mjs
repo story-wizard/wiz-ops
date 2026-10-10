@@ -17,6 +17,13 @@ test('recorded agent actions make a step Observed without inventing a completion
  assert.equal(stepHistory(spec,[{stepId:'edit',status:'Running',at:actions[0].at}],actions)[0].status,'Unknown');
 });
 
+test('unbound actions leave step execution unrecorded rather than claiming it did not run',()=>{
+ const spec={steps:[{id:'prepare',title:'Prepare'},{id:'verify',title:'Verify'}]},actions=[{stepId:null,status:'Completed'}];
+ assert.deepEqual(stepHistory(spec,[],actions).map(s=>s.status),['No step record','No step record']);
+ assert.deepEqual(stepHistory(spec,[],[]).map(s=>s.status),['Not run','Not run']);
+ assert.deepEqual(stepHistory(spec,[{stepId:'prepare',status:'Fail'}],actions).map(s=>s.status),['Fail','No step record']);
+});
+
 test('a lost mutation response stays Unknown, later steps remain unexecuted and receipts belong to the active step',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'smoke-steps-')),file=path.join(root,'session.json');
  const check={id:'CHECK',title:'Drop clip',expected:'Correct placement',steps:[{id:'setup',title:'Prepare',phase:'prepare'},{id:'drop',title:'Drag',phase:'execute'},{id:'verify',title:'Inspect',phase:'verify'}]};

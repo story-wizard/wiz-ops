@@ -69,6 +69,28 @@ Both persistence checks withhold their preliminary Pass until reopen completes.
 Merged evidence keeps the original and reopened artifacts, preserves an earlier
 failure and records fresh-process observations in the final result.
 
+## October 10 qualification checkpoint
+
+On official `2026.10.10-ad6fa5e`, run
+`79e3b4ee-9815-4c85-a64e-6d0120d0ccaa` passed both connection prerequisites
+and raw-note history/Save/fresh-process persistence. The two setup failures were
+repaired: omit the unsupported graphic descriptor `range` and ingest the copied
+availability source before placement.
+
+Focused repair run `53c2ff3e-c176-4acb-9bf8-c21ea026b0c4` passed its connection
+checks but retained two later failures. Animated split/trim/extension and three
+Undo states matched independent reference pixels; the first Redo reported
+`moved=false` and `can_redo=false`. Copy/reopen were not reached. Source removal
+made a fresh probe fail, but eight presented captures retained the same frame.
+Review cached-frame/open-decoder assumptions before classifying that as an app
+defect. The owned source was restored with identical bytes; recovery/playback
+assertions were not reached. Neither candidate has a complete functional Pass.
+
+Per-step receipts are not yet emitted by these drivers. Reports say
+`No step record` when unbound recorded actions prevent an honest `Not run`
+inference. Use recorded actions, retained state and captures to inspect progress;
+that label never supplies a step verdict or changes a check outcome.
+
 ## Reuse and maintenance
 
 The controls and filesystem/oracle helpers are shared through the existing
