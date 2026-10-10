@@ -1,0 +1,100 @@
+{
+  "format": "athanor-agent-recipe/v1",
+  "id": "media-search-state",
+  "parameters": {
+    "searchId": {
+      "type": "string"
+    },
+    "query": {
+      "type": "string"
+    },
+    "expectedStatus": {
+      "type": "string"
+    },
+    "mediaViewId": {
+      "type": "string"
+    }
+  },
+  "plan": {
+    "format": "athanor-agent-plan/v1",
+    "start": "search",
+    "phases": [
+      {
+        "id": "search",
+        "steps": [
+          {
+            "operation": "native",
+            "params": {
+              "operation": "text",
+              "params": {
+                "target": {
+                  "$param": "searchId"
+                },
+                "text": {
+                  "$param": "query"
+                }
+              }
+            }
+          },
+          {
+            "operation": "native",
+            "params": {
+              "operation": "key",
+              "params": {
+                "target": {
+                  "$param": "searchId"
+                },
+                "key": "Return"
+              }
+            }
+          },
+          {
+            "operation": "wait",
+            "params": {
+              "conditions": [
+                {
+                  "selector": {
+                    "id": {
+                      "$param": "searchId"
+                    }
+                  },
+                  "condition": "text",
+                  "expected": {
+                    "$param": "query"
+                  }
+                },
+                {
+                  "selector": {
+                    "id": {
+                      "$param": "mediaViewId"
+                    }
+                  },
+                  "condition": "exists"
+                },
+                {
+                  "selector": {
+                    "name": "mediaSearchStatus"
+                  },
+                  "condition": "text",
+                  "expected": {
+                    "$param": "expectedStatus"
+                  }
+                }
+              ],
+              "details": true,
+              "limit": 3,
+              "timeoutMs": 10000
+            },
+            "expect": {
+              "path": [
+                "matchCount"
+              ],
+              "equals": 3
+            }
+          }
+        ],
+        "next": null
+      }
+    ]
+  }
+}

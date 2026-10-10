@@ -122,7 +122,7 @@ test('agents resolve installed tools without a runtime argument and validate the
 });
 
 test('source snapshots include Build finder backend, browser controls and ZIP validation',async()=>{
- const root=await mkdtemp(path.join(tmpdir(),'smoke source finder '));try{await snapshotSource(root);for(const file of ['builds.mjs','build-catalog.mjs','public/build-finder.js','public/filters.js','scripts/validate-build-zip.py'])assert.ok((await readFile(path.join(root,file))).length);}finally{await rm(root,{recursive:true,force:true});}
+ const root=await mkdtemp(path.join(tmpdir(),'smoke source finder '));try{await snapshotSource(root);for(const file of ['builds.mjs','build-catalog.mjs','public/build-finder.js','public/filters.js','scripts/validate-build-zip.py','examples/recipes/media-search.json','desktop/agent-recipes.mjs','desktop/plan-bindings.mjs','runner/source-provenance.mjs'])assert.ok((await readFile(path.join(root,file))).length);}finally{await rm(root,{recursive:true,force:true});}
 });
 
 test('a frozen source snapshot starts the investigation service with its full dependency closure',async()=>{

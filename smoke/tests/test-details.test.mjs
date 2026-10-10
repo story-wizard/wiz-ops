@@ -8,6 +8,7 @@ import {OutcomeError} from '../runner/engine.mjs';
 import {writeJSON,readJSON,digest} from '../runner/files.mjs';
 import {testSpecification,actionHistory,stepHistory,evidenceSpec,evidenceCoverage,evidenceItems,exportAgentContext,agentContext,candidateChecks} from '../test-details.mjs';
 import {checkRegistry} from '../runner/catalog.mjs';
+import {briefContext} from '../desktop/agent-task.mjs';
 
 test('recorded agent actions make a step Observed without inventing a completion receipt',()=>{
  const spec={steps:[{id:'edit',title:'Edit'},{id:'verify',title:'Verify'},{id:'unused',title:'Unused'}]},actions=[{stepId:'edit',at:'2026-10-01T10:00:00Z',status:'Completed'}];
@@ -53,7 +54,8 @@ test('an agent pack snapshots its definition, guides and sources outside Git wit
   const physical=agentContext(checkRegistry().find(c=>c.id==='P-RG-WIRE'),{servicePort:51290});assert.match(physical.commands.plan,/--server http:\/\/127\.0\.0\.1:51290$/);assert.doesNotMatch(physical.commands.run,/--server/,'The direct physical probe does not accept a service option');
   for(const port of [0,65536,'51290 --extra'])assert.throws(()=>agentContext(accepted,{servicePort:port}),/valid local service port/);
   for(const item of manifest.inventory){const bytes=await readFile(path.join(first.path,item.file));assert.equal(bytes.length,item.bytes);assert.equal(digest(bytes.toString()),item.sha256);}
-  for(const file of ['docs/agent-tools.md','docs/source-handoff.md','docs/maintaining-harness.md','docs/build-finder.md','docs/shared-build-catalog.md','docs/demo-guide.md','examples/agent-onboarding.txt','docs/build-repair.md','runner/contracts/packaged-schema-qualifications.json','runner/contracts/installed-schema.json'])assert.ok(manifest.inventory.some(x=>x.file==='reference/'+file),file);assert.ok(manifest.inventory.some(x=>x.file==='reference/desktop/check-paths.mjs'));
+  for(const file of ['docs/functional-testing-agent.md','docs/agent-sequences.md','docs/golden-project-intake.md','docs/agent-tools.md','docs/source-handoff.md','docs/maintaining-harness.md','docs/build-finder.md','docs/shared-build-catalog.md','docs/demo-guide.md','examples/agent-onboarding.txt','docs/build-repair.md','runner/contracts/packaged-schema-qualifications.json','runner/contracts/installed-schema.json'])assert.ok(manifest.inventory.some(x=>x.file==='reference/'+file),file);assert.ok(manifest.inventory.some(x=>x.file==='reference/desktop/check-paths.mjs'));
+  const brief=briefContext({session:'/external/session.json',checks:[]});assert.ok(brief.guidance.some(line=>line.includes('docs/functional-testing-agent.md')&&line.includes('script dependencies')));
   const start=await readFile(path.join(first.path,'START-HERE.md'),'utf8');assert.match(start,/Athanor agent context/);assert.match(context.repairPrompt,/independent assertions/);assert.match(context.commands.schemaReview,/--schema --no-spawn$/);assert.equal((await readFile(path.join(first.path,'BUILD-REPAIR-PROMPT.txt'),'utf8')).trim(),context.repairPrompt);assert.match(start,/Build or feature repair/);assert.ok(start.includes(context.commands.run));assert.match(start,/Candidate definitions require lead review/);
  }finally{await rm(data,{recursive:true,force:true});}
 });

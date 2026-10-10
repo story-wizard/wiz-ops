@@ -6,7 +6,7 @@ Athanor prepares the selected Wizard build and a disposable project, then gives 
 
 Read this guide for exploratory app control. For an existing course, use [agent courses](agent-courses.md). After a failure, use [investigations](investigations.md). For build compatibility or test edits, use [build repair](build-repair.md) and [test authoring](test-evidence.md).
 
-The session's `agent-context.json` is your working reference: it lists current operations, physical keys, frozen checks, toolkit Pass contracts and the deadline. A scripted course uses its own authored assertions. Exploration can retain observations and diagnostics; an interactive toolkit Pass requires one of the listed contracts.
+Start with the session's `agent-brief.json`: it gives workspace-bound commands, recipe discovery and small tool examples. Read `fullContext` only for the operations, frozen check, Pass contract or troubleshooting needed for your task. A scripted course uses its own authored assertions. Exploration can retain observations and diagnostics; an interactive toolkit Pass requires one of the listed contracts.
 
 ## Open a test session
 
@@ -17,7 +17,7 @@ node scripts/smoke.mjs plan --app /path/to/Wizard.app --checks D-CLI-01 --out /t
 node desktop/session.mjs start --plan /tmp/agent-plan.json
 ```
 
-If you use a separate workspace, export `SMOKE_DATA_DIR=/absolute/external/workspace` and keep that same environment for the service and every session/tool command. Keep the second command running. It prints a Ready receipt with the session file and `agent-context.json`. Give those paths to your agent. The context contains the selected package identity, project and media identities, adapter capabilities, available checks, expected outcomes, and tool instructions. Each session starts with a fresh Golden Project fixture. The Ready receipt and context report the 30-minute deadline. Export your report and stop before it expires; expiry terminates the owned app. A new session gets a new deadline and does not inherit proof from the earlier attempt.
+If you use a separate workspace, export `SMOKE_DATA_DIR=/absolute/external/workspace` and keep that same environment for the service and every session/tool command. Keep the second command running. It prints a Ready receipt with the session file, `agent-brief.json` and a separate `fullContext`. Give the session and brief to your agent. The full context contains the selected package identity, project and media identities, adapter capabilities, available checks, expected outcomes, and tool instructions. Each session starts with a fresh Golden Project fixture. The Ready receipt and context report the 30-minute deadline. Export your report and stop before it expires; expiry terminates the owned app. A new session gets a new deadline and does not inherit proof from the earlier attempt.
 
 The course catalog and `list` expose accepted checks plus the physical candidates included in the maintained `smoke-full` qualification course. Unlinked `P-TRACK-ADD` remains available only in an owned session's context. Prepare the `D-CLI-01` desktop connection plan above, then use `begin` with the candidate ID from `agent-context.json`. Starting that session prepares the fixture; it does not execute the plan's checks.
 
@@ -48,7 +48,7 @@ node desktop/session.mjs tool SESSION.json model '{"target":"OBSERVED_MEDIA_VIEW
 
 Follow `nextOffset` until it is null. Each page contains its total immediate row count under the view root, absolute row indices, current viewport geometry and visibility, plus column headers. It returns up to six displayed columns and does not recursively traverse child rows. Version 7 returns a model-identity, revision and root cursor. Supply it to subsequent pages; a row-data change invalidates it even when the row count stays the same. Restart inspection after rejection. Use `reveal` for an offscreen row during setup, then refresh geometry. `model_value` reads an observed column/Qt role or retains its image. Validate build-specific role meanings against independent application identities before relying on them. Timeline observations include up to 1024 sorted `clipIds` when the package exports its public getter. `clipIdsTruncated` distinguishes a complete set from a capped one. An unavailable getter leaves identities absent; use application readback rather than guessing.
 
-Physical input supports `click`, `drag`, `key`, `type`, `scroll`, and `screenshot`. Points are local to the observed widget in macOS points. A click defaults to its center. A drag accepts `toTarget`, `toX`, and `toY`; `xRatio`, `yRatio`, `toXRatio`, and `toYRatio` can address fractions of the current widget. Geometry is checked again before dispatch. The native driver verifies the actual Unix PID, start time, native window frame and pointer ownership.
+Physical input supports `click`, `drag`, `key`, `type`, `scroll`, and `screenshot`. Points are local to the observed widget in macOS points. A click defaults to its center; a prepared adapter exposes `clickRect` for checkboxes, so a default click uses the visible part of their styled hit region. Explicit points and ratios keep their meaning. Verify `checked` and dependent field `enabled` before typing. A drag accepts `toTarget`, `toX`, and `toY`; `xRatio`, `yRatio`, `toXRatio`, and `toYRatio` can address fractions of the current widget. Geometry is checked again before dispatch. The native driver verifies the actual Unix PID, start time, native window frame and pointer ownership.
 
 ```sh
 node desktop/session.mjs tool SESSION.json physical '{"command":"drag","target":{"id":"OBSERVED_VIEWPORT"},"x":100,"y":50,"toX":180,"toY":90,"durationMs":1000,"title":"Drag the clip right"}'
@@ -65,6 +65,29 @@ node desktop/session.mjs tool SESSION.json wait '{"selector":{"id":"OBSERVED_NAT
 ```
 
 A successful wait does not reserve a target or grant keyboard focus. Input still refreshes geometry, process identity and key-window ownership before dispatch. Available physical keys and adapter operations are listed in the context. Editing keys include J/K/L, I/O, B/V, arrows, digits, F1–F12, Home/End, Page Up/Down, comma/period nudges and forward delete. Chords use names such as `shift+right`, `cmd+1`, `period` and `f2`. Key codes identify physical keys; Unicode text uses `type`. The same ownership and focus checks apply to every chord.
+
+When several controls must be ready together, use one bundled wait:
+
+```json
+{
+  "conditions": [
+    {"selector":{"id":"OBSERVED_CHECKBOX"},"condition":"checked","expected":true},
+    {"selector":{"id":"OBSERVED_FIELD"},"condition":"enabled"}
+  ],
+  "timeoutMs":5000,
+  "limit":2
+}
+```
+
+Pass this as the parameters to `wait`. All 1–8 conditions must hold in the same
+Qt inspection. The reply contains that observation's `matches`, condition results,
+process/generation identity and retained `observationId`; use it instead of
+immediately inspecting the same controls again. `details:true` includes model
+rows and selection. Scope, kind and deadline apply to the whole bundle. Geometry
+defaults to a 250 ms stable interval if any condition requests it. Absence still
+requires complete inspection, and ambiguous targets remain blocked. A timeout
+retains the last selected observation and requested conditions for diagnosis.
+Use physical input for the tested gesture and a fresh capture for visual proof.
 
 The context also lists the selected build's application operations and the verification allowlist. Use `schema '{"operation":"timeline.inspect"}'` to retrieve one operation's parameter, result and error schemas. Use `evidence '{"file":"/absolute/session/file.json","title":"Measured state"}'` to retain existing JSON, or add `kind:"image"` for a PNG. Imported observations appear in the report but cannot satisfy the current capture or verification required for Pass.
 
@@ -152,7 +175,7 @@ The local toolkit protects supported Athanor routes. Outside applications and di
 
 ## Give this to another agent
 
-> Read smoke/AGENTS.md and smoke/docs/computer-use-agent.md. Prepare the Wizard build I selected, start an owned session, and read its agent-context.json. Check physical readiness. Use CLI/Qt calls for setup and physical input for the action under test. Resolve targets from current observations, verify the expected behavior independently, capture the result, and record the outcome. Export the report and stop your session. Preserve failed and uncertain attempts.
+> Read smoke/AGENTS.md and smoke/docs/computer-use-agent.md. Prepare the Wizard build I selected, start an owned session, and read its agent-brief.json. Choose an existing task recipe and read fullContext only as needed. Check physical readiness. Use CLI/Qt calls for setup and physical input for the action under test. Resolve targets from current observations, verify the expected behavior independently, capture the result, and record the outcome. Export the report and stop your session. Preserve failed and uncertain attempts.
 
 
 ## Run the default checklist course
@@ -164,6 +187,77 @@ Use `plan --course smoke-full` and `run --plan FILE --wait` through `scripts/smo
 Use scoped `observe`/`find` to inspect one panel. Traverse large models with their revision cursor, reveal the required row, and inspect geometry again before input. Key-sequence recorders expose `keySequenceCapture`; click the parent recorder to assign a shortcut. Its child text field is a display of that binding. Native file-panel observations can guide physical Go to Folder entry with Cmd+Shift+G.
 
 Use `recording` for a bounded playback sample window; see [agent tools](agent-tools.md). It collects fresh compositor frames, transport and owned-process resources without recording a verdict. A tracked attempt retains its images, manifest and sampled MP4 in the exported report. Transport queries remain available as read-only observations after an uncertain edit. Use `resize-window` or `floatPanel` during setup when a panel clips its controls, and `activatePanel` to restore the intended dock before binding its canvas. Never send coordinates outside a control's observed visible region.
+
+## Reduce trips back to the agent
+
+Read [Plan agent sequences](agent-sequences.md) for phase boundaries, editable
+JSON examples and the read-only `batch-check` command. Plan known steps before
+dispatch, then review the complete outcome at each meaningful checkpoint.
+
+Use `node desktop/session.mjs batch SESSION.json /absolute/steps.json` for a
+short, already understood sequence. The file is an array of 1–8 ordinary tool
+requests, at most 64 KiB. Each step retains its own admission checks and receipt.
+Selectors are resolved again before each gesture. The sequence stops on the
+first error or false `expect`; it does not roll back completed edits. Review
+the returned `results`, `stoppedAt` and `failure` before continuing.
+
+For example, after observing the exact search field on the selected build:
+
+```json
+[
+  {"operation":"physical","params":{"command":"click","target":{"class":"MediaSearchField","editableText":true}}},
+  {"operation":"physical","params":{"command":"key","target":{"class":"MediaSearchField","focused":true},"key":"cmd+a"}},
+  {"operation":"physical","params":{"command":"type","target":{"class":"MediaSearchField","focused":true},"text":"plate"}},
+  {"operation":"wait","params":{"selector":{"class":"MediaSearchField"},"condition":"text","expected":"plate"}},
+  {"operation":"observe","params":{"selectors":[{"class":"MediaSearchField"},{"name":"mediaSearchStatus"}],"details":true}}
+]
+```
+
+Use an `expect` gate on a readback before a dependent edit, such as
+`{"operation":"call","params":{"operation":"project.get_name"},"expect":{"path":["name"],"equals":"THE_OBSERVED_PROJECT_NAME"}}`.
+Expectations reuse the toolkit's `path`, `equals`, `notEquals`, `length` and
+`includes` comparisons. They stop the sequence; they do not qualify a toolkit
+Pass. Keep the frozen definition's verification and capture checkpoints.
+Sequences do not reserve targets or exclude other commands between steps.
+Use a separate agent decision when an outcome needs interpretation.
+
+Add `--compact` to the batch command, or `compact:true` on a JSON-lines sequence
+request, for a checkpoint summary and a checksummed full receipt file. Inspect
+`summary.continuation`, returned mutation indexes, gates and evidence. Read the
+full result where the next phase requires domain values. Defaults still return
+full results; compact output does not authorize automatic continuation. See
+[sequence review](agent-sequences.md#review-and-reuse) for each continuation state.
+
+For a bot or a persistent agent runtime, keep
+`node desktop/session.mjs tools SESSION.json` running. Send one JSON request
+per stdin line and read one JSON reply from stdout:
+
+```json
+{"id":"observe-1","operation":"observe","params":{"selector":{"class":"MainWindow"}}}
+{"id":"search-1","steps":[{"operation":"physical","params":{"command":"click","target":{"class":"MediaSearchField","editableText":true}}},{"operation":"observe","params":{"selector":{"class":"MediaSearchField"}}}]}
+```
+
+Requests run sequentially. Each line is limited to 64 KiB; errors include their
+original status, code and evidence. Request IDs correlate replies; they are
+not idempotency keys. Never resend a mutation after a lost response. Closing
+the connection leaves the existing session lifecycle unchanged; explicitly
+stop the owned session when finished. The connection does not extend its
+deadline. `agent-context.json` advertises this protocol and only application
+read operations supported by the selected build.
+
+Consume the complete JSON reply before sending another request. A long-lived
+terminal does not exit after replying, so fixed long read windows can delay an
+already finished operation. Use retained timings to choose a suitable read
+window; an unfinished read requires more reading, not another dispatch. After
+the final reply and reconciliation of any Unknown, close stdin with EOF, then
+verify client exit separately from the owned Wizard session cleanup. See
+[agent timing](agent-workflows.md#measure-the-agent-not-only-the-tool).
+
+Measure agent round trips, total elapsed time and actual tool execution
+separately. Batching removes pauses between known steps; a persistent process
+also avoids repeatedly starting Node. Neither changes model inference time.
+The native driver still inspects process identity on every check; its
+event-driven process wait removes polling delay without caching ownership.
 
 ## Compare control improvements
 
@@ -180,3 +274,97 @@ Native key aliases are listed in the session context. Direct `physicalInput`
 and the toolkit reject unsupported fields before dispatch; drag duration is
 `durationMs`. A binding rejection is Blocked; an uncertain dispatched edit
 remains Unknown and must not be replayed.
+
+## Start with a recipe
+
+The Ready receipt now points to `agent-brief.json`. Read that short entry first;
+`fullContext` retains the full check specifications, schemas and troubleshooting
+reference. Existing `context` calls keep their full format; request
+`context '{"detail":"brief"}'` for the smaller view.
+
+```sh
+node desktop/session.mjs tool SESSION.json task '{}'
+node desktop/session.mjs tool SESSION.json task '{"recipe":"add-video-track"}'
+```
+
+`task` lists the shipped recipes. Choosing Add Track reads the current project,
+complete timeline and unique visible controls, binds the existing recipe, and
+retains a plan and values file in the session. It returns a known request ID and
+workspace-bound run/inspection commands. Its task catalog lists only accepted inputs: Add Track accepts optional `values.timelineId`, and binds all remaining recipe values itself. The default is the fixture's main timeline, which must be displayed; supply another displayed timeline explicitly. It performs no physical input. Inspect the plan, run that
+command once, then review exact domain state and its capture. Other recipes use
+explicit observed `values`; missing parameters or ambiguous controls block
+preparation. Review stops and canonical Pass requirements remain in force.
+
+Single `tool` commands now return small results directly and retain results over
+2 KiB as checksummed receipts. `--full` returns the full result when needed;
+`--compact` explicitly selects the default. JSON-lines ordinary tool requests
+can opt in with `compact:true`. Read needed values from `receipt.path`; a list
+of keys or a result summary cannot substitute for an exact assertion. Failed
+retention returns the known full result with a retention error and never replays
+input.
+
+### A Spell input that rebuilds after typing
+
+For a saved exposed Spell string input, declare its exact document and input
+before typing:
+
+```json
+{"command":"type","target":{"id":"OBSERVED_FOCUSED_SETTING"},"text":"At a cafe counter","commit":{"documentId":"OBSERVED_INSTANCE_ID","inputId":"setting"}}
+```
+
+The harness reads the live instance before input and requires a matching named
+Inspector multiline field. After input, it verifies exactly the declared string
+change, preserves the pinned definition, unrelated graph values, scene and
+outputs, and checks the same owned key window and one replacement field. A
+successful receipt records the old/new control IDs and state hashes. Reobserve
+before the next input; the old target is not reused. No focus is fabricated and
+no text is replayed. A surviving unfocused field, different window, other focus,
+ambiguous replacement or divergent saved state remains Unknown. Without this
+declaration, the original strict focus rule applies. This narrow exploration
+contract does not replace a frozen test's independent assertions or captures.
+
+Add Track defaults to the fixture's `project.main.id`. For another opened
+timeline, supply `values:{"timelineId":"OBSERVED_TIMELINE_ID"}`. The entry
+requires its name to match the visible timeline tab and binds all other values
+from fresh observations; it will not accept overrides of the baseline or target.
+Use explicit recipe compilation for a custom variant.
+
+Task recipes operate in exploration sessions. An active frozen-check attempt
+blocks task preparation; its action IDs, assertions and capture surface must
+come from that contract. Use a course for canonical testing, or deliberately
+adapt a recipe through the existing compiler. Do not substitute a main-window
+capture for a contract's required timeline/preview capture.
+
+### Geometry and draft review
+
+`model` returns item rectangles relative to its `viewport`. Use that viewport as
+the physical target, then refresh geometry after scrolling or revealing a row.
+An outer view and its viewport can have different offsets. Check clipped fields
+before compiling an edit recipe. A separate dialog needs its own window capture;
+a parent-window screenshot excludes it.
+
+For the qualified local Spellbook draft path, Inspector **Runs…** opens the run
+history. Select **New run**, then the observed **Image to Image** node to expose
+Setting. Click **Override Setting**, verify it is checked and the field is
+enabled, edit, and inspect the displayed draft. **Close** rejects the draft;
+**Cancel run** refers to a provider job. Do not infer that a draft edit succeeded
+from a dispatched click. Keep saved-instance readback separate from draft pixels.
+
+Native screenshot-only input can confuse a floating panel's WindowServer order
+with keyboard ownership. The instrumented wrapper checks the actual owned AppKit
+key window and focused field; neither route bypasses a failed focus guard.
+`lease_inspection_denied` means process access prevented lease verification;
+it does not establish that the lease ended. Inspect scoped host access without
+restarting or bypassing ownership checks.
+
+Physical input skips a redundant Qt activation only when a fresh observation
+identifies the target window as both active and key. The native driver still
+checks foreground ownership and the target point or keyboard window. Read
+`physicalTiming` and the native receipt's `foregroundWaitMs` when diagnosing
+latency. A fast dispatch does not establish the app outcome: follow it with the
+expected state or combined readiness check, and capture when visual review is
+required. Keep using existing recipes and batches for known short procedures.
+
+Run `npm test` before opening or after closing a live Athanor desktop session:
+the regression suite tests the same cross-workspace foreground lease and must
+be able to acquire it. A live session correctly blocks that test.

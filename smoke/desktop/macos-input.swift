@@ -39,7 +39,9 @@ func ps(_ arguments: [String]) throws -> String {
     let process = Process(), pipe = Pipe()
     process.executableURL = URL(fileURLWithPath: "/bin/ps"); process.arguments = arguments
     process.standardOutput = pipe; process.standardError = FileHandle.nullDevice
-    try process.run(); let data = pipe.fileHandleForReading.readDataToEndOfFile(); process.waitUntilExit()
+    let finished = DispatchSemaphore(value: 0)
+    process.terminationHandler = { _ in finished.signal() }
+    try process.run(); let data = pipe.fileHandleForReading.readDataToEndOfFile(); finished.wait()
     try require(process.terminationStatus == 0, "Unable to inspect the selected Unix process")
     return String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
 }
@@ -59,6 +61,26 @@ func pointerOverlay(_ entry:[String:Any]) -> Bool {
     // Exclude only its reserved system layer, never arbitrary Window Server UI.
     (entry[kCGWindowOwnerName as String] as? String) == "Window Server" &&
     (entry[kCGWindowLayer as String] as? NSNumber)?.int32Value == CGWindowLevelForKey(.cursorWindow)
+}
+func dockHitBlocksPointer(_ error: AXError) -> Bool { error != .noValue }
+func dockHostingWindowPasses(_ entry:[String:Any],at:CGPoint,executable:(pid_t)->String?,hitTest:(pid_t,CGPoint)->AXError) -> Bool {
+    guard entry[kCGWindowOwnerName as String] as? String == "Dock",
+          let owner=(entry[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value,
+          executable(owner) == "/System/Library/CoreServices/Dock.app/Contents/MacOS/Dock" else { return false }
+    return !dockHitBlocksPointer(hitTest(owner,at))
+}
+func topVisibleWindow(_ entries:[[String:Any]],displays:[CGRect],at:CGPoint?=nil,dockPasses:([String:Any],CGPoint)->Bool={_,_ in false}) -> [String:Any]? {
+    entries.first { entry in
+        if pointerOverlay(entry) { return false }
+        guard (at != nil || (entry[kCGWindowLayer as String] as? NSNumber)?.intValue == 0),
+              (entry[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1 > 0,
+              let bounds=entry[kCGWindowBounds as String] as? [String:Any],
+              let rect=CGRect(dictionaryRepresentation:bounds as CFDictionary),
+              !rect.isEmpty,!rect.isInfinite,rect.minX.isFinite,rect.minY.isFinite,
+              displays.contains(where: { $0.intersects(rect) }) else { return false }
+        if let point=at,(!rect.contains(point) || !displays.contains(where: { $0.contains(point) }) || dockPasses(entry,point)) { return false }
+        return true
+    }
 }
 func requirePointerWindow(_ top:[String:Any]?,at point:CGPoint,pid:pid_t,window:NSNumber,starting:Bool) throws {
     var facts:[String:Any]=["point":[point.x,point.y],"expectedPid":pid,"expectedWindow":window]
@@ -134,11 +156,26 @@ func sampleRGB(_ image: CGImage) throws -> Data {
     }
     return Data(stride(from:0,to:rgba.count,by:4).flatMap{Array(rgba[$0..<$0+3])})
 }
+// Poll actual foreground readiness; an already-ready process needs no settling delay.
+@MainActor func waitForForeground(_ foreground: () -> Bool) async throws -> Double {
+    let began=ProcessInfo.processInfo.systemUptime
+    while !foreground() {
+        try require(!inputInterrupted,"Input interrupted before foreground readiness")
+        try require(ProcessInfo.processInfo.systemUptime-began<0.2,"Verified PID did not become frontmost")
+        try await Task.sleep(nanoseconds:20_000_000)
+    }
+    return (ProcessInfo.processInfo.systemUptime-began)*1000
+}
 @main struct NativeInput {
     static func main() async {
         var dispatched = false, pointerCleanupReleased = false, modifierCleanupReleased=false
         do {
             let args = CommandLine.arguments
+            if args.count == 2 && args[1] == "--permissions" {
+                emit(["status":"Observed","command":"permissions","pid":getpid(),"uid":getuid(),
+                      "permissions":["input":CGPreflightPostEventAccess(),"screenCapture":CGPreflightScreenCaptureAccess(),"accessibility":AXIsProcessTrusted()],
+                      "inputDispatched":false,"permissionRequests":false]);return
+            }
             if args.count == 2 && args[1] == "--desktop-lease" {
                 let file="/private/tmp/athanor-desktop-\(getuid()).lock", fd=open(file,O_CREAT|O_RDWR|O_NOFOLLOW,mode_t(0o600))
                 try require(fd>=0,"Cannot open the shared foreground lease")
@@ -175,11 +212,15 @@ func sampleRGB(_ image: CGImage) throws -> Data {
             try require(windowServer || !windows.isEmpty,"The verified PID did not expose AXWindows")
             func topWindow(_ at: CGPoint? = nil) -> [String:Any]? {
                 let entries=CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]] ?? []
-                return entries.first { entry in
-                    if pointerOverlay(entry) { return false }
-                    guard (at != nil || (entry[kCGWindowLayer as String] as? NSNumber)?.intValue==0), (entry[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1 > 0,let b=entry[kCGWindowBounds as String] as? [String:Any],let r=CGRect(dictionaryRepresentation:b as CFDictionary) else { return false }
-                    return at.map(r.contains) ?? true
-                }
+                var displayIDs=[CGDirectDisplayID](repeating:0,count:32),count:UInt32=0
+                guard CGGetActiveDisplayList(UInt32(displayIDs.count),&displayIDs,&count) == .success else { return nil }
+                return topVisibleWindow(entries,displays:displayIDs.prefix(Int(count)).map { CGDisplayBounds($0) },at:at,dockPasses:{entry,point in
+                    // Query only the verified system Dock. Hits and inspection errors still block.
+                    dockHostingWindowPasses(entry,at:point,executable:{try? ps(["-p",String($0),"-o","comm="])},hitTest:{owner,point in
+                        var hit:AXUIElement?
+                        return AXUIElementCopyElementAtPosition(AXUIElementCreateApplication(owner),Float(point.x),Float(point.y),&hit)
+                    })
+                })
             }
             func foreground() -> Bool { windowServer ? (topWindow()?[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == pid : attribute(app,kAXFrontmostAttribute) as? Bool == true }
             let inventory = CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements], kCGNullWindowID) as? [[String:Any]] ?? []
@@ -275,8 +316,16 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                     try require(CGPreflightPostEventAccess(),"Native input permission is unavailable; no permission changes were attempted")
                     try verifyOwner()
                     if !windowServer { try require(AXUIElementSetAttributeValue(app,kAXFrontmostAttribute as CFString,kCFBooleanTrue) == .success,"Unable to activate the verified PID"); AXUIElementPerformAction(window,kAXRaiseAction as CFString) }
-                    try await Task.sleep(nanoseconds:200_000_000)
-                    try require(foreground(),"Verified PID did not become frontmost")
+                    if windowServer {
+                        do { result["foregroundWaitMs"] = try await waitForForeground(foreground) }
+                        catch let error as InputError {
+                            let top=topWindow() ?? [:]
+                            throw InputError(message:error.message,code:error.code,diagnostics:["expectedPid":pid,"frontWindow":["pid":top[kCGWindowOwnerPID as String] ?? 0,"window":top[kCGWindowNumber as String] ?? 0,"owner":top[kCGWindowOwnerName as String] ?? "","layer":top[kCGWindowLayer as String] ?? 0,"frame":top[kCGWindowBounds as String] ?? [:]]])
+                        }
+                    }
+                    else { try await Task.sleep(nanoseconds:200_000_000) }
+                    try verifyOwner()
+                    try require(foreground(),"Verified PID did not remain frontmost")
                     // Floating panels can lead WindowServer order without owning keyboard focus.
                     // Only the instrumented wrapper can supply a fresh AppKit key-window proof.
                     let verifiedKey=request["verifiedKeyWindow"] as? NSNumber

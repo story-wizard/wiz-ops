@@ -1,0 +1,160 @@
+{
+  "format": "athanor-agent-recipe/v1",
+  "id": "add-video-track",
+  "parameters": {
+    "projectName": {
+      "type": "string"
+    },
+    "timelineId": {
+      "type": "string"
+    },
+    "timelineTarget": {
+      "type": "object"
+    },
+    "captureTarget": {
+      "type": "object"
+    },
+    "baselineTracks": {
+      "type": "array"
+    },
+    "expectedTrackCount": {
+      "type": "integer"
+    },
+    "addSelector": {
+      "type": "object"
+    }
+  },
+  "plan": {
+    "format": "athanor-agent-plan/v1",
+    "start": "inspect",
+    "phases": [
+      {
+        "id": "inspect",
+        "steps": [
+          {
+            "operation": "call",
+            "params": {
+              "operation": "project.get_name",
+              "params": {}
+            },
+            "expect": {
+              "path": [
+                "name"
+              ],
+              "equals": {
+                "$param": "projectName"
+              }
+            }
+          },
+          {
+            "operation": "call",
+            "params": {
+              "operation": "timeline.inspect",
+              "params": {
+                "timeline_id": {
+                  "$param": "timelineId"
+                }
+              }
+            },
+            "expect": {
+              "path": [
+                "tracks"
+              ],
+              "equals": {
+                "$param": "baselineTracks"
+              }
+            }
+          },
+          {
+            "operation": "observe",
+            "params": {
+              "selector": {
+                "$param": "addSelector"
+              }
+            },
+            "expect": {
+              "path": [
+                "matchCount"
+              ],
+              "equals": 1
+            }
+          }
+        ],
+        "next": "add"
+      },
+      {
+        "id": "add",
+        "steps": [
+          {
+            "operation": "physical",
+            "params": {
+              "command": "click",
+              "target": {
+                "id": {
+                  "$binding": "addButton"
+                }
+              },
+              "title": "Add video track"
+            }
+          },
+          {
+            "operation": "physical",
+            "params": {
+              "command": "key",
+              "target": {
+                "$param": "timelineTarget"
+              },
+              "key": "cmd+s",
+              "title": "Save added track"
+            }
+          },
+          {
+            "operation": "call",
+            "params": {
+              "operation": "timeline.inspect",
+              "params": {
+                "timeline_id": {
+                  "$param": "timelineId"
+                }
+              }
+            },
+            "expect": {
+              "path": [
+                "tracks"
+              ],
+              "length": {
+                "$param": "expectedTrackCount"
+              }
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
+                "$param": "captureTarget"
+              },
+              "kind": "presented",
+              "title": "Added track and original timeline"
+            }
+          }
+        ],
+        "next": null
+      }
+    ],
+    "bindings": {
+      "addButton": {
+        "phase": "inspect",
+        "step": 2,
+        "path": [
+          "matches",
+          0,
+          "id"
+        ],
+        "uniquePath": [
+          "matches"
+        ],
+        "type": "string"
+      }
+    }
+  }
+}

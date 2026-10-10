@@ -6,7 +6,7 @@ import {verifyTrimmedClip} from './check-support.mjs';
 import {clips,snapshotState,assert,OutcomeError} from '../runner/engine.mjs';
 
 function freeze(value){for(const child of Object.values(value))if(child&&typeof child==='object')freeze(child);return Object.freeze(value);}
-export const controlProtocol=freeze({id:'matched-controls-v2',taskBudgetMs:180000,width:1280,height:900,
+export const controlProtocol=freeze({id:'matched-controls-v3',taskBudgetMs:180000,width:1280,height:900,
  rounds:[['bare','athanor'],['athanor','bare']],tasks:{track:['changed','restored'],trim:['changed','restored','redone'],search:['positive','missing','restore','cleanup']},
  search:{positive:'pattern_24',missing:'athanor_missing_benchmark',name:'pattern_24.mov'},trim:{sourceStart:1,sourceEnd:5,timelineStart:1,saveBeforeUndo:true},
  baseline:{id:'athanor-control-comparison-2026-10-03',packageSha256:'f9a3e00dd27e516de70954d3b449ea75b2e125e1405711149311a752a6cc9637',
@@ -22,6 +22,9 @@ export async function prepareControlFixture(file,{task,lane,round}){
  const opened=await h.openTimeline(name);await n('key',{target:opened.id,key:'V'});await c('playback.seek',{time:0});
  const zoom=h.unique(await ui(),w=>w.tooltip?.startsWith('Timeline Zoom'),'Timeline zoom');await n('key',{target:zoom.id,key:'Home'});await n('click',{target:zoom.id,x:Math.round(zoom.width*.35),y:zoom.height/2});
  const mode=(await ui()).actions.filter(a=>a.enabled&&/^Name(?:\t\d+)?$/.test(a.text));assert(mode.length===1,'Name search mode is ambiguous');await n('action',{target:mode[0].id});
+ // Save materializes default audio metadata as a history commit on this package.
+ // Settle it during common setup, before freezing either lane's baseline.
+ const saved=await h.physical('key',{target:main.id,key:'cmd+s'});
  const baseline=await c('timeline.inspect',{timeline_id:timeline.timeline_id}),view=h.unique(await ui(),w=>w.id===opened.id,'Prepared timeline');verifyDisplayedClips(view,baseline);
  let geometry=null;
  if(task==='trim'){
@@ -33,7 +36,7 @@ export async function prepareControlFixture(file,{task,lane,round}){
  const prepared=await ui();assert(prepared.focus===view.id,'Fixture focus is not on the prepared timeline');
  return {format:'athanor-control-fixture/v1',protocol:controlProtocol.id,task,lane,round,preparedAt:new Date().toISOString(),
   identity:{packageHash:s.guiHash,pid:s.pid,started:s.processStart,generation:s.generation},timelineId:timeline.timeline_id,name,baseline,view,geometry,
-  setup:{window:{width:prepared.widgets.find(w=>w.id===main.id).width,height:prepared.widgets.find(w=>w.id===main.id).height},zoom:(await ui()).widgets.find(w=>w.id===zoom.id)?.value,searchMode:'Name',focus:prepared.focus}};
+  setup:{window:{width:prepared.widgets.find(w=>w.id===main.id).width,height:prepared.widgets.find(w=>w.id===main.id).height},zoom:(await ui()).widgets.find(w=>w.id===zoom.id)?.value,searchMode:'Name',focus:prepared.focus,saveBeforeBaseline:saved}};
 }
 
 export function scoreControlTask({task,baseline,checkpoints,finished}){

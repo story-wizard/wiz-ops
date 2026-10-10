@@ -1,0 +1,19 @@
+{
+  "format": "athanor-agent-recipe/v1",
+  "id": "project-identity",
+  "parameters": {"projectName": {"type": "string"}},
+  "continueAfter": ["identity"],
+  "plan": {
+    "format": "athanor-agent-plan/v1",
+    "start": "identity",
+    "phases": [{
+      "id": "identity",
+      "steps": [{
+        "operation": "call",
+        "params": {"operation": "project.get_name", "params": {}},
+        "expect": {"path": ["name"], "equals": {"$param": "projectName"}}
+      }],
+      "next": null
+    }]
+  }
+}

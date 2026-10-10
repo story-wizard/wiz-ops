@@ -1,0 +1,7 @@
+[
+  {"operation":"call","params":{"operation":"project.get_name"},"expect":{"path":["name"],"equals":"YOUR_OBSERVED_PROJECT_NAME"}},
+  {"operation":"physical","params":{"command":"click","target":{"name":"panelChromeAction","text":"+ Video","enabled":true},"title":"Add a video track"}},
+  {"operation":"physical","params":{"command":"key","target":{"id":"YOUR_TIMELINE_VIEW_ID"},"key":"cmd+s","title":"Save the project"}},
+  {"operation":"call","params":{"operation":"timeline.inspect","params":{"timeline_id":"YOUR_TIMELINE_ID"}},"expect":{"path":["tracks"],"length":3}},
+  {"operation":"capture","params":{"target":{"class":"MainWindow"},"kind":"presented","title":"Video track after saving"}}
+]

@@ -11,7 +11,7 @@ async function captureAt(q,accept){const preview=(await ui()).widgets.find(w=>w.
 async function seekReference(seconds,predicate){await c('playback.seek',{time:seconds});const q=await until(async()=>{const t=await transport();return !t.playing&&!t.scrubbing&&Math.abs(t.time-seconds)<.01?t:null;});let previous;return captureAt(q,image=>{const stable=previous&&widgetPixelDifference(previous,image)<1.5;previous=image;return stable&&predicate(image);});}
 async function scrub(seconds){await activate(v);const bar=(await ui()).widgets.find(w=>w.name==='previewScrubBar');assert(bar?.handle&&bar.groove,'Scrub handle geometry unavailable');const x=Math.round(bar.groove[0]+bar.groove[2]*(seconds*1000-bar.minimum)/(bar.maximum-bar.minimum));await physicalInput(process.argv[2],'drag',{target:bar.id,x:bar.handle[0],y:bar.handle[1],toX:x,toY:bar.handle[1],durationMs:400});return until(async()=>{const t=await transport();return !t.playing&&!t.scrubbing&&Math.abs(t.time-seconds)<.1?t:null;});}
 await check('D-PREVIEW-SCRUB',async()=>{
- const baseline=await gapFixture(c,s.assets,'Preview scrub smoke');await writeJSON(path.join(s.root,'preview-scrub-baseline.json'),baseline);v=await openTimeline(baseline.timeline.name);
+ const baseline=await gapFixture(c,s.assets,'Preview scrub smoke');await writeJSON(path.join(s.root,'preview-scrub-baseline.json'),baseline);v=await openTimeline(baseline.timeline.name,baseline.tracks.find(t=>t.address==='V1')?.track_id);
  const references={};try{
   // Freeze moving-frame neighbours before the gesture. One-frame pointer
   // quantization must compare the landed frame, not a different movie frame.

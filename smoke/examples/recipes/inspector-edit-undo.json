@@ -1,0 +1,306 @@
+{
+  "format": "athanor-agent-recipe/v1",
+  "id": "inspector-edit-undo",
+  "parameters": {
+    "graphScope": {
+      "type": "object"
+    },
+    "nodeId": {
+      "type": "string"
+    },
+    "parameter": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "timelineId": {
+      "type": "string"
+    },
+    "baselineGraph": {
+      "type": "object"
+    },
+    "baselineTimeline": {
+      "type": "object"
+    },
+    "controlTarget": {
+      "type": "object"
+    },
+    "timelineTarget": {
+      "type": "object"
+    },
+    "captureTarget": {
+      "type": "object"
+    },
+    "inspectorTarget": {
+      "type": "object"
+    },
+    "clipId": {
+      "type": "string"
+    }
+  },
+  "plan": {
+    "format": "athanor-agent-plan/v1",
+    "start": "baseline",
+    "phases": [
+      {
+        "id": "baseline",
+        "steps": [
+          {
+            "operation": "query",
+            "params": {
+              "question": "inspector-change",
+              "graphScope": {
+                "$param": "graphScope"
+              },
+              "nodeId": {
+                "$param": "nodeId"
+              },
+              "parameter": {
+                "$param": "parameter"
+              },
+              "baselineGraph": {
+                "$param": "baselineGraph"
+              },
+              "baselineTimeline": {
+                "$param": "baselineTimeline"
+              },
+              "state": "restored"
+            },
+            "expect": {
+              "path": [
+                "matched"
+              ],
+              "equals": true
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
+                "$param": "inspectorTarget"
+              },
+              "kind": "presented",
+              "title": "Radius before edit"
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
+                "$param": "captureTarget"
+              },
+              "kind": "presented",
+              "title": "Inspector before edit"
+            }
+          }
+        ],
+        "next": "edit"
+      },
+      {
+        "id": "edit",
+        "steps": [
+          {
+            "operation": "physical",
+            "params": {
+              "command": "click",
+              "target": {
+                "$param": "controlTarget"
+              },
+              "title": "Focus freshly observed Inspector thumb"
+            }
+          },
+          {
+            "operation": "query",
+            "params": {
+              "question": "inspector-change",
+              "graphScope": {
+                "$param": "graphScope"
+              },
+              "nodeId": {
+                "$param": "nodeId"
+              },
+              "parameter": {
+                "$param": "parameter"
+              },
+              "baselineGraph": {
+                "$param": "baselineGraph"
+              },
+              "baselineTimeline": {
+                "$param": "baselineTimeline"
+              },
+              "state": "restored"
+            },
+            "expect": {
+              "path": [
+                "matched"
+              ],
+              "equals": true
+            }
+          },
+          {
+            "operation": "wait",
+            "params": {
+              "selector": {
+                "$param": "controlTarget"
+              },
+              "condition": "focused",
+              "timeoutMs": 3000
+            }
+          },
+          {
+            "operation": "physical",
+            "params": {
+              "command": "key",
+              "target": {
+                "$param": "controlTarget"
+              },
+              "key": "right",
+              "requireFocus": true,
+              "title": "Increase selected numeric parameter"
+            }
+          },
+          {
+            "operation": "query",
+            "params": {
+              "question": "inspector-change",
+              "graphScope": {
+                "$param": "graphScope"
+              },
+              "nodeId": {
+                "$param": "nodeId"
+              },
+              "parameter": {
+                "$param": "parameter"
+              },
+              "baselineGraph": {
+                "$param": "baselineGraph"
+              },
+              "baselineTimeline": {
+                "$param": "baselineTimeline"
+              },
+              "state": "changed"
+            },
+            "expect": {
+              "path": [
+                "matched"
+              ],
+              "equals": true
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
+                "$param": "inspectorTarget"
+              },
+              "kind": "presented",
+              "title": "Radius after edit"
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
+                "$param": "captureTarget"
+              },
+              "kind": "presented",
+              "title": "Inspector after edit"
+            }
+          }
+        ],
+        "next": "restore"
+      },
+      {
+        "id": "restore",
+        "steps": [
+          {
+            "operation": "physical",
+            "params": {
+              "command": "click",
+              "target": {
+                "$param": "timelineTarget"
+              },
+              "title": "Focus timeline for Undo",
+              "clipId": {
+                "$param": "clipId"
+              },
+              "part": "body"
+            }
+          },
+          {
+            "operation": "wait",
+            "params": {
+              "selector": {
+                "$param": "timelineTarget"
+              },
+              "condition": "focused",
+              "timeoutMs": 3000
+            }
+          },
+          {
+            "operation": "physical",
+            "params": {
+              "command": "key",
+              "target": {
+                "$param": "timelineTarget"
+              },
+              "key": "cmd+z",
+              "requireFocus": true,
+              "title": "Undo the Inspector edit"
+            }
+          },
+          {
+            "operation": "query",
+            "params": {
+              "question": "inspector-change",
+              "graphScope": {
+                "$param": "graphScope"
+              },
+              "nodeId": {
+                "$param": "nodeId"
+              },
+              "parameter": {
+                "$param": "parameter"
+              },
+              "baselineGraph": {
+                "$param": "baselineGraph"
+              },
+              "baselineTimeline": {
+                "$param": "baselineTimeline"
+              },
+              "state": "restored"
+            },
+            "expect": {
+              "path": [
+                "matched"
+              ],
+              "equals": true
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
+                "$param": "inspectorTarget"
+              },
+              "kind": "presented",
+              "title": "Radius restored"
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
+                "$param": "captureTarget"
+              },
+              "kind": "presented",
+              "title": "Inspector restored"
+            }
+          }
+        ],
+        "next": null
+      }
+    ]
+  }
+}

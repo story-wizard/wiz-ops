@@ -1,5 +1,7 @@
 # Automated build testing: repository scope
 
+This is the historical first-import record. For current developer and managed Mac setup, follow the [worker guide](workers.md); retain actual host qualification with its external run evidence.
+
 The first release supports selecting a compatible Wizard build, running automated checks, and producing a local report. The maintained `packaged-full` course supplies 57 engine checks. Human handoff, Oz guidance, tester sign-off, external report delivery and build dispatch are outside this release's requirements. Existing optional checkpoint code remains available for separate development.
 
 Follow [automated build testing](automated-build-testing.md) for the operator commands and prerequisites.

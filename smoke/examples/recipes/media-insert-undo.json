@@ -1,0 +1,59 @@
+{
+ "format":"athanor-agent-recipe/v1","id":"media-insert-undo",
+ "parameters":{
+  "searchId":{"type":"string"},"mediaViewId":{"type":"string"},"panelId":{"type":"string"},
+  "query":{"type":"string"},"expectedName":{"type":"string"},"expectedStatus":{"type":"string"},
+  "assetId":{"type":"string"},"durationSeconds":{"type":"number"},"timelineId":{"type":"string"},
+  "timelineTarget":{"type":"object"},"captureTarget":{"type":"object"},"baseline":{"type":"object"}
+ },
+ "plan":{
+  "format":"athanor-agent-plan/v1","start":"baseline","maxDurationMs":120000,
+  "bindings":{
+   "keepId":{"phase":"bind-format","step":0,"path":["matches",0,"id"],"uniquePath":["matches"],"type":"string"},
+   "dialogId":{"phase":"bind-format","step":0,"path":["dialogs",0,"id"],"uniquePath":["dialogs"],"type":"string"}
+  },
+  "phases":[
+   {"id":"baseline","steps":[
+    {"operation":"preflight","params":{},"expect":{"path":["ready"],"equals":true}},
+    {"operation":"query","params":{"question":"media-search"},"expect":{"path":["searchMode"],"equals":"Name"}},
+    {"operation":"query","params":{"question":"media-insertion","timelineId":{"$param":"timelineId"},"baseline":{"$param":"baseline"},"assetId":{"$param":"assetId"},"durationSeconds":{"$param":"durationSeconds"},"state":"restored"},"expect":{"path":["matched"],"equals":true}},
+    {"operation":"capture","params":{"target":{"$param":"captureTarget"},"kind":"presented","title":"Before insertion"}}
+   ],"next":"search"},
+   {"id":"search","steps":[
+    {"operation":"physical","params":{"command":"click","target":{"id":{"$param":"searchId"}},"title":"Focus media search"}},
+    {"operation":"physical","params":{"command":"key","target":{"id":{"$param":"searchId"},"focused":true},"key":"cmd+a"}},
+    {"operation":"physical","params":{"command":"type","target":{"id":{"$param":"searchId"},"focused":true},"text":{"$param":"query"}}},
+    {"operation":"physical","params":{"command":"key","target":{"id":{"$param":"searchId"},"focused":true},"key":"return"}},
+    {"operation":"wait","params":{"within":{"id":{"$param":"panelId"}},"conditions":[
+     {"selector":{"id":{"$param":"searchId"}},"condition":"text","expected":{"$param":"query"}},
+     {"selector":{"id":{"$param":"mediaViewId"}},"condition":"modelNames","expected":[{"$param":"expectedName"}]},
+     {"selector":{"name":"mediaSearchStatus"},"condition":"text","expected":{"$param":"expectedStatus"}}
+    ],"details":true,"limit":3,"timeoutMs":10000},"expect":{"path":["matchCount"],"equals":3}},
+    {"operation":"capture","params":{"target":{"$param":"captureTarget"},"kind":"presented","title":"Search result"}}
+   ],"next":"drop"},
+   {"id":"drop","steps":[
+    {"operation":"physical","params":{"command":"drag","target":{"id":{"$param":"mediaViewId"}},"itemText":{"$param":"expectedName"},"toTarget":{"$param":"timelineTarget"},"toTimelinePoint":{"trackIndex":0,"timeSeconds":0},"durationMs":1200,"title":"Drag the matching asset onto V1 at zero"}},
+    {"operation":"query","params":{"question":"format-dialog"}}
+   ],"next":{"step":1,"path":["state"],"cases":[{"equals":"format-mismatch","phase":"bind-format"},{"equals":"none","phase":"inserted"}]}},
+   {"id":"bind-format","steps":[
+    {"operation":"query","params":{"question":"format-dialog"},"expect":{"path":["state"],"equals":"format-mismatch"}}
+   ],"next":"keep"},
+   {"id":"keep","steps":[
+    {"operation":"capture","params":{"target":{"id":{"$binding":"dialogId"}},"kind":"presented","title":"Format dialog"}},
+    {"operation":"physical","params":{"command":"click","target":{"id":{"$binding":"keepId"}},"title":"Keep timeline settings"}},
+    {"operation":"query","params":{"question":"format-dialog"},"expect":{"path":["state"],"equals":"none"}}
+   ],"next":"inserted"},
+   {"id":"inserted","steps":[
+    {"operation":"query","params":{"question":"media-insertion","timelineId":{"$param":"timelineId"},"baseline":{"$param":"baseline"},"assetId":{"$param":"assetId"},"durationSeconds":{"$param":"durationSeconds"},"state":"inserted"},"expect":{"path":["matched"],"equals":true}},
+    {"operation":"capture","params":{"target":{"$param":"captureTarget"},"kind":"presented","title":"Inserted clip"}}
+   ],"next":"undo"},
+   {"id":"undo","steps":[
+    {"operation":"physical","params":{"command":"click","target":{"$param":"timelineTarget"},"title":"Focus timeline for Undo"}},
+    {"operation":"wait","params":{"selector":{"$param":"timelineTarget"},"condition":"focused","timeoutMs":5000}},
+    {"operation":"physical","params":{"command":"key","target":{"$param":"timelineTarget"},"key":"cmd+z","requireFocus":true}},
+    {"operation":"query","params":{"question":"media-insertion","timelineId":{"$param":"timelineId"},"baseline":{"$param":"baseline"},"assetId":{"$param":"assetId"},"durationSeconds":{"$param":"durationSeconds"},"state":"restored"},"expect":{"path":["matched"],"equals":true}},
+    {"operation":"capture","params":{"target":{"$param":"captureTarget"},"kind":"presented","title":"Restored timeline"}}
+   ],"next":null}
+  ]
+ }
+}

@@ -13,12 +13,45 @@ async function reviewedSource(relative){
   :readFile(path.join(smoke,relative),'utf8');
 }
 
+test('styled checkbox geometry clicks the actual hit region of a wide control',{skip:process.platform!=='darwin'||spawnSync('pkg-config',['--exists','Qt6Widgets','Qt6Test']).status!==0},async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-checkbox-hit-'));
+ try{
+  const source=await reviewedSource('desktop/native/bridge.cpp'),start=source.indexOf('if(auto* p=qobject_cast<QCheckBox*>(w))'),end=source.indexOf('if(auto* p=qobject_cast<QLineEdit*>(w);',start);
+  const snippet=start<0?'':source.slice(start,end);if(start>=0)assert(end>start);
+  const file=path.join(root,'probe.cpp'),binary=path.join(root,'probe');
+  await writeFile(file,`#include <QtWidgets>
+#include <QtTest/QTest>
+#include <iostream>
+QJsonObject observe(QWidget* w){QJsonObject item;${snippet}return item;}
+int main(int argc,char** argv){QApplication app(argc,argv);app.setStyle("Fusion");QCheckBox box("Override Setting for this run");box.resize(900,24);
+QTest::mouseClick(&box,Qt::LeftButton,Qt::NoModifier,box.rect().center());if(box.isChecked())return 1;
+const auto item=observe(&box);QRect r=box.rect();if(item.contains("clickRect")){const auto j=item["clickRect"].toObject();r=QRect(j["x"].toInt(),j["y"].toInt(),j["width"].toInt(),j["height"].toInt());}
+QTest::mouseClick(&box,Qt::LeftButton,Qt::NoModifier,r.center());if(!box.isChecked())return 2;std::cout<<"Styled region toggled; widget center did not";}
+`);
+  const flags=execFileSync('pkg-config',['--cflags','--libs','Qt6Widgets','Qt6Test'],{encoding:'utf8'}).trim().split(/\s+/);
+  execFileSync('/usr/bin/clang++',['-std=c++17',file,'-o',binary,...flags],{encoding:'utf8',timeout:60000});
+  assert.match(execFileSync(binary,[],{env:{...process.env,QT_QPA_PLATFORM:'offscreen'},encoding:'utf8',timeout:10000}),/Styled region toggled/);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('lease inspection denial does not claim a live helper expired',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-lease-inspection-'));
+ try{
+  const stub=path.join(root,'process.mjs');await writeFile(stub,`export const spawn=()=>{};export function execFileSync(_cmd,args){const mode=process.env.LEASE_PROBE_MODE;if(mode==='denied')throw Object.assign(Error('denied'),{code:'EPERM'});if(mode==='ended')throw Object.assign(Error('absent'),{status:1});return args.includes('comm=')?(mode==='changed'?'other':'owned'):'time';}`);
+  const source=(await reviewedSource('desktop/desktop-lease.mjs')).replace("from 'node:child_process'","from '"+pathToFileURL(stub).href+"'").replace("from './macos-input.mjs'","from '"+pathToFileURL(path.join(smoke,'desktop/macos-input.mjs')).href+"'").replace("from '../runner/engine.mjs'","from '"+pathToFileURL(path.join(smoke,'runner/engine.mjs')).href+"'");
+  const file=path.join(root,'probe.mjs');await writeFile(file,source);const {verifyDesktopLease}=await import(pathToFileURL(file).href),session={desktopLease:{pid:1,driver:'owned',started:'time'}},previous=process.env.LEASE_PROBE_MODE;
+  try{process.env.LEASE_PROBE_MODE='valid';assert.doesNotThrow(()=>verifyDesktopLease(session));process.env.LEASE_PROBE_MODE='denied';assert.throws(()=>verifyDesktopLease(session),e=>e.status==='Blocked'&&e.code==='lease_inspection_denied'&&e.origin==='environment');for(const mode of ['ended','changed']){process.env.LEASE_PROBE_MODE=mode;assert.throws(()=>verifyDesktopLease(session),e=>e.status==='Blocked'&&e.code==='desktop_lease_ended');}}
+  finally{if(previous===undefined)delete process.env.LEASE_PROBE_MODE;else process.env.LEASE_PROBE_MODE=previous;}
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('pointer hit testing excludes the system cursor and still blocks real overlays',{skip:process.platform!=='darwin'},async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'athanor-cursor-regression-'));
  try{
   const source=await readFile(path.join(smoke,'desktop/macos-input.swift'),'utf8'),start=source.indexOf('func pointerOverlay('),end=source.indexOf('func children(',start);assert.ok(start>=0&&end>start);
   const program=`import Foundation
 import CoreGraphics
+import ApplicationServices
 struct InputError:Error {let message:String,code:String,diagnostics:[String:Any]}
 ${source.slice(start,end)}
 let cursor:[String:Any]=[kCGWindowOwnerName as String:"Window Server",kCGWindowOwnerPID as String:433,kCGWindowLayer as String:NSNumber(value:CGWindowLevelForKey(.cursorWindow))]
@@ -180,6 +213,7 @@ test('the production Swift pointer scope balances its down on focus loss, owner 
   const guardStart=original.indexOf('func requirePointerWindow('),guardEnd=original.indexOf('func children(',guardStart);assert.ok(guardStart>=0&&guardEnd>guardStart);
   const program=`import Foundation
 import CoreGraphics
+import ApplicationServices
 struct InputError: Error { let message:String; var code="input_denied"; var diagnostics:[String:Any]=[:] }
 func require(_ condition:Bool,_ message:String)throws{if !condition{throw InputError(message:message)}}
 enum CGEventType {case leftMouseDown,leftMouseDragged,leftMouseUp}
@@ -232,5 +266,35 @@ for scenario in ["focus-lost","owner-lost","normal","preinput-denial"]{
   const rows=Object.fromEntries(execFileSync(binary,[],{encoding:'utf8',timeout:5000}).trim().split('\n').map(x=>x.split(':')));
   for(const scenario of ['focus-lost','owner-lost'])assert.equal(rows[scenario],'down,up',scenario+' must release the driver’s outstanding press');
   assert.equal(rows.normal,'down,drag,up','Normal input releases exactly once');assert.equal(rows['preinput-denial'],'','Denied input emits no events');
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('only a verified system Dock no-hit admits the underlying owned pointer target',{skip:process.platform!=='darwin'},async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-dock-hit-'));
+ try{
+  const source=await readFile(path.join(smoke,'desktop/macos-input.swift'),'utf8'),start=source.indexOf('func pointerOverlay('),end=source.indexOf('func children(',start);
+  const program=`import Foundation
+import CoreGraphics
+import ApplicationServices
+struct InputError:Error {let message:String,code:String,diagnostics:[String:Any]}
+${source.slice(start,end)}
+let dock:[String:Any]=[kCGWindowOwnerName as String:"Dock",kCGWindowOwnerPID as String:123,kCGWindowNumber as String:9,kCGWindowLayer as String:20,kCGWindowBounds as String:["X":0,"Y":0,"Width":200,"Height":100]]
+let target:[String:Any]=[kCGWindowOwnerPID as String:456,kCGWindowNumber as String:10,kCGWindowLayer as String:0,kCGWindowBounds as String:["X":0,"Y":0,"Width":200,"Height":100]]
+let point=CGPoint(x:30,y:30),displays=[CGRect(x:0,y:0,width:200,height:100)],systemDock="/System/Library/CoreServices/Dock.app/Contents/MacOS/Dock"
+for status in [AXError.success,.cannotComplete,.apiDisabled,.failure,.noValue] {
+ let passes:([String:Any],CGPoint)->Bool={entry,p in dockHostingWindowPasses(entry,at:p,executable:{_ in systemDock},hitTest:{_,_ in status})}
+ let top=topVisibleWindow([dock,target],displays:displays,at:point,dockPasses:passes)
+ if status == .noValue {try requirePointerWindow(top,at:point,pid:456,window:10,starting:true)}
+ else {do{try requirePointerWindow(top,at:point,pid:456,window:10,starting:true);fatalError("Dock hit or unavailable inspection allowed")}catch let e as InputError{precondition(e.code=="pointer_occluded")}}
+}
+for executable in ["/tmp/Dock",""] {precondition(!dockHostingWindowPasses(dock,at:point,executable:{_ in executable},hitTest:{_,_ in .noValue}))}
+var fake=dock;fake[kCGWindowOwnerName as String]="Screenshot"
+precondition(!dockHostingWindowPasses(fake,at:point,executable:{_ in systemDock},hitTest:{_,_ in .noValue}))
+precondition((topVisibleWindow([dock,target],displays:displays,at:point)?[kCGWindowOwnerPID as String] as? NSNumber)?.intValue == 123)
+print("Verified no-hit passed; hits, failures and impostors blocked")
+`;
+  const file=path.join(root,'dock.swift'),binary=path.join(root,'dock');await writeFile(file,program);
+  execFileSync('/usr/bin/swiftc',['-module-cache-path',path.join(root,'module-cache'),file,'-o',binary],{encoding:'utf8',timeout:60000});
+  assert.match(execFileSync(binary,[],{encoding:'utf8',timeout:5000}),/failures and impostors blocked/);
  }finally{await rm(root,{recursive:true,force:true});}
 });

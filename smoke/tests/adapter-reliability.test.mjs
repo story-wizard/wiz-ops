@@ -7,9 +7,9 @@ import {pathToFileURL} from 'node:url';
 import {generatedPlacement,createLocalGraphic} from '../desktop/generated-fixture.mjs';
 import {verifyNativeCapabilities,parseNativeResponse,acquireNativeLock} from '../desktop/adapter.mjs';
 import {waitForObservation,recordStep,endCheck} from '../desktop/check-support.mjs';
-import {executeDesktop} from '../desktop/run.mjs';
+import {executeDesktop,desktopGroups,missingDesktopResults} from '../desktop/run.mjs';
 import {writeJSON} from '../runner/files.mjs';
-import {stageObservation} from '../runner/stages.mjs';
+import {stageObservation,liveStageObservation} from '../runner/stages.mjs';
 import {failureStatus} from '../runner/engine.mjs';
 import {withAdapterAction} from '../desktop/agent-proof.mjs';
 test('overlapping native observations wait for the mailbox and never remove a busy lock',async()=>{
@@ -43,6 +43,40 @@ test('final blocked results cannot inherit a passing fixture preparation receipt
  assert.deepEqual(stageObservation(id,{results:[blocked]},events),blocked);
  assert.equal(stageObservation(id,{results:[]},events).status,'Pass');
  assert.equal(stageObservation(id,{results:[blocked]},[...events,{id,status:'Running'}]).status,'Unknown');
+});
+
+test('live persistence waits for the merged group result without hiding an earlier failure',()=>{
+ const id='D-BIN-DUPLICATE',initial={id,status:'Fail',error:'Copy lost the original asset'},pass={id,status:'Pass'},blocked={id,status:'Blocked',error:'Required checks failed'};
+ assert.equal(liveStageObservation(pass),null);
+ assert.equal(liveStageObservation(blocked,initial),null);
+ assert.equal(liveStageObservation({id,status:'Running'},initial),null);
+ const final={...initial,final:true};assert.deepEqual(liveStageObservation(final,initial),final);
+ assert.equal(liveStageObservation(blocked,final),null);
+ assert.equal(liveStageObservation({...pass,final:true}).status,'Pass');
+ assert.equal(liveStageObservation({id:'D-SB-PERSIST',status:'Pass'}),null);
+});
+
+test('grouping preserves selected checks and only untouched checks get a bounded fresh continuation',async()=>{
+ const map=JSON.parse(await readFile(new URL('../desktop/check-map.json',import.meta.url))),ids=['P-TL-BIN-DROP','P-TL-TRIM','D-PROJECT-NEW','D-PROJECT-SAVE-AS'];
+ const grouped=desktopGroups(ids,map),isolated=desktopGroups(ids,map,'isolated');
+ assert.equal(grouped.length,3);assert.equal(isolated.length,4);
+ assert.equal(desktopGroups(['P-RG-WIRE','P-CURVE-LIVE'],map,'grouped').length,2,'Live scripted input cannot inherit a completed agent-proof attempt');assert.deepEqual(new Set(grouped.flatMap(g=>g.ids)),new Set(ids));
+ for(const repeat of [false,true]){
+  const root=await mkdtemp(path.join(tmpdir(),'athanor-group-unstarted-'));const calls=[],live=[];
+  try{
+   const result=await executeDesktop({directory:root,ids:ids.slice(0,2),plan:{recipe:{selection:{desktopMode:'grouped'}}}},{onResult:async r=>live.push(r),executeGroup:async p=>{
+    calls.push(p.ids);const owned=path.join(p.directory,'owned');await mkdir(owned);
+    return {root:owned,report:{status:'Fail',results:p.ids.map(id=>({id,status:id==='P-TL-BIN-DROP'?'Unknown':id==='P-TL-TRIM'&&(repeat||calls.length===1)?'Blocked':'Pass',...(id==='P-TL-TRIM'&&(repeat||calls.length===1)?{notExecuted:true}:{})}))}};
+   }});
+   assert.equal(calls.length,2,'An untouched check gets at most one fresh continuation');
+   assert.ok(!calls[1].includes('P-TL-BIN-DROP'),'Unknown is never replayed');
+   assert.equal(result.report.results.find(r=>r.id==='P-TL-BIN-DROP').status,'Unknown');
+   assert.equal(result.report.results.find(r=>r.id==='P-TL-TRIM').status,repeat?'Blocked':'Pass');
+   assert.equal(live.filter(r=>r.id==='P-TL-TRIM').length,1,'No transient Blocked verdict for a queued untouched check');
+   const events=(await readFile(path.join(result.root,'check-events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);assert.ok(events.every(e=>e.final));
+   assert.ok(result.report.groups.every(g=>Number.isFinite(g.durationMs)));
+  }finally{await rm(root,{recursive:true,force:true});}
+ }
 });
 
 test('failure collection keeps the original error, observed UI and actual captured bytes',async()=>{
@@ -108,7 +142,7 @@ test('a failed reopen preserves its result and later independent groups get a fr
 test('check identities retain their hash delimiter while new renderer fixture paths do not',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'athanor-url-fixture-'));
  try{
-  const result=await executeDesktop({directory:root,ids:['D-SOURCE-COLOR']},{executeGroup:async p=>{
+  const result=await executeDesktop({directory:root,ids:['D-SOURCE-COLOR'],plan:{recipe:{selection:{desktopMode:'isolated'}}}},{executeGroup:async p=>{
    assert.ok(!p.directory.includes('#'));assert.ok(p.directory.includes('D-SOURCE-COLOR'));
    const owned=path.join(p.directory,'owned');await mkdir(owned);
    return {root:owned,report:{status:'Pass',results:p.ids.map(id=>({id,status:'Pass'}))}};
@@ -150,4 +184,11 @@ test('process exit codes stay diagnostics rather than test or step verdicts',asy
  const entries=(await readFile(path.join(root,'steps.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);assert.equal(entries.at(-1).status,'Fail');assert.equal(entries.at(-1).observation,error.message);
  const result={id:'D-X',status:1,error:error.message};await endCheck(file,result);assert.equal(result.status,'Fail');const event=JSON.parse((await readFile(path.join(root,'check-events.jsonl'),'utf8')).trim());assert.equal(event.status,'Fail');
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+
+test('interrupted check admission cannot be mistaken for an untouched check eligible for continuation',()=>{
+ const results=missingDesktopResults([{id:'done'},{id:'active'},{id:'later'}],[{id:'done',status:'Fail'}],[{id:'active',status:'Running'}],'Driver timed out');
+ assert.deepEqual(results.map(r=>[r.id,r.status,r.notExecuted]),[['active','Unknown',false],['later','Blocked',true]]);
+ assert.equal(missingDesktopResults([{id:'active'}],[],[{id:'active',status:'Running'},{id:'active',status:'Pass'}])[0].notExecuted,false,'A partial script ending after an observation cannot authorize a replay');
 });

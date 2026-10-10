@@ -2,6 +2,11 @@
 
 Athanor is the app name. Preserve the existing CLI names, formats and WizardSmoke workspace paths.
 
+Use Athanor in outward-facing messages, status replies, report/course titles and generated agent prompts. Poddy is the internal execution platform name; preserve host names, paths, repositories, branches, identifiers and historical evidence.
+
+Developer clones use the harness locally with their agent; worker scheduling and delivery are optional. For QA on the managed MBP or Mini workers, read [interim reporting and administration](docs/poddy-qa-reporting.md). Worker results go only to Charles's verified Slack DM until he sanctions wider distribution; keep Jira read-only and automatic email disabled. Developer runs report locally to the requesting user. Other Wiz automation has its own reporting policy.
+
+
 The October 3 local slice adds fourteen further UI/playback candidates, scoped model observations, native gestures and timed evidence recording. Read [harness control](docs/harness-control.md) for how these layers work and the retained qualification state. Candidate availability is not lead acceptance.
 
 ## Choose your task
@@ -10,9 +15,14 @@ Work from the command root: `smoke/` in a checkout or `workspace/` in a bundle. 
 
 | Task | Start here |
 | --- | --- |
+| Administer a managed MBP/Mini or consolidate nightly assertions | [Workers and nightly reports](docs/workers.md) |
 | Run or compose an existing course | [Agent courses](docs/agent-courses.md) |
 | Explore Wizard with mouse, keyboard and app operations | [Computer-use guide](docs/computer-use-agent.md) |
 | Understand how the CLI, Qt adapter and physical input work together | [Harness control](docs/harness-control.md) |
+| Plan and reuse short agent workflows | [Agent sequences](docs/agent-sequences.md) |
+| Gather task-specific context or review a procedure from a run | [Task packets](docs/task-packets.md) |
+| Turn a functional script into fixture-backed tests and execution groups | [Functional testing agent](docs/functional-testing-agent.md) |
+| Check the App caller of a Core persistence change | [Caller preflight](docs/caller-preflight.md) |
 | Compare or improve agent control tooling | [Control harness baseline](docs/control-comparison.md) |
 | Investigate failed checks and prepare bug drafts | [Investigations](docs/investigations.md) |
 | Inventory a supplied .wiz project and plan representative-media checks | [Golden Project intake](docs/golden-project-intake.md) |
@@ -53,7 +63,7 @@ Keep the launcher running and replace `URL` with its printed loopback address. `
 
 Use the supplied build and selection, or ask if missing. `prepare` returns a progress ID; poll `preparation --id ID` for steps, readiness and a repair prompt. Preparation attaches matching tools to a disposable copy of the selected package. Never substitute another instrumented app. Read [desktop setup](docs/desktop-tools-setup.md) only when resolving its prerequisites. Review the frozen selection and added prerequisites, then run when the user has authorized testing on that machine. Preparation and discovery do not run a course.
 
-For exploration, follow [computer-use guidance](docs/computer-use-agent.md). Start with `desktop/session.mjs start --plan FILE`, read the returned `agent-context.json`, and use `desktop/session.mjs tool SESSION.json OP JSON`. Context lists build/process/project identities, current keys and operations, inspection limits, toolkit Pass contracts and the deadline. Run `preflight` before gestures. Scripted courses have their own assertions; exploratory observations cannot qualify an interactive Pass without a proof contract.
+For exploration, follow [computer-use guidance](docs/computer-use-agent.md). Start with `desktop/session.mjs start --plan FILE`, read the returned `agent-brief.json` first (`fullContext` retains `agent-context.json`), and use `desktop/session.mjs tool SESSION.json OP JSON`. Context lists build/process/project identities, current keys and operations, inspection limits, toolkit Pass contracts and the deadline. Run `preflight` before gestures. Scripted courses have their own assertions; exploratory observations cannot qualify an interactive Pass without a proof contract.
 
 ## Execution and evidence rules
 
@@ -77,11 +87,57 @@ input reject unknown fields before dispatch. Use `durationMs` for drags and
 refresh geometry after `input_binding_rejected`. See the control baseline guide
 for the contract and the broader control-family audit method.
 
+For short known sequences, use `desktop/session.mjs batch SESSION.json STEPS.json`
+with 1–8 ordinary tool requests. Use `expect` gates on readbacks before dependent
+edits. Sequences stop at the first error or false expectation and retain individual
+tool receipts; they provide no rollback or target reservation. Bots may keep
+`desktop/session.mjs tools SESSION.json` open for sequential JSON-lines requests
+instead of restarting Node per call. Inspect the session context's connection
+contract. Request IDs correlate responses, not retries: never resend a lost
+mutation. Preserve all frozen assertions, captures, fresh input guards and the
+session deadline. See the computer-use guide for examples.
+
+Before planning physical work, read [agent sequences](docs/agent-sequences.md).
+Plan each known phase ahead, bind targets and expected values from the current
+session, and split at new IDs, dialogs, geometry or decisions. Use
+`desktop/session.mjs batch-check SESSION.json STEPS.json` to validate the complete
+array against the selected schema without app requests or writes. Reuse the
+editable JSON in `examples/sequences/`; replace its placeholders and preserve
+the selected check's frozen actions, assertions and captures. Review each phase
+before dispatching another. Parameter validation does not reserve targets.
+For compact batch responses, add `--compact` (or JSON-lines `compact:true`). Read
+the checksummed full `receipt.path` for required domain state, and inspect gates,
+returned mutation indexes and `summary.continuation` before proceeding. Unknown
+requires reconciliation; storage failures return the full response for retention.
+For bounded branching, use `plan-check SESSION.json CONTROL_PLAN.json`, then
+`plan SESSION.json CONTROL_PLAN.json --compact`. Control plans contain up to eight
+named batch phases and 32 declared steps. Every path validates before input.
+Branches compare explicit values in the final complete read-only step; unknown
+values, incomplete data, failed gates and Unknown stop execution. Keep review
+checkpoints for new IDs, geometry and interpretation. Progress and final receipts
+stay inside the owned session. Inspect them and tool journals after a lost reply;
+never resend a plan. The agent still authors and reviews the plan; automatic plan
+generation and Jev remain deferred. See the sequence guide and media-plan example.
+
 ## Default checklist and qualification
+
+Packaged schemas use conservative structural compatibility, not a per-nightly
+allowlist alone. New operations and wider request enums may extend a retained
+reviewed contract automatically. Read `schemaCompatibility` in the frozen plan;
+review failures name paths and retain a receipt in the external `schema-reviews`
+directory. Changed defaults, descriptions, responses and constraints still need
+review. Do not replace baselines or suppress application dialogs to get Ready.
+See `docs/build-repair.md`; compatibility is separate from a passing course.
+
+Fresh desktop fixtures retain `fixture-version.json`: after the creator engine
+closes, Athanor records its selected package version only when the newly created
+project has no writer stamp. Existing stamps and supplied projects remain
+unchanged. A migration dialog on other inputs requires review; never click
+through it or stamp an older project to force readiness.
 
 A fresh launcher defaults to `smoke-full`: accepted core checks plus the maintained allowlist of physical/checklist qualification candidates. `automated-full` remains accepted-only; custom courses cannot promote candidates. Read `docs/agent-courses.md` for current composition. New physical groups must expose their selected definitions in `agent-context.json`, execute in fresh owned projects, preserve failures and retain native-input receipts in the course report. Stage executors run from the retained source snapshot. Keep the Mac unlocked for desktop checks; never attempt to bypass the lock screen or change system security settings.
 
-The default `smoke-full` revision 8 excludes `S-PF-IDLE`. It adds ten qualification candidates for project search across timeline focus, physical blur Inspector editing, mask clipboard/history, vectorscope tap response, New Project, Save As, projectless Preferences, missing-term search, 100-clip clipboard and 50-step physical history. Read the current qualification notes in `docs/harness-control.md`; lead acceptance remains separate. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.
+The default `smoke-full` revision 9 excludes `S-PF-IDLE`. It adds ten qualification candidates for project search across timeline focus, physical blur Inspector editing, mask clipboard/history, vectorscope tap response, New Project, Save As, projectless Preferences, missing-term search, 100-clip clipboard and 50-step physical history. Read the current qualification notes in `docs/harness-control.md`; lead acceptance remains separate. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.
 
 ## Local investigations
 
@@ -97,9 +153,9 @@ Read [Studio hosting](docs/studio-hosting.md) for the proposed single-runner pil
 
 Project workflow candidates use `desktop/check-projects.mjs` with pure assertions in `desktop/project-proof.mjs`. Rebind the session only after the visible MainWindow confirms the owned destination. New Project and Save As must verify fresh-process persistence and unchanged original timelines; projectless Preferences must start at the hub. Pointer guarding excludes only the system cursor at its reserved Window Server layer; real overlays still block input.
 
-Volume and search candidates use `desktop/check-volume-search.mjs` and pure assertions in `desktop/volume-proof.mjs`. Every selected candidate has its own fixture group. History latency includes physical dispatch and independent readback; retain it as a measurement until a performance policy is reviewed.
+Volume and search candidates use `desktop/check-volume-search.mjs` and pure assertions in `desktop/volume-proof.mjs`. Volume checks keep separate per-test timelines; long history retains its own desktop session. History latency includes physical dispatch and independent readback; retain it as a measurement until a performance policy is reviewed.
 
-Long foreground driver sequences may declare `scriptTimeoutMs` (1000–600000 ms). The executor uses the largest selected declaration, with a 120000 ms default. This is an execution budget, separate from performance acceptance. Interrupted drivers retain Unknown before a missing report can mask the cause.
+Long foreground driver sequences may declare `scriptTimeoutMs` (1000–600000 ms). A shared driver sums the selected declarations, with a 120000 ms default for ordinary drivers. This is an execution budget, separate from performance acceptance. Interrupted drivers retain Unknown before a missing report can mask the cause.
 
 
 Readiness helpers live in `desktop/check-support.mjs` and
@@ -111,3 +167,148 @@ pixel predicate; two matching samples are required and all settling samples are
 retained. Compositor freshness is distinct from renderer-frame acknowledgement.
 Keep observation budgets separate from performance acceptance and preserve
 historical failed attempts. See `docs/agent-tools.md` for helper contracts.
+
+For reusable control recipes and guarded result bindings, read the sequence guide.
+`recipe-check SESSION RECIPE VALUES` compiles typed JSON into a validated plan
+without app input. Runtime values stay external. Choose a known plan request ID
+before dispatch; recover via `plan-inspect`, never replay. Inspection exposes
+retained prefixes and possible in-flight actions without writes or resumption.
+Bindings carry complete unique observed IDs/model offsets only, refresh their
+literal source before use and preserve every ordinary input guard. Geometry and
+new dialogs stay review checkpoints. Recipe gates remain exploration until the
+selected check's frozen proof contract is satisfied.
+
+For a Core/App persistence change, use `scripts/caller-preflight.mjs --app DIR --core DIR`
+and read `docs/caller-preflight.md`. Verify configured build directories, build and
+run both mapped targets, and retain outputs. Discovery never counts as passed tests.
+Exact reviewed hashes compare commits and trees separately; do not update pins or
+accept dirty source automatically. Preparation/bundle Git identities are separate
+from the retained byte fingerprint and selected package hash.
+
+### Recipe workflow planning
+
+Use `desktop/session.mjs workflow-check SESSION.json WORKFLOW.json` to compose
+ordered typed recipes before dispatch. The output is read-only compilation,
+with recipe/value hashes, namespaced phases/bindings and separate plan segments.
+Only recipe-authored `continueAfter` exits may join, and those must finish with
+a gated full read-only step followed only by captures. Every other exit remains
+a review stop. Preserve independent assertions and captures; geometry, new
+dialogs and interpretation remain agent decisions. Inspect one segment and run
+it once with a known plan ID; never automatically execute all segments or replay
+Unknown. See `docs/agent-sequences.md#compose-recipes-before-dispatch`.
+
+### Compact control entry
+
+Read [agent workflows](docs/agent-workflows.md) for compact plan review and the
+Inspector/timeline question tools. Review `task.reviewPlan` or `plan-check.review`
+before dispatch; inspect retained hashed baselines when their fixture meaning is
+unknown. `inspector-edit-undo` auto-binds a declared selected numeric parameter.
+`query inspector-parameter` and `query timeline-clip` combine domain/control reads;
+they do not reserve targets or form an atomic snapshot. Default physical Inspector
+slider clicks focus the current styled thumb. Keep independent outcomes and images.
+
+For the authored search → physical drop → optional format dialog → Undo path, use
+`task` with `recipe: "media-insert-undo"`. Read [media procedure](docs/media-procedure.md)
+for its declared expectations and empty V1/A1 fixture. Preparation binds targets
+and retains a reviewed plan; it sends no input. `query` answers named media and
+dialog questions, `within` scopes widget observations through snapshot-local
+parent edges, and physical drags can resolve an exact model name and a track/time
+destination immediately before input. Unknown layouts/dialogs remain stops.
+Overlap independent read-only transports and compile known phases ahead of waits;
+desktop input and mailbox requests remain sequential. Inspect the returned timing
+and retained evidence rather than assuming a speed improvement.
+
+Start exploratory control from `agent-brief.json`. Use `tool SESSION.json task` to list recipes and prepare a reviewed existing plan before writing one. Add Track accepts only optional values.timelineId and binds the rest without input; the default fixture main must be displayed. Other recipes require explicit observed values. Returned run/inspection commands and the brief's persistent JSON-lines connection bind the session workspace. Scope is an observed ID string; model itemRects use the returned viewport. Default checkbox clicks use current styled clickRect metadata, followed by checked/enabled readback. Capture dialogs separately and review one image per required result. Single-tool CLI results over 2 KiB retain full checksummed receipts; read exact values there when needed. JSON-lines tool clients opt into `compact:true`. Saved Spell string typing may declare `commit:{documentId,inputId}` for exact readback and owned replacement-control verification. Other focus loss remains Unknown. Reobserve after rebuilds, keep independent assertions/captures, and never replay uncertain input.
+
+
+For efficient QA, choose CLI/Qt for exact state and setup, presented captures for
+visual questions, and physical input for the gesture being tested. Use the
+bounded observations/expectations in compact phase summaries before opening a
+full receipt. Reuse `summary.evidence` for the same review checkpoint; an old
+image is not current-state proof. `enable-checkbox` groups observe/click/waits;
+`timeline-undo-save` keeps required restoration Save inside the phase. Preserve
+all frozen contracts and independent assertions. See the final section of
+`docs/agent-sequences.md` for observation context, evidence reuse and timing.
+
+Use `wait.conditions` for 1–8 controls that must be ready together. It polls one
+inspection, requires every condition in that sample and returns the successful
+observation with process/generation identity and an observation ID. Reuse that
+state rather than immediately observing it again. The checkbox and semantic
+search recipes do this already. Input still refreshes targets; visual proof
+still needs its capture. Timeout diagnostics retain the last selected state.
+
+For context-sensitive keyboard actions, use `physical` with `requireFocus:true`.
+The Undo recipes require an observed, physically focused TimelineWidget; Add
+Track's MainWindow Save target is not an Undo target. Read bounded diagnostics
+and evidence from compact `summary.continuation.context` before opening a full
+failure receipt. Group related scoped observations, preserve the same assertions
+and captures, and keep GUI readiness separate from agent reasoning time in
+measurements. See the focus/recovery section of `docs/agent-sequences.md`.
+
+
+### Grouped course execution
+
+New selections freeze `desktopMode: "grouped"` by default. `smoke-full` revision 9
+runs compatible driver families in one owned session; every check keeps its own
+authored fixture, assertions and captures. Lifecycle, live curve sampling, external disk reload,
+preference-changing gestures, long history and import/live-indexing probes remain
+isolated. The maintained `smoke-isolated` course uses the previous session layout
+with the same check membership. CLI selections may set `--desktop-mode isolated`;
+JSON selections may set `desktopMode`. Old frozen selections without this field
+keep their earlier layout. Never edit a frozen plan to change modes: prepare anew.
+
+Ordinary assertion failures continue. Unknown ends its session and is never
+replayed. Only checks with no retained begin event may continue in a fresh session,
+at most once and after confirmed cleanup; earlier outcomes remain intact. Reopen
+checks publish their merged terminal result when their group closes, not at the
+end of the whole desktop stage. Group receipts retain wall time including setup,
+separate preparation and finish timestamps, group/session identity and per-check
+evidence. These are measurement boundaries for future profiling, not a profiler.
+Window Server inspection and presented captures can run during a held native drag;
+other native mutations remain exclusive and retain their existing input guards.
+
+Toolkit discovery: `tool SESSION schema '{}'` lists names;
+`tool SESSION schema '{"tool":"physical"}'` returns the step envelope/fields.
+Before starting Wizard, `node desktop/session.mjs toolkit [TOOL_NAME]` exposes
+the same harness metadata without a process, desktop lease or session. Live
+application schemas, observations and input retain their normal session guards.
+Application schemas still use `operation`. Invalid plans return phase/step and
+interface hints before input. `query timeline-clip` reports focus; preserve it
+instead of clicking again. Settle fixture Save before freezing a baseline, since
+Save may introduce its own history commit. `query timeline-trim` checks exact
+same-clock single-clip ordinary trim, valid source timing and preserved gaps/
+timeline extent. See `docs/agent-workflows.md`; never loosen global snapshots or
+repeat Undo blindly to force a pass.
+
+Save may add an empty history commit after setup. For restoration-oriented
+functional work, `query timeline-history` takes timelineId/baselineRevision and
+returns bounded owned first-parent history with head, parents and remaining steps.
+Review it before deliberate Undo, then verify history/domain after each key. Do
+not alter a frozen one-Undo test or consume unknown history automatically.
+
+`schema {}` provides a read-only plan scaffold; expectations use array paths.
+Compact replies prioritize outcome and completeness while retaining full results
+over 2 KiB. Read omitted values from the checksummed receipt when needed. Reuse a
+capture only for its original checkpoint; never infer fresh screen state from it.
+
+Compact `task` replies expose the full catalog or reviewed plan and exact run/
+inspection commands in `summary` (16 KiB task preview). Check `omitted`; read a
+missing review or unfamiliar hashed baseline from the retained receipt/plan.
+An unchanged prepared task has already passed all-path schema validation; review
+it and use its returned command once. Revalidate plans you edit or author.
+Persistent JSON-lines clients may send the task's exact `runRequest` after review.
+It loads the checksum-bound plan from this session and retains the same request
+identity and input guards. A changed file is rejected before dispatch; inspect
+the retained request after a lost reply rather than resending it.
+
+For result review, start with `summary.review.outcomes` and
+`summary.review.evidence`. These group recorded comparisons and original captures
+across the executed phases without another app read or screenshot. Review the
+declared images together in one supported multi-image call, keeping their labels.
+Use full receipts for omitted or unfamiliar state and concrete failures. Measure
+elapsed time first and tokens second. One-shot commands finish on exit; persistent
+requests finish on their complete JSON reply. Choose terminal read windows from
+retained operation timings, read more only if unfinished and never resend pending
+input. Close idle clients with stdin EOF after final replies and reconciliation;
+verify their exit separately from Wizard cleanup. No summary removes a frozen
+assertion, capture or Unknown stop.

@@ -1,0 +1,105 @@
+{
+  "format": "athanor-agent-recipe/v1",
+  "id": "enable-checkbox",
+  "parameters": {
+    "checkbox": {
+      "type": "object"
+    },
+    "dependentField": {
+      "type": "object"
+    }
+  },
+  "plan": {
+    "format": "athanor-agent-plan/v1",
+    "start": "inspect",
+    "phases": [
+      {
+        "id": "inspect",
+        "steps": [
+          {
+            "operation": "observe",
+            "params": {
+              "selector": {
+                "$param": "checkbox"
+              }
+            },
+            "expect": {
+              "path": [
+                "matchCount"
+              ],
+              "equals": 1
+            }
+          }
+        ],
+        "next": {
+          "step": 0,
+          "path": [
+            "matches",
+            0,
+            "checked"
+          ],
+          "cases": [
+            {
+              "equals": true,
+              "phase": "ready"
+            },
+            {
+              "equals": false,
+              "phase": "enable"
+            }
+          ]
+        }
+      },
+      {
+        "id": "enable",
+        "steps": [
+          {
+            "operation": "physical",
+            "params": {
+              "command": "click",
+              "target": {
+                "$param": "checkbox"
+              },
+              "title": "Enable checkbox"
+            }
+          }
+        ],
+        "next": "ready"
+      },
+      {
+        "id": "ready",
+        "steps": [
+          {
+            "operation": "wait",
+            "params": {
+              "conditions": [
+                {
+                  "selector": {
+                    "$param": "checkbox"
+                  },
+                  "condition": "checked",
+                  "expected": true
+                },
+                {
+                  "selector": {
+                    "$param": "dependentField"
+                  },
+                  "condition": "enabled"
+                }
+              ],
+              "timeoutMs": 5000,
+              "limit": 2
+            },
+            "expect": {
+              "path": [
+                "matchCount"
+              ],
+              "equals": 2
+            }
+          }
+        ],
+        "next": null
+      }
+    ]
+  }
+}

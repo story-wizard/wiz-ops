@@ -13,7 +13,8 @@ import {failureStatus,assert,pause,OutcomeError,clips,bounds,near} from '../runn
 export function desktopScriptTimeout(cases){
  const budgets=cases.filter(c=>c.scriptTimeoutMs!==undefined).map(c=>c.scriptTimeoutMs);
  assert(budgets.every(ms=>Number.isInteger(ms)&&ms>=1000&&ms<=600000),'Desktop driver budgets must be 1000–600000 milliseconds');
- return Math.max(120000,...budgets);
+ // Each declared per-check budget survives aggregation; ordinary authored drivers retain their default.
+ return Math.max(120000,budgets.reduce((total,ms)=>total+ms,0));
 }
 export function requireScriptReceipt(receipt,name){
  if(receipt.timedOut||receipt.overflow||receipt.aborted){const e=new OutcomeError(name+' was interrupted before a terminal report; outcome unknown. Inspect the retained receipts before retrying.','Unknown');e.diagnostics={timedOut:!!receipt.timedOut,overflow:!!receipt.overflow,aborted:!!receipt.aborted,exitCode:receipt.code,signal:receipt.signal||null};throw e;}
@@ -56,6 +57,35 @@ export function requireValidSourceTiming(source){
  assert(range&&Number.isFinite(range.start_seconds)&&Number.isFinite(range.end_seconds)&&range.start_seconds>=0&&range.end_seconds>range.start_seconds&&Number.isFinite(source.fps)&&source.fps>0,'Source timing range or clock is invalid');
  for(const value of [range.start_seconds,range.end_seconds])near(value*source.fps,Math.round(value*source.fps),'Source frame alignment');
  return source.projection_status;
+}
+export function requireOrdinaryTimingFixture(snapshot,clipId){
+ try{
+  const matches=clips(snapshot).filter(c=>c.clip_id===clipId),rate=snapshot.timeline?.fps;
+  assert(matches.length===1&&snapshot.next_cursor==null,'Incomplete or ambiguous timing fixture');
+  const item=matches[0];requireValidSourceTiming(item.source);
+  assert(item.source.timing==='timed'&&item.speed===1&&Number.isFinite(rate)&&rate>0&&item.source.fps===rate,'Fixture needs ordinary same-clock timing');
+  near(item.source.source_range.end_seconds-item.source.source_range.start_seconds,item.timeline_range.end_seconds-item.timeline_range.start_seconds,'Fixture source duration');
+  for(const value of [item.timeline_range.start_seconds,item.timeline_range.end_seconds])near(value*rate,Math.round(value*rate),'Fixture timeline frame alignment');
+ }catch(e){throw new OutcomeError('Source timing fixture is not ordinary: '+e.message,'Blocked');}
+}
+export function timelineDockToOpen(ui){
+ const canvases=ui.widgets.filter(w=>w.class==='TimelineWidget');
+ if(canvases.length){
+  const panels=new Set(canvases.map(w=>w.timelinePanel)),windows=new Set(canvases.map(w=>w.window));
+  if(canvases.length===1||panels.size===1&&!panels.has(undefined)&&windows.size===1&&!windows.has(undefined))return null;
+  throw new OutcomeError('Timeline dock is ambiguous across panels','Blocked');
+ }
+ const tabs=ui.widgets.filter(w=>w.name==='dockWidgetTabLabel'&&w.text==='Timeline');
+ if(tabs.length!==1)throw new OutcomeError('Timeline dock is absent or ambiguous','Blocked');
+ return tabs[0];
+}
+export function timelineCanvas(ui,trackId){
+ const canvases=ui.widgets.filter(w=>w.class==='TimelineWidget');
+ timelineDockToOpen(ui);
+ const matches=trackId?canvases.filter(w=>w.trackIdsTruncated===false&&w.trackIds?.includes(trackId))
+  :canvases.length===1?canvases:canvases.filter(w=>w.clipIdsTruncated===false&&w.clipIds?.length);
+ if(matches.length!==1)throw new OutcomeError('Timeline canvas is absent or ambiguous; supply the intended track identity','Blocked');
+ return matches[0];
 }
 export function scopeSelections(type,tap){
  const modes=['Histogram','Waveform (Luma)','Waveform (RGB)','RGB Parade'],taps=['Post IDT','Post Primary','Pre DVT'];
@@ -241,7 +271,7 @@ export async function checks(file,name){
     const actions=menu.menuItems.filter(a=>a.text===label&&a.enabled);assert(actions.length===1,'Menu action is ambiguous');const a=actions[0];
     await n('click',{target:menu.id,x:a.x+Math.floor(a.width/2),y:a.y+Math.floor(a.height/2)});await until(async()=>!(await ui()).widgets.some(w=>w.id===menu.id));
   }
-  async function openTimeline(name){const view=await mediaItem(name);await activate(view);await n('item-click',{target:view.id,text:name,double:true});await until(async()=>(await ui()).widgets.some(w=>w.name==='panelSubtabSelector'&&selectorNamesTimeline(w.text,name)));const v=(await ui()).widgets.filter(w=>w.class==='TimelineWidget').sort((a,b)=>a.y-b.y)[0];assert(v,'Timeline is unavailable');await activate(v);return v;}
+  async function openTimeline(name,trackId){const tab=timelineDockToOpen(await ui());if(tab){await n('click',{target:tab.id});await until(async()=>(await ui()).widgets.some(w=>w.class==='TimelineWidget'),{description:'Timeline dock is visible'});}const view=await mediaItem(name);await activate(view);await n('item-click',{target:view.id,text:name,double:true});await until(async()=>(await ui()).widgets.some(w=>w.name==='panelSubtabSelector'&&selectorNamesTimeline(w.text,name)),{description:'Timeline '+name+' is open'});const v=timelineCanvas(await ui(),trackId);await activate(v);return v;}
   function finish(){report.completed=true;writeFileSync(output,JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(report.results.some(r=>r.status!=='Pass'))process.exitCode=1;}
   return {s,report,n,c,ui,until,check,step:(definition,fn)=>recordStep(file,definition,fn),activate,action,mediaItem,mediaMenu,openTimeline,finish};
 }

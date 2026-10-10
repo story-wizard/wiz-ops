@@ -2,13 +2,13 @@ import path from 'node:path';
 import {cp,mkdir,mkdtemp,rename,rm,realpath,access,writeFile} from 'node:fs/promises';
 import {constants,existsSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
-import {execFileSync} from 'node:child_process';
 import {ROOT,dataDirectory,externalPath,fingerprint,digest,readJSON,writeJSON,inside} from './files.mjs';
 import {runtimeIdentity} from './runtime.mjs';
 import {setupAttachmentTools,verifyAttachmentTools} from '../desktop/attachment-tools.mjs';
 import {nativeInputDriver} from '../desktop/macos-input.mjs';
 import {retainLibraries} from './libraries.mjs';
 import {snapshotSource} from '../kits.mjs';
+import {sourceProvenance} from './source-provenance.mjs';
 import {activeStates} from './store.mjs';
 import {ownedDesktopSessions,desktopState} from '../desktop/hub.mjs';
 
@@ -48,15 +48,14 @@ export async function bundleHarness({runtime,app,dataDir,destination}){
   await snapshotSource(path.join(temp,'workspace'));
   for(const name of ['README.md','AGENTS.md','docs','examples','tests'])await cp(path.join(ROOT,name),path.join(temp,'workspace',name),copyOptions);
   await writeFile(path.join(temp,'Install Athanor.command'),`#!/bin/zsh\nset -eu\ncd -- "\${0:A:h}/workspace"\nif ! command -v node >/dev/null; then\n print 'Install Node.js 24 or newer, then open this launcher again.'\n read '?Press Return to close.'\n exit 1\nfi\nnode scripts/harness.mjs install --bundle ..\nexec node scripts/harness.mjs start --port 0\n`,{mode:0o755});
-  let sourceCommit=null,sourceDirty=null;
-  try{const git=args=>execFileSync('/usr/bin/git',['-C',ROOT,...args],{encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();sourceCommit=git(['rev-parse','HEAD']);sourceDirty=Boolean(git(['status','--porcelain','--','.']));}catch{}
+  const provenance=await sourceProvenance(ROOT),sourceCommit=provenance.commit||null,sourceDirty=provenance.dirty??null,sourceTree=provenance.tree||null,sourceScopeTree=provenance.scopeTree||null;
   if(app){
    const key=path.basename(path.dirname(identity.directory)),attachmentTools='workspace/attachment-tools/'+key;
    await cp(identity.directory,path.join(temp,attachmentTools,'tools'),copyOptions);await writeJSON(path.join(temp,attachmentTools,'tools.json'),{...identity,directory:'tools'});
    const native=await nativeInputDriver(dataDir),nativeInput='workspace/native-input/'+path.basename(path.dirname(native.driver));
    await mkdir(path.join(temp,nativeInput),{recursive:true});await cp(native.driver,path.join(temp,nativeInput,'macos-input'));await writeJSON(path.join(temp,nativeInput,'manifest.json'),native.manifest);
    const sourceHash=(await fingerprint(path.join(temp,'workspace'))).sha256,inventory=(await fingerprint(temp)).entries;
-   const content={format:'wizard-smoke-harness/v2',createdAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,node:'>=24',sourceCommit,sourceDirty,sourceHash,attachmentTools,nativeInput,qtVersion:identity.qtVersion,inventory,inventoryHash:digest(inventory)};
+   const content={format:'wizard-smoke-harness/v2',createdAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,node:'>=24',sourceCommit,sourceTree,sourceScopeTree,sourceDirty,sourceHash,attachmentTools,nativeInput,qtVersion:identity.qtVersion,inventory,inventoryHash:digest(inventory)};
    await writeJSON(path.join(temp,'harness.json'),{...content,id:digest(content)});await checkHarnessBundle(temp);await rename(temp,output);
    return {path:output,id:digest(content),sourceHash,files:inventory.length,qtVersion:identity.qtVersion,wizardLaunched:false};
   }
@@ -70,7 +69,7 @@ export async function bundleHarness({runtime,app,dataDir,destination}){
   for(const key of ['appHash','cliHash','qtHash','bridgeHash','schemaHash'])if(copied[key]!==identity[key])throw Error('Runtime changed while bundling: '+key);
   const sourceHash=(await fingerprint(path.join(temp,'workspace'))).sha256,inventory=(await fingerprint(temp)).entries;
   const hashes=Object.fromEntries(['appHash','cliHash','qtHash','bridgeHash','schemaHash','librariesHash'].map(k=>[k,copied[k]]));
-  const content={format:'wizard-smoke-harness/v1',createdAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,node:'>=24',sourceCommit,sourceDirty,sourceHash,runtime:paths,runtimeIdentity:hashes,inventory,inventoryHash:digest(inventory)};
+  const content={format:'wizard-smoke-harness/v1',createdAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,node:'>=24',sourceCommit,sourceTree,sourceScopeTree,sourceDirty,sourceHash,runtime:paths,runtimeIdentity:hashes,inventory,inventoryHash:digest(inventory)};
   await writeJSON(path.join(temp,'harness.json'),{...content,id:digest(content)});
   await checkHarnessBundle(temp);await rename(temp,output);
   return {path:output,id:digest(content),sourceHash,files:inventory.length,wizardLaunched:false};

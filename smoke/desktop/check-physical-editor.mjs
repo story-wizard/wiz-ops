@@ -1,7 +1,7 @@
 import {testSpecification,evidenceCaption} from '../test-details.mjs';
 import path from 'node:path';
 import {copyFile} from 'node:fs/promises';
-import {checks,livePreviewEvidence,widgetPixelDifference,requireExactTimingFixture,verifyTrimmedClip} from './check-support.mjs';
+import {checks,livePreviewEvidence,widgetPixelDifference,requireOrdinaryTimingFixture,verifyTrimmedClip} from './check-support.mjs';
 import {agentTool} from './agent-tools.mjs';
 import {physicalInput,clipPoint} from './physical-input.mjs';
 import {requireProof} from './agent-proof.mjs';
@@ -12,7 +12,7 @@ report.course=await readJSON(new URL('./physical-editor-course.json',import.meta
 const physical=async(command,params)=>{const current=await readJSON(file);return ['P-GRADE-LIVE','P-CURVE-LIVE'].includes(current.currentCheck)?physicalInput(file,command,params):agentTool(file,'physical',{command,...params});},inspect=id=>c('timeline.inspect',{timeline_id:id}),graph=f=>c('graph.get_clip_graph',f.scope);
 const staged=(id,stepId,fn)=>step(report.course.cases.find(c=>c.id===id).steps.find(s=>s.id===stepId),fn);
 const content=g=>({nodes:g.nodes,edges:g.edges});
-async function screen(label){const u=await ui(),window=u.widgets.find(w=>w.id===w.window&&w.active&&['QMessageBox','ads::CFloatingDockContainer'].includes(w.class))||u.widgets.find(w=>w.class==='MainWindow'),r=await physical('screenshot',{target:window.id,title:label+' · owned Wizard window'});await writeJSON(path.join(s.root,label+'-screen.json'),r);return retainImage(r,label);}
+async function screen(label){const u=await ui(),window=u.widgets.find(w=>w.id===w.window&&w.active&&['QMessageBox','ads::CFloatingDockContainer'].includes(w.class))||u.widgets.find(w=>w.class==='MainWindow'),r={...await physical('screenshot',{target:window.id}),title:label+' · owned Wizard window'};await writeJSON(path.join(s.root,label+'-screen.json'),r);return retainImage(r,label);}
 const check=(id,fn)=>runCheck(id,async()=>{if(['P-GRADE-LIVE','P-CURVE-LIVE'].includes(id))return fn();const begun=await agentTool(file,'begin',{id});try{requireProof(begun.check.proof,'proof_contract_missing','This candidate needs a qualified proof contract',['review_definition']);if((await ui()).widgets.some(w=>w.class==='QMessageBox')){const e=new OutcomeError('An unresolved app dialog blocks a fresh fixture','Blocked');e.fatal=true;throw e;}const result=await fn();
   for(const relative of result.observations||[])await agentTool(file,'evidence',{file:path.join(s.root,relative),title:'Measured application state during this check'});
   for(const image of [result.screenshots||[]].flat())if(image.relative)await agentTool(file,'evidence',{file:path.join(s.root,image.relative),kind:'image',title:evidenceCaption(image.relative)});
@@ -22,7 +22,7 @@ const check=(id,fn)=>runCheck(id,async()=>{if(['P-GRADE-LIVE','P-CURVE-LIVE'].in
 async function fixture(name,placed=true,later=false){
  const t=await c('timeline.create',{name,video_format:{preset:'hd_1080p_24'},audio:{sample_rate:48000,channels:2}}),id=t.timeline_id,track=t.tracks.find(x=>x.kind==='video').track_id;
  if(placed)await c('timeline.place_cuts',{id:name,timeline_id:id,cuts:(later?[0,20]:[0]).map((at,i)=>({id:'clip'+i,source:{asset_id:s.assets.plate},source_range:{start_seconds:1,end_seconds:5},streams:'video_only',destination:{at:{seconds:at,track}}}))});
- const before=await inspect(id),v=await openTimeline(name);return {id,track,before,v,scope:{timeline_id:id,clip_id:clips(before)[0]?.clip_id}};
+ const before=await inspect(id),v=await openTimeline(name,track);return {id,track,before,v,scope:{timeline_id:id,clip_id:clips(before)[0]?.clip_id}};
 }
 async function undoTimeline(f){await physical('key',{actionId:'undo',target:f.v.id,key:'cmd+z'});await until(async()=>JSON.stringify(snapshotState(await inspect(f.id)))===JSON.stringify(snapshotState(f.before)));}
 async function select(f){await n('key',{target:f.v.id,key:'V'});const current=await readJSON(file);if(['P-GRADE-LIVE','P-CURVE-LIVE'].includes(current.currentCheck)){const geometry=await n('timeline-clip-rect',{target:f.v.id,clipId:f.scope.clip_id});await physicalInput(file,'click',{target:f.v.id,clipId:f.scope.clip_id,expectedClip:geometry.rect,...clipPoint(geometry)});}else await physical('click',{target:f.v.id,clipId:f.scope.clip_id,part:'body'});await c('playback.seek',{time:1});}
@@ -59,7 +59,7 @@ await check('P-TL-BIN-OVERWRITE',async()=>{
 async function proofPoint(f,assertion){const target=f.proofView?.id||f.v.id,verified=await agentTool(file,'verify',{assertion,...(assertion==='baseline'?{target}:{}),read:{operation:f.proofGraph?'graph.get_clip_graph':'timeline.inspect',params:f.proofGraph?f.scope:{timeline_id:f.id}},title:'Verify '+assertion});if(assertion==='baseline')return verified;return agentTool(file,'capture',{assertion,target,title:'Displayed '+assertion+' state'});}
 await check('P-TL-TRIM',async()=>{
  const id='P-TL-TRIM',f=await staged(id,'setup',()=>fixture('Physical right trim')),before=clips(f.before)[0];await screen(id+'-before');
- requireExactTimingFixture(f.before);
+ requireOrdinaryTimingFixture(f.before,before.clip_id);
  await proofPoint(f,'baseline');
  const geometry=await agentTool(file,'geometry',{target:f.v.id,clipId:before.clip_id,part:'right-edge'});
  await staged(id,'trim',()=>physical('drag',{actionId:'trim',target:f.v.id,clipId:before.clip_id,part:'right-edge',toX:geometry.rect.x+geometry.rect.width*.75-1,toY:geometry.point.y}));

@@ -1,0 +1,1159 @@
+{
+  "clip_effects.add_keyframe_at_time": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id (UUID-v7 token)",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "node_id": {
+        "description": "Render-graph node id (graph targets only; default 0)",
+        "type": "integer"
+      },
+      "target_kind": {
+        "description": "Target kind: 'native' (default) or 'graph'",
+        "enum": [
+          "native",
+          "graph"
+        ],
+        "type": "string"
+      },
+      "target_path": {
+        "description": "Automation target: native property id (e.g. gain_db) or graph pass param key",
+        "type": "string"
+      },
+      "time": {
+        "additionalProperties": false,
+        "description": "Exact key time, seconds from the clip's left edge, as get_automation returns it",
+        "properties": {
+          "frame": {
+            "description": "Nearest whole frame",
+            "type": "integer"
+          },
+          "rate": {
+            "additionalProperties": false,
+            "description": "Channel rate as num/den frames per second",
+            "properties": {
+              "den": {
+                "description": "Positive rate fraction term",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "num": {
+                "description": "Positive rate fraction term",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "num",
+              "den"
+            ],
+            "type": "object"
+          },
+          "sub": {
+            "description": "Exact remainder past the whole frame",
+            "maximum": 0.5,
+            "minimum": -0.5,
+            "type": "number"
+          }
+        },
+        "required": [
+          "frame",
+          "sub",
+          "rate"
+        ],
+        "type": "object"
+      },
+      "time_sec": {
+        "description": "Seconds from the clip's left edge, kept exactly; with time, it must name the same instant",
+        "type": "number"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "clip_id",
+      "target_path"
+    ],
+    "type": "object"
+  },
+  "clip_effects.disable_time_remap": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id (UUID-v7 token)",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "clip_id"
+    ],
+    "type": "object"
+  },
+  "clip_effects.enable_time_remap": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id (UUID-v7 token)",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "clip_id"
+    ],
+    "type": "object"
+  },
+  "clip_effects.freeze_frame": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id (UUID-v7 token)",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "clip_id"
+    ],
+    "type": "object"
+  },
+  "clip_effects.move_keyframe": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id (UUID-v7 token)",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "key_id": {
+        "description": "Channel-stable keyframe id (>= 1), from clip_effects.get_automation",
+        "minimum": 1,
+        "type": "integer"
+      },
+      "node_id": {
+        "description": "Render-graph node id (graph targets only; default 0)",
+        "type": "integer"
+      },
+      "target_kind": {
+        "description": "Target kind: 'native' (default) or 'graph'",
+        "enum": [
+          "native",
+          "graph"
+        ],
+        "type": "string"
+      },
+      "target_path": {
+        "description": "Automation target: native property id (e.g. gain_db) or graph pass param key",
+        "type": "string"
+      },
+      "time": {
+        "additionalProperties": false,
+        "description": "New exact key time, seconds from the clip's left edge, as get_automation returns it",
+        "properties": {
+          "frame": {
+            "description": "Nearest whole frame",
+            "type": "integer"
+          },
+          "rate": {
+            "additionalProperties": false,
+            "description": "Channel rate as num/den frames per second",
+            "properties": {
+              "den": {
+                "description": "Positive rate fraction term",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "num": {
+                "description": "Positive rate fraction term",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "num",
+              "den"
+            ],
+            "type": "object"
+          },
+          "sub": {
+            "description": "Exact remainder past the whole frame",
+            "maximum": 0.5,
+            "minimum": -0.5,
+            "type": "number"
+          }
+        },
+        "required": [
+          "frame",
+          "sub",
+          "rate"
+        ],
+        "type": "object"
+      },
+      "time_sec": {
+        "description": "New seconds from the clip's left edge, kept exactly; with time, it must name the same instant",
+        "type": "number"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      },
+      "value": {
+        "description": "New keyframe value",
+        "type": "number"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "clip_id",
+      "target_path",
+      "key_id",
+      "value"
+    ],
+    "type": "object"
+  },
+  "documents.create": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "markdown": {
+        "description": "Optional initial markdown content (defaults to empty)",
+        "type": "string"
+      },
+      "name": {
+        "description": "Document filename stem (identity is the returned project-relative path)",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "name"
+    ],
+    "type": "object"
+  },
+  "documents.delete": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "document_id": {
+        "description": "Project-relative document path to delete (its file is removed from the bundle)",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "document_id"
+    ],
+    "type": "object"
+  },
+  "documents.import": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "name": {
+        "description": "Optional document name; defaults to the source file's basename",
+        "type": "string"
+      },
+      "path": {
+        "description": "Absolute path to the source text file (copied into the documents tree)",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "path"
+    ],
+    "type": "object"
+  },
+  "documents.rename": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "document_id": {
+        "description": "Project-relative document path to rename",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "name": {
+        "description": "New document filename stem (moves the file and changes its path and identity)",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "document_id",
+      "name"
+    ],
+    "type": "object"
+  },
+  "graph.analyze_node": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id",
+        "type": "string"
+      },
+      "node_id": {
+        "description": "Durable graph node id as canonical signed int32 decimal string",
+        "type": "string"
+      },
+      "rerun": {
+        "description": "Start Analyze again even though a job for the node's current key has already finished; without it a call reports that job's state",
+        "type": "boolean"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "clip_id",
+      "node_id"
+    ],
+    "type": "object"
+  },
+  "media.add_assets": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "paths": {
+        "description": "Absolute paths to the media files to register (not .wiz bundles)",
+        "items": {
+          "type": "string"
+        },
+        "maxItems": 4096,
+        "minItems": 1,
+        "type": "array"
+      },
+      "require_exact_revision": {
+        "description": "When true, expect_revision must equal the current autosave bundle_version exactly. This opts snapshot-derived multicam publication out of the default per-clip/disjoint-edit semantics",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "bundle",
+      "paths"
+    ],
+    "type": "object"
+  },
+  "media.detect_color": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Optional .wiz bundle path scoping this op's path confinement to that bundle's registered media roots (#839); the op stays project-less and never opens the bundle",
+        "type": "string"
+      },
+      "category": {
+        "description": "Media category override: exr_image, camera_raw_video, raw_still, video, still, or unknown; omitted/empty defaults to video (camera_raw_video for a camera RAW video path)",
+        "enum": [
+          "",
+          "exr_image",
+          "camera_raw_video",
+          "raw_still",
+          "video",
+          "still",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "config_path": {
+        "description": "Absolute OCIO config path for config_source ui/env; omitted for builtin",
+        "type": "string"
+      },
+      "config_source": {
+        "description": "Color config source: builtin, ui, or env (default builtin)",
+        "enum": [
+          "builtin",
+          "ui",
+          "env"
+        ],
+        "type": "string"
+      },
+      "declared_interop_id": {
+        "description": "Optional Color Interop Forum id of the declared space, e.g. 'srgb_rec709_display'; lets a config that spells the space differently still validate the declaration",
+        "type": "string"
+      },
+      "declared_name": {
+        "description": "Optional producer declaration of the encoding (OCIO name, e.g. 'sRGB - Display'); validated against the config, never trusted verbatim \u2014 an unvalidated declaration falls through to detection",
+        "type": "string"
+      },
+      "declared_producer": {
+        "description": "Optional token naming who declared it (diagnostic; becomes match_source 'declared:<producer>')",
+        "type": "string"
+      },
+      "default_policy": {
+        "description": "'none' (default) or 'per_category': when nothing resolves, apply Wizard's per-category default (video -> Rec.1886/Rec.709 display, still -> sRGB display), returned with provenance 'defaulted'",
+        "type": "string"
+      },
+      "path": {
+        "description": "Absolute path to the media file to inspect (not a .wiz bundle)",
+        "type": "string"
+      }
+    },
+    "required": [
+      "path"
+    ],
+    "type": "object"
+  },
+  "media.sample_frames": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Optional .wiz bundle path scoping this op's path confinement to that bundle's registered media roots (#839); the op stays project-less and never opens the bundle",
+        "type": "string"
+      },
+      "color_policy": {
+        "description": "Decoded-pixel color policy: source (default, preserves the source encoding) or presentation_srgb (color-managed SDR sRGB pixels for unprofiled image delivery; fails closed when source color cannot be resolved by Wizard's normal input-color detection)",
+        "enum": [
+          "source",
+          "presentation_srgb"
+        ],
+        "type": "string"
+      },
+      "keyframe_tolerance": {
+        "description": "Seconds each timestamp may move to the nearest keyframe, which skips the GOP walk to an exact frame. 0 (default) decodes exact frames; backends without a keyframe index always decode exact frames",
+        "maximum": 10.0,
+        "minimum": 0,
+        "type": "number"
+      },
+      "max_decode_threads": {
+        "description": "Software decoder thread cap. Omitting the field decodes on a single thread, so background sampling cannot claim the whole decode budget while the editor is playing back; pass 0 to opt into wiz-media's default cap instead",
+        "maximum": 64,
+        "minimum": 0,
+        "type": "integer"
+      },
+      "output": {
+        "description": "Absolute path for packed raw RGBA file frames and any IOSurface fallbacks",
+        "type": "string"
+      },
+      "output_height": {
+        "description": "Optional output height in pixels; 0 with output_width 0 means source height",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "output_width": {
+        "description": "Optional output width in pixels; 0 with output_height 0 means source width",
+        "minimum": 0,
+        "type": "integer"
+      },
+      "overwrite": {
+        "description": "Allow replacing an existing output file (default false)",
+        "type": "boolean"
+      },
+      "path": {
+        "description": "Absolute path to the source media file (not a .wiz bundle)",
+        "type": "string"
+      },
+      "pixel_format": {
+        "description": "File-frame pixel format: native (default) or rgba8 for compact analysis pixels",
+        "enum": [
+          "native",
+          "rgba8"
+        ],
+        "type": "string"
+      },
+      "surface_policy": {
+        "description": "IOSurface decode policy: legacy_gpu_only (default) or gpu_preferred_all",
+        "enum": [
+          "legacy_gpu_only",
+          "gpu_preferred_all"
+        ],
+        "type": "string"
+      },
+      "timestamps": {
+        "description": "Strictly ascending source timestamps in seconds to decode, 1..512 per call",
+        "items": {
+          "type": "number"
+        },
+        "maxItems": 512,
+        "minItems": 1,
+        "type": "array"
+      },
+      "transport": {
+        "description": "Frame buffer transport: file (default) or iosurface. IOSurface returns machine-wide lookup handles and is restricted to trusted local workstation clients",
+        "enum": [
+          "file",
+          "iosurface"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "path",
+      "output",
+      "timestamps"
+    ],
+    "type": "object"
+  },
+  "render.set_render_mode": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "mode": {
+        "description": "Timeline preview resolution while playing or scrubbing, the same setting as the viewer's selector: 'full' (no reduction), 'auto', 'half', 'quarter', or 'eighth'",
+        "enum": [
+          "full",
+          "auto",
+          "half",
+          "quarter",
+          "eighth"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "mode"
+    ],
+    "type": "object"
+  },
+  "search.query": {
+    "additionalProperties": false,
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "scope": {
+              "properties": {
+                "kind": {
+                  "const": "timelines"
+                }
+              }
+            }
+          },
+          "required": [
+            "scope"
+          ]
+        },
+        "then": {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "predicate"
+                ]
+              },
+              {
+                "required": [
+                  "limit"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "include": {
+        "default": [],
+        "items": {
+          "const": "excerpt",
+          "description": "Optional evidence expansion",
+          "type": "string"
+        },
+        "maxItems": 1,
+        "type": "array",
+        "uniqueItems": true
+      },
+      "limit": {
+        "default": 50,
+        "description": "Maximum matches for inventory scope; not accepted for timelines",
+        "maximum": 50,
+        "minimum": 1,
+        "type": "integer"
+      },
+      "predicate": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "Stable Media Bin Smart Bin identity",
+            "enum": [
+              "video",
+              "audio",
+              "stills",
+              "timelines",
+              "documents",
+              "offline",
+              "unused"
+            ],
+            "type": "string"
+          },
+          "kind": {
+            "const": "smart_bin",
+            "description": "Search predicate kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "type": "object"
+      },
+      "query": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "text",
+            "description": "Search query modality",
+            "type": "string"
+          },
+          "text": {
+            "description": "Nonblank project-media search query",
+            "maxLength": 4096,
+            "minLength": 1,
+            "pattern": "\\S",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ],
+        "type": "object"
+      },
+      "scope": {
+        "default": {
+          "kind": "project"
+        },
+        "description": "Inventory or placed timeline content to search",
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "project",
+                "description": "Project-media search scope kind",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "bin_id": {
+                "description": "Concrete current-bin identity; 'root' addresses the implicit root",
+                "maxLength": 4096,
+                "minLength": 1,
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "kind": {
+                "const": "bin",
+                "description": "Project-media search scope kind",
+                "type": "string"
+              },
+              "recursive": {
+                "const": false,
+                "default": false,
+                "description": "V1 searches direct bin membership only",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "kind",
+              "bin_id"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "asset_ids": {
+                "items": {
+                  "description": "Registered project asset included in an explicit scope",
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "pattern": "\\S",
+                  "type": "string"
+                },
+                "maxItems": 4096,
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "kind": {
+                "const": "assets",
+                "description": "Project-media search scope kind",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "asset_ids"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "timelines",
+                "description": "Project-media search scope kind",
+                "type": "string"
+              },
+              "timeline_ids": {
+                "description": "Omitted selects all timelines; empty selects none",
+                "items": {
+                  "description": "Registered timeline identity",
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "pattern": "\\S",
+                  "type": "string"
+                },
+                "maxItems": 4096,
+                "minItems": 0,
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "sources": {
+        "default": [
+          "name",
+          "visual",
+          "transcript"
+        ],
+        "items": {
+          "description": "Enabled retrieval source",
+          "enum": [
+            "name",
+            "visual",
+            "transcript"
+          ],
+          "type": "string"
+        },
+        "maxItems": 3,
+        "minItems": 1,
+        "type": "array",
+        "uniqueItems": true
+      }
+    },
+    "required": [
+      "bundle",
+      "query"
+    ],
+    "type": "object"
+  },
+  "search.status": {
+    "additionalProperties": false,
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "scope": {
+              "properties": {
+                "kind": {
+                  "const": "timelines"
+                }
+              }
+            }
+          },
+          "required": [
+            "scope"
+          ]
+        },
+        "then": {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "predicate"
+                ]
+              },
+              {
+                "required": [
+                  "limit"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ],
+    "oneOf": [
+      {
+        "description": "Legacy bundle-only status request",
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "view"
+              ]
+            },
+            {
+              "required": [
+                "scope"
+              ]
+            },
+            {
+              "required": [
+                "predicate"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "description": "Scoped per-source status request",
+        "required": [
+          "view"
+        ]
+      }
+    ],
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "predicate": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "Stable Media Bin Smart Bin identity",
+            "enum": [
+              "video",
+              "audio",
+              "stills",
+              "timelines",
+              "documents",
+              "offline",
+              "unused"
+            ],
+            "type": "string"
+          },
+          "kind": {
+            "const": "smart_bin",
+            "description": "Search predicate kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "type": "object"
+      },
+      "scope": {
+        "default": {
+          "kind": "project"
+        },
+        "description": "Inventory or placed timeline content to search",
+        "oneOf": [
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "project",
+                "description": "Project-media search scope kind",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "bin_id": {
+                "description": "Concrete current-bin identity; 'root' addresses the implicit root",
+                "maxLength": 4096,
+                "minLength": 1,
+                "pattern": "\\S",
+                "type": "string"
+              },
+              "kind": {
+                "const": "bin",
+                "description": "Project-media search scope kind",
+                "type": "string"
+              },
+              "recursive": {
+                "const": false,
+                "default": false,
+                "description": "V1 searches direct bin membership only",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "kind",
+              "bin_id"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "asset_ids": {
+                "items": {
+                  "description": "Registered project asset included in an explicit scope",
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "pattern": "\\S",
+                  "type": "string"
+                },
+                "maxItems": 4096,
+                "minItems": 1,
+                "type": "array",
+                "uniqueItems": true
+              },
+              "kind": {
+                "const": "assets",
+                "description": "Project-media search scope kind",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind",
+              "asset_ids"
+            ],
+            "type": "object"
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "kind": {
+                "const": "timelines",
+                "description": "Project-media search scope kind",
+                "type": "string"
+              },
+              "timeline_ids": {
+                "description": "Omitted selects all timelines; empty selects none",
+                "items": {
+                  "description": "Registered timeline identity",
+                  "maxLength": 256,
+                  "minLength": 1,
+                  "pattern": "\\S",
+                  "type": "string"
+                },
+                "maxItems": 4096,
+                "minItems": 0,
+                "type": "array",
+                "uniqueItems": true
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "view": {
+        "const": "sources",
+        "description": "Optional expanded per-source readiness view",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle"
+    ],
+    "type": "object"
+  },
+  "track_effects.add_keyframe_at_time": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "target_kind": {
+        "description": "Target kind: 'native_param' (default) or 'insert_param' (built-in EQ/compressor parameter, values in native units \u2014 Hz, dB, ms)",
+        "enum": [
+          "native_param",
+          "insert_param"
+        ],
+        "type": "string"
+      },
+      "target_path": {
+        "description": "Registered track property id from the track binding table (e.g. 'gain_db'), or with target_kind='insert_param' a built-in insert path: eq.band.<0-5>.{freq_hz,q,gain_db} or comp.{threshold_db,ratio,attack_ms,release_ms,makeup_db}",
+        "type": "string"
+      },
+      "time": {
+        "additionalProperties": false,
+        "description": "Exact timeline time, kept as given; wins over time_sec",
+        "properties": {
+          "frame": {
+            "description": "Nearest whole frame",
+            "type": "integer"
+          },
+          "rate": {
+            "additionalProperties": false,
+            "description": "Channel rate as num/den frames per second",
+            "properties": {
+              "den": {
+                "description": "Positive rate fraction term",
+                "minimum": 1,
+                "type": "integer"
+              },
+              "num": {
+                "description": "Positive rate fraction term",
+                "minimum": 1,
+                "type": "integer"
+              }
+            },
+            "required": [
+              "num",
+              "den"
+            ],
+            "type": "object"
+          },
+          "sub": {
+            "description": "Exact remainder past the whole frame",
+            "maximum": 0.5,
+            "minimum": -0.5,
+            "type": "number"
+          }
+        },
+        "required": [
+          "frame",
+          "sub",
+          "rate"
+        ],
+        "type": "object"
+      },
+      "time_sec": {
+        "description": "Timeline time in seconds (frame-snapped at the timeline rate)",
+        "type": "number"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      },
+      "track_id": {
+        "description": "Track id (track_<uuid>) of the automated track",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "track_id",
+      "target_path"
+    ],
+    "type": "object"
+  }
+}

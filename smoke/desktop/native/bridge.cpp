@@ -9,6 +9,7 @@
 #include <QUuid>
 #include <dlfcn.h>
 #include <algorithm>
+#include <cmath>
 #include <objc/runtime.h>
 #include <objc/message.h>
 #include <ApplicationServices/ApplicationServices.h>
@@ -91,8 +92,9 @@ class SmokeBridge : public QObject {
         output.write(QJsonDocument(value).toJson());output.commit();
     }
     static QJsonObject capabilities(){
-        return {{"protocol",1},{"version",8},{"operations",QJsonArray{"capabilities","inspect","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
-                {"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
+        return {{"protocol",1},{"version",10},{"operations",QJsonArray{"capabilities","inspect","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
+                {"buttonClickGeometry",true},{"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
+                {"timelinePoint",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget7timeToXEd")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11trackHeightEi"))},
                 {"limits",QJsonObject{{"modelRows",64},{"modelPageRows",64},{"timelineClipIds",1024},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
                 {"captures",QJsonObject{{"screenshot","Qt widget raster"},{"snapshot-presented","Owned native window pixels"},{"snapshot-node-preview","Rendered graph preview"}}}};
     }
@@ -136,12 +138,18 @@ class SmokeBridge : public QObject {
             QJsonObject item{{"active",w->isActiveWindow()},{"id",id(w)},{"class",w->metaObject()->className()},{"name",w->objectName()},{"tooltip",w->toolTip()},{"parent",w->parentWidget()?id(w->parentWidget()):QString()},{"enabled",w->isEnabled()},{"title",w->windowTitle()},{"window",id(w->window())},{"width",w->width()},{"height",w->height()}};
             const auto pos=w->mapTo(w->window(),QPoint{});item["x"]=pos.x();item["y"]=pos.y();
             item["accessibleName"]=w->accessibleName();item["accessibleDescription"]=w->accessibleDescription();
+            if(w->objectName()=="InspectorParamControlRow"){
+                const auto key=w->property("inspectorInteractionKey").toString(),parameter=w->property("paramPath").toString();
+                item["inspectorBindingIncomplete"]=key.isEmpty()||key.size()>4096||parameter.isEmpty()||parameter.size()>256;
+                if(!item["inspectorBindingIncomplete"].toBool()){item["inspectorInteractionKey"]=key;item["paramPath"]=parameter;}
+            }
             const auto visible=w->visibleRegion().boundingRect();item["visibleRect"]=QJsonObject{{"x",visible.x()},{"y",visible.y()},{"width",visible.width()},{"height",visible.height()}};
             item["focused"]=w==qApp->focusWidget();
             if(w->isWindow()){NSView* view=(__bridge NSView*)reinterpret_cast<void*>(w->winId());item["nativeWindow"]=qint64(view.window.windowNumber);item["keyWindow"]=view.window.isKeyWindow;}
             for(auto* owner=w;owner;owner=owner->parentWidget())if(auto* proxy=owner->graphicsProxyWidget();proxy&&proxy->scene()&&!proxy->scene()->views().isEmpty()){item["graphView"]=id(proxy->scene()->views().front());break;}
             if(auto* p=qobject_cast<QLabel*>(w))item["text"]=p->text();
             if(auto* p=qobject_cast<QAbstractButton*>(w)){item["text"]=p->text();item["checked"]=p->isChecked();}
+            if(auto* p=qobject_cast<QCheckBox*>(w)){QStyleOptionButton opt;opt.initFrom(p);opt.text=p->text();opt.icon=p->icon();opt.iconSize=p->iconSize();const auto r=p->style()->subElementRect(QStyle::SE_CheckBoxClickRect,&opt,p).intersected(p->rect());item["clickRect"]=QJsonObject{{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}};}
             if(auto* p=qobject_cast<QLineEdit*>(w);p&&p->echoMode()==QLineEdit::Normal)item["text"]=p->text();
             if(auto* p=qobject_cast<QLineEdit*>(w))item["editableText"]=p->echoMode()==QLineEdit::Normal&&!p->isReadOnly()&&p->isEnabled();
             if(auto* p=qobject_cast<QKeySequenceEdit*>(w)){item["text"]=p->keySequence().toString();item["keySequenceCapture"]=true;}
@@ -155,6 +163,15 @@ class SmokeBridge : public QObject {
             if(auto* p=qobject_cast<QGraphicsView*>(w);p&&p->scene()){QJsonArray entries;item["sceneTextTruncated"]=false;for(auto* g:p->scene()->items()){QString text;if(auto* t=qgraphicsitem_cast<QGraphicsTextItem*>(g))text=t->toPlainText();if(auto* t=qgraphicsitem_cast<QGraphicsSimpleTextItem*>(g))text=t->text();if(text.isEmpty())continue;if(entries.size()>=256){item["sceneTextTruncated"]=true;break;}auto r=p->mapFromScene(g->sceneBoundingRect()).boundingRect();entries.append(QJsonObject{{"text",text},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}});}item["sceneText"]=entries;item["viewport"]=id(p->viewport());}
 
             if(QString(w->metaObject()->className())=="TimelineWidget"){
+                for(auto* owner=w->parentWidget();owner;owner=owner->parentWidget())if(QString(owner->metaObject()->className())=="TimelinePanel"){
+                    item["timelinePanel"]=id(owner);
+                    using TrackId=QString(*)(const QWidget*,int,bool);
+                    using TrackY=int(*)(const QWidget*,int);
+                    auto trackId=reinterpret_cast<TrackId>(dlsym(RTLD_DEFAULT,"_ZN13TimelinePanel15trackIdForIndexEPK14TimelineWidgetib"));
+                    auto trackY=reinterpret_cast<TrackY>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi"));
+                    if(trackId&&trackY){QJsonArray tracks;int index=0;for(;index<1024&&trackY(w,index)>=0;index++)tracks.append(trackId(w,index,false));item["trackIds"]=tracks;item["trackIdsTruncated"]=index==1024;}
+                    break;
+                }
                 using Getter=QSet<QString>(*)(const QWidget*);
                 auto getter=reinterpret_cast<Getter>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget10allClipIdsEv"));
                 if(getter){auto ids=getter(w).values();std::sort(ids.begin(),ids.end());QJsonArray clips;
@@ -190,7 +207,7 @@ class SmokeBridge : public QObject {
                 QJsonArray rects;for(int r=0;r<qMin(64,m->rowCount(p->rootIndex()));r++){auto rect=p->visualRect(m->index(r,0,p->rootIndex()));rects.append(QJsonObject{{"row",r},{"x",rect.x()},{"y",rect.y()},{"width",rect.width()},{"height",rect.height()}});}item["itemRects"]=rects;
             }
             widgets.append(item);
-            for(auto* a:w->findChildren<QAction*>(QString{},scope?Qt::FindDirectChildrenOnly:Qt::FindChildrenRecursively))if(!seen.contains(a)){seen.insert(a);actions.append(QJsonObject{{"id",id(a)},{"text",a->text()},{"name",a->objectName()},{"enabled",a->isEnabled()},{"checked",a->isChecked()},{"checkable",a->isCheckable()},{"shortcut",a->shortcut().toString()}});}
+            for(auto* a:w->findChildren<QAction*>(QString{},scope?Qt::FindDirectChildrenOnly:Qt::FindChildrenRecursively))if(!seen.contains(a)){seen.insert(a);QJsonObject action{{"id",id(a)},{"text",a->text()},{"name",a->objectName()},{"enabled",a->isEnabled()},{"checked",a->isChecked()},{"checkable",a->isCheckable()},{"shortcut",a->shortcut().toString()}};if(a->property("mediaSearchBaseLabel").isValid())action["mediaSearchSource"]=a->property("mediaSearchBaseLabel").toString();actions.append(action);}
         }
         QString focus=qApp->focusWidget()?id(qApp->focusWidget()):QString();
         // Native file panels are AppKit surfaces. Read public view/window APIs;
@@ -263,6 +280,18 @@ class SmokeBridge : public QObject {
             throw QString("Native panel window is unavailable");
         }
         if(op=="bug-report-prefill")return prefillBugReport(widget,request);
+        if(op=="timeline-point"){
+            using TimeX=int(*)(const QWidget*,double);using TrackValue=int(*)(const QWidget*,int);
+            auto timeX=reinterpret_cast<TimeX>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget7timeToXEd"));
+            auto trackY=reinterpret_cast<TrackValue>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi"));
+            auto trackH=reinterpret_cast<TrackValue>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11trackHeightEi"));
+            const auto indexValue=request["trackIndex"],timeValue=request["timeSeconds"];const int index=indexValue.toInt(-1);const double seconds=timeValue.toDouble(-1);
+            if(!timeX||!trackY||!trackH||!widget||!widget->isVisible()||!widget->isEnabled()||QString(widget->metaObject()->className())!="TimelineWidget"||!indexValue.isDouble()||indexValue.toDouble()!=index||index<0||index>=1024||!timeValue.isDouble()||!std::isfinite(seconds)||seconds<0||seconds>8640000)throw QString("Packaged track/time geometry unavailable; use an observed timeline canvas and bounded track index/time");
+            const int y=trackY(widget,index);if(y<0)throw QString("Track index is absent from this timeline canvas");const int height=trackH(widget,index);
+            const QPoint point(timeX(widget,seconds),y+height/2);const auto visible=widget->visibleRegion();
+            if(height<=0||!widget->rect().contains(point)||!visible.contains(point))throw QString("Track/time point is outside the visible canvas; scroll and observe again");
+            return {{"trackIndex",index},{"timeSeconds",seconds},{"point",QJsonObject{{"x",point.x()},{"y",point.y()}}},{"method","packaged TimelineWidget::timeToX/trackYForIndex/trackHeight"}};
+        }
         if(op=="timeline-clip-rect"){
             using ClipRect=QRect(*)(const QWidget*,const QString&);
             auto geometry=reinterpret_cast<ClipRect>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"));

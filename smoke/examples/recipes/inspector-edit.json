@@ -1,0 +1,168 @@
+{
+  "format": "athanor-agent-recipe/v1",
+  "id": "inspector-edit",
+  "parameters": {
+    "graphScope": {
+      "type": "object"
+    },
+    "controlTarget": {
+      "type": "object"
+    },
+    "previewTarget": {
+      "type": "object"
+    },
+    "inspectorTarget": {
+      "type": "object"
+    },
+    "thumbX": {
+      "type": "number"
+    },
+    "thumbY": {
+      "type": "number"
+    },
+    "baselineValue": {
+      "type": "number"
+    },
+    "baselineNodes": {
+      "type": "array"
+    },
+    "parameterPath": {
+      "type": "array"
+    },
+    "baselineTracks": {
+      "type": "array"
+    },
+    "timelineId": {
+      "type": "string"
+    }
+  },
+  "plan": {
+    "format": "athanor-agent-plan/v1",
+    "start": "edit",
+    "phases": [
+      {
+        "id": "edit",
+        "steps": [
+          {
+            "operation": "call",
+            "params": {
+              "operation": "graph.get_clip_graph",
+              "params": {
+                "$param": "graphScope"
+              }
+            },
+            "expect": {
+              "path": [
+                "nodes"
+              ],
+              "equals": {
+                "$param": "baselineNodes"
+              }
+            }
+          },
+          {
+            "operation": "physical",
+            "params": {
+              "command": "click",
+              "target": {
+                "$param": "controlTarget"
+              },
+              "x": {
+                "$param": "thumbX"
+              },
+              "y": {
+                "$param": "thumbY"
+              },
+              "title": "Focus observed Inspector thumb"
+            }
+          },
+          {
+            "operation": "call",
+            "params": {
+              "operation": "graph.get_clip_graph",
+              "params": {
+                "$param": "graphScope"
+              }
+            },
+            "expect": {
+              "path": [
+                "nodes"
+              ],
+              "equals": {
+                "$param": "baselineNodes"
+              }
+            }
+          },
+          {
+            "operation": "physical",
+            "params": {
+              "command": "key",
+              "target": {
+                "$param": "controlTarget"
+              },
+              "key": "right",
+              "title": "Increase the Inspector value"
+            }
+          },
+          {
+            "operation": "call",
+            "params": {
+              "operation": "graph.get_clip_graph",
+              "params": {
+                "$param": "graphScope"
+              }
+            },
+            "expect": {
+              "path": {
+                "$param": "parameterPath"
+              },
+              "notEquals": {
+                "$param": "baselineValue"
+              }
+            }
+          },
+          {
+            "operation": "call",
+            "params": {
+              "operation": "timeline.inspect",
+              "params": {
+                "timeline_id": {
+                  "$param": "timelineId"
+                }
+              }
+            },
+            "expect": {
+              "path": [
+                "tracks"
+              ],
+              "equals": {
+                "$param": "baselineTracks"
+              }
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
+                "$param": "previewTarget"
+              },
+              "kind": "presented",
+              "title": "Inspector preview after edit"
+            }
+          },
+          {
+            "operation": "capture",
+            "params": {
+              "target": {
+                "$param": "inspectorTarget"
+              },
+              "kind": "presented",
+              "title": "Inspector control after edit"
+            }
+          }
+        ],
+        "next": null
+      }
+    ]
+  }
+}

@@ -1,0 +1,607 @@
+{
+  "CORE-01": {
+    "specHash": "0b0aa1b63faf0f107607b08e50a05a023279f91accaabb96f236b6399006f5dc",
+    "checkIds": [
+      "A-CLI-01",
+      "D-CLI-01",
+      "D-PROJECT-NEW"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "CORE-02": {
+    "specHash": "953b9f7e28dbfdcf8afec76685a67d08318965052f96aeffeb268b94e6d2019e",
+    "checkIds": [
+      "IN-01",
+      "D-IMPORT-DIALOG",
+      "P-TL-BIN-DROP",
+      "D-PB-01",
+      "D-PREVIEW-SCRUB"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "CORE-03": {
+    "specHash": "290fa1023480b03568553611502f7659fa82e9897572294f36a72af7e27aa192",
+    "checkIds": [
+      "D-LP-02-SAVE",
+      "D-LP-02-RELAUNCH",
+      "A-LP-02"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "CORE-04": {
+    "specHash": "8a9f208fd53063db962807600b8b79dca1e7c73aeafc5317480367952ea4ce4f",
+    "checkIds": [
+      "D-EXPORT-01",
+      "A-EX-03"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "LOOP-01": {
+    "specHash": "d7a56b9fcb5b75abf9a590cc0e71db4a9e159439cb44e1131dc2408935fccce0",
+    "checkIds": [
+      "D-PLAYBACK-LOOP",
+      "D-PLAYBACK-INOUT"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "LOOP-02": {
+    "specHash": "f5383d59ec98f07dd8ae4f885ea043253955d251ed5a3e5db4052c6cb7cb4d3c",
+    "checkIds": [
+      "D-PLAYBACK-LOOP"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "LOOP-03": {
+    "specHash": "8dca57c4499e5e666ab6808422c31ccbd6469d4b00ce9d8fcb864668ded3c4c7",
+    "checkIds": [
+      "D-PLAYBACK-LOOP",
+      "D-PLAYBACK-SWITCH"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PANEL-01": {
+    "specHash": "c3f8db3c596ced90e426122bc01d407cd33bcc95097530e5669eaf03c47407fc",
+    "checkIds": [
+      "D-UI-DEFAULT",
+      "P-SB-DOCK"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "AUDIO-01": {
+    "specHash": "af54065211e2d5bbc35ac2906596e3c0608a196308535dbb3b7d3445bd00ff62",
+    "checkIds": [
+      "D-MIXER-UI",
+      "A-AU-01",
+      "D-METER-PLAYBACK"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "AUDIO-02": {
+    "specHash": "e4dd4381dd14312e9fc81b8e14c5d1f8d003705a4e5886cc00caaf47bc9a28c4",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "RAW-01": {
+    "specHash": "e7304fb9290dd87ec26da8c596acb7afe85b958948b1f36207c9454cde02b2cf",
+    "checkIds": [
+      "A-IN-04-T"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "RAW-02": {
+    "specHash": "41867a2c866da537d0cce381700966bcc9f4eddbbda051d568902b2441b5b4a4",
+    "checkIds": [
+      "D-INSPECTOR-01"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "RAW-03": {
+    "specHash": "d38bae6bbca56cfc9160fd884839f1367fa6a1d7ab534e029311331a7acafc8a",
+    "checkIds": [
+      "D-TRACK-LOCK-UI",
+      "A-TL-06"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "OZ-01": {
+    "specHash": "1371e41a65c4f2632910022b7e2ec2869259a56aa575ed3834ebba0b54f37acb",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "MGFX-01": {
+    "specHash": "02ed05f42374928d8988874650056b3bcff18b0cc471cefc80685c3047f306b8",
+    "checkIds": [
+      "D-MGFX-01",
+      "D-EDIT-SPLIT-REDO",
+      "P-TL-TRIM"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "MGFX-02": {
+    "specHash": "77cdf17b5a6ff1335e1f56ded658a55a4a13082c7d39ccc14c5705f21755013e",
+    "checkIds": [
+      "D-MGFX-CLIPBOARD",
+      "S-MGFX-CLIP-COPY",
+      "S-MGFX-PERSIST"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "MASK-01": {
+    "specHash": "d8f3f3736dd469f87f7248d3419c237dfdafdfe1a6dfb502fa668aab4891bdc2",
+    "checkIds": [
+      "D-MASK-CLIPBOARD-PHYSICAL",
+      "RG-03"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "EXPORT-02": {
+    "specHash": "8357cb2be216ac12113a3063b428587f36e3c6aa78a404dffe81fb312ab4709b",
+    "checkIds": [
+      "D-EXPORT-01"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "SEARCH-01": {
+    "specHash": "354c3dd72513b68fd537e45e963c01c6a4cd3359ebe37bcefb0bb7b11b6d8528",
+    "checkIds": [
+      "D-SEARCH-FOCUS",
+      "D-SEARCH-EMPTY",
+      "A-SS-07"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "SEARCH-02": {
+    "specHash": "9a32d66527c6c1464e3ac0daca349b3f3d5efcfbe7c7c77aa1fa1cc6c24ff0bd",
+    "checkIds": [
+      "A-SS-07",
+      "SS-01"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "OZ-02": {
+    "specHash": "361c0e8a16a5d2044db7b1726ba40246af30aff0d35784c60342be51c8d29040",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "BUG-01": {
+    "specHash": "f9504ba44cb6019e6c44636e8189b625156c1dda9047159f92b4b23607bb2931",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "VERSION-01": {
+    "specHash": "1b5b00fcd0964ee22dfc0f10e532c09e80657724e84ac920b9ec42fd1e0a06d2",
+    "checkIds": [
+      "A-LP-02-S",
+      "D-PROJECT-SAVE-AS"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "AUDIO-03": {
+    "specHash": "7e9dca8e9ab686ef39a318b1146da3781607f1cd5c66cf5f2a2d09ad7d2f32fe",
+    "checkIds": [
+      "A-IN-04-W",
+      "D-PREVIEW-SCRUB",
+      "A-PB-03-R"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "UI-01": {
+    "specHash": "b4aab98825622e9739ef11d8261069ba90daf8d7b7976389274745301b79b551",
+    "checkIds": [
+      "D-LP-02-RELAUNCH"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "COMPAT-03": {
+    "specHash": "33859eb68077731c8745c1ab4e3ccc0d610a247e71b117899bb56f0b495a1a05",
+    "checkIds": [
+      "D-SB-CREATE"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-01": {
+    "specHash": "86b4ea71949465c0ba2862ac6d4a4b8e077538915473b86dbee6359409654840",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-02": {
+    "specHash": "44decbbe6d258bb97f065eaa0e1f27b4287c4286be26cb85d33018271768b447",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-03": {
+    "specHash": "ae26ffe803bad7ac5e6975c6ae101d719af021b4d315659d3460c3a88bdcddca",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-04": {
+    "specHash": "7b7e8ae069ab600c8660e17946f40f305ca0f2b848d14602eed93de2eaf2c64f",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-05": {
+    "specHash": "da4ae22fa2718129453ae49c5c06912f0a01ccd7bfd3219eae44209940840030",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-06": {
+    "specHash": "3e978279e274eb017b66acf336a5cefab7e96acf1a358488668a03964371918f",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-07": {
+    "specHash": "bc965bf4e1e59a7129d682bb72ca8deecc09b68df5c2ccb651ddf7d193cf7397",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-08": {
+    "specHash": "043357c7e380164918dd6deb3490991fd92ea75f026208489fa804388ffdb5d7",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-09": {
+    "specHash": "64248db5a97bc80a53582ed64bcb8983d4791bb733ab40ef06bcc28a4900a7b2",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-10": {
+    "specHash": "b93d8bfec5db83881c607671a03c10f7dffe409698ae218bbdc7518b4af913b8",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-11": {
+    "specHash": "05fbd36f2dad980261357472745a08d44d619d34729690a1fdf9a0e290c20886",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-12": {
+    "specHash": "8ea0bd490c8cf6e9f0b57d2384d5c291d577d27261e76dbcd6c5df386839de0a",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-13": {
+    "specHash": "c244e7b6ade51074002020c7842386af0f7fecf0e705d3b2054f15b1b39daa79",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-14": {
+    "specHash": "f8188fd40837a96621e3f7cdd33cc2df3dd41debf60011137c4c11658250fbf8",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-15": {
+    "specHash": "9ae0d3fb6231ec4188ee36fac63fb04244c2a1630279d1a85c6414e4d33cf9d1",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-16": {
+    "specHash": "20a0494d0d037d721048b493f1db4f72a992c8c624dc0d32595d2c8d9d886134",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PP-17": {
+    "specHash": "cf0ca0498ffb6b3b51b481fef891ef385b44391c2e359ea75d0a1ba38acf0e5e",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-01": {
+    "specHash": "807ca596fb6fd683663400951c7fbf2293413f9faa944d8995c921adaa2c1084",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-02": {
+    "specHash": "99db24f841b00637dceffb3fb89ba0ad67546d55f90ddead01ad3ef3bc69211e",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-03": {
+    "specHash": "3bc2b6357625c847d3fc9ce7406424d9609da4beef3a43462b90ffe2a5b677c8",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-04": {
+    "specHash": "e3f349553d133292c0bcae226fdf9d1577d94a9154db251319d95ac203740b5e",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-05": {
+    "specHash": "b22a5b841a846da82f1124e0c88c48a024a5fb5e577dbf561c1d1fff34bfec8c",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-06": {
+    "specHash": "0e3b05b40305e7b6480f8d1a04baaf971d324a364225ec93feb2512c9236ed68",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-07": {
+    "specHash": "6ad68437fa2aa035f66d76425d9b1a93e0ea058b02c3f1846e11978936d467b2",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-08": {
+    "specHash": "f64830d052d523abb1421f42320062fd64aebec5f4b5574d997104385520f84d",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-09": {
+    "specHash": "9d8193cd6fb8b6eaffba22be944bfde52602cc33243b0093ea2d3294bae2d850",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-10": {
+    "specHash": "7d50cf1dcf8ee6a3ebd2cb6792f30c735c22ee2be8963835d3e4649353296977",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-11": {
+    "specHash": "778d93c83f19ee00e6bf8402ee689321f72bd33799be91015ea188c7867805a3",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-12": {
+    "specHash": "df356d066cf98fe0aef17fcfef60e78f2dc450bf266590d12f04fea0532c09d5",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-13": {
+    "specHash": "c7796f0324216672bbb74ae53dc41bf3948912c6faadc40ac8487c22d06d3503",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FB-14": {
+    "specHash": "c89b0b92972f5a97cf7ddbab2ac2c54ad4fdc1e51af6afed6598fe973c435f70",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "BRAW-01": {
+    "specHash": "c0d098f43338dc331a801cfffcf91d1c99aa0b7b2dae37884c7fabf8da563a97",
+    "checkIds": [
+      "A-PB-05-R",
+      "D-IMPORT-DIALOG",
+      "D-EXPORT-01"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "TIME-01": {
+    "specHash": "d641354f27e9f9afcf6ecd41240e6fdd720937ceb32797a157a57e278d665a7d",
+    "checkIds": [
+      "A-TL-03-R",
+      "D-EDIT-TRIM",
+      "D-EDIT-SPLIT-REDO"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "STAB-01": {
+    "specHash": "4b2a661d29c32b0903dea23242a26996ca898d3a218a0bffca5df7a3bac131ee",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "CACHE-01": {
+    "specHash": "003b0e6169aa9a30d75106685a1910dc1de4c2a9e1faae534d87c4a43081e28b",
+    "checkIds": [
+      "D-INSPECTOR-BLUR-PHYSICAL",
+      "D-SCOPES-01",
+      "A-RG-04"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "INGEST-01": {
+    "specHash": "f43ffff9cb133a3435c76d2b0826ba59c374f19f34705a9f815b8d33c7ed3657",
+    "checkIds": [
+      "IN-06",
+      "SS-05",
+      "D-INGEST-PLAYBACK"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "IMPORT-03": {
+    "specHash": "12e7ba965d616a8d2cab72ac534ec8a293003865ec73df34587d2927f80d6d12",
+    "checkIds": [
+      "P-TL-BIN-DROP",
+      "D-IMPORT-DIALOG",
+      "S-EXPORT-UNSET-RATE"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "EDIT-01": {
+    "specHash": "5ad7119a3cd41f395c1fbfc0797b68faf72680ee6df2287e80e6be0f5eaa12fb",
+    "checkIds": [
+      "A-TL-02",
+      "D-EDIT-SPLIT-REDO",
+      "D-EDIT-CLIPBOARD",
+      "A-TL-05"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PEN-01": {
+    "specHash": "802473d68c444220598d861c823d4d0d5b0a0df02766c82d56c17484f2f1161b",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PEN-02": {
+    "specHash": "53dae62c590d167315e23246d3f21a3f3cb1d23c502a60b3358576b85b2916c9",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PEN-03": {
+    "specHash": "ecd0c3721d1d0feef1b6317fb5cab61bd24f87ed78c012aad5fe6207ce5d0415",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PEN-04": {
+    "specHash": "7f785ae8317588c8d636b7473fe8447222556b09f280654dda65c9656c973612",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PEN-05": {
+    "specHash": "15712865a635b83bf63faeb0b03a44d98c5acff492fc3ce8d319581ed7406101",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "DISKPREVIEW-01": {
+    "specHash": "46b51119ff68fb1c2defedc5d3048576d30cc2388d562604cb8eacf747e1f10f",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "DISKPREVIEW-02": {
+    "specHash": "be44c1caa5e686db65817f9baf21c8f295d2ca804e82d58dad624e57075a9e51",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "DISKPREVIEW-03": {
+    "specHash": "e3861f0ac2c292c5944ee9a1b4189812b3703dd82b93a39bd1cd8a7b4b085e7f",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "DISKPREVIEW-04": {
+    "specHash": "659a7ae51d5e23352f61d1dd6890806db944a4cbb99e535a83c23a4501e98082",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PEN-06": {
+    "specHash": "92c1e8e7bd388637c98f5a2f24c7675e7d9b9213f3124ce313eb400706850d20",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PEN-07": {
+    "specHash": "4bfe53e781a69736abf1ad6706e6adcfb590e93251e587625449c8ff3da9afad",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "GAIN-01": {
+    "specHash": "08e9f6b96339ad7a24b08271e736c21c4c85276cc34c84118c3280cbd3b072aa",
+    "checkIds": [
+      "A-AU-01-C",
+      "A-IN-04-W"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "MOVE-01": {
+    "specHash": "6a54cd300667d02b6c14d5e0e853ed0ce87a61366dc1e9f1473958f19d25eb6a",
+    "checkIds": [
+      "D-LINKED-SELECTION",
+      "D-EDIT-DRAG",
+      "A-TL-05"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "SCOPES-01": {
+    "specHash": "595b53734477e757ca7b7781098c78631cd9c1bbda70e9eec52ab14576d9c600",
+    "checkIds": [
+      "D-SCOPES-01",
+      "D-SCOPES-VECTOR"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "LAYOUT-01": {
+    "specHash": "239027693d94f94db97fab2ea22ed9d87a430c2ef2727bb7e8baa28d9a010466",
+    "checkIds": [
+      "D-INSPECTOR-PLAYBACK",
+      "P-SB-DOCK",
+      "D-TIMELINE-TABS"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "IDLE-01": {
+    "specHash": "a758677c745442aa265c680dc5e7aedf9cde9d3cd7741c83d42865fd26688e50",
+    "checkIds": [
+      "S-PF-IDLE"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "MGFX-03": {
+    "specHash": "f83ebb7a551e5ea2284d4aa4ed1e5f0de2e6230db8bb480958efcea9f222d511",
+    "checkIds": [
+      "D-MGFX-01",
+      "A-TL-03-R"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "TRACES-01": {
+    "specHash": "1ca66cb8c45791adf3f1eaa8967ae78e2090f2058b565652e4d607b17129bf23",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "INGEST-EFFORT-01": {
+    "specHash": "03731a312ae801bb2ae7dbe498942c2365559be2ad6e507d52b7afa31a31a172",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "INGEST-EFFORT-02": {
+    "specHash": "a89b2ee340e1111b476662f4bbfc80793768df962d0800da858770737f402203",
+    "checkIds": [
+      "IN-06",
+      "D-INGEST-PLAYBACK"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "INGEST-ADVANCED-01": {
+    "specHash": "c11fa368759a74802f755695f13e0f1b932873933228ef2153b89405b4504cdd",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "INGEST-HYBRID-01": {
+    "specHash": "5b3351dac69791dc048058ea2d411eac25f0a4f4307d559f4b4ada4b4095a0b7",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "SEARCH-LIVE-01": {
+    "specHash": "cc739afb2ff767ac57e2e4cc096db87a8a7938a7b9d92d30bd3b31e418ca27ad",
+    "checkIds": [
+      "D-INGEST-SEARCH-LIVE",
+      "D-TRANSCRIPT-SEARCH",
+      "SS-05"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "INGEST-LOCAL-01": {
+    "specHash": "cecb3371927fc530cbf4cc74be63bbc41e88919510f38b33305781e6babceef1",
+    "checkIds": [
+      "D-UI-PREFERENCES"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "MODEL-PICKER-01": {
+    "specHash": "fcf03a05b9ee8f4dd241cec45c7a360a97eff1914a27861e16be0f0ff4e9d96e",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "DOCUMENT-01": {
+    "specHash": "ec5c61dc655e76fac6a2a721638e50006c8709590cef46377aa8629562ff16b7",
+    "checkIds": [
+      "A-UI-04",
+      "D-DOCUMENT-EDIT"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "PLAY-HIDDEN-01": {
+    "specHash": "c88196251c3258d820a9be6d9df0927cefae8818236138b6765bf654ad0c5fa2",
+    "checkIds": [
+      "D-PLAYBACK-SWITCH",
+      "D-TRANSPORT-KEYS"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "COMMENT-TEXT-01": {
+    "specHash": "5ab3b1c4701ebfb39d413692a0cb0932ce68ceea5bb7a195287e06999577b63a",
+    "checkIds": [],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "NOTES-UNDO-01": {
+    "specHash": "1be05fbb14fbb50fb1af2fd433ae46f1d35e518de3604abf68fe3d67be25c6e6",
+    "checkIds": [
+      "D-EDIT-SPLIT-REDO",
+      "D-SAVE-DISCARD"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  },
+  "FLOAT-TABS-01": {
+    "specHash": "3157e1d25840296e1be6cd3c2e36fdd11970a8f15eb0dbca9002c0b5da9a98a0",
+    "checkIds": [
+      "P-SB-DOCK",
+      "D-DOCK-MODIFIER"
+    ],
+    "status": "Provisional selection hints; assertions require independent evidence"
+  }
+}

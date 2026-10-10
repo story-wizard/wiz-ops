@@ -3,13 +3,64 @@ import assert from 'node:assert/strict';
 import {mkdtemp,rm,readFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {checks,requirePassed,requireExactTimingFixture,gapFixture} from '../desktop/check-support.mjs';
+import {checks,requirePassed,requireExactTimingFixture,requireOrdinaryTimingFixture,timelineDockToOpen,timelineCanvas,gapFixture} from '../desktop/check-support.mjs';
 import {writeJSON} from '../runner/files.mjs';
+import {execFileSync} from 'node:child_process';
 test('a rejected timing fixture blocks a gesture instead of blaming the edit',()=>{
  const snapshot=status=>({tracks:[{items:[{kind:'clip',clip_id:'fixture',source:{timing:'timed',projection_status:status,projection_diagnostics:status==='exact'?[]:['exact_authority_carrier_mismatch']}}]}]});
  assert.doesNotThrow(()=>requireExactTimingFixture(snapshot('exact')));
  for(const status of ['authority_rejected','carrier','projection_unavailable'])assert.throws(()=>requireExactTimingFixture(snapshot(status)),e=>e.status==='Blocked'&&/fixture/.test(e.message));
  assert.throws(()=>requireExactTimingFixture({tracks:[{items:[]}]}),e=>e.status==='Blocked');
+});
+test('opening a timeline restores its dock after a prior Mixer check without choosing an arbitrary canvas',()=>{
+ const tab={id:'tab',name:'dockWidgetTabLabel',text:'Timeline'},mixer={id:'mixer',name:'panelSubtabSelector',text:'Mixer (6)'},canvas={id:'canvas',class:'TimelineWidget'};
+ assert.equal(timelineDockToOpen({widgets:[mixer,tab]}).id,'tab');assert.equal(timelineDockToOpen({widgets:[canvas,tab]}),null);
+ for(const widgets of [[mixer],[tab,{...tab,id:'other'}],[canvas,{...canvas,id:'other'},tab]])assert.throws(()=>timelineDockToOpen({widgets}),e=>e.status==='Blocked');
+});
+
+test('paired video/audio canvases select by track identity and reject foreign panels',()=>{
+ const video={id:'video',class:'TimelineWidget',window:'main',timelinePanel:'panel',trackIds:['video-id'],trackIdsTruncated:false,clipIds:['clip'],clipIdsTruncated:false};
+ const audio={...video,id:'audio',trackIds:['audio-id'],clipIds:[]};
+ const ui={widgets:[audio,video]};
+ assert.equal(timelineDockToOpen(ui),null);
+ assert.equal(timelineCanvas(ui,'video-id').id,'video');
+ assert.equal(timelineCanvas(ui,'audio-id').id,'audio');
+ assert.equal(timelineCanvas(ui).id,'video');
+ assert.equal(timelineCanvas({widgets:[{...video,clipIds:[]},audio]},'video-id').id,'video');
+ for(const widgets of [[video,{...audio,timelinePanel:'other'}],[video,{...audio,window:'foreign'}],[video,{...video,id:'clone'}],[{...video,trackIdsTruncated:true},audio]])assert.throws(()=>timelineCanvas({widgets},'video-id'),e=>e.status==='Blocked');
+ assert.throws(()=>timelineCanvas({widgets:[{...video,clipIds:[]},audio]}),e=>e.status==='Blocked');
+ assert.throws(()=>timelineCanvas(ui,'missing'),e=>e.status==='Blocked');
+});
+
+test('the physical bin-drop fixture binds an empty video canvas by its new track identity',async()=>{
+ const source=process.env.ATHANOR_REVIEW_BASELINE?execFileSync('/usr/bin/git',['show',process.env.ATHANOR_REVIEW_BASELINE+':smoke/desktop/check-physical-editor.mjs'],{encoding:'utf8'}):await readFile(new URL('../desktop/check-physical-editor.mjs',import.meta.url),'utf8');
+ const start=source.indexOf('async function fixture('),end=source.indexOf('\nasync function undoTimeline(',start);
+ assert.ok(start>=0&&end>start);
+ const widgets=['audio','video'].map(kind=>({id:kind,class:'TimelineWidget',window:'main',timelinePanel:'panel',trackIds:[kind+'-id'],trackIdsTruncated:false,clipIds:[],clipIdsTruncated:false}));
+ const call=async op=>{assert.equal(op,'timeline.create');return {timeline_id:'new-timeline',tracks:[{kind:'audio',track_id:'audio-id'},{kind:'video',track_id:'video-id'}]};};
+ const inspect=async id=>({timeline:{timeline_id:id},tracks:[]}),open=async(_name,trackId)=>timelineCanvas({widgets},trackId);
+ const fixture=Function('c','inspect','openTimeline','clips','s',source.slice(start,end)+';return fixture;')(call,inspect,open,()=>[],{});
+ const result=await fixture('Empty drop fixture',false);
+ assert.equal(result.v.id,'video');assert.equal(result.track,'video-id');assert.equal(result.id,'new-timeline');
+});
+
+test('a linked audio fixture focuses video even when both canvases contain clips',async()=>{
+ const source=process.env.ATHANOR_REVIEW_BASELINE?execFileSync('/usr/bin/git',['show',process.env.ATHANOR_REVIEW_BASELINE+':smoke/desktop/check-controls-audio.mjs'],{encoding:'utf8'}):await readFile(new URL('../desktop/check-controls-audio.mjs',import.meta.url),'utf8');
+ const start=source.indexOf('async function audioFixture('),end=source.indexOf('\nasync function mix(',start);
+ assert.ok(start>=0&&end>start);
+ const widgets=['audio','video'].map(kind=>({id:kind,class:'TimelineWidget',window:'main',timelinePanel:'panel',trackIds:[kind+'-id'],trackIdsTruncated:false,clipIds:[kind+'-clip'],clipIdsTruncated:false}));
+ const before={tracks:[{track_id:'video-id',items:[{kind:'clip',clip_id:'video-clip'}]},{track_id:'audio-id',address:'A1',has_placed_items:true},{track_id:'empty-id',address:'A2',name:'Empty solo control',has_placed_items:false}]};
+ const call=async op=>op==='timeline.create'?{timeline_id:'linked-timeline',tracks:[{kind:'video',track_id:'video-id'}]}:op==='timeline.inspect'?before:{};
+ const open=async(_name,trackId)=>timelineCanvas({widgets},trackId),ui=async()=>({widgets});
+ const fixture=Function('c','s','assert','openTimeline','ui','activatePanel','floatPanel','unique',source.slice(start,end)+';return audioFixture;')(call,{assets:{plate:'plate'}},assert,open,ui,async()=>{},async()=>{},(u,p)=>{const found=u.widgets.filter(p);assert.equal(found.length,1);return found[0];});
+ const result=await fixture('Linked audio fixture');assert.equal(result.view.id,'video');assert.equal(result.audio.track_id,'audio-id');
+});
+
+test('ordinary UI fixtures accept a valid carrier while rejecting retime, mixed clocks and invalid authority',()=>{
+ const snapshot={timeline:{fps:24},tracks:[{items:[{kind:'clip',clip_id:'fixture',speed:1,timeline_range:{start_seconds:0,end_seconds:4},source:{timing:'timed',projection_status:'carrier',projection_diagnostics:[],source_availability:'bounded',fps:24,source_range:{start_seconds:1,end_seconds:5}}}]}]};
+ assert.doesNotThrow(()=>requireOrdinaryTimingFixture(snapshot,'fixture'));
+ for(const mutate of [s=>s.tracks[0].items[0].speed=2,s=>s.tracks[0].items[0].source.fps=25,s=>s.tracks[0].items[0].source.projection_status='authority_rejected',s=>s.tracks[0].items[0].source.projection_diagnostics=['mismatch'],s=>s.tracks[0].items[0].source.source_range.end_seconds=6,s=>s.tracks[0].items[0].timeline_range.start_seconds=.01,s=>s.next_cursor='more']){const bad=structuredClone(snapshot);mutate(bad);assert.throws(()=>requireOrdinaryTimingFixture(bad,'fixture'),e=>e.status==='Blocked');}
+ assert.throws(()=>requireOrdinaryTimingFixture(snapshot,'other'),e=>e.status==='Blocked');
 });
 
 test('failed and absent prerequisites block dependent actions and retain the original failure',async()=>{

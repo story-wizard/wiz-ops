@@ -1,0 +1,144 @@
+Read /Users/wizard/Documents/poddy/NIGHTLY_QA.md first for the shared QA procedure,
+release-to-test planning, startup/modal handling and authority boundaries. This
+file retains adapter-specific mechanics and historical diagnostic limits; it does
+not grant authority to alter a host, publish findings or bypass qualification.
+
+Wizard QA: preferred Qt computer-use route (verified 2026-10-05)
+
+Applies to Nightly regression and user-requested functional reviews. Retain each
+review's build selection, fixture requirements, reporting and recipient rules.
+Do not change the installed build merely to obtain a compatible harness course.
+
+Use a hybrid route for routine functional QA. Read the shared WORKER.md for the
+current pinned source, profile and service URL. Use that Athanor version for rich
+UI inspection and evidence when its external adapter qualifies against the build. Use verified physical input for
+tested gestures, and the authorized exact-PID native input/capture fallback
+when an Athanor flow is unsupported, slow or unreliable. Keep fresh ownership,
+window and foreground guards, independent assertions and screenshots with
+either route; do not weaken verification to save time. Keep both routes.
+Use the ordinary uninstrumented installed build with native input for
+performance, idle preparation, resource/power and permission-persistence tests.
+Preserve the exact selected build identity. Athanor inspection avoids known Qt
+macOS AX traversal crash paths but does not establish that those bugs are fixed.
+Do not assume the integrated Athanor physical route is faster; see the matched
+export-review timing follow-up below.
+It launches a disposable copy at startup; it does not hot-attach to an existing
+process. Wizard's executable and bundled Qt must remain unchanged. The copy
+omits only Contents/MacOS/logs, which contains unsealed runtime output. Preserve
+all signed resources, including shipped Python caches. Never re-sign the app.
+Validate the copy's signature, package fingerprint, actual PID/start time,
+isolated settings and loaded bundled Qt paths before using it.
+
+Read /Users/wizard/wiz-ops/AGENTS.md, smoke/AGENTS.md and these smoke docs before
+using or repairing it: desktop-tools-setup.md, computer-use-agent.md,
+agent-tools.md, build-repair.md and maintaining-harness.md.
+
+Prerequisites and setup:
+- Node 24+: currently /Users/wizard/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.
+- Put that directory and /opt/homebrew/bin in PATH for every harness command.
+- Xcode Command Line Tools, pkg-config (Homebrew pkgconf) and a Qt SDK matching
+  the selected package exactly. Verified package and Homebrew Qt were 6.11.2.
+  Rediscover versions for every new build. Do not assume a newer SDK matches.
+- From smoke/, run npm test and npm run scope:check after source changes and
+  before taking a desktop lease. Tests that exercise leases conflict with a
+  live owned session; do not mislabel that conflict as an app regression.
+- Start node scripts/harness.mjs serve --port 0 --no-open. Keep it running and
+  use its printed URL, not a URL or port retained from a prior run.
+- Run node scripts/smoke.mjs setup, list and courses, each with --server URL.
+  Prepare the selected build/checks and use only a Ready plan for course runs.
+
+Qualification limits:
+Nightly 2026.10.05-9e15335 has a CLI schema different from the mapped contract.
+Course preparation correctly refused it. Do not bypass that gate, substitute a
+different build or manufacture an Athanor Pass. Review exact contracts before
+changing mappings. Direct diagnostic UI attachment remains useful:
+  node desktop/attach.mjs --app /Applications/Wizard.app
+This prints an owned session and lasts two minutes. For longer interactive QA,
+inspect work/wizard-nightly/athanor-attachment-probe.mjs; it keeps a diagnostic
+attachment alive for ten minutes and waits for confirmed cleanup on shutdown.
+Use the current receipt, never a historical session path or PID.
+
+Read capabilities first:
+  node desktop/session.mjs native SESSION.json capabilities '{}'
+Then use desktop/session.mjs tool SESSION.json with preflight, scoped observe,
+find, physical, wait and capture as documented. Diagnostic sessions do not have
+a frozen fixture/proof contract and cannot record arbitrary toolkit Passes.
+Keep their independent functional assertions and evidence in the nightly or
+functional-review report instead.
+
+Interaction and evidence:
+- Save and close a known prior QA instance through verified UI before launch;
+  preserve unrelated projects. Use one owned Wizard instance at a time to avoid
+  shared bundle-ID activation ambiguity. Verify cleanup before another launch.
+- Use physical input for the gesture under test. Qt actions/application calls
+  are useful for setup and observation, but are not proof of a physical gesture.
+- Resolve current controls, timeline ownership and window geometry each time.
+  Run preflight and verify every action's result. Check the active keyboard
+  layout before shortcuts; the user switched off Dvorak on 2026-10-05.
+- Native ownership checks remain mandatory. The patched driver rejects actual
+  occluders while excluding off-display WindowManager placeholders and Dock
+  hosting windows only where the verified system Dock reports no hit.
+- Wait for observed conditions, with bounded timeouts. Inspect Unknown mutation
+  outcomes before continuing; never blindly replay them.
+- Capture displayed pixels with toolkit capture, not just Qt widget rasters.
+  MainWindow presented capture passed. A floating Spellbook panel crop failed
+  with 'Capture region must stay inside the observed native window.' Try a
+  whole-window capture or verified native screenshot and inspect the result.
+  The floating-window alternative was not qualified in this probe; report any
+  remaining capture assertion as PARTIAL/NOT_RUN, not an invented permission
+  blocker. Keep each capture and native-input receipt.
+- Advertised timeline geometry was not exercised with clips in this probe.
+  The probe created an empty local project; it did not qualify media playback,
+  editing, export, resource use or every functional case.
+- Use the ordinary, uninstrumented build for performance, idle/power and
+  permission-persistence claims. The adapter adds instrumentation and isolated
+  settings. Ten Qt reads had 109.26 ms median latency; no comparative speedup
+  or app-performance benchmark was performed.
+
+Fallback:
+Use the authorized exact-Unix-PID native fallback for unsupported adapter flows
+or ordinary installed-build testing. For /Applications/Wizard.app, rediscover
+the executable exactly /Applications/Wizard.app/Contents/MacOS/wizard-bin after
+every restart, then use that PID with AXUIElementCreateApplication. Never use
+NSRunningApplication.processIdentifier or repeated app/name/bundle-ID lookups.
+For an attached copy, use its verified executable/PID/start-time receipt, not
+the installed-app path. Keep Updater and macOS dialogs on standard computer use.
+Permission changes are user-authorized when needed; verify them and keep secure
+authentication values out of reports and prompts.
+
+Opening Spellbook and ten subsequent Qt inspections completed without a crash.
+This avoids Wizard's macOS AX traversal; it does not prove the previously
+reported AX crash is fixed. Preserve that candidate and test the ordinary path
+separately when appropriate. Stop repeated crash loops and retain diagnostics.
+
+Keep the existing local-project, NAS subtree, fixture, no-paid-generation,
+ASD-STE100 and evidence rules. For all Athanor QA reporting, read
+/Users/wizard/Documents/poddy/REPORTING.md: only Charles's verified Slack DM
+(U0BDBFNU0G1), Jira read-only, no automatic email or team/requester-thread delivery.
+Do not overwrite the prior tested outcome or announce unchanged tooling results.
+Validation report: outputs/wizard-nightly/qt-adapter-2026-10-05-report.html.
+
+2026-10-05 matched export-review timing follow-up:
+- Harness branch poddy-qa was rebased onto main cdf66da and pushed as 1b71518.
+  Current framework verification: 264 PASS, 0 FAIL, 0 SKIP; scope check passed.
+- Reused all 12 export-review-1378 instructions as matched benchmark assertions
+  on Nightly 2026.10.05-9e15335. Native: 30.83 s; Athanor: 118.30 s; both 12 PASS.
+  Both measured runs had 54 input calls, 56 fresh observations, 16 displayed
+  captures, two GUI exports and full FFmpeg decode checks. No measured retries.
+- This is repeat scripted execution after qualification, not total agent QA
+  time. One native-first pair; normalized preferences and warm exports; different
+  input/capture guards. No general speedup or Wizard performance claim.
+  Qt observation total fell from 13.11 to 7.72 s, but integrated guarded input
+  and capture costs increased. Prefer Athanor for inspection and evidence;
+  do not assume its full physical route reduces elapsed QA time.
+- E is absent from the current harness physical-key allowlist. Use the authorized
+  exact-PID native keyboard fallback for Cmd+E; verify the export window opens.
+  Other physical keys in this review were tested through the guarded driver.
+- NativeFormat preferences were not isolated by HOME/WIZARD_SETTINGS on this
+  Mac. Match required starting controls through the GUI; do not call a normalized
+  state a clean-profile default. The original defaults assertion remains untested.
+- Startup physical activation once changed the startup surface before dispatch,
+  producing a retained stale-window rejection. Inspect fresh UI and verified PID
+  foreground ownership before continuing; do not blindly repeat a stale click.
+- Report and full timing/evidence:
+  outputs/wizard-nightly/qa-timing-2026-10-05/report.html and results.json.

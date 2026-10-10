@@ -22,8 +22,9 @@ export async function attachSelectedBuild({app,dataDir=dataDirectory(),preparedS
  assert(inside(dataDir,root),'Attachment root must stay in the owned workspace.');
  if(!existsSync(copy))await cp(app,copy,{recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE});
  assert((await fingerprint(copy,{packageTree:true})).sha256===source.sha256,'Attachment copy differs from the selected build.');
- const generation=(preparedSession?.generation||0)+1,native=path.join(root,'native-'+generation),settings=path.join(root,'settings'),home=path.join(root,'home'),plugins=path.join(root,'plugins');
+ const generation=(preparedSession?.generation||0)+1,native=path.join(root,'native-'+generation),settings=path.join(root,'settings'),home=path.join(root,'home'),plugins=path.join(root,'plugins'),temp=path.join(root,'tmp');
  for(const dir of [native,settings,home,path.join(root,'projects'),path.join(plugins,'styles')])await mkdir(dir,{recursive:true});
+ await mkdir(temp,{recursive:true,mode:0o700});
  await cp(tools.directory,plugins,{recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE});
  const bridge=path.join(plugins,'styles/libwizard_smoke.dylib');
  const session={...preparedSession,format:'wizard-smoke-attachment/v1',dataDir,root,bundle:preparedSession?.bundle||path.join(root,'projects'),app:copy,sourceApp:app,executableName,executable:path.join(copy,'Contents/MacOS',executableName),guiHash:source.sha256,sourcePackageHash:source.sha256,native,harnessId:path.basename(root),generation,inputMode:'desktop',state:'Preparing',scope:'Selected packaged build with an external Qt test plugin; original app and bundled Qt unchanged',toolHash:await sha(bridge),qtVersion:version};
@@ -32,7 +33,7 @@ export async function attachSelectedBuild({app,dataDir=dataDirectory(),preparedS
  const stdout=await open(path.join(root,'stdout.log'),'a'),stderr=await open(path.join(root,'stderr.log'),'a');
  let lease;try{lease=await acquireDesktopLease(dataDir);}catch(e){await stdout.close();await stderr.close();throw e;}
  session.desktopLease=lease.receipt;
- const env={PATH:path.join(copy,'Contents/MacOS')+':/usr/bin:/bin',HOME:home,LANG:'en_US.UTF-8',WIZARD_SETTINGS:settings,XDG_CONFIG_HOME:settings,QT_PLUGIN_PATH:plugins,WIZ_SMOKE_CONTROL_DIR:native,WIZ_SMOKE_SETTINGS_DIR:settings,WIZ_HARNESS_RUN_ID:session.harnessId,WIZSERVER_RUNTIME_DIR:path.join(root,'gui-runtime-'+generation),WIZSERVER_SANDBOX_ROOT:root,HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1'};
+ const env={PATH:path.join(copy,'Contents/MacOS')+':/usr/bin:/bin',HOME:home,LANG:'en_US.UTF-8',TMPDIR:temp,WIZARD_SETTINGS:settings,XDG_CONFIG_HOME:settings,QT_PLUGIN_PATH:plugins,WIZ_SMOKE_CONTROL_DIR:native,WIZ_SMOKE_SETTINGS_DIR:settings,WIZ_HARNESS_RUN_ID:session.harnessId,WIZSERVER_RUNTIME_DIR:path.join(root,'gui-runtime-'+generation),WIZSERVER_SANDBOX_ROOT:root,HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1'};
  // Use the shipped launcher so its packaged configuration bootstrap runs.
  const child=spawn(path.join(copy,'Contents/MacOS/wizard'),['-style','Basic'],{cwd:root,env,stdio:['ignore',stdout.fd,stderr.fd]});await stdout.close();await stderr.close();
  const closed=new Promise(resolve=>child.once('close',async()=>{await lease.release();resolve();}));let spawnError;child.once('error',e=>spawnError=e);

@@ -1,0 +1,42 @@
+{
+  "format": "athanor-agent-recipe/v1",
+  "id": "timeline-right-trim",
+  "parameters": {
+    "timelineId": {"type": "string"},
+    "clipId": {"type": "string"},
+    "endSeconds": {"type": "number"},
+    "trackIndex": {"type": "integer"},
+    "timelineTarget": {"type": "object"},
+    "captureTarget": {"type": "object"},
+    "baseline": {"type": "object"}
+  },
+  "plan": {
+    "format": "athanor-agent-plan/v1",
+    "start": "trim",
+    "phases": [{
+      "id": "trim",
+      "steps": [
+        {"operation": "preflight", "expect": {"path": ["ready"], "equals": true}},
+        {"operation": "query", "params": {
+          "question": "timeline-trim", "timelineId": {"$param": "timelineId"},
+          "clipId": {"$param": "clipId"}, "baseline": {"$param": "baseline"},
+          "endSeconds": {"$param": "endSeconds"}, "state": "restored"
+        }, "expect": {"path": ["matched"], "equals": true}},
+        {"operation": "capture", "params": {"target": {"$param": "captureTarget"}, "kind": "presented", "title": "Before right trim"}},
+        {"operation": "physical", "params": {
+          "command": "drag", "target": {"$param": "timelineTarget"}, "clipId": {"$param": "clipId"},
+          "part": "right-edge", "toTarget": {"$param": "timelineTarget"},
+          "toTimelinePoint": {"trackIndex": {"$param": "trackIndex"}, "timeSeconds": {"$param": "endSeconds"}},
+          "durationMs": 1000
+        }},
+        {"operation": "query", "params": {
+          "question": "timeline-trim", "timelineId": {"$param": "timelineId"},
+          "clipId": {"$param": "clipId"}, "baseline": {"$param": "baseline"},
+          "endSeconds": {"$param": "endSeconds"}, "state": "changed"
+        }, "expect": {"path": ["matched"], "equals": true}},
+        {"operation": "capture", "params": {"target": {"$param": "captureTarget"}, "kind": "presented", "title": "After right trim"}}
+      ],
+      "next": null
+    }]
+  }
+}

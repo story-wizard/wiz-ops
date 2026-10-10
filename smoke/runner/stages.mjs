@@ -12,6 +12,16 @@ export function stageObservation(id,report,events){
  const value=observation||last;return value&&{...value,status:['Pass','Fail','Blocked','Unknown','N/A'].includes(value.status)?value.status:failureStatus(value)};
 }
 
+
+const reopenChecks=new Set(['D-MEDIA-RELINK','D-DOCUMENT-EDIT','D-SB-PERSIST','D-SB-TAB-RENAME','D-BIN-RENAME','D-BIN-DUPLICATE','D-BIN-DELETE','D-BIN-MGFX']);
+export function liveStageObservation(event,previous){
+ if(previous?.final)return null;
+ if(event.final)return event;
+ if(previous?.status==='Unknown'||previous?.status==='Fail')return null;
+ if(event.status==='Pass'&&reopenChecks.has(event.id))return null;
+ return event;
+}
+
 export async function executeStages({plan,course,root,dataDir,onResult,isCancelled,signal,onStage=()=>{}}){
  const results=[];
  for(const target of ['service','desktop']){
@@ -19,12 +29,12 @@ export async function executeStages({plan,course,root,dataDir,onResult,isCancell
   if(isCancelled()){for(const c of selected){const r={id:c.id,status:'Blocked',note:'Cancelled before this stage.'};results.push(r);await onResult(c,r.status,r.note);}continue;}
   onStage(target,selected.length);
   const directory=path.join(root,'stages',target);await mkdir(directory,{recursive:true});
-  let observed=0,busy=false;
+  let observed=0,busy=false;const live=new Map();
   const poll=async()=>{if(busy)return;busy=true;try{
    const names=await readdir(directory);if(!names.length)return;
    const file=path.join(directory,names[0],'check-events.jsonl');let lines;try{lines=(await readFile(file,'utf8')).trim().split('\n');}catch(e){if(e.code==='ENOENT')return;throw e;}
    for(const line of lines.slice(observed)){let event;try{event=JSON.parse(line);}catch{break;}
-    observed++;if(!['Running','Pass','Fail','Blocked','Unknown','N/A'].includes(event.status))event.status=failureStatus(event);const c=selected.find(c=>c.id===event.id);if(c){const reopens=['D-MEDIA-RELINK','D-DOCUMENT-EDIT','D-SB-TAB-RENAME','D-BIN-RENAME','D-BIN-DUPLICATE','D-BIN-DELETE','D-BIN-MGFX'];if(event.status!=='Pass'||!reopens.includes(c.id))await onResult(c,event.status,event.error||(event.status==='Running'?'Executing '+target+' check.':'Recorded '+target+' observation; course still in progress.'));}
+    observed++;if(!['Running','Pass','Fail','Blocked','Unknown','N/A'].includes(event.status))event.status=failureStatus(event);const c=selected.find(c=>c.id===event.id),value=liveStageObservation(event,live.get(event.id));if(c&&value){live.set(event.id,value);await onResult(c,value.status,value.error||(value.status==='Running'?'Executing '+target+' check.':value.final?'Completed '+target+' check.':'Recorded '+target+' observation; course still in progress.'));}
    }
   }finally{busy=false;}};
   // Poll local receipts only. The executor owns all application mutations.

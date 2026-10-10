@@ -44,3 +44,26 @@ test('value waits cannot qualify an unspecified expected value',()=>{
  for(const condition of ['value','text','checked'])assert.throws(()=>validateToolParams('wait',{selector:{id:'field'},condition}),e=>e.code==='invalid_wait');
  validateToolParams('wait',{selector:{id:'field'},condition:'checked',expected:false});
 });
+
+test('bundled readiness requires simultaneous conditions and returns the exact successful observation',async()=>{
+ const params={conditions:[{selector:{id:'box'},condition:'checked',expected:true},{selector:{id:'field'},condition:'enabled'}],details:true};validateToolParams('wait',params);
+ const ui=(checked,enabled)=>({widgets:[{id:'box',checked},{id:'field',enabled,text:'current value'}]});
+ assert.equal(readyUI(ui(true,false),params),false);assert.equal(readyUI(ui(false,true),params),false);
+ let reads=0;const result=await waitForObservation(async()=>readyUI(++reads===1?ui(true,false):reads===2?ui(false,true):ui(true,true),params),{timeoutMs:500,intervalMs:1});
+ assert.equal(reads,3);assert.equal(result.matched,true);assert.equal(result.matchCount,2);assert.equal(result.matches[1].text,'current value');assert.deepEqual(result.conditions.map(c=>c.targetId),['box','field']);
+ const absent={conditions:[{selector:{id:'missing'},condition:'absent'},{selector:{id:'field'},condition:'enabled'}]};
+ assert.ok(readyUI(ui(false,true),absent));assert.throws(()=>readyUI({widgets:[{id:'field',enabled:true,rows:65,model:[]}]},absent),e=>e.code==='incomplete_observation');
+ assert.throws(()=>readyUI({widgets:[{id:'box',checked:true},{id:'box',checked:true},{id:'field',enabled:true}]},params),/ambiguous/);
+ const capped=readyUI(ui(true,true),{...params,limit:1});assert.equal(capped.truncated,true);assert.equal(capped.matchCount,2);
+});
+
+test('every bundled readiness condition validates before accessing the session',async()=>{
+ const condition={selector:{id:'field'},condition:'enabled'};
+ for(const params of [
+  {conditions:[]},{conditions:Array(9).fill(condition)},{conditions:[condition,{selector:{id:'box'},condition:'checked'}]},
+  {conditions:[condition],selector:{id:'field'}},{conditions:[condition],condition:'exists'},
+  {conditions:[{selector:{},condition:'exists'}]},{conditions:[{selector:{id:'field'},unknown:true}]},
+  {conditions:[condition],limit:0},{conditions:[condition],details:'yes'},
+  {conditions:[{selector:{id:'field'},condition:'geometry'}],timeoutMs:100},
+ ])await assert.rejects(()=>agentTool('/does-not-exist/session.json','wait',params),e=>e.code!=='ENOENT'&&e.status==='Blocked');
+});

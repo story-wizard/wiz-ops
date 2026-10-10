@@ -1,12 +1,21 @@
-import {desktopScriptTimeout,requireScriptReceipt} from '../desktop/check-support.mjs';
+import {desktopScriptTimeout,requireScriptReceipt,requireExactTimingFixture,requireOrdinaryTimingFixture} from '../desktop/check-support.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {execFileSync} from 'node:child_process';
 import {DatabaseSync} from 'node:sqlite';
 import {verifyEmptySearch,verifyLargePaste,verifyNudgeState,verifyDisplayedClips} from '../desktop/volume-proof.mjs';
 import {checkRegistry,fullSmokeCourse,resolveSelection,initializeCourses,selectedRecipe,validateRecipe} from '../runner/catalog.mjs';
 import {desktopGroups} from '../desktop/run.mjs';
 import {agentContext} from '../test-details.mjs';
+import {mediaSearchAction} from '../desktop/ui-workflows.mjs';
+test('media search binds application-owned source identity despite duplicate timeline labels',()=>{
+ for(const source of ['Name','Transcript']){
+  const media={id:'media',enabled:true,checkable:true,mediaSearchSource:source,text:source+'\t12'},timeline={id:'timeline',name:'timelineSearchSource_'+source.toLowerCase(),enabled:true,checkable:true,text:source};
+  assert.equal(mediaSearchAction({actions:[timeline,media]},source).id,'media');
+  for(const actions of [[timeline],[{...media,enabled:false},timeline],[media,{...media,id:'duplicate'}],[{...media,checkable:false}]])assert.throws(()=>mediaSearchAction({actions},source),e=>e.status==='Blocked');
+ }
+});
 const snapshot=(id='src',count=0)=>({timeline:{timeline_id:id,name:'History',frame_rate:{numerator:24,denominator:1}},tracks:[{track_id:id+'v',address:'V1',enabled:true,locked:false,has_placed_items:count>0,items:Array.from({length:count},(_,i)=>({kind:'clip',clip_id:id+i,track_id:id+'v',enabled:true,timeline_range:{start_seconds:1+i/24,end_seconds:1+(i+1)/24},source:{asset_id:'plate',source_range:{start_seconds:i/24,end_seconds:(i+1)/24}}}))}],links:[]});
 test('empty search requires positive, explicit complete zero-match, and restored controls',()=>{
  const positive={query:'pattern',status:'1 match',names:['pattern.mov']},empty={query:'absent',status:'0 matches in 0 clips',names:[]},restored=structuredClone(positive),expected={query:'absent',name:'pattern.mov'};
@@ -34,10 +43,26 @@ test('displayed identity proof rejects stale, missing or capped clip lists',()=>
 });
 
 test('long physical sequences get an explicit bounded budget without lengthening ordinary drivers',()=>{
- assert.equal(desktopScriptTimeout([]),120000);assert.equal(desktopScriptTimeout([{id:'ordinary'}]),120000);assert.equal(desktopScriptTimeout([{scriptTimeoutMs:480000}]),480000);
+ assert.equal(desktopScriptTimeout([{scriptTimeoutMs:240000},{scriptTimeoutMs:240000}]),480000);assert.equal(desktopScriptTimeout([]),120000);assert.equal(desktopScriptTimeout([{id:'ordinary'}]),120000);assert.equal(desktopScriptTimeout([{scriptTimeoutMs:480000}]),480000);
  for(const ms of [0,-1,NaN,1000.5,600001,'480000'])assert.throws(()=>desktopScriptTimeout([{scriptTimeoutMs:ms}]));
 });
 test('interrupted scripts retain Unknown with diagnostics before a missing report can mask the timeout',()=>{
  for(const flag of ['timedOut','overflow','aborted'])assert.throws(()=>requireScriptReceipt({code:null,[flag]:true},'history'),e=>e.status==='Unknown'&&e.diagnostics[flag]===true);
  assert.doesNotThrow(()=>requireScriptReceipt({code:1},'completed assertions'));
+});
+
+test('clipboard and history setup accept valid ordinary carrier timing and reject malformed fixtures',async()=>{
+ const source=process.env.ATHANOR_REVIEW_BASELINE?execFileSync('/usr/bin/git',['show',process.env.ATHANOR_REVIEW_BASELINE+':smoke/desktop/check-volume-search.mjs'],{encoding:'utf8'}):readFileSync(new URL('../desktop/check-volume-search.mjs',import.meta.url),'utf8');
+ for(const [id,count,end] of [['D-CLIPBOARD-LARGE',100,'\n });'],['D-HISTORY-50',1,'\n }),samples=[];']]){
+  const start=source.indexOf("await check('"+id+"'"),bodyStart=source.indexOf('async()=>{',source.indexOf("stage('setup'",start))+'async()=>{'.length,bodyEnd=source.indexOf(end,bodyStart);assert.ok(start>=0&&bodyStart>start&&bodyEnd>bodyStart);
+  const run=async change=>{
+   const before=snapshot('src',count);before.timeline.fps=24;
+   for(const clip of before.tracks[0].items){clip.speed=1;Object.assign(clip.source,{timing:'timed',projection_status:'carrier',projection_diagnostics:[],source_availability:'bounded',fps:24});}
+   if(change)change(before);
+   let created=0;const timeline=async()=>({id:created++?'dst':'src',track:'srcv'}),inspect=async id=>id==='src'?before:snapshot('dst'),noop=async()=>{},clips=s=>s.tracks.flatMap(t=>t.items.filter(c=>c.kind==='clip'));
+   return Function('timeline','c','inspect','clips','requireExactTimingFixture','requireOrdinaryTimingFixture','assert','keep','openTimeline','focusClip','capture','id','s','return (async()=>{'+source.slice(bodyStart,bodyEnd)+'})();')(timeline,noop,inspect,clips,requireExactTimingFixture,requireOrdinaryTimingFixture,assert,noop,async()=>({id:'canvas'}),noop,noop,id,{assets:{plate:'plate'}});
+  };
+  await run();
+  for(const change of [s=>s.next_cursor='more',s=>s.tracks[0].items[0].source.projection_status='authority_rejected',s=>s.tracks[0].items[0].source.projection_diagnostics=['mismatch'],s=>s.tracks[0].items[0].source.source_range.start_seconds+=.01,s=>s.tracks[0].items[0].speed=2,s=>s.tracks[0].items[0].source.fps=25])await assert.rejects(run(change),e=>e.status==='Blocked');
+ }
 });

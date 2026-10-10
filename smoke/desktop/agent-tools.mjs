@@ -7,27 +7,32 @@ import {nativeCall,desktopCall,verifyDesktopOwner,verifyDesktopPaths,captureDesk
 import {physicalInput,clipPoint} from './physical-input.mjs';
 import {nativeDesktopInput,physicalKeys,physicalKeyAliases} from './macos-input.mjs';
 import {retainObservation} from './observations.mjs';
+import {projectHistory} from './project-history.mjs';
+import {withinWidgets,mediaSearchAnswer,formatDialogAnswer,mediaInsertionOutcome,inspectorParameterAnswer,inspectorOutcome,timelineClipAnswer,rightTrimOutcome,readQuestionInputs} from './ui-query.mjs';
 import {recordPresented,recordingOptions} from './recorder.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
+import {briefContext,prepareAgentTask} from './agent-task.mjs';
 import {waitForObservation,usableGeometry} from './check-support.mjs';
 import {ROOT,readJSON,writeJSON,inside,sha} from '../runner/files.mjs';
 import {OutcomeError,assert} from '../runner/engine.mjs';
 import {rawChecks} from '../runner/catalog.mjs';
 import {testSpecification,candidateChecks,actionHistory,stepHistory} from '../test-details.mjs';
-import {validateToolParams,validateApplicationParams,validateNativeParams,observationSelectors,withAgentAction,currentAction,markUnknown,jsonLines,terminalResult,closeAttempt,beginProof,physicalAction,verifyCheckpoint,resolveUnknown,requirePassProof,requireProof,proofError,normalizeToolError} from './agent-proof.mjs';
+import {toolInterface,validateToolParams,validateApplicationParams,validateNativeParams,observationSelectors,withAgentAction,currentAction,markUnknown,jsonLines,terminalResult,closeAttempt,beginProof,physicalAction,verifyCheckpoint,resolveUnknown,requirePassProof,requireProof,proofError,normalizeToolError} from './agent-proof.mjs';
 export {requirePassProof} from './agent-proof.mjs';
 
 const readOps=agentReadOperations,readNative=agentReadNative;
-const operations=['context','schema','preflight','observe','find','model','model_value','reveal','geometry','physical','native','call','wait','capture','recording','evidence','begin','verify','resolve','record','report'];
+export const isAgentMutation=(operation,params={})=>operation==='reveal'||operation==='physical'&&params.command!=='screenshot'||operation==='call'&&!readOps.includes(params.operation)||operation==='native'&&!readNative.includes(params.operation);
+const operations=['context','task','schema','preflight','query','observe','find','model','model_value','reveal','geometry','physical','native','call','wait','capture','recording','evidence','begin','verify','resolve','record','report'];
 export const agentSessionTimeoutMs=30*60*1000;
 
-export function selectUI(ui,{kind='widgets',selector,selectors,limit=20,details=false}={}){
+export function selectUI(ui,{kind='widgets',selector,selectors,limit=20,details=false,within}={}){
+ if(within){assert(kind==='widgets','Parent scopes apply to widgets');ui=withinWidgets(ui,within);}
  assert(['widgets','actions'].includes(kind)&&Number.isInteger(limit)&&limit>=1&&limit<=100,'Choose widgets/actions and a limit from 1 to 100');
  const queries=observationSelectors({selector,selectors});
  const matches=(ui[kind]||[]).filter(w=>queries.some(query=>Object.keys(query).filter(k=>k!=='contains').every(k=>query.contains&&typeof query[k]==='string'?typeof w[k]==='string'&&w[k].includes(query[k]):w[k]===query[k])));
- const summary=['id','class','name','text','tooltip','title','window','parent','enabled','active','focused','editableText','keySequenceCapture','keyWindow','nativeWindow','visibleRect','x','y','width','height','value','minimum','maximum','checked','index','rows','clipIds','clipIdsTruncated','graphId','timelineId','viewport','handle','minHandle','maxHandle','groove','accessibleName','accessibleDescription'];
+ const summary=['id','class','name','text','tooltip','title','window','parent','enabled','active','focused','editableText','keySequenceCapture','keyWindow','nativeWindow','visibleRect','clickRect','x','y','width','height','value','minimum','maximum','checked','index','rows','clipIds','clipIdsTruncated','graphId','timelineId','viewport','handle','minHandle','maxHandle','groove','accessibleName','accessibleDescription'];
  const incomplete=w=>w.nativeViewsTruncated||w.clipIdsTruncated||w.rows>(w.model?.length||0)||w.menuTruncated||w.sceneItemsTruncated===true||w.sceneTextTruncated===true||w.sceneItemsTruncated===undefined&&w.sceneItems?.length>=128||w.sceneTextTruncated===undefined&&w.sceneText?.length>=256;
- return {kind,scope:ui.scope||null,...Object.fromEntries(['modalWindow','popupWindow','mouseGrabber'].filter(k=>Object.hasOwn(ui,k)).map(k=>[k,ui[k]])),matchCount:matches.length,truncated:matches.length>limit,inspectionIncomplete:(ui.widgets||[]).some(w=>Boolean(incomplete(w))),limits:{modelRows:64,modelPageRows:64,timelineClipIds:1024,sceneItems:128,sceneText:256},matches:matches.slice(0,limit).map(w=>{
+ return {kind,scope:ui.scope||null,coordinates:{units:'macOS points',physicalInput:'target-widget-local',modelItemRects:'returned-viewport-local'},...Object.fromEntries(['modalWindow','popupWindow','mouseGrabber'].filter(k=>Object.hasOwn(ui,k)).map(k=>[k,ui[k]])),matchCount:matches.length,truncated:matches.length>limit,inspectionIncomplete:(ui.widgets||[]).some(w=>Boolean(incomplete(w))),limits:{modelRows:64,modelPageRows:64,timelineClipIds:1024,sceneItems:128,sceneText:256},matches:matches.slice(0,limit).map(w=>{
   const result=Object.fromEntries(summary.filter(k=>w[k]!==undefined).map(k=>[k,w[k]]));
   if(details)for(const k of ['model','itemRects','sceneItems','sceneText','tabs','tabRects','items','itemValues','menuItems','selectedRows'])if(w[k]!==undefined)result[k]=w[k];
   if(w.rows!==undefined)result.modelTruncated=w.rows>(w.model?.length||0);
@@ -43,6 +48,12 @@ export function uniqueTarget(ui,selector,kind='widgets'){
  return selected.matches[0];
 }
 export function readyUI(ui,params={}){
+ if(params.within){ui=withinWidgets(ui,params.within);params={...params,within:undefined};}
+ if(params.conditions){
+  const values=params.conditions.map(c=>readyUI(ui,{...c,kind:params.kind}));
+  if(values.some(v=>!v))return false;
+  return {...selectUI(ui,{kind:params.kind,selectors:params.conditions.map(c=>c.selector),details:params.details,limit:params.limit}),matched:true,conditions:params.conditions.map((c,i)=>({...c,condition:c.condition||'exists',matched:true,targetId:values[i].id||null}))};
+ }
  const found=selectUI(ui,{selector:params.selector,kind:params.kind,details:true}),condition=params.condition||'exists';
  if(condition==='absent'){
   requireProof(!found.inspectionIncomplete&&!found.truncated,'incomplete_observation','Absence needs a complete inspection; narrow the scope or inspect the model',['observe']);
@@ -51,13 +62,13 @@ export function readyUI(ui,params={}){
  if(found.matchCount>1)throw new OutcomeError('Wait target is ambiguous; narrow the selector.','Blocked');
  if(found.matchCount===0)return false;const target=found.matches[0];
  if(condition==='geometry')return usableGeometry(ui,target);
- return condition==='exists'||['enabled','focused','keyWindow'].includes(condition)&&target[condition]===true||['value','text','checked'].includes(condition)&&isDeepStrictEqual(target[condition],params.expected)?target:false;
+ return condition==='exists'||['enabled','focused','keyWindow'].includes(condition)&&target[condition]===true||['value','text','checked'].includes(condition)&&isDeepStrictEqual(target[condition],params.expected)||condition==='modelNames'&&!target.modelTruncated&&target.rows===target.model?.length&&isDeepStrictEqual(target.model.map(row=>row[0]),params.expected)?target:false;
 }
 export function compareObservation(value,{path:keys=[],equals,notEquals,length,includes}={}){
  assert(Array.isArray(keys)&&keys.length<=20&&keys.every(k=>(typeof k==='string'||Number.isInteger(k))&&!['__proto__','constructor','prototype'].includes(k)),'Use a bounded array of property names or indexes');
- let actual=value;for(const key of keys){if(actual===null||typeof actual!=='object'||!Object.hasOwn(actual,key))return {matched:false,missing:true,path:keys};actual=actual[key];}
  const expected={};if(equals!==undefined)expected.equals=equals;if(notEquals!==undefined)expected.notEquals=notEquals;if(length!==undefined)expected.length=length;if(includes!==undefined)expected.includes=includes;
  assert(Object.keys(expected).length>0,'Verification needs equals, notEquals, length or includes');
+ let actual=value;for(const key of keys){if(actual===null||typeof actual!=='object'||!Object.hasOwn(actual,key))return {matched:false,missing:true,path:keys};actual=actual[key];}
  const matched=(equals===undefined||isDeepStrictEqual(actual,equals))&&(notEquals===undefined||!isDeepStrictEqual(actual,notEquals))&&(length===undefined||actual?.length===length)&&(includes===undefined||(Array.isArray(actual)?actual.some(x=>isDeepStrictEqual(x,includes)):typeof actual==='string'&&actual.includes(includes)));
  return {matched,actual,expected,path:keys};
 }
@@ -72,8 +83,11 @@ const definition=(s,id)=>definitions(s).find(c=>c.id===id);
 export async function sessionContext(file){
  const s=await readJSON(file);verifyDesktopPaths(s);
  const ready=await readJSON(path.join(s.native,'ready.json'));if(!s.agentDefinitions){s.agentDefinitions=sessionDefinitions(s);await writeJSON(file,s);}
- const result={format:'athanor-agent-session/v1',session:file,build:{app:s.sourceApp,packageHash:s.guiHash,version:s.plan?.version||null},process:{pid:s.pid,started:s.processStart,generation:s.generation},lifetime:{deadlineAt:s.agentDeadlineAt||null,timeoutMs:s.agentDeadlineAt?agentSessionTimeoutMs:null,onExpiry:s.agentDeadlineAt?'Owned app receives SIGTERM; retain evidence and start a fresh session for further work':null},project:{bundle:s.bundle,main:s.main,alternate:s.alternate,assets:s.assets},adapter:ready.capabilities,physical:{commands:['click','drag','key','type','scroll','screenshot'],keys:physicalKeys,keyAliases:physicalKeyAliases,coordinates:'Widget-relative macOS points; target and destination geometry are rechecked before dispatch'},operations,checks:definitions(s).map(testSpecification),verdicts:{scripted:'Courses run their authored assertions; discover definitions with smoke.mjs list and courses',toolkitPassIds:definitions(s).filter(c=>c.proof).map(c=>c.id),exploration:'Observe, act and retain diagnostics; toolkit Pass requires a frozen proof contract'},evidenceDirectory:path.join(s.root,'evidence'),guidance:[
+ const command=['env','SMOKE_DATA_DIR='+s.dataDir,'node',path.join(ROOT,'desktop/session.mjs')];
+ const result={format:'athanor-agent-session/v1',session:file,workspace:s.dataDir,build:{app:s.sourceApp,packageHash:s.guiHash,version:s.plan?.version||null},process:{pid:s.pid,started:s.processStart,generation:s.generation},lifetime:{deadlineAt:s.agentDeadlineAt||null,timeoutMs:s.agentDeadlineAt?agentSessionTimeoutMs:null,onExpiry:s.agentDeadlineAt?'Owned app receives SIGTERM; retain evidence and start a fresh session for further work':null},project:{bundle:s.bundle,main:s.main,alternate:s.alternate,assets:s.assets},adapter:ready.capabilities,physical:{commands:['click','drag','key','type','scroll','screenshot'],keys:physicalKeys,keyAliases:physicalKeyAliases,coordinates:'Widget-relative macOS points; target and destination geometry are rechecked before dispatch'},operations,checks:definitions(s).map(testSpecification),verdicts:{scripted:'Courses run their authored assertions; discover definitions with smoke.mjs list and courses',toolkitPassIds:definitions(s).filter(c=>c.proof).map(c=>c.id),exploration:'Observe, act and retain diagnostics; toolkit Pass requires a frozen proof contract'},evidenceDirectory:path.join(s.root,'evidence'),guidance:[
   'Use CLI/Qt operations to prepare a fixture; perform the action under test with physical input.',
+  'Use wait.conditions for controls that must be ready simultaneously. Its successful reply already contains the selected observation and identity; reuse it instead of immediately inspecting again. Input still refreshes targets and visual proof still requires capture.',
+  'Plan short known phases before acting: current targets, precondition gate, physical action, independent readback and declared capture. Read docs/agent-sequences.md and adapt its examples. Check parameters without input using session.mjs batch-check SESSION.json STEPS.json, then run batch SESSION.json STEPS.json (1–8 steps). Split at new dialogs, unknown geometry, asynchronous outcomes or a decision that needs interpretation. Each step keeps fresh guards and its own receipt. Sequences stop on errors or false expectations without rollback or replay; inspect results before continuing. Keep frozen verification and capture checkpoints.',
   'For a failed repro, read docs/bug-reporter-interop.md. The reporter helper only prefills an empty draft in the same build/project and never submits or imports historical attachments.',
   'Resolve targets from a fresh observation. An ambiguous target is Blocked.',
   'Observe returns an observationId and encoding: full or delta. Repeat the same query with since: observationId; the smaller full selection (matches) or delta (changes) is returned. Use selectors: [selector, ...] for 1–8 related controls from one inspection. These retained diagnostics cannot qualify Pass. Omitted or truncated entries are not proof of deletion. Drop since for a full current observation.',
@@ -89,8 +103,15 @@ export async function sessionContext(file){
   'Unknown responses contain a stable code and nextActions. Resolve the specific Unknown action with a named resolution assertion and retained verification reference; begin a fresh retest afterward.',
   'Stop the session when done. The foreground lease is shared across Athanor workspaces and released when its launcher exits.'
  ]};
- result.applicationOperations=Object.keys(s.schema?.operations||{});result.readOnlyOperations=readOps;
- await writeJSON(path.join(s.root,'agent-context.json'),result);return result;
+ result.applicationOperations=Object.keys(s.schema?.operations||{});result.readOnlyOperations=readOps.filter(op=>Object.hasOwn(s.schema?.operations||{},op));
+ result.connection={command:[...command,'tools',file],protocol:'JSON lines',maxRequestBytes:65536,maxSequenceSteps:8,request:{id:'unique-request-id',operation:'observe',params:{selector:{class:'MainWindow'}}},requestIds:'Ordinary tool requests are not idempotent; never retry a lost mutation. Plan IDs additionally retain intent and reject duplicate execution: use plan-inspect with the original ID.'};
+ result.connection.sequencePlanning={guide:'docs/agent-sequences.md',examples:['examples/sequences/add-video-track.json','examples/sequences/search-known-term.json'],checkCommand:[...command,'batch-check',file,'/absolute/steps.json'],runCommand:[...command,'batch',file,'/absolute/steps.json'],checkScope:'Parameters and selected-build schema only; no target lookup, expected-result evaluation, input, reservation or Pass.'};
+ result.connection.sequencePlanning.compactCommand=[...result.connection.sequencePlanning.runCommand,'--compact'];
+ result.connection.sequencePlanning.continuation='Inspect summary.continuation, gate outcomes and returnedMutationIndexes. Compact replies retain full results at receipt.path with a checksum. Review checkpoints do not automatically start another request.';
+ result.connection.sequencePlanning.plan={format:'athanor-agent-plan/v1',checkCommand:[...command,'plan-check',file,'/absolute/control-plan.json'],runCommand:[...command,'plan',file,'/absolute/control-plan.json','--request-id','known-plan-id','--compact'],inspectCommand:[...command,'plan-inspect',file,'known-plan-id'],recipeCheckCommand:[...command,'recipe-check',file,'/absolute/recipe.json','/absolute/values.json'],recipes:['examples/recipes/project-identity.json','examples/recipes/media-search.json','examples/recipes/add-video-track.json','examples/recipes/inspector-edit.json','examples/recipes/timeline-undo.json'],example:'examples/sequences/find-media-plan.json',limits:{maxPhases:8,maxDeclaredSteps:32,maxDurationMs:120000},guidance:'Validate every authored path. Branch only from the final complete read-only step using explicit values. Missing, partial, unexpected, Fail or Unknown stops; no loops, recovery or replay. Typed recipes compile without app input. Optional ID/model-offset bindings require a gated complete unique readback on every path and refresh that source before use; geometry and new-dialog choices remain review checkpoints. Plans retain intent before every action, returned prefixes and a checksummed receipt. Use a known request ID and plan-inspect after a lost response; duplicate IDs cannot execute again. Inspection is read-only and Unsettled requires journal/effect reconciliation, never resumption.'};
+ result.connection.sequencePlanning.plan.workflowCheckCommand=[...command,'workflow-check',file,'/absolute/workflow.json'];
+ result.connection.sequencePlanning.plan.workflowGuidance='Compose ordered typed recipes with workflow-check. Only explicitly declared continueAfter exits can join; every undeclared exit remains a review stop. Check every returned segment before executing one with a known plan ID. Never dispatch later segments automatically or replay Unknown. Preserve independent gates and captures; geometry, new dialogs and interpretation need review. Namespaced phases/bindings and hashes retain recipe provenance.';
+ await writeJSON(path.join(s.root,'agent-context.json'),result);await writeJSON(path.join(s.root,'agent-brief.json'),briefContext(result));return result;
 }
 
 async function retain(s,label,value,kind='json',imported=false,metadata={}){
@@ -99,7 +120,7 @@ async function retain(s,label,value,kind='json',imported=false,metadata={}){
  await mkdir(path.join(s.root,'evidence'),{recursive:true});const name='agent-'+randomUUID()+(kind==='json'?'.json':kind==='video'?'.mp4':'.png'),file=path.join(s.root,'evidence',name);
  if(kind==='json')await writeJSON(file,value);else{assert(inside(s.root,await realpath(value)),'Capture escaped the session');await copyFile(value,file);}
  s.agentEvidenceSequence=(s.agentEvidenceSequence||0)+1;await writeJSON(path.join(s.root,'session.json'),s);
- const evidence={file:name,path:file,kind,caption:label,sha256:await sha(file),caseId:s.currentCheck||null,attempt:s.agentAttempt||null,generation:s.generation,revision:imported?null:s.agentRevision||0,sequence:s.agentEvidenceSequence,definitionHash:s.agentProof?.definitionHash||null,provenance:imported?'imported':'diagnostic',...metadata};
+ const evidence={file:name,path:file,kind,caption:label,sha256:await sha(file),recordedAt:new Date().toISOString(),identity:imported?null:{packageHash:s.guiHash,pid:s.pid,started:s.processStart},caseId:s.currentCheck||null,attempt:s.agentAttempt||null,generation:s.generation,revision:imported?null:s.agentRevision||0,sequence:s.agentEvidenceSequence,definitionHash:s.agentProof?.definitionHash||null,provenance:imported?'imported':'diagnostic',...metadata};
  await appendFile(path.join(s.root,'agent-evidence.jsonl'),JSON.stringify(evidence)+'\n');return evidence;
 }
 async function journal(s,operation,params,start,result,status='Completed'){
@@ -111,22 +132,25 @@ async function journal(s,operation,params,start,result,status='Completed'){
 export async function agentTool(file,operation,params={}){
  try{
  validateToolParams(operation,params);
+ // Toolkit shapes describe the harness, not a live app or an input grant.
+ if(operation==='schema'&&params.operation===undefined)return toolInterface(params.tool);
  const s=await readJSON(file);verifyDesktopPaths(s);
  if(operation==='call')validateApplicationParams(s.schema,params.operation,params.params||{});
  if(operation==='native')validateNativeParams(params.operation,params.params||{});
  if(params.read)validateApplicationParams(s.schema,params.read.operation,params.read.params||{});
+ if(params.commit)validateApplicationParams(s.schema,'spellbook.inspect',{document_id:params.commit.documentId,view:'raw'});
  // Reads can sample a held gesture; state admission and evidence capture must not race edits.
- if(['observe','find','model','model_value','wait','schema','preflight'].includes(operation))return await runAgentTool(file,operation,params);
+ if(['observe','find','model','model_value','wait','schema','preflight','query'].includes(operation))return await runAgentTool(file,operation,params);
  return await withAgentAction(file,()=>runAgentTool(file,operation,params),{operation,params});
  }catch(e){throw normalizeToolError(e);}
 }
 async function runAgentTool(file,operation,params={}){
  assert(operations.includes(operation),'Unknown agent tool: '+operation);assert(params&&typeof params==='object'&&!Array.isArray(params),'Supply a JSON object');
  let s=await readJSON(file);verifyDesktopPaths(s);
- if(operation==='context')return sessionContext(file);
+ if(operation==='context'){const context=await sessionContext(file);return params.detail==='brief'?briefContext(context):context;}
  if(operation==='report')return exportAgentReport(file);
  const records=await jsonLines(path.join(s.root,'agent-results.jsonl')),terminal=s.agentAttempt?terminalResult(records,s.agentAttempt):null;
- const mutating=operation==='reveal'||operation==='physical'&&params.command!=='screenshot'||operation==='call'&&!readOps.includes(params.operation)||operation==='native'&&!readNative.includes(params.operation);
+ const mutating=isAgentMutation(operation,params);
  if(operation==='record'&&terminal)return closeAttempt(records,{attempt:s.agentAttempt,status:params.status,observation:params.note?.trim()});
  requireProof(!(terminal&&mutating),'attempt_closed','Begin a new attempt before another edit',['begin_new_attempt','report']);
  if(operation==='begin')requireProof(!s.agentAttempt||terminal,'attempt_open','Close the current attempt before beginning another',['record','report']);
@@ -136,8 +160,26 @@ async function runAgentTool(file,operation,params={}){
  let result;
  try{
   if(mutating&&s.agentProof&&(s.agentProof.baseline||Object.keys(s.agentProof.checkpoints).length)&&!(operation==='physical'&&params.actionId)){s.agentProof.tainted=true;await writeJSON(file,s);}
-  if(operation==='preflight'){
-   const observed=await nativeDesktopInput(file,{command:'inspect',mode:'window-server',depth:0});const ui=await nativeCall(file,'inspect');result={pid:observed.pid,started:observed.started,permissions:observed.permissions,frontmost:observed.frontmost,frontWindow:observed.frontWindow,windows:observed.windows,keyWindow:ui.widgets.find(w=>w.id===w.window&&w.keyWindow)||null,focusedControl:ui.widgets.find(w=>w.id===ui.focus)||null,ready:observed.permissions?.input===true&&observed.permissions?.screenCapture===true};
+  if(operation==='task')result=await prepareAgentTask(file,params,agentTool);
+  else if(operation==='preflight'){
+   // Separate read-only transports may overlap; wait for both even on failure.
+   const reads=await Promise.allSettled([nativeDesktopInput(file,{command:'inspect',mode:'window-server',depth:0}),nativeCall(file,'inspect')]);
+   for(const read of reads)if(read.status==='rejected')throw read.reason;
+   const [observed,ui]=reads.map(r=>r.value);result={pid:observed.pid,started:observed.started,permissions:observed.permissions,frontmost:observed.frontmost,frontWindow:observed.frontWindow,windows:observed.windows,keyWindow:ui.widgets.find(w=>w.id===w.window&&w.keyWindow)||null,focusedControl:ui.widgets.find(w=>w.id===ui.focus)||null,ready:observed.permissions?.input===true&&observed.permissions?.screenCapture===true,...params.question?{answer:mediaSearchAnswer(ui)}:{},timing:{durationMs:Date.now()-start,reads:'Window Server and Qt inspection overlap; not an atomic domain snapshot'}};
+  }else if(operation==='query'){
+   if(params.question==='timeline-history'){const observed=await desktopCall(file,'timeline.inspect',{timeline_id:params.timelineId});requireProof(observed.timeline?.timeline_id===params.timelineId,'wrong_fixture','Read the declared timeline',['observe']);result=await projectHistory(s,params.baselineRevision,observed.bundle_revision);}
+   else if(['inspector-parameter','inspector-change','timeline-clip','timeline-trim'].includes(params.question)){
+    const graphRequest=()=>desktopCall(file,'graph.get_clip_graph',params.graphScope),timelineRequest=()=>desktopCall(file,'timeline.inspect',{timeline_id:params.timelineId??params.graphScope.timeline_id});
+    const [a,b]=await readQuestionInputs(params.question,{ui:()=>nativeCall(file,'inspect'),graph:graphRequest,timeline:timelineRequest});
+    if(params.question==='inspector-change')result=inspectorOutcome(params.baselineGraph,a,params.baselineTimeline,b,params);
+    else if(params.question==='inspector-parameter'){requireProof(b.timeline_id===params.graphScope.timeline_id&&b.clip_id===params.graphScope.clip_id,'wrong_fixture','Graph readback differs from the declared clip',['inspect']);result=inspectorParameterAnswer(a,b,params);}
+    else if(params.question==='timeline-trim')result={...timelineClipAnswer(a,b,params.clipId),question:'timeline-trim',...rightTrimOutcome(params.baseline,b,params)};
+     else {result=timelineClipAnswer(a,b,params.clipId,{includeBaseline:params.includeBaseline});const geometry=await nativeCall(file,'timeline-clip-rect',{target:result.targets.canvas.id,clipId:params.clipId});result={...result,geometry,points:{body:clipPoint(geometry),left:clipPoint(geometry,'left-edge'),right:clipPoint(geometry,'right-edge')}};}
+   }else if(params.question==='media-insertion'){
+    const observed=await desktopCall(file,'timeline.inspect',{timeline_id:params.timelineId});result=mediaInsertionOutcome(params.baseline,observed,params);
+    result={...result,timeline:observed};
+   }else {const ui=await nativeCall(file,'inspect');result=params.question==='media-search'?mediaSearchAnswer(ui):formatDialogAnswer(ui);}
+   result={...result,observedAt:new Date().toISOString(),generation:s.generation,identity:{packageHash:s.guiHash,pid:s.pid,started:s.processStart}};
   }else if(operation==='schema'){
    assert(typeof params.operation==='string'&&Object.hasOwn(s.schema.operations,params.operation),'Choose an advertised application operation');result={operation:params.operation,params:s.schema.operations[params.operation],result:s.schema.results?.[params.operation],errors:s.schema.errors?.[params.operation]};
   }else if(operation==='evidence'){
@@ -146,7 +188,7 @@ async function runAgentTool(file,operation,params={}){
    // Imported observations illustrate the attempt; they cannot satisfy its current capture gate.
    result=await retain(s,params.title,params.kind==='image'?params.file:await readJSON(params.file),params.kind==='image'?'image':'json',true);
   }else if(operation==='observe'||operation==='find'){
-   const ui=await nativeCall(file,'inspect',params.scope?{target:params.scope}:{});result=operation==='find'?uniqueTarget(ui,params.selector,params.kind):selectUI(ui,params);result={...result,observedAt:new Date().toISOString(),generation:s.generation};if(operation==='observe')result=await retainObservation(s,params,result);result.observationBytes={full:Buffer.byteLength(JSON.stringify(ui)),selectedPayload:Buffer.byteLength(JSON.stringify(result))};
+    const ui=await nativeCall(file,'inspect',params.scope?{target:params.scope}:{});result=operation==='find'?uniqueTarget(ui,params.selector,params.kind):selectUI(ui,params);result={...result,observedAt:new Date().toISOString(),generation:s.generation,identity:{packageHash:s.guiHash,pid:s.pid,started:s.processStart}};if(operation==='observe')result=await retainObservation(s,params,result);result.observationBytes={full:Buffer.byteLength(JSON.stringify(ui)),selectedPayload:Buffer.byteLength(JSON.stringify(result))};
   }else if(operation==='model'||operation==='reveal'){
    const target=uniqueTarget(await nativeCall(file,'inspect'),params.target||params.selector);
    result=await nativeCall(file,operation==='model'?'model-page':'model-reveal',{target:target.id,offset:params.offset??0,limit:operation==='reveal'?1:params.limit??32,...params.cursor?{cursor:params.cursor}:{}});
@@ -159,22 +201,27 @@ async function runAgentTool(file,operation,params={}){
    const captured=await recordPresented(file,params);result={binding:captured.binding,samples:captured.samples.length,elapsedMs:captured.elapsedMs,totalObservationCostMs:captured.totalObservationCostMs,artifacts:captured.artifacts,scope:captured.scope};
    if(s.currentCheck){await retain(s,params.title||'Timed playback observations',captured);for(const sample of captured.samples)await retain(s,'Presented playback sample',sample.image.output,'image');await retain(s,'Sampled playback with original capture intervals',captured.video.path,'video');}
   }else if(operation==='geometry'){
-   const target=uniqueTarget(await nativeCall(file,'inspect'),params.target||params.selector);result=await nativeCall(file,'timeline-clip-rect',{target:target.id,clipId:params.clipId});result={...result,target:target.id,point:clipPoint(result,params.part)};
+   const target=uniqueTarget(await nativeCall(file,'inspect'),params.target||params.selector);
+   result=params.trackIndex!==undefined?await nativeCall(file,'timeline-point',{target:target.id,trackIndex:params.trackIndex,timeSeconds:params.timeSeconds}):await nativeCall(file,'timeline-clip-rect',{target:target.id,clipId:params.clipId});result={...result,target:target.id,point:params.trackIndex!==undefined?result.point:clipPoint(result,params.part)};
   }else if(operation==='physical'){
    assert(['click','drag','key','type','scroll','screenshot'].includes(params.command),'Unsupported physical command');
    const ui=await nativeCall(file,'inspect'),target=uniqueTarget(ui,params.target||params.selector);
    const qualified=params.command==='screenshot'?null:physicalAction(s.agentProof,params,target);
    if(qualified)params={...params,stepId:qualified.stepId};
-   const p={target:target.id,expected:target};for(const k of ['button','durationMs','chrome','key','text','deltaX','deltaY','modifiers','path','clickCount'])if(params[k]!==undefined)p[k]=params[k];
-   if(!['key','type','screenshot'].includes(params.command)){p.x=params.x??target.width*(params.xRatio??.5);p.y=params.y??target.height*(params.yRatio??.5);}
+   const p={target:target.id,expected:target};for(const k of ['button','durationMs','chrome','key','text','deltaX','deltaY','modifiers','path','clickCount','commit','requireFocus'])if(params[k]!==undefined)p[k]=params[k];
+   if(params.itemText!==undefined){const viewport=uniqueTarget(ui,{id:target.viewport});p.target=viewport.id;p.expected=viewport;p.modelTarget=target.id;p.itemText=params.itemText;}
+   if(!['key','type','screenshot'].includes(params.command)&&!(params.command==='click'&&['x','y','xRatio','yRatio'].every(k=>params[k]===undefined))){p.x=params.x??target.width*(params.xRatio??.5);p.y=params.y??target.height*(params.yRatio??.5);}
    if(params.clipId){assert(['click','drag'].includes(params.command),'Clip targeting supports click and drag');const geometry=await nativeCall(file,'timeline-clip-rect',{target:target.id,clipId:params.clipId});Object.assign(p,clipPoint(geometry,params.part),{clipId:params.clipId,expectedClip:geometry.rect});}
-   if(params.command==='drag'){const to=uniqueTarget(ui,params.toTarget||params.target||params.selector);p.toTarget=to.id;p.toX=params.toX??to.width*(params.toXRatio??.5);p.toY=params.toY??to.height*(params.toYRatio??.5);}
+   if(params.command==='drag'){const to=uniqueTarget(ui,params.toTarget||params.target||params.selector);p.toTarget=to.id;p.expectedToTarget=to;p.toX=params.toX??to.width*(params.toXRatio??.5);p.toY=params.toY??to.height*(params.toYRatio??.5);if(params.toTimelinePoint)p.toTimelinePoint=params.toTimelinePoint;}
    result=await physicalInput(file,params.command,p);
    if(qualified){const latest=await readJSON(file);requireProof(result.status==='Dispatched','physical_receipt_missing','The tested action has no dispatched physical receipt',['inspect','record_unknown']);latest.agentProof.actions.push({...qualified,receipt:result,revision:latest.agentRevision,eventId:currentAction(file).id});await writeJSON(file,latest);result={...result,testAction:qualified};}
    if(params.command==='screenshot')result.capture=await retain(s,params.title||'Owned native window',result.output,'image');
   }else if(operation==='call'||operation==='native')result=await (operation==='call'?desktopCall:nativeCall)(file,params.operation,params.params||{});
   else if(operation==='wait'){
-   result=await waitForObservation(async()=>readyUI(await nativeCall(file,'inspect',params.scope?{target:params.scope}:{}),params),{description:params.title||'Target '+(params.condition||'exists'),timeoutMs:params.timeoutMs??5000,intervalMs:params.intervalMs??150,stableForMs:params.stableForMs??(params.condition==='geometry'?250:0)});
+   let lastUI;const query=params.conditions?{kind:params.kind,scope:params.scope,within:params.within,selectors:params.conditions.map(c=>c.selector),details:params.details,limit:params.limit}:null;
+   try{result=await waitForObservation(async()=>{lastUI=await nativeCall(file,'inspect',params.scope?{target:params.scope}:{});return readyUI(lastUI,params);},{description:params.title||(query?'All requested UI conditions':'Target '+(params.condition||'exists')),timeoutMs:params.timeoutMs??5000,intervalMs:params.intervalMs??150,stableForMs:params.stableForMs??(params.condition==='geometry'||params.conditions?.some(c=>c.condition==='geometry')?250:0)});}
+   catch(error){if(query&&lastUI)error.diagnostics={...error.diagnostics,conditions:params.conditions,lastObservation:selectUI(lastUI,query),generation:s.generation,identity:{packageHash:s.guiHash,pid:s.pid,started:s.processStart}};throw error;}
+   if(query)result=await retainObservation(s,query,{...result,observedAt:new Date().toISOString(),generation:s.generation,identity:{packageHash:s.guiHash,pid:s.pid,started:s.processStart}});
   }else if(operation==='capture'){
    const target=uniqueTarget(await nativeCall(file,'inspect'),params.target||params.selector),kind=params.kind||'presented';assert(['presented','widget','window'].includes(kind),'Choose presented, widget or window capture');
    const assertion=params.assertion,point=s.agentProof?.checkpoints?.[assertion];

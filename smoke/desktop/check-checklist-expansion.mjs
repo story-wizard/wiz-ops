@@ -21,7 +21,7 @@ async function capture(id,phase,target,kind='presented'){
  return {...image,path:output,artifacts:[output]};
 }
 async function observe(id,value){const output=path.join(s.root,'evidence',id+'-graph-observations.txt');await mkdir(path.dirname(output),{recursive:true});await writeJSON(output,value);keep(id,output);return output;}
-async function fixture(name){const before=await gapFixture(c,s.assets,name),view=await openTimeline(name);return {id:before.timeline.timeline_id,before,view,scope:{timeline_id:before.timeline.timeline_id,clip_id:clips(before)[0].clip_id}};}
+async function fixture(name){const before=await gapFixture(c,s.assets,name),view=await openTimeline(name,before.tracks.find(t=>t.address==='V1')?.track_id);return {id:before.timeline.timeline_id,before,view,scope:{timeline_id:before.timeline.timeline_id,clip_id:clips(before)[0].clip_id}};}
 async function selectClip(f){
  const geometry=await n('timeline-clip-rect',{target:f.view.id,clipId:f.scope.clip_id});
  await physical('key',{target:f.view.id,key:'v'});
@@ -49,7 +49,7 @@ await check('D-SEARCH-FOCUS',async()=>{
  try{
   for(const f of [fixtures[0],fixtures[1],fixtures[0]])await stage('search','Focus a timeline and search the project','execute',async()=>{
    await n('text',{target:observedWidget(await ui(),w=>w.class==='MediaSearchField','Media search field').id,text:''});
-   await openTimeline(f.before.timeline.name);
+   await openTimeline(f.before.timeline.name,f.before.tracks.find(t=>t.address==='V1')?.track_id);
    const field=observedWidget(await ui(),w=>w.class==='MediaSearchField','Media search field');
    await physical('click',{target:field.id,x:field.width/2,y:field.height/2});await physical('type',{target:field.id,text:query});await physical('key',{target:field.id,key:'Return'});
    const result=await until(async()=>{const u=await ui(),field=observedWidget(u,w=>w.class==='MediaSearchField','Media search field'),status=u.widgets.find(w=>w.name==='mediaSearchStatus')?.text||'';

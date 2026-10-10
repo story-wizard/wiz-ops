@@ -105,7 +105,7 @@ test('every accepted definition resolves and every desktop/service check has an 
  test('maintained full course qualifies only its explicit candidates; custom courses cannot promote them',()=>{
  const db=new DatabaseSync(':memory:');initializeCourses(db);
  try{
-  const s=resolveSelection(db,{courseIds:['smoke-full']});assert.equal(s.effectiveIds.length,177);assert.equal(s.qualificationIds.length,40);assert.equal(s.courseRevisions[0].revision,8);
+  const s=resolveSelection(db,{courseIds:['smoke-full']});assert.equal(s.effectiveIds.length,177);assert.equal(s.qualificationIds.length,40);assert.equal(s.courseRevisions[0].revision,9);
   assert.equal(s.effectiveIds.filter(id=>id.startsWith('P-')).length,13);assert.ok(s.effectiveIds.includes('D-EXTERNAL-RELOAD'));assert.ok(!s.effectiveIds.includes('S-PF-IDLE'));assert.ok(checkRegistry().some(c=>c.id==='S-PF-IDLE'),'Idle candidate remains available for its separate probe');
   validateRecipe(selectedRecipe(s));assert.throws(()=>resolveSelection(db,{checkIds:['P-RG-WIRE']}),/not accepted/);
   assert.throws(()=>saveCourse(db,{...draft,id:'candidate',groups:[{id:'g',title:'g',checks:['P-RG-WIRE']}]}),/not accepted/);
@@ -133,5 +133,20 @@ test('selection and bin checks do not require neighboring product assertions',()
   }
   const s=resolveSelection(db,{courseIds:['smoke-full'],subsetIds:['D-BIN-DUPLICATE'],diagnostics:'investigation'});
   assert.deepEqual(s.requestedIds,['D-BIN-DUPLICATE']);assert.deepEqual(new Set(s.effectiveIds),new Set(['A-CLI-01','D-CLI-01','D-BIN-DUPLICATE']));assert.equal(s.diagnostics,'investigation');
+ }finally{db.close();}
+});
+
+
+test('grouped and isolated courses freeze the same checks with explicit execution policy',()=>{
+ const db=new DatabaseSync(':memory:');initializeCourses(db);
+ try{
+  const grouped=resolveSelection(db,{courseIds:['smoke-full']}),isolated=resolveSelection(db,{courseIds:['smoke-isolated']});
+  assert.equal(grouped.desktopMode,'grouped');assert.equal(isolated.desktopMode,'isolated');
+  assert.deepEqual(grouped.effectiveIds,isolated.effectiveIds);assert.deepEqual(grouped.qualificationIds,isolated.qualificationIds);
+  validateRecipe(selectedRecipe(grouped));validateRecipe(selectedRecipe(isolated));
+  assert.equal(resolveSelection(db,{courseIds:['smoke-full'],desktopMode:'isolated'}).desktopMode,'isolated');
+  assert.throws(()=>resolveSelection(db,{courseIds:['smoke-full'],desktopMode:'unsafe'}),/execution mode/);
+  const recipe=selectedRecipe(grouped);recipe.selection.desktopMode='unsafe';assert.throws(()=>validateRecipe(recipe),/execution mode/);
+  assert.throws(()=>saveCourse(db,{...draft,id:'smoke-isolated'},accepted),/reserved/);
  }finally{db.close();}
 });
