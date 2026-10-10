@@ -87,7 +87,7 @@ test('October 8 document semantics require exact review and leave old contracts 
  const hash='77462be3c4ea7d5efad8894a6b183d0bf26a56b592d90ecff9a0c36fabb82db3';
  assert.equal(digest(nightly),hash);assert.equal(Object.keys(nightly.operations).length,166);
  assert.equal(assertMappedPackagedSchema(nightly,captured,qualified).mode,'reviewed-exact');
- const prior={...qualified,reviewed:qualified.reviewed.filter(r=>r.schemaHash!==hash)};
+ const prior={...qualified,reviewed:qualified.reviewed.filter(r=>r.reviewedAt<'2026-10-08')};
  assert.throws(()=>assertMappedPackagedSchema(nightly,captured,prior),e=>e.schemaCompatibility.issues.includes('operations.documents.rename.properties.name.description'));
  assert.equal(assertMappedPackagedSchema(captured,captured,qualified).mode,'baseline');
  for(const mutate of [
@@ -99,4 +99,22 @@ test('October 8 document semantics require exact review and leave old contracts 
  ]){const changed=structuredClone(nightly);mutate(changed);assert.throws(()=>assertMappedPackagedSchema(changed,captured,qualified),/different command schema/);}
  const extension=structuredClone(nightly);extension.operations['new.read']={type:'object'};
  assert.equal(assertMappedPackagedSchema(extension,captured,qualified).anchorHash,hash);
+});
+
+
+test('October 9 reviewed removals permit unaffected checks but never dispatch retired generation operations',async()=>{
+ const entry=qualified.reviewed.find(r=>r.reviewedAt==='2026-10-09'),operations=JSON.parse(await readFile(new URL('../runner/contracts/'+entry.operationsFile,import.meta.url)));
+ const nightly={...captured,operations:Object.fromEntries(Object.entries({...captured.operations,...operations}).filter(([op])=>!entry.removedOperations.includes(op)).sort(([a],[b])=>a.localeCompare(b)))};
+ assert.equal(Object.keys(nightly.operations).length,162);assert.equal(digest(nightly),entry.schemaHash);
+ assert.equal(assertMappedPackagedSchema(nightly,captured,qualified).mode,'reviewed-exact');
+ const prior={...qualified,reviewed:qualified.reviewed.filter(r=>r!==entry)};
+ assert.throws(()=>assertMappedPackagedSchema(nightly,captured,prior),/different command schema/);
+ const {validateApplicationParams}=await import('../desktop/agent-proof.mjs');
+ for(const op of entry.removedOperations)assert.throws(()=>validateApplicationParams(nightly,op,{}),e=>e.status==='Blocked'&&e.code==='unsupported_operation');
+ const extension=structuredClone(nightly);extension.operations['new.read']={type:'object'};
+ assert.equal(assertMappedPackagedSchema(extension,captured,qualified).anchorHash,entry.schemaHash);
+ for(const mutate of [s=>delete s.operations['project.create'],s=>s.operations['generate.graphics'].properties.content.required.push('resources_path'),s=>s.operations['generate.graphics'].properties.content.properties.source_path.description='Only remote sources']){
+  const changed=structuredClone(nightly);mutate(changed);assert.throws(()=>assertMappedPackagedSchema(changed,captured,qualified),/different command schema/);
+ }
+ const malformed=structuredClone(qualified);malformed.reviewed.at(-1).removedOperations=['project.create','project.create'];assert.throws(()=>assertMappedPackagedSchema(extension,captured,malformed),/Invalid reviewed/);
 });

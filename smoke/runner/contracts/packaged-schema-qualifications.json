@@ -36,6 +36,22 @@
         "documents.rename moves the Markdown file and changes its project-relative path and identity"
       ],
       "basis": "Retained shipped schema from Athanor testing of Nightly 2026.10.08-45854f6: 166 operations; all top-level fields, results and errors equal the baseline. Five additions and twelve changed operation definitions; versus October 6, four document definitions, media.add_assets and media.sample_frames differ. A-UI-04 now selects stable-ID or path-ID assertions from the qualified rename description, verifies exact moved path, old-file absence, preserved bytes after reopen and targeted deletion. D-DOCUMENT-EDIT uses the returned create path/identity and never renames. No runner/desktop calls media.add_assets or media.sample_frames. Earlier reviewed keyframe/search/colour/render analysis remains applicable. Filesystem-backed component tests qualify the harness assertions only; exact-package preparation, desktop contract and application behavior remain separate runtime acceptance. New features are not accepted by this review."
+    },
+    {
+      "schemaHash": "1b4a4aebf4dda8fa7dea03bb74ebee28d5586feb3c186d6cfeefad147bc91055",
+      "operationsFile": "packaged-schema-2026.10.09-operations.json",
+      "removedOperations": [
+        "generate.catalog",
+        "generate.image",
+        "generate.renderers",
+        "generate.video"
+      ],
+      "reviewedAt": "2026-10-09",
+      "changes": [
+        "Retains the reviewed October 8 operation changes, removes generate.catalog, generate.image, generate.renderers and generate.video",
+        "generate.graphics uses live authored source directories and an optional separate resources_path; existing project-relative source/entry remain accepted"
+      ],
+      "basis": "Official 2026.10.09-01169c1 package, shipped project create --schema --no-spawn: 162 operations, all top-level fields/results/errors unchanged; versus baseline four removals, five additions and thirteen changed definitions. Exact app source 01169c1e2 removes the four dispatch entries in src/wizserver/ops.def.h and describes bundle-relative or absolute live source paths in project_tool_schemas.h; generate_source_reference.cpp resolves bundle-relative source under the owned bundle. Existing generation fixtures require generate.renderers, which is now absent; desktopCall validates the shipped schema before dispatch and records those checks Blocked. No generation request or assertion is loosened or replaced by a provider call. Other changed operations retain the October 8 review basis. This exact contract review permits unaffected checks to prepare; it does not qualify the new MGFX architecture or establish a functional Pass."
     }
   ]
 }

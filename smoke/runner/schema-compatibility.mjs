@@ -62,7 +62,9 @@ export function assertMappedPackagedSchema(schema,captured,qualifications){
  for(const entry of reviewed.filter(r=>r.operationsFile)){
   if(!/^[a-z0-9.-]+\.json$/.test(entry.operationsFile))throw Error('Invalid reviewed schema filename.');
   const operations=JSON.parse(readFileSync(new URL('./contracts/'+entry.operationsFile,import.meta.url)));
-  const anchor={...captured,operations:Object.fromEntries(Object.entries({...captured.operations,...operations}).sort(([a],[b])=>a.localeCompare(b)))};
+  const removed=entry.removedOperations||[];
+  if(!Array.isArray(removed)||new Set(removed).size!==removed.length||removed.some(op=>!Object.hasOwn(captured.operations,op)||Object.hasOwn(operations,op)))throw Error('Invalid reviewed operation removals.');
+  const anchor={...captured,operations:Object.fromEntries(Object.entries({...captured.operations,...operations}).filter(([op])=>!removed.includes(op)).sort(([a],[b])=>a.localeCompare(b)))};
   if(digest(anchor)!==entry.schemaHash)throw Error('Reviewed schema definitions no longer match their qualification.');
   anchors.push(anchor);
  }

@@ -113,6 +113,7 @@ test('the native foreground lease excludes another workspace and releases after 
   assert.ok(start>=0&&end>start);
   // Exercise the real kernel-lock block on a private file, without taking the user's desktop lease.
   const block=swift.slice(start,end).replace('"/private/tmp/athanor-desktop-\\(getuid()).lock"',JSON.stringify(path.join(data,'probe.lock'))),driver=path.join(data,'lease-probe');
+  assert.ok(!block.includes('/private/tmp/athanor-desktop-'),'Test probe must use its private lock');
   await writeFile(driver+'.swift',`import Foundation
 func require(_ value:Bool,_ message:String)throws{if !value{throw NSError(domain:message,code:1)}}
 func emit(_ value:[String:Any]){print(String(data:try! JSONSerialization.data(withJSONObject:value),encoding:.utf8)!)}

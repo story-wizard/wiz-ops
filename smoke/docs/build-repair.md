@@ -109,6 +109,28 @@ Merge the new qualification entry and retained operation definitions; do not
 replace the destination qualification file wholesale. Prepare a new plan after
 changing the runner, and retain the old source version and workspace for rollback.
 
+## Reviewed nightly: 2026.10.09-01169c1
+
+The shipped schema has 162 operations and structured hash
+`1b4a4aebf4dda8fa7dea03bb74ebee28d5586feb3c186d6cfeefad147bc91055`.
+Top-level fields, results and errors match the unchanged baseline. Compared with
+October 8, it removes `generate.catalog`, `generate.image`, `generate.renderers`
+and `generate.video`. `generate.graphics` now describes live authored source
+folders and an optional separate `resources_path`.
+
+The exact app source removes those dispatch entries. Existing relative source
+and entry fields remain supported, but current MGFX fixtures require the retired
+renderer-discovery operation. The adapter rejects it before dispatch and retains
+Blocked for those checks. No provider call or guessed authoring profile replaces
+it. Other checks can use this reviewed package; new MGFX fixture support remains
+separate work.
+
+Reviewed entries may retain `removedOperations` alongside their changed/added
+operation definitions. Reconstruction must match the exact reviewed hash before
+an anchor can qualify future compatible extensions. Unreviewed removals, further
+semantic changes and missing existing operations still fail the gate. The
+baseline, earlier qualifications and historical results remain intact.
+
 ## Copyable request
 
 > Repair Athanor for this build or feature: [identity]. Intended course or checks: [selection]. Failure or missing behavior: [observation]. Read AGENTS.md and docs/build-repair.md. Inspect and compare the actual contract, update the mapping or affected checks as needed, validate the repair and retain the evidence. Preserve old results and the review gate for accepted tests.
