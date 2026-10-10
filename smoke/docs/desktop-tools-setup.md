@@ -101,7 +101,7 @@ disable protections or grant unrelated SSH processes broad access.
 For a new remote desktop worker, use an external Application Support workspace
 rather than Documents/Desktop/Downloads: protected-folder access is an additional
 permission boundary for independently launched helpers. Keep historical workspaces
-intact; create a new workspace instead of silently migrating frozen plans. On Poddy,
+intact; create a new workspace instead of silently migrating frozen plans. On the Athanor MacBook,
 the identical helper stalled in dyld opening its Documents executable but returned
 normally from Application Support. Keep that startup finding distinct from the
 subsequent privacy results.

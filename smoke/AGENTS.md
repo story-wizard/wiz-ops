@@ -2,6 +2,8 @@
 
 Athanor is the app name. Preserve the existing CLI names, formats and WizardSmoke workspace paths.
 
+Use Athanor in outward-facing messages, status replies, report/course titles and generated agent prompts. Use Athanor MacBook or Athanor Mini when distinguishing workers. Poddy remains an internal name for existing hosts, paths, repositories, branches and identifiers; preserve quoted historical evidence and earlier run records.
+
 The October 3 local slice adds fourteen further UI/playback candidates, scoped model observations, native gestures and timed evidence recording. Read [harness control](docs/harness-control.md) for how these layers work and the retained qualification state. Candidate availability is not lead acceptance.
 
 ## Choose your task
