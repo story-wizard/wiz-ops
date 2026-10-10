@@ -3,8 +3,8 @@ import {mkdir} from 'node:fs/promises';
 import {uiWorkflows} from './ui-workflows.mjs';
 import {visiblePlayhead,widgetPixelDifference} from './check-support.mjs';
 import {waitForPreview} from './recorder.mjs';
-import {assert,pause,same,snapshotState,command} from '../runner/engine.mjs';
-import {nativeOrderProof,focusedTimelineProof,focusedPreviewProof,workspaceItem,tailFollowProof,selectorProof,headerProof,inlineImageProof} from './macos-proof.mjs';
+import {assert,pause,same,snapshotState,command,OutcomeError} from '../runner/engine.mjs';
+import {nativeOrderProof,focusedTimelineProof,focusedPreviewProof,workspaceItem,tailFollowProof,selectorProof,headerProof,inlineImageProof,scrollAwayProof,gestureAnchorProof,customModelPopupProof,pipelineSelectionProof} from './macos-proof.mjs';
 
 const h=await uiWorkflows(process.argv[2],'desktop-macos-report.json');
 const {s,n,c,ui,until,check,stage,physical,observe,capture,unique,activate,finish}=h;
@@ -16,7 +16,7 @@ async function addPanel(kind){
  return until(async()=>{const u=await ui(),p=u.widgets.filter(w=>w.class===kind+'Panel'&&!ids.has(w.id));return p.length===1&&u.widgets.find(w=>w.id===p[0].window)?.class==='ads::CFloatingDockContainer'?p[0]:null;},{description:'New floating '+kind+' panel'});
 }
 async function workspace(){await h.activatePanel('Agent Workspace (Chat)','AgentWorkspacePanel');return h.floatPanel('Agent Workspace (Chat)','AgentWorkspacePanel',{width:600,height:600});}
-const workspaceRead=p=>n('workspace-inspect',{target:p.id});
+const workspaceRead=(p,anchorIndex)=>n('workspace-inspect',{target:p.id,...anchorIndex===undefined?{}:{anchorIndex}});
 const append=(p,text,eventId)=>n('workspace-append',{target:p.id,text,eventId:'athanor-fixture-'+eventId});
 
 await check('D-MAC-RESUME',async()=>{
@@ -80,5 +80,45 @@ await check('D-AGENT-IMAGE',async()=>{
  await until(async()=>{const r=await workspaceRead(panel);return r.items.some(w=>w.images?.length)?r:null;},{description:'Packaged document contains an inline image'});
  const reads=[];for(const width of [400,120,400]){await stage('width-'+reads.length,'Apply packaged image sizing at '+width+' points','execute',()=>n('workspace-image-width',{target:panel.id,width}));await pause(100);reads.push(await workspaceRead(panel));}
  await observe(id,'sizes',reads);const proof=inlineImageProof(reads);await capture(id,'restored-image',panel.window);return {...proof,scope:'Real QTextDocument image formats/resources and packaged sizing method; controlled local square fixture, no download or provider call.'};
+});
+async function transcriptFixture(panel){
+ for(let i=0;i<18;i++)await append(panel,'Existing transcript row '+i+' with enough text to establish a stable scrolling viewport.','cohort-'+i);
+ return until(async()=>{const r=await workspaceRead(panel),w=workspaceItem(r,'AgentWorkspaceMessageList');return w.atYEnd&&w.followTail&&w.contentHeight>w.height?r:null;},{description:'Scrollable transcript follows the tail'});
+}
+await check('D-AGENT-SCROLL-AWAY',async()=>{
+ const id='D-AGENT-SCROLL-AWAY',panel=await workspace();await stage('transcript','Prepare a scrollable local transcript','prepare',()=>transcriptFixture(panel));
+ await stage('scroll-away','Simulate the source regression gesture 120 points away from the tail','execute',async()=>{await n('workspace-scroll',{target:panel.id,phase:'begin'});await n('workspace-scroll',{target:panel.id,phase:'offset',distance:-120});await n('workspace-scroll',{target:panel.id,phase:'end'});});
+ const before=await until(async()=>{const r=await workspaceRead(panel),w=workspaceItem(r,'AgentWorkspaceMessageList');return !w.followTail&&!w.userScrollActive&&!w.atYEnd?r:null;});await observe(id,'before',before);
+ await stage('append','Append while the user is reading earlier history','execute',()=>append(panel,'Another response while reading history.','away-append'));
+ const samples=[];for(let i=0;i<4;i++){samples.push(await workspaceRead(panel));await pause(50);}await observe(id,'samples',samples);await capture(id,'reading-history',panel.window);
+ await stage('resume','Explicitly resume tail follow','execute',()=>n('workspace-scroll',{target:panel.id,phase:'resume'}));const resumed=await until(async()=>{const r=await workspaceRead(panel),w=workspaceItem(r,'AgentWorkspaceMessageList');return w.atYEnd&&w.followTail?r:null;});await observe(id,'resumed',resumed);return {...scrollAwayProof(before,samples,resumed),scope:'Source-matched Qt gesture lifecycle and relative content offset; physical wheel delivery remains separate.'};
+});
+await check('D-AGENT-GESTURE-ANCHOR',async()=>{
+ const id='D-AGENT-GESTURE-ANCHOR',panel=await workspace(),initial=await stage('transcript','Prepare the scrolling transcript','prepare',()=>transcriptFixture(panel)),index=workspaceItem(initial,'AgentWorkspaceMessageList').count-1;
+ await stage('gesture','Begin the source regression tail gesture','execute',()=>n('workspace-scroll',{target:panel.id,phase:'begin'}));
+ const before=await workspaceRead(panel,index);await observe(id,'before',before);await stage('append','Append a taller response during the active gesture','execute',()=>append(panel,'A response arriving during a downward gesture. '.repeat(16),'gesture-append'));
+ const samples=[];for(let i=0;i<4;i++){samples.push(await workspaceRead(panel,index));await pause(50);}await observe(id,'samples',samples);await capture(id,'held-anchor',panel.window);
+ await stage('release','End the gesture and catch up to the tail','execute',()=>n('workspace-scroll',{target:panel.id,phase:'end'}));const resumed=await until(async()=>{const r=await workspaceRead(panel),w=workspaceItem(r,'AgentWorkspaceMessageList');return !w.userScrollActive&&w.atYEnd&&w.followTail?r:null;});await observe(id,'resumed',resumed);return {...gestureAnchorProof(before,samples,resumed),scope:'Qt-injected movement lifecycle; stable delegate identity and viewport offset independently observed, no physical drag claim.'};
+});
+await check('D-AGENT-CUSTOM-MODEL',async()=>{
+ const id='D-AGENT-CUSTOM-MODEL',panel=await workspace(),original=(await workspaceRead(panel)).controller;let uncertain=false;
+ await stage('fixture','Install the source test custom model label','prepare',()=>n('workspace-model-fixture',{target:panel.id,phase:'begin'}));
+ try{
+  await n('resize-window',{target:panel.window,width:280,height:800});const model=workspaceItem(await workspaceRead(panel),'AgentWorkspaceModelSelector');
+  await stage('open','Physically click the observed model selector','execute',()=>physical('click',{target:panel.id,x:model.x+model.width/2,y:model.y+model.height/2}));
+  const open=await until(async()=>{const r=await workspaceRead(panel),w=workspaceItem(r,'AgentWorkspaceModelSelector');return w.open&&w.popup?.visible?r:null;});await observe(id,'popup',open);const proof=customModelPopupProof(open);await capture(id,'custom-label',panel.window);await physical('key',{target:panel.id,key:'Escape'});await until(async()=>!workspaceItem(await workspaceRead(panel),'AgentWorkspaceModelSelector').open,{description:'Custom model popup closes'});return proof;
+ }catch(e){uncertain=e.status==='Unknown';throw e;}finally{if(!uncertain)await stage('restore','Restore original model options and index','cleanup',async()=>{await n('workspace-model-fixture',{target:panel.id,phase:'end'});const r=(await workspaceRead(panel)).controller;for(const key of ['modelOptions','currentModelIndex'])same(r[key],original[key],'Model fixture restores '+key);});}
+});
+await check('D-AGENT-PIPELINE-CONFIG',async()=>{
+ const id='D-AGENT-PIPELINE-CONFIG',panel=await workspace(),read=await workspaceRead(panel),pipeline=await n('workspace-pipeline-inspect',{target:panel.id});
+ if(!pipeline.available)throw new OutcomeError(pipeline.reason,'Blocked');
+ if(!pipeline.spawnSuppressed||pipeline.agentActive||pipeline.running)throw new OutcomeError('An idle launch with suppressed agent spawning is required; no selection was requested.','Blocked');
+ const models=read.controller.modelOptions,efforts=read.controller.effortOptions,luna=models.indexOf('GPT-6 Luna'),sol=models.indexOf('GPT-6.1 Sol'),low=efforts.indexOf('Low'),max=efforts.indexOf('Max');
+ if([luna,sol,low,max].some(index=>index<0))throw new OutcomeError('Selected build lacks the reviewed model/effort fixture choices; inspect its catalog before adapting.','Blocked');
+ const samples=[];for(const [stepId,kind,index,expected] of [['luna','model',luna,{model:'openai/gpt-6-luna',modelIndex:luna}],['low','effort',low,{effort:1,effortIndex:low}],['max','effort',max,{effort:5,effortIndex:max}],['sol','model',sol,{model:'openai/gpt-6.1-sol',modelIndex:sol,effort:5,effortIndex:max}]]){
+  await stage(stepId,'Request the observed '+kind+' choice through the packaged controller','execute',()=>n('workspace-request-selection',{target:panel.id,kind,index}));
+  const observed=await workspaceRead(panel),state=await n('workspace-pipeline-inspect',{target:panel.id});samples.push(pipelineSelectionProof(observed,state,expected));await observe(id,stepId,{workspace:observed,pipeline:state});
+ }
+ assert(samples.every(s=>s.pipelineIdentity===pipeline.identity),'Selections reached a different pipeline');await capture(id,'selected-configuration',panel.window);return {samples,scope:'Packaged controller requests and independent pipeline snapshot; dedicated launch suppression, no agent messages or provider execution. Reopen/provider-lock cases remain separate.'};
 });
 finish();

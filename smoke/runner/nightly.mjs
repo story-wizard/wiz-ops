@@ -64,6 +64,11 @@ export async function consolidateNightly(plan,run,observations={}){
  if(!run?.execution||!['Passed','Failed','Blocked','Cancelled','Unknown'].includes(run.execution.state))throw Error('Use a terminal automated run.');
  const p=run.execution.package;
  if(p.packageHash!==plan.identity.packageHash||p.runnerHash!==plan.identity.runnerHash||p.version!==plan.identity.build)throw Error('Run build/source identity differs from the Nightly plan.');
+ if(plan.execution){
+  const actual=run.execution.recipe?.selection;if(!actual)throw Error('Run has no frozen execution selection for this Nightly plan.');
+  const {title:plannedTitle,...plannedSelection}=plan.execution.selection,{title:runTitle,...actualSelection}=actual;
+  if(digest(plannedSelection)!==digest(actualSelection))throw Error('Run execution selection differs from the frozen Nightly plan.');
+ }
  if(observations.planHash!==undefined&&observations.planHash!==planHash||observations.runId!==undefined&&observations.runId!==run.id)throw Error('Assertion observations belong to another plan or run.');
  const supplied=observations.assertions||[];
  if(!Array.isArray(supplied)||supplied.length>5000)throw Error('Invalid assertion observations.');

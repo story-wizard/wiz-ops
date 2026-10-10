@@ -1,6 +1,6 @@
 {
   "id": "local-desktop-v1",
-  "revision": 26,
+  "revision": 27,
   "title": "Local desktop smoke",
   "target": "Instrumented local GUI with isolated Qt runtime",
   "cases": [
@@ -2401,6 +2401,166 @@
         {
           "id": "width-2",
           "title": "Restore the original 200 point cap"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-SCROLL-AWAY",
+      "title": "Appends preserve the history reader position",
+      "expected": "After detaching 120 points from the tail, exactly one appended row leaves follow disabled and the settled position unchanged; explicit resume restores the tail.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged regression using controlled local transcript/model fixtures. Qt gesture simulation is separate from physical wheel or drag delivery.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "transcript",
+          "title": "Prepare a scrollable local transcript"
+        },
+        {
+          "id": "scroll-away",
+          "title": "Simulate the source gesture away from the tail"
+        },
+        {
+          "id": "append",
+          "title": "Append while reading history"
+        },
+        {
+          "id": "resume",
+          "title": "Explicitly resume tail follow"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-GESTURE-ANCHOR",
+      "title": "An active transcript gesture retains its anchor",
+      "expected": "A taller response appended during an active tail gesture retains the same row identity and viewport offset within 0.5 points; release restores the tail.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged regression using controlled local transcript/model fixtures. Qt gesture simulation is separate from physical wheel or drag delivery.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "transcript",
+          "title": "Prepare the scrolling transcript"
+        },
+        {
+          "id": "gesture",
+          "title": "Begin the source regression tail gesture"
+        },
+        {
+          "id": "append",
+          "title": "Append during the active gesture"
+        },
+        {
+          "id": "release",
+          "title": "End the gesture and catch up"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-CUSTOM-MODEL",
+      "title": "Custom model popup fits the narrow header",
+      "expected": "A physical click opens the model popup at 280 points; the exact custom label is untruncated, the popup stays inside its header, and original model options are restored.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged regression using controlled local transcript/model fixtures. Qt gesture simulation is separate from physical wheel or drag delivery.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "fixture",
+          "title": "Install the source custom model fixture"
+        },
+        {
+          "id": "open",
+          "title": "Physically open the model popup"
+        },
+        {
+          "id": "restore",
+          "title": "Restore original model options"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-PIPELINE-CONFIG",
+      "title": "Model and effort reach the shared pipeline",
+      "stage": "Agent Workspace",
+      "expected": "The controller requests Luna, Low, Max and Sol; independent state from the same idle, spawn-suppressed pipeline matches each choice and preserves effort across model changes.",
+      "scope": "Candidate requires the versioned application-owned pipeline readback and dedicated launch suppression. No agent input, restart or provider request is submitted.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "model-5",
+          "title": "Request Luna"
+        },
+        {
+          "id": "effort-0",
+          "title": "Request Low"
+        },
+        {
+          "id": "effort-4",
+          "title": "Request Max"
+        },
+        {
+          "id": "model-4",
+          "title": "Request Sol"
         }
       ]
     }

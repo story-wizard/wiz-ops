@@ -16,6 +16,7 @@ Work from the command root: `smoke/` in a checkout or `workspace/` in a bundle. 
 | Task | Start here |
 | --- | --- |
 | Administer a managed MBP/Mini or consolidate nightly assertions | [Workers and nightly reports](docs/workers.md) |
+| Plan the combined nightly catalog and legacy functional assertions | [Workers and nightly reports](docs/workers.md) |
 | Run or compose an existing course | [Agent courses](docs/agent-courses.md) |
 | Explore Wizard with mouse, keyboard and app operations | [Computer-use guide](docs/computer-use-agent.md) |
 | Understand how the CLI, Qt adapter and physical input work together | [Harness control](docs/harness-control.md) |
@@ -319,3 +320,12 @@ verify their exit separately from Wizard cleanup. No summary removes a frozen
 assertion, capture or Unknown stop.
 
 The full course revision 10 includes unaccepted candidates for hot local-media loss/recovery, unmanaged raw document persistence and native animated split-tail timing. Read docs/functional-cohort.md for exact routes, fixtures, evidence and qualification limits. No new lead acceptance is implied.
+
+The macOS regression course revision 2 adds transcript scroll-away/gesture-anchor,
+custom-model popup and shared pipeline-state candidates. Read
+`docs/macos-regression.md` and `docs/pipeline-automation.md`. Qt gesture simulation
+and physical input are labeled separately. The pipeline candidate requires a
+supporting package and an explicitly suppressed launch; older packages retain
+Blocked before selection input. Do not enable that fixture flag for ordinary
+Oz execution. Combined nightly preparation uses `examples/nightly/selection.json`;
+retain the plan's course revisions and execution mode when preparing its run.

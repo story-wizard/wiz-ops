@@ -1,6 +1,6 @@
 # Packaged macOS regression course
 
-`macos-regression` revision 1 contains eight candidates. It leaves `smoke-full`
+`macos-regression` revision 2 contains twelve candidates. It leaves `smoke-full`
 revision 10 and the accepted-only course unchanged. Each candidate uses an
 isolated Fresh project because extra windows and transcript fixtures alter the
 state the next check would otherwise inherit.
@@ -15,6 +15,10 @@ state the next check would otherwise inherit.
 | D-AGENT-SELECTORS | Hover each selector through Qt input for 500 ms. | Real Qt Quick accessible descriptions, hovered state and tooltip visibility. |
 | D-AGENT-HEADER | Set a local active-event fixture; check active controls at 280 points, hide Cancel, then widen to 600 points. | Title room, active control geometry, events visibility and restoration of controller options. |
 | D-AGENT-IMAGE | Append a project-relative square image; size its body 400 → 120 → 400. | Actual QTextDocument image formats, rounded image resource/alpha, 200 → 120 → 200 sizing and presented image. |
+| D-AGENT-SCROLL-AWAY | Simulate a source-regression gesture away from the tail, append, then resume follow. | Held history position, disabled follow intent, exact row-count change and explicit return to the tail. |
+| D-AGENT-GESTURE-ANCHOR | Append a taller response during a source-regression tail gesture. | Same materialized row identity and viewport offset, then tail catch-up after release. |
+| D-AGENT-CUSTOM-MODEL | Physically open the custom-model popup in a 280-point panel. | Exact visible label, truncation state, popup bounds, close and original-option restoration. |
+| D-AGENT-PIPELINE-CONFIG | Request known model/effort choices during a dedicated suppressed launch. | Independent pipeline model/effort, unchanged pipeline identity and no active worker. |
 
 ## Run a subset
 
@@ -46,6 +50,17 @@ resending it. Preparation qualification and candidate execution are separate.
 - `native workspace-hover`: model/effort selectors only, using Qt-injected hover.
 - `native workspace-header`: begin/hide-cancel/end an owned local header fixture; it retains
   original options and Cancel state for restoration. The active event is synthetic.
+- `native workspace-scroll`: bounded begin/offset/end/resume phases on the owned
+  transcript. This injects the source test's Qt gesture lifecycle and is separate
+  from physical wheel/drag delivery.
+- `native workspace-inspect` with `anchorIndex`: read the materialized row's identity
+  and viewport offset. Selector observations also include bounded popup labels,
+  truncation and geometry.
+- `native workspace-model-fixture`: begin/end the exact source custom-model fixture,
+  closing its popup and restoring the original options.
+- `native workspace-pipeline-inspect` and `workspace-request-selection`: see
+  [pipeline checks](pipeline-automation.md) for the versioned application contract,
+  launch suppression and independent readback.
 - `native workspace-image-width`: bounded fixture document width and the actual
   packaged image-sizing method.
 - `native add-floating-panel`: Timeline or Preview through the owned MainWindow's
@@ -69,9 +84,13 @@ window, App/Core playback and five Agent Workspace exception sources. A related
 path is a partial overlap, not a replacement for all assertions inside a method.
 The pinned PR sources differ from the qualification nightly.
 
-The shared pipeline model/effort case is blocked until the package provides an
-independent readback and a deterministic agent-spawn suppression route. Tail
-gesture-anchor/scroll-away behavior, long custom-model popup sizing, window
-deactivation/hidden/replacement/multiscreen lifecycles and private audio/decoder
-fault-injection assertions remain separate work. A failed source quarantine
-result and its evidence retain their original verdict.
+Revision 1 remains available with its original eight members. Revision 2 adds the
+four candidates above. Their packaged qualification is separate from the earlier
+cohort's retained results. Unsupported pipeline-hook packages remain Blocked.
+The source inventory records the added partial routes without promoting them to
+acceptance.
+
+Physical transcript wheel/drag delivery, other model labels and popup sizes,
+provider-lock/reopened-panel propagation, window deactivation/hidden/replacement/
+multiscreen lifecycles and private audio/decoder fault injection remain separate
+work. Failed and blocked attempts keep their original verdicts.

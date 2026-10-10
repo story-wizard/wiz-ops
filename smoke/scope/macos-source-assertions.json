@@ -1,6 +1,6 @@
 {
   "format": "athanor-macos-source-coverage/v1",
-  "revision": 1,
+  "revision": 2,
   "reviewedAt": "2026-10-10T08:13:50.237Z",
   "course": "macos-regression",
   "sourceHeadsDifferFromQualificationPackage": true,
@@ -2026,9 +2026,17 @@
         {
           "id": "D-AGENT-TAIL",
           "definitionHash": "ef0a59d8150c2ff6c3cb3d99b8a5a19254e7d5c8954333cf43a05c5e8645e1b7"
+        },
+        {
+          "id": "D-AGENT-SCROLL-AWAY",
+          "definitionHash": "7fbceca76d7f575fe5e75a820deae3ac74750dd60630fae841b67695d9c5dd80"
+        },
+        {
+          "id": "D-AGENT-GESTURE-ANCHOR",
+          "definitionHash": "c25aaa8cd5e33170fe62d7f43e4172f77d33a31c3bd346eac9d3a262c1bd11d3"
         }
       ],
-      "remaining": "Plain-response append only; gesture anchor, scroll-away and tail-resume still need a typed no-provider gesture fixture."
+      "remaining": "Qt-injected tail, detached-reader and active-gesture anchor candidates. Physical wheel/drag delivery and broader message-content/height combinations remain separate."
     },
     {
       "source": "agent-workspace",
@@ -2047,9 +2055,14 @@
       "source": "agent-workspace",
       "symbol": "agentConfiguration_workspaceSharesSelectionAndEffortWithPipeline",
       "line": 4540,
-      "status": "Blocked",
-      "checks": [],
-      "remaining": "Blocked: packaged independent pipeline model/effort getters and agent-spawn suppression are not exported. Do not run a provider to manufacture this fixture."
+      "status": "Candidate partial",
+      "checks": [
+        {
+          "id": "D-AGENT-PIPELINE-CONFIG",
+          "definitionHash": "38fa05332d1d3e5747362ba787fc6eb72412a8678a71558f13a010720ee0f414"
+        }
+      ],
+      "remaining": "Requires the versioned pipeline readback/launch suppression patch; unsupported packages remain Blocked. Reopened panel propagation, provider lock, popup disabled-index rejection and actual worker launch payload remain separate source assertions."
     },
     {
       "source": "agent-workspace",
@@ -2060,9 +2073,13 @@
         {
           "id": "D-AGENT-HEADER",
           "definitionHash": "5c1023ac76fdb56eefca92ec0c40203f3df21654885cba659f6c6c95dc05fec8"
+        },
+        {
+          "id": "D-AGENT-CUSTOM-MODEL",
+          "definitionHash": "9115ad3e4b7b39b90cc69a94dc867397cc93707975365ef1826623a0cd642df4"
         }
       ],
-      "remaining": "Title/control geometry and responsive events are covered by a candidate. Long custom-model popup and disabled choices remain unqualified."
+      "remaining": "Narrow/wide controls and one exact custom model popup candidate. Other labels, multiple choices, platform sizes and application lifecycles remain separate."
     },
     {
       "source": "agent-workspace",

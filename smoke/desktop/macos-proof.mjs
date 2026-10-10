@@ -49,3 +49,35 @@ export function inlineImageProof(reads){
  for(const [i,read] of reads.entries()){const bodies=read.items?.filter(w=>w.name==='AgentWorkspaceMessageBody'&&w.images?.length)||[];assert(read.complete===true&&bodies.length===1&&bodies[0].images.length===1,'One complete inline image observation required');const image=bodies[0].images[0],size=i===1?120:200;assert(image.name.startsWith('oz-rounded-image:/')&&image.resourceAvailable===true&&image.cornerAlpha===0,'Rounded project-relative image resource unavailable');assert(Math.round(image.width)===size&&Math.round(image.height)===size,'Inline image cap, shrink or widen restoration is wrong');}
  return {sizes:[200,120,200],roundedCornerAlpha:0,localResource:true};
 }
+
+export function scrollAwayProof(before,samples,resumed){
+ const a=workspaceItem(before,'AgentWorkspaceMessageList');
+ assert(a.userScrollActive===false&&a.followTail===false&&a.atYEnd===false&&Number.isFinite(a.contentY),'Scroll-away fixture must be detached and settled');
+ assert(samples.length>=3,'Scroll-away needs append and settled samples');
+ for(const read of samples){const w=workspaceItem(read,'AgentWorkspaceMessageList');assert(w.count===a.count+1&&w.followTail===false&&w.userScrollActive===false&&Math.abs(w.contentY-a.contentY)<=.5,'Append reclaimed the history reader position');}
+ const end=workspaceItem(resumed,'AgentWorkspaceMessageList');assert(end.count===a.count+1&&end.followTail===true&&end.atYEnd===true,'Explicit follow did not restore the tail');
+ return {heldContentY:a.contentY,afterCount:a.count+1,resumed:true,tolerance:.5};
+}
+export function gestureAnchorProof(before,samples,resumed){
+ const a=workspaceItem(before,'AgentWorkspaceMessageList');assert(a.userScrollActive===true&&a.followTail===true&&a.anchor?.identity&&Number.isFinite(a.anchor.offset),'Owned tail gesture and materialized anchor required');
+ assert(samples.length>=3,'Gesture anchor needs append and settled samples');
+ for(const read of samples){const w=workspaceItem(read,'AgentWorkspaceMessageList');assert(w.count===a.count+1&&w.userScrollActive===true&&w.followTail===true&&w.anchor?.identity===a.anchor.identity&&w.anchor.index===a.anchor.index&&Math.abs(w.anchor.offset-a.anchor.offset)<=.5,'Append moved or replaced the held transcript anchor');}
+ const end=workspaceItem(resumed,'AgentWorkspaceMessageList');assert(end.count===a.count+1&&end.userScrollActive===false&&end.followTail===true&&end.atYEnd===true,'Gesture end did not catch up to the tail');
+ return {anchorIndex:a.anchor.index,anchorOffset:a.anchor.offset,afterCount:a.count+1,caughtUp:true,tolerance:.5};
+}
+export function customModelPopupProof(read){
+ const w=workspaceItem(read,'AgentWorkspaceModelSelector'),popup=w.popup,options=popup?.options?.filter(o=>o.visible)||[];
+ assert(w.visible&&w.enabled&&w.open===true&&popup?.visible===true,'Model popup did not open');
+ assert(read.controller.modelOptions.length===1&&read.controller.modelOptions[0]==='openai/custom-configured-model'&&read.controller.currentModelIndex===0,'Custom model fixture differs from the source case');
+ assert(options.length===1&&options[0].text===read.controller.modelOptions[0]&&options[0].truncated===false&&options[0].width>0,'Custom model label is missing or truncated');
+ assert(Number.isFinite(popup.width)&&popup.width>0&&popup.width<=w.parentWidth+.5&&w.localX+popup.x>=-.5&&w.localX+popup.x+popup.width<=w.parentWidth+.5,'Model popup exceeds its header bounds');
+ return {label:options[0].text,popupWidth:popup.width,parentWidth:w.parentWidth,truncated:false};
+}
+
+export function pipelineSelectionProof(read,pipeline,{model,modelIndex,effort,effortIndex}){
+ assert(pipeline.available===true&&pipeline.version===1&&pipeline.spawnSuppressed===true&&pipeline.agentActive===false&&pipeline.running===false,'Idle independently suppressed pipeline required');
+ assert(typeof pipeline.identity==='string'&&pipeline.identity.length>0&&read.complete===true,'Complete pipeline and workspace identities required');
+ if(model!==undefined)assert(pipeline.model===model&&read.controller.currentModelIndex===modelIndex,'UI model request did not reach the pipeline');
+ if(effort!==undefined)assert(pipeline.effort===effort&&read.controller.currentEffortIndex===effortIndex,'UI effort request did not reach the pipeline');
+ return {pipelineIdentity:pipeline.identity,model:pipeline.model,effort:pipeline.effort,spawnSuppressed:true};
+}

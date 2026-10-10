@@ -75,7 +75,7 @@ Before execution, retain the selected package hash and release changes, then:
 node scripts/nightly.mjs plan --build VERSION --package-hash HASH --out "/external/Athanor/nightly/plan.json" --server URL
 ```
 
-Use `--cadence weekly` for a weekly plan and report. Both cadences account for the same maintained inventories. Both freeze the existing grouped `smoke-full` selection in `execution.selection`,
+Use `--cadence weekly` for a weekly plan and report. Both cadences account for the same maintained inventories. Both freeze the combined `smoke-full` and `macos-regression` selection in `execution.selection`,
 including prerequisite closure, course revision and definition hashes. The cadence
 label does not change a schedule or add longer tests. `execution.state` remains
 `PLANNING_ONLY` until a separate authorized preparation/run.
@@ -91,11 +91,25 @@ rejects local course definitions that differ from the executing service catalog.
 
 The plan also freezes every executable catalog definition and the separately listed candidates without an execution binding. The combined report shows all of them, including checks not selected for this run. A related catalog result remains separate from each functional assertion.
 
+The default combined selection groups compatible baseline checks and isolates each
+macOS fixture. Each executable check runs once. Its two contributing course
+revisions and definition hashes are retained. Use `--courses smoke-full` for the
+baseline alone, or `--courses automated-full` for accepted checks only. The option
+accepts distinct maintained course IDs; user courses still use the ordinary
+course CLI.
+
+`examples/nightly/selection.json` is the matching preparation input. Pass it to
+`smoke.mjs prepare --app APP --file FILE --server URL`. Keep its course IDs and
+execution mode aligned with the nightly plan. A consolidated report rejects a run
+with a different frozen selection, even on the same build. Display titles may
+change. The complete legacy assertion list remains in the report until each
+assertion has its own retained evidence.
+
 Use the frozen selection to prepare the applicable maintained course through
-normal preparation. For this baseline:
+normal preparation. For the default combined course:
 
 ```sh
-node scripts/smoke.mjs prepare --app "/selected/Wizard.app" --course smoke-full --desktop-mode grouped --server URL
+node scripts/smoke.mjs prepare --app "/selected/Wizard.app" --file examples/nightly/selection.json --server URL
 ```
 
 Compare the returned package/source, course revision and effective check IDs with
@@ -179,7 +193,7 @@ Supply those drafts to `nightly.mjs plan --proposals FILE`. The file uses `athan
 
 The plan retains proposals and their current check hashes. Reports show them for review. Proposals cannot replace a maintained case, change acceptance or start a test. After implementation and independent qualification, the lead reviews the definition for addition to the maintained suite or canonical catalog. Changing a maintained case invalidates its old mapping hints.
 
-For ordinary nightly testing, use the grouped `smoke-full` course and then execute the remaining eligible functional assertions from the same frozen plan. Weekly testing uses the same baseline and can add longer or broader fixture passes once those inputs and checks are qualified. Keep unavailable media sets, the deferred idle probe and unsupported features visible. One executing worker and one owned GUI session per Mac remain the default.
+For ordinary nightly testing, use the combined selection above and then execute the remaining eligible functional assertions from the same frozen plan. Weekly testing uses the same baseline and can add longer or broader fixture passes once those inputs and checks are qualified. Keep unavailable media sets, the deferred idle probe and unsupported features visible. One executing worker and one owned GUI session per Mac remain the default.
 
 ## Work through the assertion map
 

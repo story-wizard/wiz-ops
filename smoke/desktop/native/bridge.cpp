@@ -95,7 +95,7 @@ class SmokeBridge : public QObject {
         output.write(QJsonDocument(value).toJson());output.commit();
     }
     static QJsonObject capabilities(){
-        return {{"protocol",1},{"version",11},{"operations",QJsonArray{"capabilities","inspect","add-floating-panel","workspace-inspect","workspace-append","workspace-hover","workspace-header","workspace-image-width","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
+        return {{"protocol",1},{"version",12},{"operations",QJsonArray{"capabilities","inspect","add-floating-panel","workspace-inspect","workspace-append","workspace-hover","workspace-scroll","workspace-pipeline-inspect","workspace-request-selection","workspace-model-fixture","workspace-header","workspace-image-width","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
                 {"buttonClickGeometry",true},{"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
                 {"timelinePoint",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget7timeToXEd")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11trackHeightEi"))},
                 {"limits",QJsonObject{{"modelRows",64},{"modelPageRows",64},{"timelineClipIds",1024},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
@@ -261,9 +261,13 @@ class SmokeBridge : public QObject {
         }
         if(op.startsWith("workspace-")){
             WorkspaceProbe probe(widget);
-            if(op=="workspace-inspect")return probe.inspect(widget);
+            if(op=="workspace-inspect")return probe.inspect(widget,request);
+            if(op=="workspace-pipeline-inspect")return probe.pipelineState();
             if(op=="workspace-append")probe.append(widget,request);
             else if(op=="workspace-hover")probe.hover(request);
+            else if(op=="workspace-scroll")probe.scroll(request);
+            else if(op=="workspace-request-selection")probe.requestSelection(request);
+            else if(op=="workspace-model-fixture")probe.modelFixture(request);
             else if(op=="workspace-header")probe.header(request);
             else if(op=="workspace-image-width")probe.imageWidth(request);
             else throw QString("Unsupported workspace operation");

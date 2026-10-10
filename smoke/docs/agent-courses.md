@@ -443,3 +443,15 @@ Desktop group receipts record `startedAt`, `preparedAt`, `finishedAt` and
 package/fixture preparation and cleanup. Keep these separate from action timings
 and model reasoning time when comparing performance. Profiling collectors remain
 future work.
+
+## Combined nightly qualification
+
+The nightly planner now defaults to `smoke-full` plus `macos-regression`.
+Use `examples/nightly/selection.json` to prepare that same selection. Compatible
+checks stay grouped; the macOS driver keeps each candidate in an isolated app
+and project. The ordinary full and accepted-only courses keep their membership.
+
+Use `nightly.mjs plan --courses smoke-full` to retain only the baseline or
+`--courses automated-full` for accepted checks. The combined report keeps the
+legacy functional assertions and release-note proposals alongside catalog
+results. A catalog pass alone leaves related legacy assertions unexecuted.

@@ -4,18 +4,19 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync} from 'node:fs';
 import {mkdtemp,readFile,writeFile,rm} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
-import {macosRegressionCourse,fullSmokeCourse,resolveSelection,selectedRecipe,validateRecipe,initializeCourses,checkRegistry} from '../runner/catalog.mjs';
+import {macosRegressionCourse,fullSmokeCourse,resolveSelection,selectedRecipe,validateRecipe,initializeCourses,checkRegistry,getCourse} from '../runner/catalog.mjs';
 import {desktopGroups} from '../desktop/run.mjs';
 import {agentContext} from '../test-details.mjs';
 import {validateNativeParams,validateToolParams} from '../desktop/agent-proof.mjs';
 import {validatePhysicalInput} from '../desktop/physical-input.mjs';
-import {nativeOrderProof,focusedTimelineProof,focusedPreviewProof,tailFollowProof,selectorProof,headerProof,inlineImageProof} from '../desktop/macos-proof.mjs';
+import {nativeOrderProof,focusedTimelineProof,focusedPreviewProof,tailFollowProof,selectorProof,headerProof,inlineImageProof,scrollAwayProof,gestureAnchorProof,customModelPopupProof,pipelineSelectionProof} from '../desktop/macos-proof.mjs';
 
 test('macOS candidates have explicit isolated selection, valid context and drivers without entering the default course',()=>{
  const db=new DatabaseSync(':memory:');initializeCourses(db);
- try{const course=macosRegressionCourse(),map=JSON.parse(readFileSync(new URL('../desktop/check-map.json',import.meta.url)));assert.equal(course.qualificationChecks.length,8);assert.deepEqual(map['check-macos-regression.mjs'],course.qualificationChecks);for(const mode of ['grouped','isolated']){const groups=desktopGroups(course.qualificationChecks,map,mode);assert.equal(groups.length,8);assert(groups.every(g=>g.ids.length===1&&g.recoverUnstarted===false));}
+ try{const course=macosRegressionCourse(),map=JSON.parse(readFileSync(new URL('../desktop/check-map.json',import.meta.url)));assert.equal(course.qualificationChecks.length,12);assert.deepEqual(map['check-macos-regression.mjs'],course.qualificationChecks);for(const mode of ['grouped','isolated']){const groups=desktopGroups(course.qualificationChecks,map,mode);assert.equal(groups.length,12);assert(groups.every(g=>g.ids.length===1&&g.recoverUnstarted===false));}
   validateRecipe(selectedRecipe(resolveSelection(db,{courseIds:['smoke-full',course.id]})));
-  const selected=resolveSelection(db,{courseIds:[course.id]});assert.equal(selected.desktopMode,'isolated');assert.equal(selected.effectiveIds.length,10);validateRecipe(selectedRecipe(selected));
+  assert.equal(getCourse(db,'macos-regression',1).qualificationChecks.length,8);assert.throws(()=>getCourse(db,'macos-regression',3),/revision/);
+  const selected=resolveSelection(db,{courseIds:[course.id]});assert.equal(selected.desktopMode,'isolated');assert.equal(selected.effectiveIds.length,14);validateRecipe(selectedRecipe(selected));
   for(const id of course.qualificationChecks){assert(!fullSmokeCourse().qualificationChecks.includes(id));const check=checkRegistry().find(c=>c.id===id);assert.equal(check.accepted,false);assert.throws(()=>resolveSelection(db,{checkIds:[id]}),/not accepted/);const context=agentContext(check);assert.deepEqual(context.selection.courseIds,[course.id]);const subset=resolveSelection(db,context.selection);validateRecipe(selectedRecipe(subset));assert.equal(subset.requestedIds.length,1);}
   assert.throws(()=>validateRecipe(selectedRecipe({...selected,qualificationIds:[]})),/qualification/);
  }finally{db.close();}
@@ -67,8 +68,39 @@ test('the agent toolkit forwards native-order click intent and exposes the owned
 
 test('source coverage keeps pinned method inventories and candidate definition identities separate from acceptance',()=>{
  const inventory=JSON.parse(readFileSync(new URL('../scope/macos-source-assertions.json',import.meta.url))),registry=checkRegistry();assert.equal(inventory.sourceHeadsDifferFromQualificationPackage,true);
- assert.equal(inventory.sources.length,4);assert.equal(inventory.rows.filter(r=>r.source==='agent-workspace').length,5);assert(inventory.rows.some(r=>r.symbol==='agentConfiguration_workspaceSharesSelectionAndEffortWithPipeline'&&r.status==='Blocked'&&r.checks.length===0));
+ assert.equal(inventory.sources.length,4);assert.equal(inventory.rows.filter(r=>r.source==='agent-workspace').length,5);assert(inventory.rows.some(r=>r.symbol==='agentConfiguration_workspaceSharesSelectionAndEffortWithPipeline'&&r.status==='Candidate partial'&&r.checks[0].id==='D-AGENT-PIPELINE-CONFIG'));
  for(const source of inventory.sources){assert(/^[a-f0-9]{40}$/.test(source.revision));assert(/^[a-f0-9]{64}$/.test(source.sha256));}
  for(const row of inventory.rows){assert(inventory.sources.some(s=>s.id===row.source));assert(Number.isInteger(row.line)&&row.line>0);assert.notEqual(row.status,'Full');}
  for(const ref of [...inventory.rows.flatMap(r=>r.checks||[]),...inventory.sources.flatMap(s=>s.relatedChecks||[])])assert.equal(ref.definitionHash,registry.find(c=>c.id===ref.id)?.definitionHash,'Changed candidate needs a reviewed coverage update');
+});
+
+test('detached transcript observation catches auto-follow, bounce and missing appended rows',()=>{
+ const list={name:'AgentWorkspaceMessageList',count:20,contentY:520,followTail:false,atYEnd:false,userScrollActive:false},before=observation([list]),after=observation([{...list,count:21}]),resumed=observation([{...list,count:21,contentY:640,followTail:true,atYEnd:true}]);
+ assert.doesNotThrow(()=>scrollAwayProof(before,[after,after,after],resumed));
+ for(const change of [{contentY:640},{followTail:true},{count:22},{userScrollActive:true}])assert.throws(()=>scrollAwayProof(before,[after,observation([{...after.items[0],...change}]),after],resumed));
+ assert.throws(()=>scrollAwayProof(before,[after,after,after],after));
+});
+test('gesture observation catches replacing or moving the old row even when the list reports the tail',()=>{
+ const list={name:'AgentWorkspaceMessageList',count:20,followTail:true,atYEnd:true,userScrollActive:true,anchor:{index:19,identity:'retained-row',offset:200}},before=observation([list]),after=observation([{...list,count:21}]),resumed=observation([{...list,count:21,userScrollActive:false}]);
+ assert.doesNotThrow(()=>gestureAnchorProof(before,[after,after,after],resumed));
+ for(const change of [{identity:'new-row'},{offset:210},{index:20}]){const bad=structuredClone(after);Object.assign(bad.items[0].anchor,change);assert.throws(()=>gestureAnchorProof(before,[after,bad,after],resumed));}
+ assert.throws(()=>gestureAnchorProof(before,[after,after,after],after));
+});
+test('custom-model popup needs the actual untruncated option inside observed bounds',()=>{
+ const read={...observation([{name:'AgentWorkspaceModelSelector',visible:true,enabled:true,open:true,parentWidth:252,localX:80,popup:{visible:true,x:-80,width:252,options:[{text:'openai/custom-configured-model',visible:true,truncated:false,width:220}]}}]),controller:{modelOptions:['openai/custom-configured-model'],currentModelIndex:0}};
+ assert.doesNotThrow(()=>customModelPopupProof(read));
+ for(const mutate of [r=>r.items[0].popup.options[0].truncated=true,r=>r.items[0].popup.width=280,r=>r.items[0].popup.x=0,r=>r.items[0].popup.options=[],r=>r.items[0].popup.options[0].text='wrong',r=>r.items[0].open=false]){const bad=structuredClone(read);mutate(bad);assert.throws(()=>customModelPopupProof(bad));}
+});
+test('transcript gesture and anchor parameters reject unbounded or mixed fixture requests',()=>{
+ for(const p of [{target:'panel',phase:'begin'},{target:'panel',phase:'offset',distance:-120},{target:'panel',phase:'end'},{target:'panel',phase:'resume'}])assert.doesNotThrow(()=>validateNativeParams('workspace-scroll',p));
+ for(const p of [{target:'panel',phase:'offset',distance:0},{target:'panel',phase:'offset',distance:Infinity},{target:'panel',phase:'offset',distance:241},{target:'panel',phase:'begin',distance:1},{target:'panel',phase:'bogus'}])assert.throws(()=>validateNativeParams('workspace-scroll',p));
+ assert.doesNotThrow(()=>validateNativeParams('workspace-inspect',{target:'panel',anchorIndex:19}));for(const anchorIndex of [-1,256,NaN,1.5])assert.throws(()=>validateNativeParams('workspace-inspect',{target:'panel',anchorIndex}));
+ assert.doesNotThrow(()=>validateNativeParams('workspace-model-fixture',{target:'panel',phase:'begin'}));assert.throws(()=>validateNativeParams('workspace-model-fixture',{target:'panel',phase:'begin',model:'user-supplied'}));
+});
+test('selected model and effort are verified in the independent pipeline, not only the picker',()=>{
+ const read={complete:true,controller:{currentModelIndex:5,currentEffortIndex:4}},pipeline={available:true,version:1,identity:'owned-pipeline',model:'openai/gpt-6-luna',effort:5,spawnSuppressed:true,agentActive:false,running:false},expected={model:'openai/gpt-6-luna',modelIndex:5,effort:5,effortIndex:4};
+ assert.doesNotThrow(()=>pipelineSelectionProof(read,pipeline,expected));
+ for(const changes of [{model:'openai/gpt-6.1-sol'},{effort:1},{spawnSuppressed:false},{agentActive:true},{running:true},{identity:''},{available:false}])assert.throws(()=>pipelineSelectionProof(read,{...pipeline,...changes},expected));
+ assert.throws(()=>pipelineSelectionProof({...read,controller:{...read.controller,currentEffortIndex:0}},pipeline,expected));
+ assert.doesNotThrow(()=>validateNativeParams('workspace-pipeline-inspect',{target:'panel'}));assert.doesNotThrow(()=>validateNativeParams('workspace-request-selection',{target:'panel',kind:'model',index:5}));for(const index of [-1,32,NaN,1.1])assert.throws(()=>validateNativeParams('workspace-request-selection',{target:'panel',kind:'model',index}));
 });

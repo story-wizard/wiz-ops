@@ -10,14 +10,16 @@ import {client} from './smoke.mjs';
 async function input(file){if((await stat(file)).size>1024*1024)throw Error('Nightly input exceeds 1 MiB.');return JSON.parse(await readFile(file,'utf8'));}
 export async function main(args){
  const command=args.shift(),flags={};for(let i=0;i<args.length;i++){const key=args[i],value=args[++i];if(!key?.startsWith('--')||Object.hasOwn(flags,key)||!value||value.startsWith('--'))throw Error('Invalid Nightly option.');flags[key]=value;}
- const allowed={plan:['--suite','--mapping','--build','--package-hash','--changes','--proposals','--cadence','--out','--server'],report:['--plan','--run','--observations','--out','--server']};
- if(!allowed[command]||Object.keys(flags).some(k=>!allowed[command].includes(k)))throw Error('Usage: nightly plan --build VERSION --package-hash HASH --out FILE | report --plan FILE --run RUN_ID --out NEW_DIR [--observations FILE], with --server URL. See docs/workers.md.');
+ const allowed={plan:['--courses','--suite','--mapping','--build','--package-hash','--changes','--proposals','--cadence','--out','--server'],report:['--plan','--run','--observations','--out','--server']};
+ if(!allowed[command]||Object.keys(flags).some(k=>!allowed[command].includes(k)))throw Error('Usage: nightly plan --build VERSION --package-hash HASH --out FILE [--courses IDS] | report --plan FILE --run RUN_ID --out NEW_DIR [--observations FILE], with --server URL. See docs/workers.md.');
  const required=k=>{if(!flags[k])throw Error('Required option: '+k);return flags[k];},call=client(required('--server')),output=externalPath(path.resolve(required('--out')));
  if(command==='plan'){
   const suite=await input(flags['--suite']||path.join(ROOT,'examples/nightly/suite.json')),mappings=await input(flags['--mapping']||path.join(ROOT,'examples/nightly/mapping.json'));
   const [catalog,worker]=await Promise.all([call('/api/checks'),call('/api/worker')]);
   if(worker.sourceMatches!==true)throw Error('The service source changed; restart the qualified version before planning.');
-  const selection=resolveSelection({},{courseIds:['smoke-full']}),local=new Map(checkRegistry().map(c=>[c.id,c.definitionHash])),remote=new Map(catalog.checks.map(c=>[c.id,c.definitionHash]));
+  const courseIds=flags['--courses']?flags['--courses'].split(',').map(s=>s.trim()):['smoke-full','macos-regression'];
+  if(!courseIds.length||new Set(courseIds).size!==courseIds.length||courseIds.some(id=>!['smoke-full','macos-regression','smoke-isolated','automated-full','packaged-full'].includes(id)))throw Error('Choose distinct maintained course IDs for --courses.');
+  const selection=resolveSelection({},{courseIds,desktopMode:courseIds.includes('smoke-isolated')?'isolated':'grouped'}),local=new Map(checkRegistry().map(c=>[c.id,c.definitionHash])),remote=new Map(catalog.checks.map(c=>[c.id,c.definitionHash]));
   if(selection.effectiveIds.some(id=>remote.get(id)!==local.get(id)))throw Error('Local course definitions differ from the service catalog; plan from its matching checkout.');
   const plan=createNightlyPlan(suite,[...catalog.checks,...(catalog.candidates||[])],{build:required('--build'),packageHash:required('--package-hash'),runnerHash:worker.sourceHash,dataDir:worker.dataDir,releaseChanges:flags['--changes']?await input(flags['--changes']):[]},mappings,{cadence:flags['--cadence']||'nightly',proposals:flags['--proposals']?await input(flags['--proposals']):undefined,executionSelection:selection});
   await mkdir(path.dirname(output),{recursive:true});await writeFile(output,JSON.stringify(plan,null,2)+'\n',{flag:'wx',mode:0o600});

@@ -48,7 +48,17 @@ test('nightly CLI freezes the actual selection and rejects a different service d
    const module=root+'/'+(drift?'drift':'current')+'.mjs',rewritten=source.replace("import {client} from './smoke.mjs';",`const client=()=>async url=>{if(url==='/api/checks')return ${JSON.stringify({checks:remote,candidates:[]})};if(url==='/api/worker')return ${JSON.stringify({sourceMatches:true,sourceHash:identity.runnerHash,dataDir:root})};throw Error('Unexpected request: '+url);};`).replace(/from '(\.\.?\/[^']+)'/g,(_m,p)=>"from '"+new URL(p,new URL('../scripts/nightly.mjs',import.meta.url)).href+"'");
    await writeFile(module,rewritten);const {main}=await import(pathToFileURL(module).href),args=['plan','--build',identity.build,'--package-hash',identity.packageHash,'--out',out,'--server','http://127.0.0.1:1'];
    if(drift){await assert.rejects(()=>main(args),/differ from the service/);assert.equal(await lstat(out).catch(()=>null),null);}
-   else{const result=await main(args),plan=JSON.parse(await readFile(out));assert.equal(result.executionStarted,false);assert.equal(result.selectedCheckCount,plan.execution.selection.effectiveIds.length);assert.deepEqual(result.assertionSupport,{related:68,gap:93});assert.equal(plan.execution.definitions.find(c=>c.id==='A-CLI-01').definitionHash,checks.find(c=>c.id==='A-CLI-01').definitionHash);}
+   else{
+    const result=await main([...args]),plan=JSON.parse(await readFile(out));assert.equal(result.executionStarted,false);assert.equal(result.selectedCheckCount,192);assert.equal(result.selectedCheckCount,plan.execution.selection.effectiveIds.length);assert.deepEqual(result.assertionSupport,{related:68,gap:93});assert.equal(plan.execution.definitions.find(c=>c.id==='A-CLI-01').definitionHash,checks.find(c=>c.id==='A-CLI-01').definitionHash);
+    for(const [course,count,mode] of [['automated-full',137,'grouped'],['smoke-full',180,'grouped'],['smoke-isolated',180,'isolated']]){
+     const destination=root+'/'+course+'.json',request=[...args];request[request.indexOf('--out')+1]=destination;
+     assert.equal((await main([...request,'--courses',course])).selectedCheckCount,count);assert.equal(JSON.parse(await readFile(destination)).execution.selection.desktopMode,mode);
+    }
+    for(const course of ['smoke-full,smoke-full','smoke-full,','UNKNOWN']){
+     const destination=root+'/invalid.json',request=[...args];request[request.indexOf('--out')+1]=destination;
+     await assert.rejects(()=>main([...request,'--courses',course]),/distinct maintained/);assert.equal(await lstat(destination).catch(()=>null),null);
+    }
+   }
   }
  }finally{await rm(root,{recursive:true,force:true});}
 });
@@ -119,5 +129,27 @@ export async function mkdir(p,options){const r=await create(p,options);if(p===${
   const report=JSON.parse(await readFile(output+'/report.json')),copy=output+'/'+report.cases[0].assertions[0].evidence[0].relativePath;
   assert.equal((await lstat(copy)).isFile(),true,'A completed report must contain file bytes, not a source link');
   await writeFile(root+'/retained.txt','later source edit');assert.equal(await readFile(copy,'utf8'),'retained bytes');
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('combined nightly selection runs each definition once and isolates macOS fixtures without isolating the whole course',async()=>{
+ const {desktopGroups}=await import('../desktop/run.mjs'),{macosRegressionCourse,fullSmokeCourse,selectedRecipe,validateRecipe}=await import('../runner/catalog.mjs');
+ const input=JSON.parse(await readFile(new URL('../examples/nightly/selection.json',import.meta.url))),selection=resolveSelection({},input),map=JSON.parse(await readFile(new URL('../desktop/check-map.json',import.meta.url))),groups=desktopGroups(selection.effectiveIds.filter(id=>checkRegistry().find(c=>c.id===id)?.target==='desktop'),map,selection.desktopMode);
+ const baseline=resolveSelection({},{courseIds:['smoke-full']});assert.equal(selection.effectiveIds.length,baseline.effectiveIds.length+macosRegressionCourse().qualificationChecks.length);assert.equal(new Set(selection.effectiveIds).size,selection.effectiveIds.length);assert.equal(selection.desktopMode,'grouped');validateRecipe(selectedRecipe(selection));
+ assert.deepEqual(selection.courseRevisions,[{id:'smoke-full',revision:fullSmokeCourse().revision},{id:'macos-regression',revision:2}]);
+ for(const id of macosRegressionCourse().qualificationChecks){const group=groups.find(g=>g.ids.includes(id));assert.deepEqual(group.ids,[id]);assert.equal(group.recoverUnstarted,false);}
+ assert(groups.some(g=>g.ids.length>1),'Ordinary compatible checks should retain grouped execution');
+ const original=JSON.parse(await readFile(new URL('../examples/nightly/suite.json',import.meta.url))),mappings=JSON.parse(await readFile(new URL('../examples/nightly/mapping.json',import.meta.url))),plan=createNightlyPlan(original,checkRegistry(),{...identity,dataDir:'/private/tmp/athanor-combined-plan'},mappings,{executionSelection:selection});
+ assert.deepEqual(plan.cases.map(c=>c.id),original.cases.map(c=>c.id));assert(plan.cases.every(c=>c.assertions.every(a=>a.status==='NOT_RUN')));assert.equal(plan.execution.state,'PLANNING_ONLY');
+});
+
+test('combined reports reject a different course on the same build but allow a display-title change',async()=>{
+ const root=await mkdtemp('/private/tmp/athanor-combined-report-binding-');
+ try{
+  const selected=resolveSelection({},{courseIds:['smoke-full','macos-regression'],desktopMode:'grouped'}),baseline=resolveSelection({},{courseIds:['smoke-full']}),plan=createNightlyPlan(suite,checkRegistry(),{...identity,dataDir:root},{},{executionSelection:selected});
+  const actual={...run(),execution:{...run().execution,recipe:{selection:selected}}};assert.equal((await consolidateNightly(plan,actual)).runId,actual.id);
+  const renamed={...actual,execution:{...actual.execution,recipe:{selection:{...selected,title:'Friday release'}}}};assert.equal((await consolidateNightly(plan,renamed)).runId,actual.id);
+  for(const selection of [baseline,{...selected,desktopMode:'isolated'},{...selected,courseRevisions:[{id:'smoke-full',revision:10}]}])await assert.rejects(()=>consolidateNightly(plan,{...actual,execution:{...actual.execution,recipe:{selection}}}),/selection/i);
+  await assert.rejects(()=>consolidateNightly(plan,run()),/selection/i);
  }finally{await rm(root,{recursive:true,force:true});}
 });

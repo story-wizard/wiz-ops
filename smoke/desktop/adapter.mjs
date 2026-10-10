@@ -17,7 +17,7 @@ import {currentAction,withAgentAction,withAdapterAction,validateApplicationParam
 
 export const agentReadOperations=['project.get_name','timeline.inspect','playback.query_transport','graph.get_clip_graph','media.list_assets','media.resolve_path','media.probe','spellbook.inspect','spellbook.list','generate.inspect','generate.status'];
 // Observations and ownership-checked clipboard bookkeeping do not edit the test project.
-export const agentReadNative=['capabilities','inspect','workspace-inspect','model-page','model-value','timeline-clip-rect','timeline-point','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview','clipboard-save','clipboard-mark','clipboard-restore'];
+export const agentReadNative=['capabilities','inspect','workspace-inspect','workspace-pipeline-inspect','model-page','model-value','timeline-clip-rect','timeline-point','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview','clipboard-save','clipboard-mark','clipboard-restore'];
 export async function markAgentMutation(file,session){
   if(!session.agentTracking)return;
   if(currentAction(file)?.purpose==='shutdown')return;
@@ -156,6 +156,7 @@ export async function launchDesktop(session,{foreground=true,missingMediaFixture
   env.WIZ_SEARCH_WORKER=path.join(session.cliApp,'Contents/Resources/python',process.arch==='arm64'?'arm64':'x86_64','bin/wiz-search-worker');
   Object.assign(env,runtimeEnvironment(session.plan.runtime));
   const stdout=await open(path.join(session.root,`gui-${generation}.stdout.log`),'a'),stderr=await open(path.join(session.root,`gui-${generation}.stderr.log`),'a');
+  if(session.selectedChecks?.includes('D-AGENT-PIPELINE-CONFIG'))env.WIZARD_AUTOMATION_AGENT_FIXTURE='1';
   const child=spawn(session.executable,['-style','Basic'],{env,cwd:session.root,stdio:['ignore',stdout.fd,stderr.fd]});await stdout.close();await stderr.close();
   let spawnError;child.on('error',e=>{spawnError=e;});const closed=new Promise(resolve=>child.once('close',resolve));
   try{
