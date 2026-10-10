@@ -28,7 +28,7 @@ Work from the command root: `smoke/` in a checkout or `workspace/` in a bundle. 
 | Inventory a supplied .wiz project and plan representative-media checks | [Golden Project intake](docs/golden-project-intake.md) |
 | Repair build compatibility or edit a test | [Build repair](docs/build-repair.md), then [test authoring](docs/test-evidence.md) |
 
-Use `setup`, `list` and `courses` to discover readiness, current definitions and membership. Accepted definitions, runnable candidates, exploratory definitions and original Logan checklist rows are different inventories. Never substitute a documentation count for the catalog.
+Use `setup`, `list` and `courses` to discover readiness, current definitions and membership. Nightly/weekly plans freeze the grouped baseline selection and assertion-level support map. Related checks remain partial overlaps; execute `support.remaining` independently and review changed definition hashes before reuse. Accepted definitions, runnable candidates, exploratory definitions and original Logan checklist rows are different inventories. Never substitute a documentation count for the catalog.
 
 ## Dashboard design
 

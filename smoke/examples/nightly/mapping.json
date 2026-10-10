@@ -6,27 +6,131 @@
       "D-CLI-01",
       "D-PROJECT-NEW"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "CORE-01:1",
+        "checks": [
+          {
+            "id": "A-CLI-01",
+            "definitionHash": "58999a3f118cb8638f1c0e4edb93c41c4bd59c730509b4fa6cc8fd380aa52eeb"
+          },
+          {
+            "id": "D-CLI-01",
+            "definitionHash": "5ca5c89919c35eab9da4ffed9e0ee43b44a0f8154b4ea3493f1a0cccb8e3edfb"
+          }
+        ],
+        "remaining": [
+          "Updater installation path and exact nightly version still need observation; endpoint ownership and an empty project do not exercise Updater."
+        ]
+      },
+      {
+        "id": "CORE-01:2",
+        "checks": [
+          {
+            "id": "D-PROJECT-NEW",
+            "definitionHash": "767827fafdf2f110df661c017590dbffc63025240d2a7be8873d89b6daaef740"
+          }
+        ],
+        "remaining": [
+          "Updater installation path and exact nightly version still need observation; endpoint ownership and an empty project do not exercise Updater."
+        ]
+      }
+    ]
   },
   "CORE-02": {
     "specHash": "953b9f7e28dbfdcf8afec76685a67d08318965052f96aeffeb268b94e6d2019e",
     "checkIds": [
-      "IN-01",
       "D-IMPORT-DIALOG",
       "P-TL-BIN-DROP",
       "D-PB-01",
       "D-PREVIEW-SCRUB"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "CORE-02:1",
+        "checks": [
+          {
+            "id": "D-IMPORT-DIALOG",
+            "definitionHash": "50028bad4c9e94d16776d9945b92db48792c4ebbf0385ecc21f5aa27732b019d"
+          }
+        ],
+        "remaining": [
+          "Use the specified eight-second 24-fps linked source and context-menu import. Confirm both streams and actual early/late preview frames in this case."
+        ]
+      },
+      {
+        "id": "CORE-02:2",
+        "checks": [
+          {
+            "id": "P-TL-BIN-DROP",
+            "definitionHash": "5ae3207c554c34a368aa6cc0f6f101c92d9c007f6b9d0f714d9f578b7a9008f0"
+          }
+        ],
+        "remaining": [
+          "Use the specified eight-second 24-fps linked source and context-menu import. Confirm both streams and actual early/late preview frames in this case."
+        ]
+      },
+      {
+        "id": "CORE-02:3",
+        "checks": [
+          {
+            "id": "D-PB-01",
+            "definitionHash": "03295012be8e28dade498d96bcb92c92c9ecde79020cb3e90d952ed7a973f21f"
+          },
+          {
+            "id": "D-PREVIEW-SCRUB",
+            "definitionHash": "3e2977a9ddbed606f9022d74b291fec2041a84d498e14a6300936e3f590fc503"
+          }
+        ],
+        "remaining": [
+          "Use the specified eight-second 24-fps linked source and context-menu import. Confirm both streams and actual early/late preview frames in this case."
+        ]
+      }
+    ]
   },
   "CORE-03": {
     "specHash": "290fa1023480b03568553611502f7659fa82e9897572294f36a72af7e27aa192",
     "checkIds": [
-      "D-LP-02-SAVE",
       "D-LP-02-RELAUNCH",
       "A-LP-02"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "CORE-03:1",
+        "checks": [
+          {
+            "id": "D-LP-02-RELAUNCH",
+            "definitionHash": "aaf232ccebb76c45e5ab1aecd7bf1441cc745d1afd4551c9b69c7441d06cf626"
+          },
+          {
+            "id": "A-LP-02",
+            "definitionHash": "48806f91f83ea599df51ad409f23c84853acb2a9683ead9bc0721bf3704b420c"
+          }
+        ],
+        "remaining": [
+          "Reopen this exact functional fixture and compare all saved media, settings and timeline identities, including absence of missing-media errors."
+        ]
+      },
+      {
+        "id": "CORE-03:2",
+        "checks": [
+          {
+            "id": "D-LP-02-RELAUNCH",
+            "definitionHash": "aaf232ccebb76c45e5ab1aecd7bf1441cc745d1afd4551c9b69c7441d06cf626"
+          },
+          {
+            "id": "A-LP-02",
+            "definitionHash": "48806f91f83ea599df51ad409f23c84853acb2a9683ead9bc0721bf3704b420c"
+          }
+        ],
+        "remaining": [
+          "Reopen this exact functional fixture and compare all saved media, settings and timeline identities, including absence of missing-media errors."
+        ]
+      }
+    ]
   },
   "CORE-04": {
     "specHash": "8a9f208fd53063db962807600b8b79dca1e7c73aeafc5317480367952ea4ce4f",
@@ -34,7 +138,37 @@
       "D-EXPORT-01",
       "A-EX-03"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "CORE-04:1",
+        "checks": [
+          {
+            "id": "D-EXPORT-01",
+            "definitionHash": "d3b64bc9b4707f06e6a164d86e962bca489118012fb8a9d961b8961ec14cfd25"
+          }
+        ],
+        "remaining": [
+          "Current movie check uses two seconds. Execute the requested full eight-second range and independently decode audio and beginning/middle/end frames."
+        ]
+      },
+      {
+        "id": "CORE-04:2",
+        "checks": [
+          {
+            "id": "D-EXPORT-01",
+            "definitionHash": "d3b64bc9b4707f06e6a164d86e962bca489118012fb8a9d961b8961ec14cfd25"
+          },
+          {
+            "id": "A-EX-03",
+            "definitionHash": "6167dbfde295be083d242a49ef0383d642c4de24023dbd338074da015c503276"
+          }
+        ],
+        "remaining": [
+          "Current movie check uses two seconds. Execute the requested full eight-second range and independently decode audio and beginning/middle/end frames."
+        ]
+      }
+    ]
   },
   "LOOP-01": {
     "specHash": "d7a56b9fcb5b75abf9a590cc0e71db4a9e159439cb44e1131dc2408935fccce0",
@@ -42,58 +176,236 @@
       "D-PLAYBACK-LOOP",
       "D-PLAYBACK-INOUT"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "LOOP-01:1",
+        "checks": [
+          {
+            "id": "D-PLAYBACK-LOOP",
+            "definitionHash": "42ce6548a951d4ce989593d4658ac86a3d35b4cdfaaabe0128f3d94a42c6447e"
+          },
+          {
+            "id": "D-PLAYBACK-INOUT",
+            "definitionHash": "efaa6fb147c74f84aa720a7be93ad2edbc58173334dba0eac513b7a04e13584e"
+          }
+        ],
+        "remaining": [
+          "Independently measure the selected 2–4-second range, two wraps within one frame, and paused playhead beyond one loop duration."
+        ]
+      },
+      {
+        "id": "LOOP-01:2",
+        "checks": [
+          {
+            "id": "D-PLAYBACK-LOOP",
+            "definitionHash": "42ce6548a951d4ce989593d4658ac86a3d35b4cdfaaabe0128f3d94a42c6447e"
+          }
+        ],
+        "remaining": [
+          "Independently measure the selected 2–4-second range, two wraps within one frame, and paused playhead beyond one loop duration."
+        ]
+      }
+    ]
   },
   "LOOP-02": {
     "specHash": "f5383d59ec98f07dd8ae4f885ea043253955d251ed5a3e5db4052c6cb7cb4d3c",
     "checkIds": [
       "D-PLAYBACK-LOOP"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "LOOP-02:1",
+        "checks": [],
+        "remaining": [
+          "Exercise reversed/end-of-content ranges, then disabled-loop playback; the valid-range loop check omits these boundaries."
+        ]
+      },
+      {
+        "id": "LOOP-02:2",
+        "checks": [
+          {
+            "id": "D-PLAYBACK-LOOP",
+            "definitionHash": "42ce6548a951d4ce989593d4658ac86a3d35b4cdfaaabe0128f3d94a42c6447e"
+          }
+        ],
+        "remaining": [
+          "Exercise reversed/end-of-content ranges, then disabled-loop playback; the valid-range loop check omits these boundaries."
+        ]
+      }
+    ]
   },
   "LOOP-03": {
     "specHash": "8dca57c4499e5e666ab6808422c31ccbd6469d4b00ce9d8fcb864668ded3c4c7",
     "checkIds": [
-      "D-PLAYBACK-LOOP",
       "D-PLAYBACK-SWITCH"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "LOOP-03:1",
+        "checks": [],
+        "remaining": [
+          "Keep two distinct loop ranges and observe playback owner during visible timeline switches."
+        ]
+      },
+      {
+        "id": "LOOP-03:2",
+        "checks": [
+          {
+            "id": "D-PLAYBACK-SWITCH",
+            "definitionHash": "820cd0461224b87803bab0d4f5925997d5a4ba616c91af2ca6783a39a4f2cec2"
+          }
+        ],
+        "remaining": [
+          "Keep two distinct loop ranges and observe playback owner during visible timeline switches."
+        ]
+      }
+    ]
   },
   "PANEL-01": {
     "specHash": "c3f8db3c596ced90e426122bc01d407cd33bcc95097530e5669eaf03c47407fc",
     "checkIds": [
-      "D-UI-DEFAULT",
       "P-SB-DOCK"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PANEL-01:1",
+        "checks": [],
+        "remaining": [
+          "Maximize and restore Preview, Timeline and Inspector with selected content intact; floating Spellbook is a different gesture."
+        ]
+      },
+      {
+        "id": "PANEL-01:2",
+        "checks": [
+          {
+            "id": "P-SB-DOCK",
+            "definitionHash": "bbec161d2c87793cc0cf1ff0ff720fe88656b7d4fed1e531c85cdeb611239bd9"
+          }
+        ],
+        "remaining": [
+          "Maximize and restore Preview, Timeline and Inspector with selected content intact; floating Spellbook is a different gesture."
+        ]
+      }
+    ]
   },
   "AUDIO-01": {
     "specHash": "af54065211e2d5bbc35ac2906596e3c0608a196308535dbb3b7d3445bd00ff62",
     "checkIds": [
       "D-MIXER-UI",
-      "A-AU-01",
-      "D-METER-PLAYBACK"
+      "A-AU-01"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "AUDIO-01:1",
+        "checks": [
+          {
+            "id": "D-MIXER-UI",
+            "definitionHash": "cb092d677faa7c8dea626bb1ba6e6c559c1f24a0a1e233a72f4b46b9ef420531"
+          }
+        ],
+        "remaining": [
+          "Verify mixer values through panel switching, pan and Undo/Redo, in the specified fixture; capture audio for audible assertions."
+        ]
+      },
+      {
+        "id": "AUDIO-01:2",
+        "checks": [],
+        "remaining": [
+          "Verify mixer values through panel switching, pan and Undo/Redo, in the specified fixture; capture audio for audible assertions."
+        ]
+      },
+      {
+        "id": "AUDIO-01:3",
+        "checks": [
+          {
+            "id": "D-MIXER-UI",
+            "definitionHash": "cb092d677faa7c8dea626bb1ba6e6c559c1f24a0a1e233a72f4b46b9ef420531"
+          },
+          {
+            "id": "A-AU-01",
+            "definitionHash": "9568a73dfb367e9b2c579b038ef24d0547a410f71af4038b01e8429fefbaf66a"
+          }
+        ],
+        "remaining": [
+          "Verify mixer values through panel switching, pan and Undo/Redo, in the specified fixture; capture audio for audible assertions."
+        ]
+      }
+    ]
   },
   "AUDIO-02": {
     "specHash": "e4dd4381dd14312e9fc81b8e14c5d1f8d003705a4e5886cc00caaf47bc9a28c4",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "AUDIO-02:1",
+        "checks": [],
+        "remaining": [
+          "Validated speech/noise fixture and real voice-isolation control, intelligibility/noise oracle and persistence are not covered."
+        ]
+      },
+      {
+        "id": "AUDIO-02:2",
+        "checks": [],
+        "remaining": [
+          "Validated speech/noise fixture and real voice-isolation control, intelligibility/noise oracle and persistence are not covered."
+        ]
+      }
+    ]
   },
   "RAW-01": {
     "specHash": "e7304fb9290dd87ec26da8c596acb7afe85b958948b1f36207c9454cde02b2cf",
-    "checkIds": [
-      "A-IN-04-T"
-    ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "checkIds": [],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "RAW-01:1",
+        "checks": [],
+        "remaining": [
+          "Validated ARW fixture, RAW metadata/preview and embedded-JPEG extraction/failure path are not covered."
+        ]
+      },
+      {
+        "id": "RAW-01:2",
+        "checks": [],
+        "remaining": [
+          "Validated ARW fixture, RAW metadata/preview and embedded-JPEG extraction/failure path are not covered."
+        ]
+      }
+    ]
   },
   "RAW-02": {
     "specHash": "41867a2c866da537d0cce381700966bcc9f4eddbbda051d568902b2441b5b4a4",
-    "checkIds": [
-      "D-INSPECTOR-01"
-    ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "checkIds": [],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "RAW-02:1",
+        "checks": [],
+        "remaining": [
+          "RAW development exposure/white-balance, auto reset, rounding-boundary history and cross-reopen metadata are not covered by Position X Inspector edits."
+        ]
+      },
+      {
+        "id": "RAW-02:2",
+        "checks": [],
+        "remaining": [
+          "RAW development exposure/white-balance, auto reset, rounding-boundary history and cross-reopen metadata are not covered by Position X Inspector edits."
+        ]
+      },
+      {
+        "id": "RAW-02:3",
+        "checks": [],
+        "remaining": [
+          "RAW development exposure/white-balance, auto reset, rounding-boundary history and cross-reopen metadata are not covered by Position X Inspector edits."
+        ]
+      }
+    ]
   },
   "RAW-03": {
     "specHash": "d38bae6bbca56cfc9160fd884839f1367fa6a1d7ab534e029311331a7acafc8a",
@@ -101,30 +413,133 @@
       "D-TRACK-LOCK-UI",
       "A-TL-06"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "RAW-03:1",
+        "checks": [
+          {
+            "id": "D-TRACK-LOCK-UI",
+            "definitionHash": "be7c48074d186313c0a23acad016bf2ff00ee90d8f2634918b8dd65a51d100ac"
+          },
+          {
+            "id": "A-TL-06",
+            "definitionHash": "1e186a5cd42f78b0601174b1bab028dfe0aecb38beb8169957951352363f00c8"
+          }
+        ],
+        "remaining": [
+          "Use real RAW assets and their development controls, including twice-reopened cross-asset metadata. Ordinary track lock proof alone is insufficient."
+        ]
+      },
+      {
+        "id": "RAW-03:2",
+        "checks": [
+          {
+            "id": "D-TRACK-LOCK-UI",
+            "definitionHash": "be7c48074d186313c0a23acad016bf2ff00ee90d8f2634918b8dd65a51d100ac"
+          }
+        ],
+        "remaining": [
+          "Use real RAW assets and their development controls, including twice-reopened cross-asset metadata. Ordinary track lock proof alone is insufficient."
+        ]
+      },
+      {
+        "id": "RAW-03:3",
+        "checks": [],
+        "remaining": [
+          "Use real RAW assets and their development controls, including twice-reopened cross-asset metadata. Ordinary track lock proof alone is insufficient."
+        ]
+      }
+    ]
   },
   "OZ-01": {
     "specHash": "1371e41a65c4f2632910022b7e2ec2869259a56aa575ed3834ebba0b54f37acb",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "OZ-01:1",
+        "checks": [],
+        "remaining": [
+          "Project-reference composer drag, retained unsent draft and attachment labels need their own local-only procedure."
+        ]
+      },
+      {
+        "id": "OZ-01:2",
+        "checks": [],
+        "remaining": [
+          "Project-reference composer drag, retained unsent draft and attachment labels need their own local-only procedure."
+        ]
+      },
+      {
+        "id": "OZ-01:3",
+        "checks": [],
+        "remaining": [
+          "Project-reference composer drag, retained unsent draft and attachment labels need their own local-only procedure."
+        ]
+      }
+    ]
   },
   "MGFX-01": {
     "specHash": "02ed05f42374928d8988874650056b3bcff18b0cc471cefc80685c3047f306b8",
     "checkIds": [
-      "D-MGFX-01",
       "D-EDIT-SPLIT-REDO",
       "P-TL-TRIM"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "MGFX-01:1",
+        "checks": [],
+        "remaining": [
+          "Use the same animated native graphic. Decode equivalent source-time frames after split, tail extension and Undo/Redo; static graphics and generic trim omit this oracle."
+        ]
+      },
+      {
+        "id": "MGFX-01:2",
+        "checks": [
+          {
+            "id": "D-EDIT-SPLIT-REDO",
+            "definitionHash": "e7bf4e0223e75f351f9b1e5012a1a55d2efb373e6592b6a305ac74a3251e6f3e"
+          },
+          {
+            "id": "P-TL-TRIM",
+            "definitionHash": "d6f799d48fd9b5477a6247efae45de258caeab8446ce36d532d65ba7e78635e7"
+          }
+        ],
+        "remaining": [
+          "Use the same animated native graphic. Decode equivalent source-time frames after split, tail extension and Undo/Redo; static graphics and generic trim omit this oracle."
+        ]
+      }
+    ]
   },
   "MGFX-02": {
     "specHash": "77cdf17b5a6ff1335e1f56ded658a55a4a13082c7d39ccc14c5705f21755013e",
     "checkIds": [
-      "D-MGFX-CLIPBOARD",
-      "S-MGFX-CLIP-COPY",
       "S-MGFX-PERSIST"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "MGFX-02:1",
+        "checks": [],
+        "remaining": [
+          "Copy an actual split animated tail and compare its offset and equivalent frames, including fresh-process reopen."
+        ]
+      },
+      {
+        "id": "MGFX-02:2",
+        "checks": [
+          {
+            "id": "S-MGFX-PERSIST",
+            "definitionHash": "a5459743cc512681f1f8b4325fbf53a6d0dca26164181cdc9d76816ae32fba86"
+          }
+        ],
+        "remaining": [
+          "Copy an actual split animated tail and compare its offset and equivalent frames, including fresh-process reopen."
+        ]
+      }
+    ]
   },
   "MASK-01": {
     "specHash": "d8f3f3736dd469f87f7248d3419c237dfdafdfe1a6dfb502fa668aab4891bdc2",
@@ -132,250 +547,877 @@
       "D-MASK-CLIPBOARD-PHYSICAL",
       "RG-03"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "MASK-01:1",
+        "checks": [],
+        "remaining": [
+          "Draw through the shape tool; check automatic return to Select and empty Apply Matte reuse. Rectangle clipboard and graph connection omit tool reset."
+        ]
+      },
+      {
+        "id": "MASK-01:2",
+        "checks": [
+          {
+            "id": "D-MASK-CLIPBOARD-PHYSICAL",
+            "definitionHash": "c3fde14347263b63d94f2606086a6cb4c2b68c8d663ed4d5480415e42ecb0cbe"
+          },
+          {
+            "id": "RG-03",
+            "definitionHash": "8ef7639301b41e84fcafcd3f21c7f6aff26385c7528f54d7efac87e06ed33a90"
+          }
+        ],
+        "remaining": [
+          "Draw through the shape tool; check automatic return to Select and empty Apply Matte reuse. Rectangle clipboard and graph connection omit tool reset."
+        ]
+      },
+      {
+        "id": "MASK-01:3",
+        "checks": [
+          {
+            "id": "D-MASK-CLIPBOARD-PHYSICAL",
+            "definitionHash": "c3fde14347263b63d94f2606086a6cb4c2b68c8d663ed4d5480415e42ecb0cbe"
+          }
+        ],
+        "remaining": [
+          "Draw through the shape tool; check automatic return to Select and empty Apply Matte reuse. Rectangle clipboard and graph connection omit tool reset."
+        ]
+      }
+    ]
   },
   "EXPORT-02": {
     "specHash": "8357cb2be216ac12113a3063b428587f36e3c6aa78a404dffe81fb312ab4709b",
     "checkIds": [
       "D-EXPORT-01"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "EXPORT-02:1",
+        "checks": [
+          {
+            "id": "D-EXPORT-01",
+            "definitionHash": "d3b64bc9b4707f06e6a164d86e962bca489118012fb8a9d961b8961ec14cfd25"
+          }
+        ],
+        "remaining": [
+          "Run all three stream selections, both-disabled validation and preservation of range/path; decode actual outputs."
+        ]
+      },
+      {
+        "id": "EXPORT-02:2",
+        "checks": [],
+        "remaining": [
+          "Run all three stream selections, both-disabled validation and preservation of range/path; decode actual outputs."
+        ]
+      },
+      {
+        "id": "EXPORT-02:3",
+        "checks": [
+          {
+            "id": "D-EXPORT-01",
+            "definitionHash": "d3b64bc9b4707f06e6a164d86e962bca489118012fb8a9d961b8961ec14cfd25"
+          }
+        ],
+        "remaining": [
+          "Run all three stream selections, both-disabled validation and preservation of range/path; decode actual outputs."
+        ]
+      }
+    ]
   },
   "SEARCH-01": {
     "specHash": "354c3dd72513b68fd537e45e963c01c6a4cd3359ebe37bcefb0bb7b11b6d8528",
-    "checkIds": [
-      "D-SEARCH-FOCUS",
-      "D-SEARCH-EMPTY",
-      "A-SS-07"
-    ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "checkIds": [],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "SEARCH-01:1",
+        "checks": [],
+        "remaining": [
+          "Project-wide filename and media search checks do not test active timeline label search, rapid replacement, duplicated placements or result navigation."
+        ]
+      },
+      {
+        "id": "SEARCH-01:2",
+        "checks": [],
+        "remaining": [
+          "Project-wide filename and media search checks do not test active timeline label search, rapid replacement, duplicated placements or result navigation."
+        ]
+      },
+      {
+        "id": "SEARCH-01:3",
+        "checks": [],
+        "remaining": [
+          "Project-wide filename and media search checks do not test active timeline label search, rapid replacement, duplicated placements or result navigation."
+        ]
+      }
+    ]
   },
   "SEARCH-02": {
     "specHash": "9a32d66527c6c1464e3ac0daca349b3f3d5efcfbe7c7c77aa1fa1cc6c24ff0bd",
     "checkIds": [
-      "A-SS-07",
       "SS-01"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "SEARCH-02:1",
+        "checks": [],
+        "remaining": [
+          "Use timeline-scoped label results across tracks, later clips and duplicate instances; independently compare saved timestamps and IDs. Media-bin search uses a different scope."
+        ]
+      },
+      {
+        "id": "SEARCH-02:2",
+        "checks": [],
+        "remaining": [
+          "Use timeline-scoped label results across tracks, later clips and duplicate instances; independently compare saved timestamps and IDs. Media-bin search uses a different scope."
+        ]
+      },
+      {
+        "id": "SEARCH-02:3",
+        "checks": [
+          {
+            "id": "SS-01",
+            "definitionHash": "9127bff89450ab5cc69e1a677b16cff37026a569cfffc87d82f9276ab3d99e76"
+          }
+        ],
+        "remaining": [
+          "Use timeline-scoped label results across tracks, later clips and duplicate instances; independently compare saved timestamps and IDs. Media-bin search uses a different scope."
+        ]
+      }
+    ]
   },
   "OZ-02": {
     "specHash": "361c0e8a16a5d2044db7b1726ba40246af30aff0d35784c60342be51c8d29040",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "OZ-02:1",
+        "checks": [],
+        "remaining": [
+          "Composer caret/wrapping and draft retention during an already-authorized active run need a dedicated procedure; do not submit a run to create it."
+        ]
+      },
+      {
+        "id": "OZ-02:2",
+        "checks": [],
+        "remaining": [
+          "Composer caret/wrapping and draft retention during an already-authorized active run need a dedicated procedure; do not submit a run to create it."
+        ]
+      },
+      {
+        "id": "OZ-02:3",
+        "checks": [],
+        "remaining": [
+          "Composer caret/wrapping and draft retention during an already-authorized active run need a dedicated procedure; do not submit a run to create it."
+        ]
+      }
+    ]
   },
   "BUG-01": {
     "specHash": "f9504ba44cb6019e6c44636e8189b625156c1dda9047159f92b4b23607bb2931",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "BUG-01:1",
+        "checks": [],
+        "remaining": [
+          "Report Bug GUI, exact project/history/version readback and safe cancel need a dedicated procedure; retain drafts without submission."
+        ]
+      },
+      {
+        "id": "BUG-01:2",
+        "checks": [],
+        "remaining": [
+          "Report Bug GUI, exact project/history/version readback and safe cancel need a dedicated procedure; retain drafts without submission."
+        ]
+      },
+      {
+        "id": "BUG-01:3",
+        "checks": [],
+        "remaining": [
+          "Report Bug GUI, exact project/history/version readback and safe cancel need a dedicated procedure; retain drafts without submission."
+        ]
+      }
+    ]
   },
   "VERSION-01": {
     "specHash": "1b5b00fcd0964ee22dfc0f10e532c09e80657724e84ac920b9ec42fd1e0a06d2",
     "checkIds": [
-      "A-LP-02-S",
-      "D-PROJECT-SAVE-AS"
+      "D-PROJECT-SAVE-AS",
+      "A-LP-02-S"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "VERSION-01:1",
+        "checks": [],
+        "remaining": [
+          "Use two exact writer versions, observe warning/cancel and inside-project backup rejection, and independently verify safe backup and original fixture."
+        ]
+      },
+      {
+        "id": "VERSION-01:2",
+        "checks": [],
+        "remaining": [
+          "Use two exact writer versions, observe warning/cancel and inside-project backup rejection, and independently verify safe backup and original fixture."
+        ]
+      },
+      {
+        "id": "VERSION-01:3",
+        "checks": [
+          {
+            "id": "D-PROJECT-SAVE-AS",
+            "definitionHash": "c00ef2153f5b9cc506995ba36774508ba6a15bcaabf03e14002226f3e3f2ad0e"
+          },
+          {
+            "id": "A-LP-02-S",
+            "definitionHash": "aa48d315687224d00617c854b16fdbe0cc8056260c4ef4e1ebcc9ad1de012591"
+          }
+        ],
+        "remaining": [
+          "Use two exact writer versions, observe warning/cancel and inside-project backup rejection, and independently verify safe backup and original fixture."
+        ]
+      },
+      {
+        "id": "VERSION-01:4",
+        "checks": [
+          {
+            "id": "D-PROJECT-SAVE-AS",
+            "definitionHash": "c00ef2153f5b9cc506995ba36774508ba6a15bcaabf03e14002226f3e3f2ad0e"
+          }
+        ],
+        "remaining": [
+          "Use two exact writer versions, observe warning/cancel and inside-project backup rejection, and independently verify safe backup and original fixture."
+        ]
+      }
+    ]
   },
   "AUDIO-03": {
     "specHash": "7e9dca8e9ab686ef39a318b1146da3781607f1cd5c66cf5f2a2d09ad7d2f32fe",
     "checkIds": [
-      "A-IN-04-W",
-      "D-PREVIEW-SCRUB",
-      "A-PB-03-R"
+      "D-PREVIEW-SCRUB"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "AUDIO-03:1",
+        "checks": [
+          {
+            "id": "D-PREVIEW-SCRUB",
+            "definitionHash": "3e2977a9ddbed606f9022d74b291fec2041a84d498e14a6300936e3f590fc503"
+          }
+        ],
+        "remaining": [
+          "Observe real scrubbing audio and stale playback-owner behavior. Seek pixels or source waveform data do not establish audio quality."
+        ]
+      },
+      {
+        "id": "AUDIO-03:2",
+        "checks": [],
+        "remaining": [
+          "Observe real scrubbing audio and stale playback-owner behavior. Seek pixels or source waveform data do not establish audio quality."
+        ]
+      },
+      {
+        "id": "AUDIO-03:3",
+        "checks": [],
+        "remaining": [
+          "Observe real scrubbing audio and stale playback-owner behavior. Seek pixels or source waveform data do not establish audio quality."
+        ]
+      }
+    ]
   },
   "UI-01": {
     "specHash": "b4aab98825622e9739ef11d8261069ba90daf8d7b7976389274745301b79b551",
     "checkIds": [
       "D-LP-02-RELAUNCH"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "UI-01:1",
+        "checks": [
+          {
+            "id": "D-LP-02-RELAUNCH",
+            "definitionHash": "aaf232ccebb76c45e5ab1aecd7bf1441cc745d1afd4551c9b69c7441d06cf626"
+          }
+        ],
+        "remaining": [
+          "Open the same saved project with File > Open, then independently compare window title and saved name."
+        ]
+      }
+    ]
   },
   "COMPAT-03": {
     "specHash": "33859eb68077731c8745c1ab4e3ccc0d610a247e71b117899bb56f0b495a1a05",
     "checkIds": [
       "D-SB-CREATE"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "COMPAT-03:1",
+        "checks": [
+          {
+            "id": "D-SB-CREATE",
+            "definitionHash": "46a453405078d1dcd06dd54f3e88ab31f8ce7210966d1ebbd8df210485c27639"
+          }
+        ],
+        "remaining": [
+          "Inspect Spellbook through exact-PID native macOS accessibility; Qt adapter creation does not exercise the formerly crashing AX hierarchy path."
+        ]
+      }
+    ]
   },
   "PP-01": {
     "specHash": "86b4ea71949465c0ba2862ac6d4a4b8e077538915473b86dbee6359409654840",
-    "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "checkIds": [
+      "D-INSPECTOR-PLAYBACK"
+    ],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-01:1",
+        "checks": [
+          {
+            "id": "D-INSPECTOR-PLAYBACK",
+            "definitionHash": "073cbaf169029a8419464f9d4a9bbe9a9a4443b11520044fc85f69835fc31d18"
+          }
+        ],
+        "remaining": [
+          "Use a contributing expensive graph and retain render timings/state before evaluating preparation."
+        ]
+      }
+    ]
   },
   "PP-02": {
     "specHash": "44decbbe6d258bb97f065eaa0e1f27b4287c4286be26cb85d33018271768b447",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-02:1",
+        "checks": [],
+        "remaining": [
+          "Preview Preparation job/cache/menu/power state needs a dedicated ordinary-build procedure; no current check independently verifies this assertion."
+        ]
+      }
+    ]
   },
   "PP-03": {
     "specHash": "ae26ffe803bad7ac5e6975c6ae101d719af021b4d315659d3460c3a88bdcddca",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-03:1",
+        "checks": [],
+        "remaining": [
+          "Preview Preparation job/cache/menu/power state needs a dedicated ordinary-build procedure; no current check independently verifies this assertion."
+        ]
+      }
+    ]
   },
   "PP-04": {
     "specHash": "7b7e8ae069ab600c8660e17946f40f305ca0f2b848d14602eed93de2eaf2c64f",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-04:1",
+        "checks": [],
+        "remaining": [
+          "Preview Preparation job/cache/menu/power state needs a dedicated ordinary-build procedure; no current check independently verifies this assertion."
+        ]
+      }
+    ]
   },
   "PP-05": {
     "specHash": "da4ae22fa2718129453ae49c5c06912f0a01ccd7bfd3219eae44209940840030",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-05:1",
+        "checks": [],
+        "remaining": [
+          "Preview Preparation job/cache/menu/power state needs a dedicated ordinary-build procedure; no current check independently verifies this assertion."
+        ]
+      }
+    ]
   },
   "PP-06": {
     "specHash": "3e978279e274eb017b66acf336a5cefab7e96acf1a358488668a03964371918f",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-06:1",
+        "checks": [],
+        "remaining": [
+          "Preview Preparation job/cache/menu/power state needs a dedicated ordinary-build procedure; no current check independently verifies this assertion."
+        ]
+      }
+    ]
   },
   "PP-07": {
     "specHash": "bc965bf4e1e59a7129d682bb72ca8deecc09b68df5c2ccb651ddf7d193cf7397",
-    "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "checkIds": [
+      "D-PLAYBACK-INOUT"
+    ],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-07:1",
+        "checks": [
+          {
+            "id": "D-PLAYBACK-INOUT",
+            "definitionHash": "efaa6fb147c74f84aa720a7be93ad2edbc58173334dba0eac513b7a04e13584e"
+          }
+        ],
+        "remaining": [
+          "Mark the preparation fixture range through the designated controls; ordinary In/Out coverage is only range setup."
+        ]
+      }
+    ]
   },
   "PP-08": {
     "specHash": "043357c7e380164918dd6deb3490991fd92ea75f026208489fa804388ffdb5d7",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-08:1",
+        "checks": [],
+        "remaining": [
+          "Preview Preparation job/cache/menu/power state needs a dedicated ordinary-build procedure; no current check independently verifies this assertion."
+        ]
+      }
+    ]
   },
   "PP-09": {
     "specHash": "64248db5a97bc80a53582ed64bcb8983d4791bb733ab40ef06bcc28a4900a7b2",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-09:1",
+        "checks": [],
+        "remaining": [
+          "Preview Preparation job/cache/menu/power state needs a dedicated ordinary-build procedure; no current check independently verifies this assertion."
+        ]
+      }
+    ]
   },
   "PP-10": {
     "specHash": "b93d8bfec5db83881c607671a03c10f7dffe409698ae218bbdc7518b4af913b8",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-10:1",
+        "checks": [],
+        "remaining": [
+          "Preview Preparation job/cache/menu/power state needs a dedicated ordinary-build procedure; no current check independently verifies this assertion."
+        ]
+      }
+    ]
   },
   "PP-11": {
     "specHash": "05fbd36f2dad980261357472745a08d44d619d34729690a1fdf9a0e290c20886",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-11:1",
+        "checks": [],
+        "remaining": [
+          "Preview Preparation job/cache/menu/power state needs a dedicated ordinary-build procedure; no current check independently verifies this assertion."
+        ]
+      }
+    ]
   },
   "PP-12": {
     "specHash": "8ea0bd490c8cf6e9f0b57d2384d5c291d577d27261e76dbcd6c5df386839de0a",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-12:1",
+        "checks": [],
+        "remaining": [
+          "Preview Preparation job/cache/menu/power state needs a dedicated ordinary-build procedure; no current check independently verifies this assertion."
+        ]
+      }
+    ]
   },
   "PP-13": {
     "specHash": "c244e7b6ade51074002020c7842386af0f7fecf0e705d3b2054f15b1b39daa79",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-13:1",
+        "checks": [],
+        "remaining": [
+          "Preview Preparation job/cache/menu/power state needs a dedicated ordinary-build procedure; no current check independently verifies this assertion."
+        ]
+      }
+    ]
   },
   "PP-14": {
     "specHash": "f8188fd40837a96621e3f7cdd33cc2df3dd41debf60011137c4c11658250fbf8",
-    "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "checkIds": [
+      "D-INSPECTOR-BLUR-PHYSICAL"
+    ],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-14:1",
+        "checks": [
+          {
+            "id": "D-INSPECTOR-BLUR-PHYSICAL",
+            "definitionHash": "cad8c2b4ca0fe1c79d8fd26759a3397828d208303c60be883c50db80626fdece"
+          }
+        ],
+        "remaining": [
+          "Exercise actual prepared-cache invalidation and verify fresh output after changing the contributing effect."
+        ]
+      }
+    ]
   },
   "PP-15": {
     "specHash": "9ae0d3fb6231ec4188ee36fac63fb04244c2a1630279d1a85c6414e4d33cf9d1",
-    "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "checkIds": [
+      "D-INSPECTOR-BLUR-PHYSICAL",
+      "D-PREVIEW-SCRUB"
+    ],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-15:1",
+        "checks": [
+          {
+            "id": "D-INSPECTOR-BLUR-PHYSICAL",
+            "definitionHash": "cad8c2b4ca0fe1c79d8fd26759a3397828d208303c60be883c50db80626fdece"
+          },
+          {
+            "id": "D-PREVIEW-SCRUB",
+            "definitionHash": "3e2977a9ddbed606f9022d74b291fec2041a84d498e14a6300936e3f590fc503"
+          }
+        ],
+        "remaining": [
+          "Repeat playback and seek using actual prepared frames after the contributing effect changes."
+        ]
+      }
+    ]
   },
   "PP-16": {
     "specHash": "20a0494d0d037d721048b493f1db4f72a992c8c624dc0d32595d2c8d9d886134",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-16:1",
+        "checks": [],
+        "remaining": [
+          "Preview Preparation job/cache/menu/power state needs a dedicated ordinary-build procedure; no current check independently verifies this assertion."
+        ]
+      }
+    ]
   },
   "PP-17": {
     "specHash": "cf0ca0498ffb6b3b51b481fef891ef385b44391c2e359ea75d0a1ba38acf0e5e",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-17:1",
+        "checks": [],
+        "remaining": [
+          "Preview Preparation job/cache/menu/power state needs a dedicated ordinary-build procedure; no current check independently verifies this assertion."
+        ]
+      }
+    ]
   },
   "FB-01": {
     "specHash": "807ca596fb6fd683663400951c7fbf2293413f9faa944d8995c921adaa2c1084",
-    "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "checkIds": [
+      "D-PROJECT-NEW",
+      "D-IMPORT-DIALOG"
+    ],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-01:1",
+        "checks": [
+          {
+            "id": "D-PROJECT-NEW",
+            "definitionHash": "767827fafdf2f110df661c017590dbffc63025240d2a7be8873d89b6daaef740"
+          },
+          {
+            "id": "D-IMPORT-DIALOG",
+            "definitionHash": "50028bad4c9e94d16776d9945b92db48792c4ebbf0385ecc21f5aa27732b019d"
+          }
+        ],
+        "remaining": [
+          "Open Feedback in the eight-second imported project; setup-only project and import checks do not exercise its panel."
+        ]
+      }
+    ]
   },
   "FB-02": {
     "specHash": "99db24f841b00637dceffb3fb89ba0ad67546d55f90ddead01ad3ef3bc69211e",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-02:1",
+        "checks": [],
+        "remaining": [
+          "Feedback requires its actual local session, audio capture/transcription or card-edit state and independent persisted readback; no current catalog check covers this assertion."
+        ]
+      }
+    ]
   },
   "FB-03": {
     "specHash": "3bc2b6357625c847d3fc9ce7406424d9609da4beef3a43462b90ffe2a5b677c8",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-03:1",
+        "checks": [],
+        "remaining": [
+          "Feedback requires its actual local session, audio capture/transcription or card-edit state and independent persisted readback; no current catalog check covers this assertion."
+        ]
+      }
+    ]
   },
   "FB-04": {
     "specHash": "e3f349553d133292c0bcae226fdf9d1577d94a9154db251319d95ac203740b5e",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-04:1",
+        "checks": [],
+        "remaining": [
+          "Feedback requires its actual local session, audio capture/transcription or card-edit state and independent persisted readback; no current catalog check covers this assertion."
+        ]
+      }
+    ]
   },
   "FB-05": {
     "specHash": "b22a5b841a846da82f1124e0c88c48a024a5fb5e577dbf561c1d1fff34bfec8c",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-05:1",
+        "checks": [],
+        "remaining": [
+          "Feedback requires its actual local session, audio capture/transcription or card-edit state and independent persisted readback; no current catalog check covers this assertion."
+        ]
+      }
+    ]
   },
   "FB-06": {
     "specHash": "0e3b05b40305e7b6480f8d1a04baaf971d324a364225ec93feb2512c9236ed68",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-06:1",
+        "checks": [],
+        "remaining": [
+          "Feedback requires its actual local session, audio capture/transcription or card-edit state and independent persisted readback; no current catalog check covers this assertion."
+        ]
+      }
+    ]
   },
   "FB-07": {
     "specHash": "6ad68437fa2aa035f66d76425d9b1a93e0ea058b02c3f1846e11978936d467b2",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-07:1",
+        "checks": [],
+        "remaining": [
+          "Feedback requires its actual local session, audio capture/transcription or card-edit state and independent persisted readback; no current catalog check covers this assertion."
+        ]
+      }
+    ]
   },
   "FB-08": {
     "specHash": "f64830d052d523abb1421f42320062fd64aebec5f4b5574d997104385520f84d",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-08:1",
+        "checks": [],
+        "remaining": [
+          "Feedback requires its actual local session, audio capture/transcription or card-edit state and independent persisted readback; no current catalog check covers this assertion."
+        ]
+      }
+    ]
   },
   "FB-09": {
     "specHash": "9d8193cd6fb8b6eaffba22be944bfde52602cc33243b0093ea2d3294bae2d850",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-09:1",
+        "checks": [],
+        "remaining": [
+          "Feedback requires its actual local session, audio capture/transcription or card-edit state and independent persisted readback; no current catalog check covers this assertion."
+        ]
+      }
+    ]
   },
   "FB-10": {
     "specHash": "7d50cf1dcf8ee6a3ebd2cb6792f30c735c22ee2be8963835d3e4649353296977",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-10:1",
+        "checks": [],
+        "remaining": [
+          "Feedback requires its actual local session, audio capture/transcription or card-edit state and independent persisted readback; no current catalog check covers this assertion."
+        ]
+      }
+    ]
   },
   "FB-11": {
     "specHash": "778d93c83f19ee00e6bf8402ee689321f72bd33799be91015ea188c7867805a3",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-11:1",
+        "checks": [],
+        "remaining": [
+          "Feedback requires its actual local session, audio capture/transcription or card-edit state and independent persisted readback; no current catalog check covers this assertion."
+        ]
+      }
+    ]
   },
   "FB-12": {
     "specHash": "df356d066cf98fe0aef17fcfef60e78f2dc450bf266590d12f04fea0532c09d5",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-12:1",
+        "checks": [],
+        "remaining": [
+          "Feedback requires its actual local session, audio capture/transcription or card-edit state and independent persisted readback; no current catalog check covers this assertion."
+        ]
+      }
+    ]
   },
   "FB-13": {
     "specHash": "c7796f0324216672bbb74ae53dc41bf3948912c6faadc40ac8487c22d06d3503",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-13:1",
+        "checks": [],
+        "remaining": [
+          "Feedback requires its actual local session, audio capture/transcription or card-edit state and independent persisted readback; no current catalog check covers this assertion."
+        ]
+      }
+    ]
   },
   "FB-14": {
     "specHash": "c89b0b92972f5a97cf7ddbab2ac2c54ad4fdc1e51af6afed6598fe973c435f70",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FB-14:1",
+        "checks": [],
+        "remaining": [
+          "Feedback requires its actual local session, audio capture/transcription or card-edit state and independent persisted readback; no current catalog check covers this assertion."
+        ]
+      }
+    ]
   },
   "BRAW-01": {
     "specHash": "c0d098f43338dc331a801cfffcf91d1c99aa0b7b2dae37884c7fabf8da563a97",
     "checkIds": [
-      "A-PB-05-R",
-      "D-IMPORT-DIALOG",
-      "D-EXPORT-01"
+      "D-EXPORT-01",
+      "A-LP-02"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "BRAW-01:1",
+        "checks": [
+          {
+            "id": "D-EXPORT-01",
+            "definitionHash": "d3b64bc9b4707f06e6a164d86e962bca489118012fb8a9d961b8961ec14cfd25"
+          },
+          {
+            "id": "A-LP-02",
+            "definitionHash": "48806f91f83ea599df51ad409f23c84853acb2a9683ead9bc0721bf3704b420c"
+          }
+        ],
+        "remaining": [
+          "Supply validated BRAW and decode its actual native frames/export after reopen. Synthetic codec checks do not cover BRAW."
+        ]
+      }
+    ]
   },
   "TIME-01": {
     "specHash": "d641354f27e9f9afcf6ecd41240e6fdd720937ceb32797a157a57e278d665a7d",
     "checkIds": [
       "A-TL-03-R",
-      "D-EDIT-TRIM",
-      "D-EDIT-SPLIT-REDO"
+      "D-EDIT-TRIM"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "TIME-01:1",
+        "checks": [
+          {
+            "id": "A-TL-03-R",
+            "definitionHash": "0c5533b5d72134ef285a281a22cd777b840f03ff1331e2b4b5a9556a7d26dde4"
+          },
+          {
+            "id": "D-EDIT-TRIM",
+            "definitionHash": "caf63e49a7cda456263a597720f706d3b28c579a53260a15109a27552b802230"
+          }
+        ],
+        "remaining": [
+          "Inspect clip-clock automation/keyframes across split, trim, move and retime; constant clip speed does not establish keyframe clock behavior."
+        ]
+      }
+    ]
   },
   "STAB-01": {
     "specHash": "4b2a661d29c32b0903dea23242a26996ca898d3a218a0bffca5df7a3bac131ee",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "STAB-01:1",
+        "checks": [],
+        "remaining": [
+          "Validated shaking source, actual stabilization graph analysis, stale-input rejection and independently measured motion reduction are missing."
+        ]
+      }
+    ]
   },
   "CACHE-01": {
     "specHash": "003b0e6169aa9a30d75106685a1910dc1de4c2a9e1faae534d87c4a43081e28b",
@@ -384,98 +1426,363 @@
       "D-SCOPES-01",
       "A-RG-04"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "CACHE-01:1",
+        "checks": [
+          {
+            "id": "D-INSPECTOR-BLUR-PHYSICAL",
+            "definitionHash": "cad8c2b4ca0fe1c79d8fd26759a3397828d208303c60be883c50db80626fdece"
+          },
+          {
+            "id": "D-SCOPES-01",
+            "definitionHash": "fbe976b7c32a5cfbbc80eacd0d8301e6fb56cb0ca5e3db69f23b4183e572f260"
+          },
+          {
+            "id": "A-RG-04",
+            "definitionHash": "692507d5ce780c5ee570944edf213b649aa7419cac4cf6e7fdee882135d16b57"
+          }
+        ],
+        "remaining": [
+          "Prove composite and temporal-input invalidation in the actual preview cache across parameter edits and Undo, alongside current scopes."
+        ]
+      }
+    ]
   },
   "INGEST-01": {
     "specHash": "f43ffff9cb133a3435c76d2b0826ba59c374f19f34705a9f815b8d33c7ed3657",
     "checkIds": [
       "IN-06",
-      "SS-05",
-      "D-INGEST-PLAYBACK"
+      "SS-05"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "INGEST-01:1",
+        "checks": [
+          {
+            "id": "IN-06",
+            "definitionHash": "b8aff6d564a6959cc2d9eba10dc2963ce11af80f7aaa52bf771dc182faebfb63"
+          },
+          {
+            "id": "SS-05",
+            "definitionHash": "a43e2649a68976e3b688e28d42627afc4f41101b4371502a0f0485bacf1fff3d"
+          }
+        ],
+        "remaining": [
+          "Exercise Quick Ingest and full passes with exact job/stage identities, transcripts, speaker evidence and Partial/Ingested transitions."
+        ]
+      }
+    ]
   },
   "IMPORT-03": {
     "specHash": "12e7ba965d616a8d2cab72ac534ec8a293003865ec73df34587d2927f80d6d12",
     "checkIds": [
-      "P-TL-BIN-DROP",
-      "D-IMPORT-DIALOG",
-      "S-EXPORT-UNSET-RATE"
+      "P-TL-BIN-DROP"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "IMPORT-03:1",
+        "checks": [
+          {
+            "id": "P-TL-BIN-DROP",
+            "definitionHash": "5ae3207c554c34a368aa6cc0f6f101c92d9c007f6b9d0f714d9f578b7a9008f0"
+          }
+        ],
+        "remaining": [
+          "Use the specified source/timeline format mismatch, including Use Clip Settings; Keep-only drop does not cover both dialog branches."
+        ]
+      },
+      {
+        "id": "IMPORT-03:2",
+        "checks": [],
+        "remaining": [
+          "Use the specified source/timeline format mismatch, including Use Clip Settings; Keep-only drop does not cover both dialog branches."
+        ]
+      }
+    ]
   },
   "EDIT-01": {
     "specHash": "5ad7119a3cd41f395c1fbfc0797b68faf72680ee6df2287e80e6be0f5eaa12fb",
     "checkIds": [
       "A-TL-02",
+      "D-BLADE-NO-SELECTION",
       "D-EDIT-SPLIT-REDO",
       "D-EDIT-CLIPBOARD",
-      "A-TL-05"
+      "D-CUT-PASTE"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "EDIT-01:1",
+        "checks": [
+          {
+            "id": "A-TL-02",
+            "definitionHash": "893345f5675566b6fa2d38a8384564b52c9d3068e846fa2f698d2b636d061917"
+          },
+          {
+            "id": "D-BLADE-NO-SELECTION",
+            "definitionHash": "10abfdf7553d61b570683deb1f2b56bb0c36fe545be6439b08eacdc01f1bdac7"
+          },
+          {
+            "id": "D-EDIT-SPLIT-REDO",
+            "definitionHash": "e7bf4e0223e75f351f9b1e5012a1a55d2efb373e6592b6a305ac74a3251e6f3e"
+          }
+        ],
+        "remaining": [
+          "Run on the eight-second linked fixture, verify both clips and pasted tail source offset plus exact Undo/Redo structure."
+        ]
+      },
+      {
+        "id": "EDIT-01:2",
+        "checks": [
+          {
+            "id": "D-EDIT-CLIPBOARD",
+            "definitionHash": "668ab03617a4384b2ef8833287057c221beb82c43524f8cfe3d978bb2b4670b3"
+          },
+          {
+            "id": "D-CUT-PASTE",
+            "definitionHash": "39ae43af310bf5f814dadccd7aebe423a4a7d7fa440c28b4cbafc75b2677e240"
+          }
+        ],
+        "remaining": [
+          "Run on the eight-second linked fixture, verify both clips and pasted tail source offset plus exact Undo/Redo structure."
+        ]
+      }
+    ]
   },
   "PEN-01": {
     "specHash": "802473d68c444220598d861c823d4d0d5b0a0df02766c82d56c17484f2f1161b",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PEN-01:1",
+        "checks": [],
+        "remaining": [
+          "Pen overlay/capture identities, pixels and interaction history need dedicated per-timeline procedures; current mask/clipboard checks use a different feature."
+        ]
+      }
+    ]
   },
   "PEN-02": {
     "specHash": "53dae62c590d167315e23246d3f21a3f3cb1d23c502a60b3358576b85b2916c9",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PEN-02:1",
+        "checks": [],
+        "remaining": [
+          "Pen overlay/capture identities, pixels and interaction history need dedicated per-timeline procedures; current mask/clipboard checks use a different feature."
+        ]
+      }
+    ]
   },
   "PEN-03": {
     "specHash": "ecd0c3721d1d0feef1b6317fb5cab61bd24f87ed78c012aad5fe6207ce5d0415",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PEN-03:1",
+        "checks": [],
+        "remaining": [
+          "Pen overlay/capture identities, pixels and interaction history need dedicated per-timeline procedures; current mask/clipboard checks use a different feature."
+        ]
+      },
+      {
+        "id": "PEN-03:2",
+        "checks": [],
+        "remaining": [
+          "Pen overlay/capture identities, pixels and interaction history need dedicated per-timeline procedures; current mask/clipboard checks use a different feature."
+        ]
+      }
+    ]
   },
   "PEN-04": {
     "specHash": "7f785ae8317588c8d636b7473fe8447222556b09f280654dda65c9656c973612",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PEN-04:1",
+        "checks": [],
+        "remaining": [
+          "Pen overlay/capture identities, pixels and interaction history need dedicated per-timeline procedures; current mask/clipboard checks use a different feature."
+        ]
+      },
+      {
+        "id": "PEN-04:2",
+        "checks": [],
+        "remaining": [
+          "Pen overlay/capture identities, pixels and interaction history need dedicated per-timeline procedures; current mask/clipboard checks use a different feature."
+        ]
+      }
+    ]
   },
   "PEN-05": {
     "specHash": "15712865a635b83bf63faeb0b03a44d98c5acff492fc3ce8d319581ed7406101",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PEN-05:1",
+        "checks": [],
+        "remaining": [
+          "Pen overlay/capture identities, pixels and interaction history need dedicated per-timeline procedures; current mask/clipboard checks use a different feature."
+        ]
+      },
+      {
+        "id": "PEN-05:2",
+        "checks": [],
+        "remaining": [
+          "Pen overlay/capture identities, pixels and interaction history need dedicated per-timeline procedures; current mask/clipboard checks use a different feature."
+        ]
+      }
+    ]
   },
   "DISKPREVIEW-01": {
     "specHash": "46b51119ff68fb1c2defedc5d3048576d30cc2388d562604cb8eacf747e1f10f",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "DISKPREVIEW-01:1",
+        "checks": [],
+        "remaining": [
+          "Owned disk-preview configuration/files, safe cleanup and fresh-process state require a dedicated ordinary-build procedure."
+        ]
+      },
+      {
+        "id": "DISKPREVIEW-01:2",
+        "checks": [],
+        "remaining": [
+          "Owned disk-preview configuration/files, safe cleanup and fresh-process state require a dedicated ordinary-build procedure."
+        ]
+      }
+    ]
   },
   "DISKPREVIEW-02": {
     "specHash": "be44c1caa5e686db65817f9baf21c8f295d2ca804e82d58dad624e57075a9e51",
-    "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "checkIds": [
+      "A-LP-02"
+    ],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "DISKPREVIEW-02:1",
+        "checks": [
+          {
+            "id": "A-LP-02",
+            "definitionHash": "48806f91f83ea599df51ad409f23c84853acb2a9683ead9bc0721bf3704b420c"
+          }
+        ],
+        "remaining": [
+          "Compare identical frames after restart and independently prove persisted disk cache reads/hits with scopes closed; generic persistence omits cache reuse."
+        ]
+      },
+      {
+        "id": "DISKPREVIEW-02:2",
+        "checks": [],
+        "remaining": [
+          "Compare identical frames after restart and independently prove persisted disk cache reads/hits with scopes closed; generic persistence omits cache reuse."
+        ]
+      }
+    ]
   },
   "DISKPREVIEW-03": {
     "specHash": "e3861f0ac2c292c5944ee9a1b4189812b3703dd82b93a39bd1cd8a7b4b085e7f",
-    "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "checkIds": [
+      "D-INSPECTOR-BLUR-PHYSICAL"
+    ],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "DISKPREVIEW-03:1",
+        "checks": [
+          {
+            "id": "D-INSPECTOR-BLUR-PHYSICAL",
+            "definitionHash": "cad8c2b4ca0fe1c79d8fd26759a3397828d208303c60be883c50db80626fdece"
+          }
+        ],
+        "remaining": [
+          "Populate owned disk previews first, edit Gaussian Blur, then compare fresh actual preview pixels against the cached baseline."
+        ]
+      }
+    ]
   },
   "DISKPREVIEW-04": {
     "specHash": "659a7ae51d5e23352f61d1dd6890806db944a4cbb99e535a83c23a4501e98082",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "DISKPREVIEW-04:1",
+        "checks": [],
+        "remaining": [
+          "Owned disk-preview configuration/files, safe cleanup and fresh-process state require a dedicated ordinary-build procedure."
+        ]
+      },
+      {
+        "id": "DISKPREVIEW-04:2",
+        "checks": [],
+        "remaining": [
+          "Owned disk-preview configuration/files, safe cleanup and fresh-process state require a dedicated ordinary-build procedure."
+        ]
+      }
+    ]
   },
   "PEN-06": {
     "specHash": "92c1e8e7bd388637c98f5a2f24c7675e7d9b9213f3124ce313eb400706850d20",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PEN-06:1",
+        "checks": [],
+        "remaining": [
+          "Pen overlay/capture identities, pixels and interaction history need dedicated per-timeline procedures; current mask/clipboard checks use a different feature."
+        ]
+      }
+    ]
   },
   "PEN-07": {
     "specHash": "4bfe53e781a69736abf1ad6706e6adcfb590e93251e587625449c8ff3da9afad",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PEN-07:1",
+        "checks": [],
+        "remaining": [
+          "Pen overlay/capture identities, pixels and interaction history need dedicated per-timeline procedures; current mask/clipboard checks use a different feature."
+        ]
+      }
+    ]
   },
   "GAIN-01": {
     "specHash": "08e9f6b96339ad7a24b08271e736c21c4c85276cc34c84118c3280cbd3b072aa",
     "checkIds": [
-      "A-AU-01-C",
-      "A-IN-04-W"
+      "A-AU-01-C"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "GAIN-01:1",
+        "checks": [
+          {
+            "id": "A-AU-01-C",
+            "definitionHash": "12b0339f9ba1ffd3dd85032a739176e4273a64a18fb70391ba4f7df17bf1d685"
+          }
+        ],
+        "remaining": [
+          "Use the physical Cmd+Up/Down shortcut with its documented step, linked/unselected clips, waveform scaling, render amplitude, history and reopen."
+        ]
+      }
+    ]
   },
   "MOVE-01": {
     "specHash": "6a54cd300667d02b6c14d5e0e853ed0ce87a61366dc1e9f1473958f19d25eb6a",
@@ -484,7 +1791,29 @@
       "D-EDIT-DRAG",
       "A-TL-05"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "MOVE-01:1",
+        "checks": [
+          {
+            "id": "D-LINKED-SELECTION",
+            "definitionHash": "c53b8372e6b6fa99e337db142ba55dd4ede5c155fc69c5f3dd97087f7ef39999"
+          },
+          {
+            "id": "D-EDIT-DRAG",
+            "definitionHash": "f683e7b36b66428ec41e529106ba72ca8f69c31d23ca36894cf81331c382935f"
+          },
+          {
+            "id": "A-TL-05",
+            "definitionHash": "c62f51452f6e845c3f83548b2e9fa024b701b17b566f63f0ab2b5eae3d8a3b84"
+          }
+        ],
+        "remaining": [
+          "Physically move multiple linked clips with distinct offsets across tracks, snapping off/on; preserve all relative spacing and Undo/Redo."
+        ]
+      }
+    ]
   },
   "SCOPES-01": {
     "specHash": "595b53734477e757ca7b7781098c78631cd9c1bbda70e9eec52ab14576d9c600",
@@ -492,41 +1821,119 @@
       "D-SCOPES-01",
       "D-SCOPES-VECTOR"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "SCOPES-01:1",
+        "checks": [
+          {
+            "id": "D-SCOPES-01",
+            "definitionHash": "fbe976b7c32a5cfbbc80eacd0d8301e6fb56cb0ca5e3db69f23b4183e572f260"
+          },
+          {
+            "id": "D-SCOPES-VECTOR",
+            "definitionHash": "613950ce548beb600a713c36fb31e5439eae3d43d065401a030e51b583999b75"
+          }
+        ],
+        "remaining": [
+          "Retire and reattach the scope tap by changing owner and closing/reopening its source timeline; verify current distinct frames."
+        ]
+      }
+    ]
   },
   "LAYOUT-01": {
     "specHash": "239027693d94f94db97fab2ea22ed9d87a430c2ef2727bb7e8baa28d9a010466",
     "checkIds": [
-      "D-INSPECTOR-PLAYBACK",
       "P-SB-DOCK",
-      "D-TIMELINE-TABS"
+      "D-TIMELINE-TABS",
+      "D-INSPECTOR-PLAYBACK"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "LAYOUT-01:1",
+        "checks": [
+          {
+            "id": "P-SB-DOCK",
+            "definitionHash": "bbec161d2c87793cc0cf1ff0ff720fe88656b7d4fed1e531c85cdeb611239bd9"
+          },
+          {
+            "id": "D-TIMELINE-TABS",
+            "definitionHash": "027413f007ba82a0f81d6e0fa26482941da97ac908f7dfce64e25483ddeeaa45"
+          },
+          {
+            "id": "D-INSPECTOR-PLAYBACK",
+            "definitionHash": "073cbaf169029a8419464f9d4a9bbe9a9a4443b11520044fc85f69835fc31d18"
+          }
+        ],
+        "remaining": [
+          "Exercise Preview/Timeline maximize, resize and layouts during playback; inspect filmstrip continuity and fresh preview pixels."
+        ]
+      }
+    ]
   },
   "IDLE-01": {
     "specHash": "a758677c745442aa265c680dc5e7aedf9cde9d3cd7741c83d42865fd26688e50",
-    "checkIds": [
-      "S-PF-IDLE"
-    ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "checkIds": [],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "IDLE-01:1",
+        "checks": [],
+        "remaining": [
+          "The ten-minute instrumented candidate is deferred and differs from this ordinary-build observation. Keep out of default execution."
+        ]
+      }
+    ]
   },
   "MGFX-03": {
     "specHash": "f83ebb7a551e5ea2284d4aa4ed1e5f0de2e6230db8bb480958efcea9f222d511",
     "checkIds": [
-      "D-MGFX-01",
       "A-TL-03-R"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "MGFX-03:1",
+        "checks": [
+          {
+            "id": "A-TL-03-R",
+            "definitionHash": "0c5533b5d72134ef285a281a22cd777b840f03ff1331e2b4b5a9556a7d26dde4"
+          }
+        ],
+        "remaining": [
+          "Move actual retime pins on animated native MGFX and compare equivalent source frames before/after Undo/Redo and reopen; constant-speed change omits pins."
+        ]
+      }
+    ]
   },
   "TRACES-01": {
     "specHash": "1ca66cb8c45791adf3f1eaa8967ae78e2090f2058b565652e4d607b17129bf23",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "TRACES-01:1",
+        "checks": [],
+        "remaining": [
+          "Inspect existing project-attributed traces without launching an external run; none of the current checks exercises this trace UI."
+        ]
+      }
+    ]
   },
   "INGEST-EFFORT-01": {
     "specHash": "03731a312ae801bb2ae7dbe498942c2365559be2ad6e507d52b7afa31a31a172",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "INGEST-EFFORT-01:1",
+        "checks": [],
+        "remaining": [
+          "The five physical effort selections and exact visible bounds need a dedicated procedure."
+        ]
+      }
+    ]
   },
   "INGEST-EFFORT-02": {
     "specHash": "a89b2ee340e1111b476662f4bbfc80793768df962d0800da858770737f402203",
@@ -534,38 +1941,116 @@
       "IN-06",
       "D-INGEST-PLAYBACK"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "INGEST-EFFORT-02:1",
+        "checks": [
+          {
+            "id": "IN-06",
+            "definitionHash": "b8aff6d564a6959cc2d9eba10dc2963ce11af80f7aaa52bf771dc182faebfb63"
+          },
+          {
+            "id": "D-INGEST-PLAYBACK",
+            "definitionHash": "8d4b937ec97de0cd382f9e17d36423333990473272825b86d3167a511a1033e5"
+          }
+        ],
+        "remaining": [
+          "Select Medium with Hybrid off, correlate the ingest job and independent transcripts/speakers. Audio-analysis concurrency alone omits this mode and terminal state."
+        ]
+      }
+    ]
   },
   "INGEST-ADVANCED-01": {
     "specHash": "c11fa368759a74802f755695f13e0f1b932873933228ef2153b89405b4504cdd",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "INGEST-ADVANCED-01:1",
+        "checks": [],
+        "remaining": [
+          "Advanced per-job change, Custom label and restoration need a dedicated procedure."
+        ]
+      }
+    ]
   },
   "INGEST-HYBRID-01": {
     "specHash": "5b3351dac69791dc048058ea2d411eac25f0a4f4307d559f4b4ada4b4095a0b7",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "INGEST-HYBRID-01:1",
+        "checks": [],
+        "remaining": [
+          "Independent Light-completion/Medium-start correlation and terminal badge cleanup are missing; generic local ingest does not prove ordering."
+        ]
+      }
+    ]
   },
   "SEARCH-LIVE-01": {
     "specHash": "cc739afb2ff767ac57e2e4cc096db87a8a7938a7b9d92d30bd3b31e418ca27ad",
     "checkIds": [
-      "D-INGEST-SEARCH-LIVE",
-      "D-TRANSCRIPT-SEARCH",
-      "SS-05"
+      "D-INGEST-PLAYBACK"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "SEARCH-LIVE-01:1",
+        "checks": [],
+        "remaining": [
+          "Use a spoken phrase absent from filenames and prove its first transcript match before the correlated Medium job completes, with exact timestamps."
+        ]
+      },
+      {
+        "id": "SEARCH-LIVE-01:2",
+        "checks": [
+          {
+            "id": "D-INGEST-PLAYBACK",
+            "definitionHash": "8d4b937ec97de0cd382f9e17d36423333990473272825b86d3167a511a1033e5"
+          }
+        ],
+        "remaining": [
+          "Use a spoken phrase absent from filenames and prove its first transcript match before the correlated Medium job completes, with exact timestamps."
+        ]
+      }
+    ]
   },
   "INGEST-LOCAL-01": {
     "specHash": "cecb3371927fc530cbf4cc74be63bbc41e88919510f38b33305781e6babceef1",
     "checkIds": [
       "D-UI-PREFERENCES"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "INGEST-LOCAL-01:1",
+        "checks": [
+          {
+            "id": "D-UI-PREFERENCES",
+            "definitionHash": "94e23bd1f3829f58184745efc5cf72446f23483d27d86d44432fbf8f7974a213"
+          }
+        ],
+        "remaining": [
+          "Inspect the selected release local-media/unreadable-file/per-job privacy controls and preserve settings; generic Preferences navigation omits those values."
+        ]
+      }
+    ]
   },
   "MODEL-PICKER-01": {
     "specHash": "fcf03a05b9ee8f4dd241cec45c7a360a97eff1914a27861e16be0f0ff4e9d96e",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "MODEL-PICKER-01:1",
+        "checks": [],
+        "remaining": [
+          "Oz model picker labels, row usability and long-label layout need a dedicated unsent-draft procedure."
+        ]
+      }
+    ]
   },
   "DOCUMENT-01": {
     "specHash": "ec5c61dc655e76fac6a2a721638e50006c8709590cef46377aa8629562ff16b7",
@@ -573,7 +2058,25 @@
       "A-UI-04",
       "D-DOCUMENT-EDIT"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "DOCUMENT-01:1",
+        "checks": [
+          {
+            "id": "A-UI-04",
+            "definitionHash": "3c2ee58bff0d07f99b25351d274f7c0da1b342c0db78ba8006e73de43b8d3cc2"
+          },
+          {
+            "id": "D-DOCUMENT-EDIT",
+            "definitionHash": "95fd467a3fdcf371f7cbc88ffd3d809aa1188d7890835a2e0645a1554397305b"
+          }
+        ],
+        "remaining": [
+          "Create, edit, rename and reopen the same GUI document; independently compare disk text and identity throughout."
+        ]
+      }
+    ]
   },
   "PLAY-HIDDEN-01": {
     "specHash": "c88196251c3258d820a9be6d9df0927cefae8818236138b6765bf654ad0c5fa2",
@@ -581,27 +2084,343 @@
       "D-PLAYBACK-SWITCH",
       "D-TRANSPORT-KEYS"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PLAY-HIDDEN-01:1",
+        "checks": [
+          {
+            "id": "D-PLAYBACK-SWITCH",
+            "definitionHash": "820cd0461224b87803bab0d4f5925997d5a4ba616c91af2ca6783a39a4f2cec2"
+          },
+          {
+            "id": "D-TRANSPORT-KEYS",
+            "definitionHash": "4efa368d865592e0e60faeee9f43054f8096b7524fc5f2af511cd9c76717b7b2"
+          }
+        ],
+        "remaining": [
+          "Hide Preview before playback starts, then show it during playback and verify current pixels; visible transport and switching omit the hidden-panel branch."
+        ]
+      }
+    ]
   },
   "COMMENT-TEXT-01": {
     "specHash": "5ab3b1c4701ebfb39d413692a0cb0932ce68ceea5bb7a195287e06999577b63a",
     "checkIds": [],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "COMMENT-TEXT-01:1",
+        "checks": [],
+        "remaining": [
+          "Physical selection/copy of a local comment and independent clipboard text comparison need a dedicated procedure."
+        ]
+      }
+    ]
   },
   "NOTES-UNDO-01": {
     "specHash": "1be05fbb14fbb50fb1af2fd433ae46f1d35e518de3604abf68fe3d67be25c6e6",
-    "checkIds": [
-      "D-EDIT-SPLIT-REDO",
-      "D-SAVE-DISCARD"
-    ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "checkIds": [],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "NOTES-UNDO-01:1",
+        "checks": [],
+        "remaining": [
+          "Raw notes require explicit retained readback across unrelated history and reopen; generic Undo checks omit notes."
+        ]
+      }
+    ]
   },
   "FLOAT-TABS-01": {
     "specHash": "3157e1d25840296e1be6cd3c2e36fdd11970a8f15eb0dbca9002c0b5da9a98a0",
     "checkIds": [
-      "P-SB-DOCK",
-      "D-DOCK-MODIFIER"
+      "P-SB-DOCK"
     ],
-    "status": "Provisional selection hints; assertions require independent evidence"
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "FLOAT-TABS-01:1",
+        "checks": [
+          {
+            "id": "P-SB-DOCK",
+            "definitionHash": "bbec161d2c87793cc0cf1ff0ff720fe88656b7d4fed1e531c85cdeb611239bd9"
+          }
+        ],
+        "remaining": [
+          "Float and redock a multi-tab panel, select every tab and verify content; a single populated Spellbook dock check is partial."
+        ]
+      }
+    ]
+  },
+  "STAGED-INGEST-01": {
+    "specHash": "8c95a34306482ee407a8d719dbd00629e9446429ecaf5a79c52415daeb4d7c8e",
+    "checkIds": [],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "STAGED-INGEST-01:1",
+        "checks": [],
+        "remaining": [
+          "Tray staging, overlap deduplication, entry removal and cancel-before-ingest need a dedicated procedure."
+        ]
+      },
+      {
+        "id": "STAGED-INGEST-01:2",
+        "checks": [],
+        "remaining": [
+          "Tray staging, overlap deduplication, entry removal and cancel-before-ingest need a dedicated procedure."
+        ]
+      },
+      {
+        "id": "STAGED-INGEST-01:3",
+        "checks": [],
+        "remaining": [
+          "Tray staging, overlap deduplication, entry removal and cancel-before-ingest need a dedicated procedure."
+        ]
+      }
+    ]
+  },
+  "STAGED-INGEST-02": {
+    "specHash": "4535964aaadf9e3e6b48a71348282055fe27cccde1bcf5cce9c22b5ac2876ac4",
+    "checkIds": [],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "STAGED-INGEST-02:1",
+        "checks": [],
+        "remaining": [
+          "Numbered sequence locator plus physical staging-tray keyboard focus require a validated fixture and procedure."
+        ]
+      },
+      {
+        "id": "STAGED-INGEST-02:2",
+        "checks": [],
+        "remaining": [
+          "Numbered sequence locator plus physical staging-tray keyboard focus require a validated fixture and procedure."
+        ]
+      }
+    ]
+  },
+  "MGFX-OFFLINE-01": {
+    "specHash": "a30defd277d3c6bacfba4f9ac21b46f21f71cdcfbe33b76e7f83745ab9dd50af",
+    "checkIds": [
+      "S-MGFX-PERSIST",
+      "D-MGFX-01",
+      "D-EXPORT-COMPOUND",
+      "S-MGFX-UNDO-PUBLISH"
+    ],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "MGFX-OFFLINE-01:1",
+        "checks": [
+          {
+            "id": "S-MGFX-PERSIST",
+            "definitionHash": "a5459743cc512681f1f8b4325fbf53a6d0dca26164181cdc9d76816ae32fba86"
+          }
+        ],
+        "remaining": [
+          "Independently inspect authored code and all local resources across reopen and history, and decode full preview/export with no Internet assets."
+        ]
+      },
+      {
+        "id": "MGFX-OFFLINE-01:2",
+        "checks": [
+          {
+            "id": "D-MGFX-01",
+            "definitionHash": "904e81788e084dd1d934fb22152b06e788ae93a1860bd7836bca94ba70737a09"
+          },
+          {
+            "id": "D-EXPORT-COMPOUND",
+            "definitionHash": "4bcbc9c6a77c4c71e5db847990b95f0a54fec13b32ab3d5e09b6a3c370d263ba"
+          }
+        ],
+        "remaining": [
+          "Independently inspect authored code and all local resources across reopen and history, and decode full preview/export with no Internet assets."
+        ]
+      },
+      {
+        "id": "MGFX-OFFLINE-01:3",
+        "checks": [
+          {
+            "id": "S-MGFX-UNDO-PUBLISH",
+            "definitionHash": "2fc85efa461acadb163990aed0c8642a6bfc54fccb0b7255ee4bdb15b3d0c42e"
+          }
+        ],
+        "remaining": [
+          "Independently inspect authored code and all local resources across reopen and history, and decode full preview/export with no Internet assets."
+        ]
+      }
+    ]
+  },
+  "PP-RANGE-01": {
+    "specHash": "337a627f04427215e327797274e14b156a1e0d9132b723b0a988a0a8ea90b604",
+    "checkIds": [
+      "D-PLAYBACK-INOUT",
+      "D-PREVIEW-SCRUB",
+      "D-INSPECTOR-BLUR-PHYSICAL"
+    ],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-RANGE-01:1",
+        "checks": [
+          {
+            "id": "D-PLAYBACK-INOUT",
+            "definitionHash": "efaa6fb147c74f84aa720a7be93ad2edbc58173334dba0eac513b7a04e13584e"
+          }
+        ],
+        "remaining": [
+          "Execute actual selected-range preparation and inspect ruler coverage, cached replay, owner switching and color/Auto-size invalidation."
+        ]
+      },
+      {
+        "id": "PP-RANGE-01:2",
+        "checks": [
+          {
+            "id": "D-PREVIEW-SCRUB",
+            "definitionHash": "3e2977a9ddbed606f9022d74b291fec2041a84d498e14a6300936e3f590fc503"
+          }
+        ],
+        "remaining": [
+          "Execute actual selected-range preparation and inspect ruler coverage, cached replay, owner switching and color/Auto-size invalidation."
+        ]
+      },
+      {
+        "id": "PP-RANGE-01:3",
+        "checks": [
+          {
+            "id": "D-INSPECTOR-BLUR-PHYSICAL",
+            "definitionHash": "cad8c2b4ca0fe1c79d8fd26759a3397828d208303c60be883c50db80626fdece"
+          }
+        ],
+        "remaining": [
+          "Execute actual selected-range preparation and inspect ruler coverage, cached replay, owner switching and color/Auto-size invalidation."
+        ]
+      }
+    ]
+  },
+  "PP-MEMORY-01": {
+    "specHash": "cee09078cfcddc9b16c6cd903fbfaf5b8aadef5d96e39e7d301da9f1b56b108d",
+    "checkIds": [
+      "D-UI-PREFERENCES"
+    ],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "PP-MEMORY-01:1",
+        "checks": [
+          {
+            "id": "D-UI-PREFERENCES",
+            "definitionHash": "94e23bd1f3829f58184745efc5cf72446f23483d27d86d44432fbf8f7974a213"
+          }
+        ],
+        "remaining": [
+          "Read, safely change and restore the exact memory limit; inspect memory/disk labels and blue coverage. Preferences-open coverage omits these semantics."
+        ]
+      },
+      {
+        "id": "PP-MEMORY-01:2",
+        "checks": [],
+        "remaining": [
+          "Read, safely change and restore the exact memory limit; inspect memory/disk labels and blue coverage. Preferences-open coverage omits these semantics."
+        ]
+      },
+      {
+        "id": "PP-MEMORY-01:3",
+        "checks": [],
+        "remaining": [
+          "Read, safely change and restore the exact memory limit; inspect memory/disk labels and blue coverage. Preferences-open coverage omits these semantics."
+        ]
+      }
+    ]
+  },
+  "AUTOSAVE-PLAYBACK-01": {
+    "specHash": "046e43cea41a3ae76b0c1da874d3723713d68bec277488a88246e7f5701f1def",
+    "checkIds": [
+      "D-PB-01",
+      "D-LP-02-SAVE"
+    ],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "AUTOSAVE-PLAYBACK-01:1",
+        "checks": [],
+        "remaining": [
+          "Observe project writes across the actual autosave interval while transport moves; explicit save and playback checks omit the autosave scheduling oracle."
+        ]
+      },
+      {
+        "id": "AUTOSAVE-PLAYBACK-01:2",
+        "checks": [
+          {
+            "id": "D-PB-01",
+            "definitionHash": "03295012be8e28dade498d96bcb92c92c9ecde79020cb3e90d952ed7a973f21f"
+          },
+          {
+            "id": "D-LP-02-SAVE",
+            "definitionHash": "3dc86515cfccad2c256c1d04e656cbc3a70adc872dca36c0b9a53c3c72e35b51"
+          }
+        ],
+        "remaining": [
+          "Observe project writes across the actual autosave interval while transport moves; explicit save and playback checks omit the autosave scheduling oracle."
+        ]
+      }
+    ]
+  },
+  "OZ-DICTATION-01": {
+    "specHash": "bd62988084ae0bc934c75992ebe036a5a425fb0c337772e4c2ac5783643e16b8",
+    "checkIds": [],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "OZ-DICTATION-01:1",
+        "checks": [],
+        "remaining": [
+          "Bundled voice resources/control availability and permitted local draft dictation need a dedicated procedure; no prompt submission."
+        ]
+      },
+      {
+        "id": "OZ-DICTATION-01:2",
+        "checks": [],
+        "remaining": [
+          "Bundled voice resources/control availability and permitted local draft dictation need a dedicated procedure; no prompt submission."
+        ]
+      }
+    ]
+  },
+  "MISSING-MEDIA-01": {
+    "specHash": "99eaadf3dd2b53e8f7cd7b4cedcf238c239350f5baaf4320c8a6efcb1d32502b",
+    "checkIds": [
+      "A-IN-08-R"
+    ],
+    "status": "Source overlap reviewed; independent assertion execution required",
+    "assertions": [
+      {
+        "id": "MISSING-MEDIA-01:1",
+        "checks": [
+          {
+            "id": "A-IN-08-R",
+            "definitionHash": "1afdfb14e5e56a6ae4c81c85bb4f6aa5774b8e03827b35b303230e3bc9e737cc"
+          }
+        ],
+        "remaining": [
+          "Use the ordinary GUI build and owned source copy; observe actual timeline availability marks and playback stall/recovery when renaming and restoring it."
+        ]
+      },
+      {
+        "id": "MISSING-MEDIA-01:2",
+        "checks": [
+          {
+            "id": "A-IN-08-R",
+            "definitionHash": "1afdfb14e5e56a6ae4c81c85bb4f6aa5774b8e03827b35b303230e3bc9e737cc"
+          }
+        ],
+        "remaining": [
+          "Use the ordinary GUI build and owned source copy; observe actual timeline availability marks and playback stall/recovery when renaming and restoring it."
+        ]
+      }
+    ]
   }
 }

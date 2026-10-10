@@ -4,6 +4,7 @@ import {constants} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {ROOT,externalPath,sha} from '../runner/files.mjs';
 import {createNightlyPlan,consolidateNightly,nightlyHTML} from '../runner/nightly.mjs';
+import {checkRegistry,resolveSelection} from '../runner/catalog.mjs';
 import {client} from './smoke.mjs';
 
 async function input(file){if((await stat(file)).size>1024*1024)throw Error('Nightly input exceeds 1 MiB.');return JSON.parse(await readFile(file,'utf8'));}
@@ -16,9 +17,11 @@ export async function main(args){
   const suite=await input(flags['--suite']||path.join(ROOT,'examples/nightly/suite.json')),mappings=await input(flags['--mapping']||path.join(ROOT,'examples/nightly/mapping.json'));
   const [catalog,worker]=await Promise.all([call('/api/checks'),call('/api/worker')]);
   if(worker.sourceMatches!==true)throw Error('The service source changed; restart the qualified version before planning.');
-  const plan=createNightlyPlan(suite,[...catalog.checks,...(catalog.candidates||[])],{build:required('--build'),packageHash:required('--package-hash'),runnerHash:worker.sourceHash,dataDir:worker.dataDir,releaseChanges:flags['--changes']?await input(flags['--changes']):[]},mappings,{cadence:flags['--cadence']||'nightly',proposals:flags['--proposals']?await input(flags['--proposals']):undefined});
+  const selection=resolveSelection({},{courseIds:['smoke-full']}),local=new Map(checkRegistry().map(c=>[c.id,c.definitionHash])),remote=new Map(catalog.checks.map(c=>[c.id,c.definitionHash]));
+  if(selection.effectiveIds.some(id=>remote.get(id)!==local.get(id)))throw Error('Local course definitions differ from the service catalog; plan from its matching checkout.');
+  const plan=createNightlyPlan(suite,[...catalog.checks,...(catalog.candidates||[])],{build:required('--build'),packageHash:required('--package-hash'),runnerHash:worker.sourceHash,dataDir:worker.dataDir,releaseChanges:flags['--changes']?await input(flags['--changes']):[]},mappings,{cadence:flags['--cadence']||'nightly',proposals:flags['--proposals']?await input(flags['--proposals']):undefined,executionSelection:selection});
   await mkdir(path.dirname(output),{recursive:true});await writeFile(output,JSON.stringify(plan,null,2)+'\n',{flag:'wx',mode:0o600});
-  return {path:output,planHash:plan.planHash,cadence:plan.cadence,catalogCheckCount:plan.catalogInventory.length,caseCount:plan.cases.length,assertionCount:plan.cases.reduce((n,c)=>n+c.assertions.length,0),releaseProposalCount:plan.releaseTestProposals.length,executionStarted:false};
+  return {path:output,planHash:plan.planHash,cadence:plan.cadence,catalogCheckCount:plan.catalogInventory.length,caseCount:plan.cases.length,assertionCount:plan.cases.reduce((n,c)=>n+c.assertions.length,0),assertionSupport:plan.cases.flatMap(c=>c.assertions).reduce((n,a)=>(n[a.support.coverage]=(n[a.support.coverage]||0)+1,n),{}),selectedCheckCount:plan.execution.selection.effectiveIds.length,releaseProposalCount:plan.releaseTestProposals.length,executionStarted:false};
  }
  const plan=await input(required('--plan')),run=await call('/api/runs/'+encodeURIComponent(required('--run'))),observations=flags['--observations']?await input(flags['--observations']):{};
  const report=await consolidateNightly(plan,run,observations);
