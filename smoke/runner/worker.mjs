@@ -33,6 +33,10 @@ export async function workerRun(call,{planHash,requestId,operator}){
 }
 export async function workerClient(profileFile){
  const profile=await checkWorkerProfile(await readJSON(profileFile)),call=client(profile.server),state=await call('/api/worker');
- if(state.sourceMatches!==true||state.fullSourceHash!==profile.sourceHash||state.sourceHash!==profile.runnerHash||state.dataDir!==profile.dataDir||state.name!==profile.name)throw Error('The listening service differs from the pinned worker. Inspect its source/workspace before dispatch.');
+ verifyWorkerState(state,profile);
  return {profile,call};
+}
+export function verifyWorkerState(state,profile){
+ if(state.sourceMatches!==true||state.fullSourceHash!==profile.sourceHash||state.sourceHash!==profile.runnerHash||state.dataDir!==profile.dataDir||state.name!==profile.name)throw Error('The listening service differs from the pinned worker. Inspect its source/workspace before dispatch.');
+ return state;
 }

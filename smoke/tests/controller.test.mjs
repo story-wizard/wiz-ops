@@ -9,7 +9,7 @@ import {resolveSelection} from '../runner/catalog.mjs';
 import {prepareDelivery,inspectDelivery} from '../runner/delivery.mjs';
 import {slackSender} from '../runner/slack-delivery.mjs';
 const profile={runnerHash:'a'.repeat(64)},selection=resolveSelection({},{checkIds:['A-CLI-01']}),request={requestId:'manual-1',build:{kind:'app',value:'/Selected/Wizard.app'},selection:{checkIds:['A-CLI-01']},operator:'Test',timeoutMinutes:60};
-const idle={ownedSessions:[],activeDesktopJobs:[],preparing:false,active:null},route={workspace:'story-company',userId:'U0BDBFNU0G1',user:'U0BDBFNU0G1',type:'im',channelId:'DTEST123'};
+const idle={sourceMatches:true,sourceHash:profile.runnerHash,ownedSessions:[],activeDesktopJobs:[],preparing:false,active:null},route={workspace:'story-company',userId:'U0BDBFNU0G1',user:'U0BDBFNU0G1',type:'im',channelId:'DTEST123'};
 async function fixture(fn){const root=await mkdtemp('/private/tmp/athanor-controller-'),store=new JobStore(root);try{await fn(store,root);}finally{store.close();await rm(root,{recursive:true,force:true});}}
 // These tests exercise durable records and observable dispatch counts, not a second implementation of the stage machine.
 test('duplicate requests retain one job, reject changed inputs and survive reopening',async()=>fixture(async(store,root)=>{
@@ -95,4 +95,13 @@ test('newest nightly without a package never silently falls back to an older bui
 test('a restarted delivery intent is Unknown, never a second Slack send',async()=>fixture(async(store,root)=>{
  const job=store.submit(request,selection,digest(profile));await writeFile(path.join(root,'report.json'),JSON.stringify({format:'athanor-job-report/v1',jobId:job.id,identity:{build:'Synthetic'},catalog:{state:'Failed',counts:{Fail:1}}}));await prepareDelivery(root,route);store.update(job.id,{state:'Delivery',outcome:'Failed',report:{path:root},deliveryDispatched:true});let sends=0;
  const controller=new JobController(store,{profile,call:async()=>idle,route,send:async()=>{sends++;}});await controller.tick();assert.equal(sends,0);assert.equal(store.get(job.id).delivery,'DELIVERY_UNKNOWN');assert.equal((await inspectDelivery(root)).state,'DELIVERY_UNKNOWN');assert.equal(store.get(job.id).outcome,'Failed');
+}));
+test('a listener rebound to another source or workspace cannot import, prepare or Start',async()=>fixture(async store=>{
+ const job=store.submit(request,selection,digest(profile));let writes=0;
+ for(const state of ['Resolved','Imported','Ready']){
+  store.update(job.id,{state,resolved:{input:{path:request.build.value}},imported:{app:request.build.value},planHash:'b'.repeat(64)});
+  const controller=new JobController(store,{profile,call:async(route,body)=>{if(body)writes++;return {...idle,dataDir:'/different/worker'};}});
+  await controller.tick();assert.equal(store.get(job.id).state,'Reporting');assert.match(store.get(job.id).error,/differs from the pinned worker/);
+ }
+ assert.equal(writes,0);
 }));

@@ -7,6 +7,7 @@ import {releaseBuilds,buildChannel} from '../builds.mjs';
 import {resultSummary} from '../scripts/smoke.mjs';
 import {createNightlyPlan,consolidateNightly,blockedPreparationReport,nightlyHTML,nightlyCases} from './nightly.mjs';
 import {prepareDelivery,inspectDelivery,recordDelivery} from './delivery.mjs';
+import {verifyWorkerState} from './worker.mjs';
 
 const exec=promisify(execFile),busy=s=>s.preparing||s.active||s.ownedSessions?.length||s.activeDesktopJobs?.length;
 export async function resolveJobBuild(request,get=async endpoint=>JSON.parse((await exec('gh',['api',endpoint],{timeout:30000,maxBuffer:8*1024*1024})).stdout)){
@@ -48,7 +49,8 @@ export async function retainJobReport(store,job,call){
 }
 export class JobController{
  constructor(store,{profile,call,resolve=resolveJobBuild,report=retainJobReport,route=null,send=null,now=()=>Date.now()}){Object.assign(this,{store,profile,call,resolve,report,route,send,now});}
- change(job,patch,note){return this.store.update(job.id,patch,note);}
+ change(job,patch,note){return this.store.update(job.id,{lastError:null,...patch},note);}
+ async worker(){return verifyWorkerState(await this.call('/api/worker'),this.profile);}
  async lookup(route){try{return await this.call(route);}catch(e){if(e.status===404)return null;throw e;}}
  stop(job,error,outcome='Blocked'){return this.change(job,{state:'Reporting',outcome,error,failedStage:job.state,workerRunnerHash:job.workerRunnerHash||this.profile.runnerHash},error);}
  async tick(){
@@ -69,13 +71,13 @@ export class JobController{
    const resolved=await this.resolve(job.request.build);return this.change(job,{state:'Resolved',resolved,workerRunnerHash:this.profile.runnerHash},'Official build identity resolved.');
   }
   if(job.state==='Resolved'){
-   const state=await this.call('/api/worker');if(busy(state))return {id:job.id,state:'Waiting',reason:'Worker busy; no preparation or run dispatched.'};
+   const state=await this.worker();if(busy(state))return {id:job.id,state:'Waiting',reason:'Worker busy; no preparation or run dispatched.'};
    job=this.change(job,{state:'Importing'},'Build import intent retained.');
    try{const imported=await this.call('/api/builds/import',job.resolved.input);return this.change(job,{state:'Imported',imported},'Build import completed.');}catch(e){if(e.responseLost)throw e;return this.stop(job,e.message);}
   }
   if(job.state==='Importing')return this.stop(job,'Build import response was interrupted. Inspect the verified cache and create a new job; import was not replayed.','Unknown');
   if(job.state==='Imported'){
-   if(busy(await this.call('/api/worker')))return {id:job.id,state:'Waiting',reason:'Worker busy; preparation intent not dispatched.'};
+   if(busy(await this.worker()))return {id:job.id,state:'Waiting',reason:'Worker busy; preparation intent not dispatched.'};
    job=this.change(job,{state:'Preparing'},'Preparation intent '+job.preparationId+' retained before dispatch.');
    try{const preparation=await this.call('/api/preparations',{app:job.imported.app,selection:job.request.selection,preparationId:job.preparationId});return this.change(job,{preparation},'Preparation admitted.');}catch(e){if(e.responseLost)throw e;return this.stop(job,e.message);}
   }
@@ -92,7 +94,7 @@ export class JobController{
    return this.change(job,{state:'Ready',planHash:plan.planHash,nightlyPlan},'Selection and report plan frozen.');
   }
   if(job.state==='Ready'){
-   if(busy(await this.call('/api/worker')))return {id:job.id,state:'Waiting',reason:'Worker busy; no Start dispatched.'};
+   if(busy(await this.worker()))return {id:job.id,state:'Waiting',reason:'Worker busy; no Start dispatched.'};
    job=this.change(job,{state:'Starting'},'Run request '+job.runRequestId+' retained before Start.');
    try{const admitted=await this.call('/api/runner/start',{planHash:job.planHash,requestId:job.runRequestId,operator:job.request.operator});return this.change(job,{state:'Running',runId:admitted.runId},'Run admitted.');}catch(e){if(e.responseLost)throw e;return this.stop(job,e.message);}
   }
