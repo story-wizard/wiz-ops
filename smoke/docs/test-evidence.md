@@ -30,6 +30,44 @@ The physical Render Graph checks require a `graph-state` JSON capture, retained 
 
 The physical live-preview checks retain timed PNG samples and before/after graph JSON. Report export can encode those samples into a video at their observed spacing. This is a sampled preview sequence. Full motion or audio checks should declare and capture their own recording.
 
+## Keep only useful passing images
+
+New prepared courses freeze `imageRetention: "failure-focused-v1"`. Collection and
+retention are separate: a required capture still must be collected to verify the
+check, even if its intermediate PNG is cleared afterward.
+
+At the first completed report export, pass-only intermediate PNGs are omitted
+from the report, their checksums and byte counts are recorded, and their owned
+run copies are cleared **after** the report is safely published. Captures remain
+available throughout course execution. Repeated exports use that retained
+decision and show no broken image links. The details panel explains when passing
+images were cleared; operation receipts, state, measurements and verdicts remain.
+
+Keep an authored visual checkpoint after a Pass by adding these fields:
+
+```json
+{"id":"drop-proof","kind":"image","when":"after","required":true,
+ "caption":"The clip visibly placed on V1.","retainOnPass":true,
+ "fileSuffix":"drop-after.png"}
+```
+
+`fileSuffix` matches the capture filename's ending, including in hashed exports.
+A specific filename declaration takes priority over a generic image declaration.
+Without a suffix, `retainOnPass: true` keeps all images matching that collection
+point. Use a descriptive capture name so the retained proof is unambiguous.
+
+Fail, Blocked, Unknown and other non-pass results retain their images. An image
+shared with any protected check remains. Maintained qualification candidates keep
+full images; for a changed accepted test, prepare a focused diagnostic selection
+with `diagnostics: "investigation"` to retain full repro evidence. Passing checks
+with evidence gaps also keep their captures for diagnosis. Global identity or
+journal gaps prevent a new pruning decision.
+
+Source media, fixtures, rendered project outputs, video, audio, JSON, logs and
+performance data are preserved. Standalone computer-use pilot archives keep their
+existing artifact contract. Historical plans without the frozen policy keep all
+their images; do not retrofit the policy or clean old runs using this mechanism.
+
 ## Record readable steps
 
 Declare a `steps` array in the check definition, with `id`, `title` and `phase`. In a desktop check:

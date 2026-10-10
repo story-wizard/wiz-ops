@@ -20,6 +20,7 @@ import {selectedRecipe,validateRecipe,requirementsFor} from './catalog.mjs';
 
 import {assertMappedPackagedSchema} from './schema-compatibility.mjs';
 import {readCliSchema} from './cli-schema.mjs';
+import {imageRetention} from './evidence-retention.mjs';
 export {assertMappedPackagedSchema};
 export async function sourceIdentity(){return digest([(await fingerprint(path.join(ROOT,'runner'))).sha256,(await fingerprint(path.join(ROOT,'desktop'))).sha256,await sha(path.join(ROOT,'test-details.mjs')),await sha(path.join(ROOT,'explainer/notes.mjs'))]);}
 export async function checkPrepared(dataDir=dataDirectory(),frozenPlan){
@@ -79,7 +80,7 @@ export async function prepare({app='/Applications/Wizard.app',dataDir=dataDirect
     finally{attached.child.kill('SIGTERM');const force=setTimeout(()=>attached.child.kill('SIGKILL'),3000);await attached.closed;clearTimeout(force);}
   }
   await onProgress('ready');
-  const content={kitVersion:2,runtime:desktopRuntime,attachmentQualification,...(selection?{recipe:course}:{}),speechModel,format:'wizard-smoke-prepared/v1',preparedAt:new Date().toISOString(),app,version,packageHash:pkg.sha256,packageFiles:pkg.files,schemaHash:digest(schema),fixtureRoot,fixtureHash:fixtures.sha256,courseHash:digest(course),runnerHash:await sourceIdentity(),runnerProvenance:await sourceProvenance(ROOT),courseId:course.id,cases:course.cases.map(c=>c.id),deferred:Object.keys(course.deferred),target:course.target,excludedPackagePaths:['Contents/MacOS/logs','**/__pycache__','**/*.pyc','**/.DS_Store']};
+  const content={imageRetention,kitVersion:2,runtime:desktopRuntime,attachmentQualification,...(selection?{recipe:course}:{}),speechModel,format:'wizard-smoke-prepared/v1',preparedAt:new Date().toISOString(),app,version,packageHash:pkg.sha256,packageFiles:pkg.files,schemaHash:digest(schema),fixtureRoot,fixtureHash:fixtures.sha256,courseHash:digest(course),runnerHash:await sourceIdentity(),runnerProvenance:await sourceProvenance(ROOT),courseId:course.id,cases:course.cases.map(c=>c.id),deferred:Object.keys(course.deferred),target:course.target,excludedPackagePaths:['Contents/MacOS/logs','**/__pycache__','**/*.pyc','**/.DS_Store']};
   content.schemaCompatibility=schemaCompatibility;
   const plan={...content,planHash:digest(content)};
   if(selection){await mkdir(path.join(dataDir,'plans'),{recursive:true});await writeJSON(path.join(dataDir,'plans',plan.planHash+'.json'),plan);}
