@@ -7,7 +7,6 @@ import {mkdtemp,mkdir,writeFile,readFile,rm,realpath} from 'node:fs/promises';
 import {selectUI,uniqueTarget,compareObservation,exportAgentReport,requirePassProof,sessionDefinitions,sessionContext,agentTool} from '../desktop/agent-tools.mjs';
 import {physicalKeys} from '../desktop/macos-input.mjs';
 import {sha} from '../runner/files.mjs';
-import {acquireDesktopLease} from '../desktop/desktop-lease.mjs';
 import {verifyTrimmedClip} from '../desktop/check-support.mjs';
 import {validateToolParams} from '../desktop/agent-proof.mjs';
 
@@ -110,6 +109,20 @@ test('a new attempt without a verdict cannot inherit an earlier Pass in the expo
 test('the native foreground lease excludes another workspace and releases after a crashed holder',{skip:process.platform!=='darwin'},async()=>{
  const data=await mkdtemp(path.join(tmpdir(),'athanor-lease-test-'));let first,last;
  try{
+  const swift=await readFile(new URL('../desktop/macos-input.swift',import.meta.url),'utf8'),start=swift.indexOf('if args.count == 2 && args[1] == "--desktop-lease"'),end=swift.indexOf('try require(args.count == 5',start);
+  assert.ok(start>=0&&end>start);
+  // Exercise the real kernel-lock block on a private file, without taking the user's desktop lease.
+  const block=swift.slice(start,end).replace('"/private/tmp/athanor-desktop-\\(getuid()).lock"',JSON.stringify(path.join(data,'probe.lock'))),driver=path.join(data,'lease-probe');
+  await writeFile(driver+'.swift',`import Foundation
+func require(_ value:Bool,_ message:String)throws{if !value{throw NSError(domain:message,code:1)}}
+func emit(_ value:[String:Any]){print(String(data:try! JSONSerialization.data(withJSONObject:value),encoding:.utf8)!)}
+func ps(_ args:[String])throws->String{let p=Process(),pipe=Pipe();p.executableURL=URL(fileURLWithPath:"/bin/ps");p.arguments=args;p.standardOutput=pipe;try p.run();let data=pipe.fileHandleForReading.readDataToEndOfFile();p.waitUntilExit();return String(data:data,encoding:.utf8)!.trimmingCharacters(in:.whitespacesAndNewlines)}
+func main()throws{let args=CommandLine.arguments;${block}}
+do{try main()}catch{emit(["status":"Blocked","error":(error as NSError).domain])}
+`);
+  const compiled=spawnSync('/usr/bin/swiftc',['-module-cache-path',path.join(data,'module-cache'),driver+'.swift','-o',driver],{encoding:'utf8',timeout:60000});assert.equal(compiled.status,0,compiled.stderr);
+  const {pathToFileURL}=await import('node:url'),module=path.join(data,'lease.mjs'),source=(await readFile(new URL('../desktop/desktop-lease.mjs',import.meta.url),'utf8')).replace("import {nativeInputDriver} from './macos-input.mjs';","const nativeInputDriver=async()=>({driver:"+JSON.stringify(driver)+"});").replace("from '../runner/engine.mjs'","from '"+new URL('../runner/engine.mjs',import.meta.url).href+"'");
+  await writeFile(module,source);const {acquireDesktopLease}=await import(pathToFileURL(module).href);
   first=await acquireDesktopLease(data);await assert.rejects(()=>acquireDesktopLease(data),e=>e.status==='Blocked');
   process.kill(first.receipt.pid,'SIGKILL');await first.release();first=null;
   last=await acquireDesktopLease(data);assert.equal(last.receipt.status,'Acquired');

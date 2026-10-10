@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {checks,requirePassed,requireExactTimingFixture,requireOrdinaryTimingFixture,timelineDockToOpen,timelineCanvas,gapFixture} from '../desktop/check-support.mjs';
 import {writeJSON} from '../runner/files.mjs';
+import {execFileSync} from 'node:child_process';
 test('a rejected timing fixture blocks a gesture instead of blaming the edit',()=>{
  const snapshot=status=>({tracks:[{items:[{kind:'clip',clip_id:'fixture',source:{timing:'timed',projection_status:status,projection_diagnostics:status==='exact'?[]:['exact_authority_carrier_mismatch']}}]}]});
  assert.doesNotThrow(()=>requireExactTimingFixture(snapshot('exact')));
@@ -29,6 +30,30 @@ test('paired video/audio canvases select by track identity and reject foreign pa
  for(const widgets of [[video,{...audio,timelinePanel:'other'}],[video,{...audio,window:'foreign'}],[video,{...video,id:'clone'}],[{...video,trackIdsTruncated:true},audio]])assert.throws(()=>timelineCanvas({widgets},'video-id'),e=>e.status==='Blocked');
  assert.throws(()=>timelineCanvas({widgets:[{...video,clipIds:[]},audio]}),e=>e.status==='Blocked');
  assert.throws(()=>timelineCanvas(ui,'missing'),e=>e.status==='Blocked');
+});
+
+test('the physical bin-drop fixture binds an empty video canvas by its new track identity',async()=>{
+ const source=process.env.ATHANOR_REVIEW_BASELINE?execFileSync('/usr/bin/git',['show',process.env.ATHANOR_REVIEW_BASELINE+':smoke/desktop/check-physical-editor.mjs'],{encoding:'utf8'}):await readFile(new URL('../desktop/check-physical-editor.mjs',import.meta.url),'utf8');
+ const start=source.indexOf('async function fixture('),end=source.indexOf('\nasync function undoTimeline(',start);
+ assert.ok(start>=0&&end>start);
+ const widgets=['audio','video'].map(kind=>({id:kind,class:'TimelineWidget',window:'main',timelinePanel:'panel',trackIds:[kind+'-id'],trackIdsTruncated:false,clipIds:[],clipIdsTruncated:false}));
+ const call=async op=>{assert.equal(op,'timeline.create');return {timeline_id:'new-timeline',tracks:[{kind:'audio',track_id:'audio-id'},{kind:'video',track_id:'video-id'}]};};
+ const inspect=async id=>({timeline:{timeline_id:id},tracks:[]}),open=async(_name,trackId)=>timelineCanvas({widgets},trackId);
+ const fixture=Function('c','inspect','openTimeline','clips','s',source.slice(start,end)+';return fixture;')(call,inspect,open,()=>[],{});
+ const result=await fixture('Empty drop fixture',false);
+ assert.equal(result.v.id,'video');assert.equal(result.track,'video-id');assert.equal(result.id,'new-timeline');
+});
+
+test('a linked audio fixture focuses video even when both canvases contain clips',async()=>{
+ const source=process.env.ATHANOR_REVIEW_BASELINE?execFileSync('/usr/bin/git',['show',process.env.ATHANOR_REVIEW_BASELINE+':smoke/desktop/check-controls-audio.mjs'],{encoding:'utf8'}):await readFile(new URL('../desktop/check-controls-audio.mjs',import.meta.url),'utf8');
+ const start=source.indexOf('async function audioFixture('),end=source.indexOf('\nasync function mix(',start);
+ assert.ok(start>=0&&end>start);
+ const widgets=['audio','video'].map(kind=>({id:kind,class:'TimelineWidget',window:'main',timelinePanel:'panel',trackIds:[kind+'-id'],trackIdsTruncated:false,clipIds:[kind+'-clip'],clipIdsTruncated:false}));
+ const before={tracks:[{track_id:'video-id',items:[{kind:'clip',clip_id:'video-clip'}]},{track_id:'audio-id',address:'A1',has_placed_items:true},{track_id:'empty-id',address:'A2',name:'Empty solo control',has_placed_items:false}]};
+ const call=async op=>op==='timeline.create'?{timeline_id:'linked-timeline',tracks:[{kind:'video',track_id:'video-id'}]}:op==='timeline.inspect'?before:{};
+ const open=async(_name,trackId)=>timelineCanvas({widgets},trackId),ui=async()=>({widgets});
+ const fixture=Function('c','s','assert','openTimeline','ui','activatePanel','floatPanel','unique',source.slice(start,end)+';return audioFixture;')(call,{assets:{plate:'plate'}},assert,open,ui,async()=>{},async()=>{},(u,p)=>{const found=u.widgets.filter(p);assert.equal(found.length,1);return found[0];});
+ const result=await fixture('Linked audio fixture');assert.equal(result.view.id,'video');assert.equal(result.audio.track_id,'audio-id');
 });
 
 test('ordinary UI fixtures accept a valid carrier while rejecting retime, mixed clocks and invalid authority',()=>{

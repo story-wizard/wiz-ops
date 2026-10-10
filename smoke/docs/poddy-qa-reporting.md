@@ -17,6 +17,7 @@ These are reviewed instruction changes, not a runtime network restriction. All a
 | Branch source | Athanor MacBook destination |
 | --- | --- |
 | `smoke/docs/poddy-qa-reporting.md` | `/Users/wizard/Documents/poddy/REPORTING.md` |
+| `smoke/examples/poddy/WORKER.md` | Fill with verified host/profile/source identities as `/Users/wizard/Documents/poddy/WORKER.md` |
 | `smoke/examples/poddy/README.md` | `/Users/wizard/Documents/poddy/README.md` |
 | `smoke/examples/poddy/NIGHTLY_QA.md` | `/Users/wizard/Documents/poddy/NIGHTLY_QA.md` |
 | `smoke/examples/poddy/workspace-AGENTS.md` | `/Users/wizard/Documents/Codex/2026-10-02/ar/AGENTS.md` |

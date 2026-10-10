@@ -9,9 +9,9 @@ Applies to Nightly regression and user-requested functional reviews. Retain each
 review's build selection, fixture requirements, reporting and recipient rules.
 Do not change the installed build merely to obtain a compatible harness course.
 
-Use a hybrid route for routine functional QA. Prefer Athanor in
-/Users/wizard/wiz-ops/smoke for rich UI inspection and evidence when its external
-adapter qualifies against the selected build. Use verified physical input for
+Use a hybrid route for routine functional QA. Read the shared WORKER.md for the
+current pinned source, profile and service URL. Use that Athanor version for rich
+UI inspection and evidence when its external adapter qualifies against the build. Use verified physical input for
 tested gestures, and the authorized exact-PID native input/capture fallback
 when an Athanor flow is unsupported, slow or unreliable. Keep fresh ownership,
 window and foreground guards, independent assertions and screenshots with

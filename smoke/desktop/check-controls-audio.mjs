@@ -8,7 +8,7 @@ async function audioFixture(id){const created=await c('timeline.create',{name:id
  await c('timeline.place_cuts',{id:'audio-fixture',timeline_id:created.timeline_id,cuts:[{id:'plate',source:{asset_id:s.assets.plate},source_range:{start_seconds:1,end_seconds:9},streams:'linked',destination:{at:{seconds:0,track}}}]});
  await c('timeline.manage_tracks',{id:'empty-control',timeline_id:created.timeline_id,edits:[{id:'empty',action:'add',kind:'audio',name:'Empty solo control'}]});const before=await c('timeline.inspect',{timeline_id:created.timeline_id});
  const audio=before.tracks.find(t=>t.address==='A1'&&t.has_placed_items),empty=before.tracks.find(t=>t.address==='A2'&&t.name==='Empty solo control'&&!t.has_placed_items);assert(audio&&empty,'Two-track audio fixture missing');
- await openTimeline(id);
+ await openTimeline(id,track);
  // Dock visibility and keyboard focus are separate. Activate the existing
  // Mixer dock, give it usable space, then restore the Timeline dock explicitly.
  if(!(await ui()).widgets.some(w=>/MixerWidget$/.test(w.class)))await activatePanel('Mixer','MixerWidget');await floatPanel('Mixer','MixerWidget');

@@ -22,7 +22,7 @@ const check=(id,fn)=>runCheck(id,async()=>{if(['P-GRADE-LIVE','P-CURVE-LIVE'].in
 async function fixture(name,placed=true,later=false){
  const t=await c('timeline.create',{name,video_format:{preset:'hd_1080p_24'},audio:{sample_rate:48000,channels:2}}),id=t.timeline_id,track=t.tracks.find(x=>x.kind==='video').track_id;
  if(placed)await c('timeline.place_cuts',{id:name,timeline_id:id,cuts:(later?[0,20]:[0]).map((at,i)=>({id:'clip'+i,source:{asset_id:s.assets.plate},source_range:{start_seconds:1,end_seconds:5},streams:'video_only',destination:{at:{seconds:at,track}}}))});
- const before=await inspect(id),v=await openTimeline(name);return {id,track,before,v,scope:{timeline_id:id,clip_id:clips(before)[0]?.clip_id}};
+ const before=await inspect(id),v=await openTimeline(name,track);return {id,track,before,v,scope:{timeline_id:id,clip_id:clips(before)[0]?.clip_id}};
 }
 async function undoTimeline(f){await physical('key',{actionId:'undo',target:f.v.id,key:'cmd+z'});await until(async()=>JSON.stringify(snapshotState(await inspect(f.id)))===JSON.stringify(snapshotState(f.before)));}
 async function select(f){await n('key',{target:f.v.id,key:'V'});const current=await readJSON(file);if(['P-GRADE-LIVE','P-CURVE-LIVE'].includes(current.currentCheck)){const geometry=await n('timeline-clip-rect',{target:f.v.id,clipId:f.scope.clip_id});await physicalInput(file,'click',{target:f.v.id,clipId:f.scope.clip_id,expectedClip:geometry.rect,...clipPoint(geometry)});}else await physical('click',{target:f.v.id,clipId:f.scope.clip_id,part:'body'});await c('playback.seek',{time:1});}

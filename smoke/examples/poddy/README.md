@@ -1,6 +1,6 @@
 # Athanor
 
-A workspace for testing Codex Remote across the MacBook and Mac mini.
+Athanor QA on a managed Mac. Read [the pinned worker entry point](WORKER.md) before any execution. Developer clones use `smoke/AGENTS.md` and need no worker profile.
 
 
 Shared QA guidance: [Nightly procedure](NIGHTLY_QA.md), [native computer use](COMPUTER_USE.md), and [Athanor Mini handoff](notes/2026-10-06-poddy2-qa-handoff.md).
