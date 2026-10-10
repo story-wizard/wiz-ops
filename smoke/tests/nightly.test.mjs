@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtemp,writeFile,rm,readFile} from 'node:fs/promises';
+import {mkdtemp,writeFile,rm,readFile,lstat} from 'node:fs/promises';
+import {execFileSync} from 'node:child_process';
+import {pathToFileURL} from 'node:url';
 import {createNightlyPlan,consolidateNightly,nightlyHTML,nightlyCases} from '../runner/nightly.mjs';
 import {digest,sha} from '../runner/files.mjs';
 const suite={cases:[{id:'CORE-01',area:'Startup',steps:['Open the selected build'],expected:['Correct build','Responsive window']}]};
@@ -39,4 +41,25 @@ test('consolidation requires exact run identity, retained evidence and all asser
 
 test('invalid, empty and duplicate functional specifications fail before planning',()=>{
  for(const cases of [[],[...suite.cases,...suite.cases],[{...suite.cases[0],expected:[]}],[{...suite.cases[0],steps:['']}],[{...suite.cases[0],id:'../../escape'}]])assert.throws(()=>nightlyCases({cases}));
+});
+
+
+test('completed nightly exports retain bytes, never a mutable source symlink',async()=>{
+ const root=await mkdtemp('/private/tmp/athanor-nightly-export-');
+ try{
+  const evidence=root+'/capture.txt',output=root+'/report';await writeFile(evidence,'retained bytes');
+  const plan=createNightlyPlan(suite,catalog,{...identity,dataDir:root}),observations={planHash:plan.planHash,runId:'run-1',assertions:[{id:'CORE-01:1',status:'PASS',observation:'Observed build',evidence:[{path:evidence,sha256:await sha(evidence)}]}]};
+  for(const [name,value] of [['plan',plan],['observations',observations]])await writeFile(root+'/'+name+'.json',JSON.stringify(value));
+  const io=root+'/io.mjs';await writeFile(io,`export * from 'node:fs/promises';import {mkdir as create,rename,symlink} from 'node:fs/promises';
+export async function mkdir(p,options){const r=await create(p,options);if(p===${JSON.stringify(output)}){await rename(${JSON.stringify(evidence)},${JSON.stringify(root+'/retained.txt')});await symlink(${JSON.stringify(root+'/retained.txt')},${JSON.stringify(evidence)});}return r;}`);
+  // Move the source at the export boundary after validation; either reject or retain a regular checked copy.
+  const source=process.env.ATHANOR_REVIEW_BASELINE?execFileSync('/usr/bin/git',['show',process.env.ATHANOR_REVIEW_BASELINE+':smoke/scripts/nightly.mjs'],{encoding:'utf8'}):await readFile(new URL('../scripts/nightly.mjs',import.meta.url),'utf8');
+  const module=root+'/command.mjs',rewritten=source.replace("from 'node:fs/promises'","from '"+pathToFileURL(io).href+"'").replace("import {client} from './smoke.mjs';","const client=()=>async()=> ("+JSON.stringify(run())+");").replace(/from '(\.\.?\/[^']+)'/g,(_m,p)=>"from '"+new URL(p,new URL('../scripts/nightly.mjs',import.meta.url)).href+"'");
+  await writeFile(module,rewritten);const {main}=await import(pathToFileURL(module).href);
+  try{await main(['report','--plan',root+'/plan.json','--run','run-1','--observations',root+'/observations.json','--out',output,'--server','http://127.0.0.1:1']);}
+  catch(error){assert.match(error.message,/evidence|symlink/i);assert.equal((await lstat(evidence)).isSymbolicLink(),true);assert.equal(await lstat(output+'/index.html').catch(()=>null),null);return;}
+  const report=JSON.parse(await readFile(output+'/report.json')),copy=output+'/'+report.cases[0].assertions[0].evidence[0].relativePath;
+  assert.equal((await lstat(copy)).isFile(),true,'A completed report must contain file bytes, not a source link');
+  await writeFile(root+'/retained.txt','later source edit');assert.equal(await readFile(copy,'utf8'),'retained bytes');
+ }finally{await rm(root,{recursive:true,force:true});}
 });

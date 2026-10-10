@@ -1,5 +1,6 @@
 import path from 'node:path';
-import {readFile,writeFile,mkdir,stat,cp} from 'node:fs/promises';
+import {readFile,writeFile,mkdir,stat,copyFile} from 'node:fs/promises';
+import {constants} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {ROOT,externalPath,sha} from '../runner/files.mjs';
 import {createNightlyPlan,consolidateNightly,nightlyHTML} from '../runner/nightly.mjs';
@@ -23,7 +24,7 @@ export async function main(args){
  const report=await consolidateNightly(plan,run,observations);
  await mkdir(output,{recursive:false});await mkdir(path.join(output,'evidence'));
  const copied=new Set();for(const c of report.cases)for(const a of c.assertions)for(const e of a.evidence||[]){
-  if(copied.has(e.relativePath))continue;const destination=path.join(output,e.relativePath);await cp(e.path,destination,{errorOnExist:true,force:false});if(await sha(destination)!==e.sha256)throw Error('Evidence changed while exporting. Preserve this incomplete export and inspect before retrying.');copied.add(e.relativePath);
+  if(copied.has(e.relativePath))continue;const destination=path.join(output,e.relativePath);await copyFile(e.path,destination,constants.COPYFILE_EXCL);if(await sha(destination)!==e.sha256)throw Error('Evidence changed while exporting. Preserve this incomplete export and inspect before retrying.');copied.add(e.relativePath);
  }
  await writeFile(path.join(output,'report.json'),JSON.stringify(report,null,2)+'\n',{flag:'wx',mode:0o600});await writeFile(path.join(output,'index.html'),nightlyHTML(report),{flag:'wx',mode:0o600});
  return {path:output,runId:run.id,cases:report.caseCounts,assertions:report.assertionCounts,catalog:report.catalog.counts,delivery:'LOCAL_ONLY'};
