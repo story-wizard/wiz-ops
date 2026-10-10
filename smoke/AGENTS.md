@@ -141,7 +141,7 @@ through it or stamp an older project to force readiness.
 
 A fresh launcher defaults to `smoke-full`: accepted core checks plus the maintained allowlist of physical/checklist qualification candidates. `automated-full` remains accepted-only; custom courses cannot promote candidates. Read `docs/agent-courses.md` for current composition. New physical groups must expose their selected definitions in `agent-context.json`, execute in fresh owned projects, preserve failures and retain native-input receipts in the course report. Stage executors run from the retained source snapshot. Keep the Mac unlocked for desktop checks; never attempt to bypass the lock screen or change system security settings.
 
-The default `smoke-full` revision 9 excludes `S-PF-IDLE`. It adds ten qualification candidates for project search across timeline focus, physical blur Inspector editing, mask clipboard/history, vectorscope tap response, New Project, Save As, projectless Preferences, missing-term search, 100-clip clipboard and 50-step physical history. Read the current qualification notes in `docs/harness-control.md`; lead acceptance remains separate. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.
+The default `smoke-full` revision 10 excludes `S-PF-IDLE`. It adds ten qualification candidates for project search across timeline focus, physical blur Inspector editing, mask clipboard/history, vectorscope tap response, New Project, Save As, projectless Preferences, missing-term search, 100-clip clipboard and 50-step physical history. Read the current qualification notes in `docs/harness-control.md`; lead acceptance remains separate. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.
 
 ## Local investigations
 
@@ -252,7 +252,7 @@ measurements. See the focus/recovery section of `docs/agent-sequences.md`.
 
 ### Grouped course execution
 
-New selections freeze `desktopMode: "grouped"` by default. `smoke-full` revision 9
+New selections freeze `desktopMode: "grouped"` by default. `smoke-full` revision 10
 runs compatible driver families in one owned session; every check keeps its own
 authored fixture, assertions and captures. Lifecycle, live curve sampling, external disk reload,
 preference-changing gestures, long history and import/live-indexing probes remain
@@ -316,3 +316,5 @@ retained operation timings, read more only if unfinished and never resend pendin
 input. Close idle clients with stdin EOF after final replies and reconciliation;
 verify their exit separately from Wizard cleanup. No summary removes a frozen
 assertion, capture or Unknown stop.
+
+The full course revision 10 includes unaccepted candidates for hot local-media loss/recovery, unmanaged raw document persistence and native animated split-tail timing. Read docs/functional-cohort.md for exact routes, fixtures, evidence and qualification limits. No new lead acceptance is implied.

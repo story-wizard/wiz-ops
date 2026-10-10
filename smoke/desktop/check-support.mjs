@@ -29,6 +29,11 @@ export function requirePassed(results,ids){
  const missing=ids.filter(id=>results.find(r=>r.id===id)?.status!=='Pass');
  if(missing.length)throw new OutcomeError('Required checks did not pass: '+missing.map(id=>id+' ('+(results.find(r=>r.id===id)?.status||'not executed')+')').join(', '),'Blocked');
 }
+export function mergeReopenResult(initial,verification){
+ assert(initial.id===verification.id,'Reopen belongs to another check');
+ return {...initial,reopen:verification,status:initial.status==='Pass'?verification.status:initial.status,error:initial.status==='Pass'?verification.error:initial.error,
+  evidence:{...initial.evidence,reopen:verification.evidence,reopenPending:false,artifacts:[...new Set([...(initial.evidence?.artifacts||[]),...(verification.evidence?.artifacts||[])])]}};
+}
 export async function waitForObservation(fn,{description='Expected observation',timeoutMs=5000,intervalMs=100,stableForMs=0}={}){
  assert(Number.isFinite(timeoutMs)&&timeoutMs>0&&timeoutMs<=60000&&Number.isFinite(intervalMs)&&intervalMs>0&&Number.isFinite(stableForMs)&&stableForMs>=0&&stableForMs<=2000&&stableForMs<=timeoutMs,'Observation wait must be bounded');
  const started=performance.now();let attempts=0,last,previous,stableSince;

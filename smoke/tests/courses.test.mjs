@@ -91,21 +91,21 @@ test('every accepted definition resolves and every desktop/service check has an 
  try{
   const accepted=acceptance();assert.equal(accepted.checks.length,137);
   for(const c of accepted.checks){const s=resolveSelection(db,{checkIds:[c.id]},accepted);validateRecipe(selectedRecipe(s),accepted);if(c.target!=='packaged')assert.ok(bound.has(c.id),'Unbound check '+c.id);}
-  const all=resolveSelection(db,{checkIds:accepted.checks.map(c=>c.id)},accepted);assert.equal(all.effectiveIds.length,137);assert.equal(all.notSelected.length,47);
+  const all=resolveSelection(db,{checkIds:accepted.checks.map(c=>c.id)},accepted);assert.equal(all.effectiveIds.length,137);assert.equal(all.notSelected.length,50);
   const maintained=resolveSelection(db,{courseIds:['automated-full']},accepted);
   assert.deepEqual(new Set(maintained.effectiveIds),new Set(all.effectiveIds));
   assert.equal(maintained.checkpoint,undefined);assert.equal(maintained.requirements.foreground,true);
   assert.equal(courseList(db)[0].id,'smoke-full');
   assert.throws(()=>saveCourse(db,{...draft,id:'automated-full'},accepted),/reserved/);
   validateRecipe(selectedRecipe(maintained),accepted);
-  assert.equal(rawChecks.length,184);
+  assert.equal(rawChecks.length,187);
  }finally{db.close();}
 });
 
  test('maintained full course qualifies only its explicit candidates; custom courses cannot promote them',()=>{
  const db=new DatabaseSync(':memory:');initializeCourses(db);
  try{
-  const s=resolveSelection(db,{courseIds:['smoke-full']});assert.equal(s.effectiveIds.length,177);assert.equal(s.qualificationIds.length,40);assert.equal(s.courseRevisions[0].revision,9);
+  const s=resolveSelection(db,{courseIds:['smoke-full']});assert.equal(s.effectiveIds.length,180);assert.equal(s.qualificationIds.length,43);assert.equal(s.courseRevisions[0].revision,10);
   assert.equal(s.effectiveIds.filter(id=>id.startsWith('P-')).length,13);assert.ok(s.effectiveIds.includes('D-EXTERNAL-RELOAD'));assert.ok(!s.effectiveIds.includes('S-PF-IDLE'));assert.ok(checkRegistry().some(c=>c.id==='S-PF-IDLE'),'Idle candidate remains available for its separate probe');
   validateRecipe(selectedRecipe(s));assert.throws(()=>resolveSelection(db,{checkIds:['P-RG-WIRE']}),/not accepted/);
   assert.throws(()=>saveCourse(db,{...draft,id:'candidate',groups:[{id:'g',title:'g',checks:['P-RG-WIRE']}]}),/not accepted/);

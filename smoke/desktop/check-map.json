@@ -179,5 +179,12 @@
   "check-recorded-playback.mjs": [
     "D-INSPECTOR-PLAYBACK",
     "D-INGEST-PLAYBACK"
+  ],
+  "check-functional-cohort.mjs": [
+    "D-MISSING-MEDIA-LIVE",
+    "D-RAW-NOTES-PERSIST"
+  ],
+  "check-generated-tail.mjs": [
+    "S-MGFX-TAIL-TIMING"
   ]
 }

@@ -66,7 +66,7 @@ The maintained [functional suite](../examples/nightly/suite.json) contains 102
 cases at this checkpoint. The [assertion map](../examples/nightly/mapping.json) accounts for all 161
 expected results, including the newer cases. Each route identifies related checks
 with pinned definition hashes and the work still required. At this checkpoint,
-65 assertions have partial source overlap and 96 have no related executable check. Each assertion retains its own
+68 assertions have partial source overlap and 93 have no related executable check. Each assertion retains its own
 status. Names and related catalog definitions never establish equivalence.
 
 Before execution, retain the selected package hash and release changes, then:

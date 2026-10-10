@@ -1,6 +1,6 @@
 {
   "id": "local-services-v1",
-  "revision": 4,
+  "revision": 5,
   "title": "Local application services",
   "target": "Owned background GUI services and app export worker; no keyboard/mouse or foreground UI acceptance",
   "cases": [
@@ -10,7 +10,7 @@
       "title": "Local animated graphic renders across its range",
       "expected": "The native local generation completes for its exact revision; decoded frames 0, 24 and 47 show the authored marker at the correct distinct positions in a 1080p24 timeline.",
       "steps": [
-        "Read the selected package\u2019s Remotion authoring facts and create a local moving-marker graphic.",
+        "Read the selected package’s Remotion authoring facts and create a local moving-marker graphic.",
         "Wait for the exact job, generation and revision to succeed; independently read its placement and content identity.",
         "Decode early, middle and late frames; verify marker position, raster and changing pixels."
       ],
@@ -71,6 +71,77 @@
       "sourceId": "PF-25",
       "title": "Ten-minute idle editor CPU",
       "expected": "The owned editor remains paused and unchanged for ten minutes. Over the final five minutes, average CPU is at most 2% and time-weighted p95 is at most 5% of one CPU core. Limits are provisional; raw process CPU and RSS samples are retained."
+    },
+    {
+      "id": "S-MGFX-TAIL-TIMING",
+      "area": "Motion graphics",
+      "title": "Animated graphic split-tail timing and persistence",
+      "expected": "Pre-split decoded frame references match the animated tail after split, trim, source-bounded extension, Undo/Redo and application copy. A fresh process preserves tail/copy identities, generation binding and source-clock pixels.",
+      "operations": [
+        "timeline.create",
+        "timeline.inspect",
+        "timeline.split_clips",
+        "timeline.trim_extend_edges",
+        "timeline.move_clips",
+        "generate.graphics",
+        "generate.status",
+        "generate.inspect",
+        "render.export_still",
+        "undo.undo",
+        "undo.redo",
+        "project.checkpoint"
+      ],
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "Create a native animated graphic and capture original source frames",
+          "phase": "prepare"
+        },
+        {
+          "id": "step-2",
+          "title": "Split at one second and compare the tail to frozen references",
+          "phase": "execute"
+        },
+        {
+          "id": "step-3",
+          "title": "Trim and extend within the original source; verify Undo and Redo",
+          "phase": "execute"
+        },
+        {
+          "id": "step-4",
+          "title": "Copy the tail, Save and verify both placements in a fresh process",
+          "phase": "verify"
+        }
+      ],
+      "legacyCases": [
+        "MGFX-01",
+        "MGFX-02"
+      ],
+      "scriptTimeoutMs": 300000,
+      "scope": "Unaccepted qualification candidate. Fresh disposable fixture on the exact selected build; component proof and live acceptance remain separate.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-owned CLI receipts and generated-media job identities."
+        },
+        {
+          "id": "state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Original source-frame comparisons, exact timeline bounds and fresh-process generation readback."
+        },
+        {
+          "id": "images",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Decoded original, split, trimmed, copied and reopened graphic frames."
+        }
+      ]
     }
   ]
 }

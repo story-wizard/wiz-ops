@@ -8,7 +8,7 @@ import {failureStatus,command,assert,same,snapshotState} from '../runner/engine.
 import {saveDiscard} from './check-lifecycle.mjs';
 import {unsetRateExport} from './check-unset-rate.mjs';
 import {projectWorkflow} from './check-projects.mjs';
-import {beginCheck,endCheck,selectorNamesTimeline,requireScriptCompletion,requireScriptReceipt,desktopScriptTimeout,missingCheckOperations} from './check-support.mjs';
+import {beginCheck,endCheck,selectorNamesTimeline,requireScriptCompletion,requireScriptReceipt,desktopScriptTimeout,missingCheckOperations,mergeReopenResult} from './check-support.mjs';
 export async function executeDesktopGroup(prepared,{onResult=async()=>{},onSession=async()=>{},isCancelled=()=>false,signal}={}){
 const original=await readJSON(new URL('./course.json',import.meta.url)),fullCourse={...original,cases:[...original.cases,...physicalChecks]},ids=prepared?.ids||fullCourse.cases.map(c=>c.id),course={...fullCourse,cases:fullCourse.cases.filter(c=>ids.includes(c.id))},total=course.cases.length;
 const source=prepared?.runtime.app||process.argv[2],qtCocoaPlugin=prepared?.runtime.qtPlugin||process.argv[3];assert(source?.endsWith('.app'),'Choose an instrumented desktop app.');
@@ -17,6 +17,7 @@ await onSession(session);
 const report={course,scope:session.scope,startedAt:new Date().toISOString(),guiHash:session.guiHash,cliHash:session.desktopCliHash,qtCocoa:session.qtCocoa,results:[],sources:{}};
 const map=await readJSON(new URL('./check-map.json',import.meta.url)),wants=name=>map[name]?.some(id=>ids.includes(id));
 const here=path.dirname(fileURLToPath(import.meta.url));
+for(const name of ['check-functional-cohort.mjs','functional-cohort-proof.mjs'])report.sources[name]=await sha(path.join(here,name));
 for(const name of ['adapter.mjs','run.mjs','check-physical-editor.mjs','check-physical.mjs','check-checklist.mjs','check-checklist-expansion.mjs','checklist-proof.mjs','check-projects.mjs','project-proof.mjs','check-volume-search.mjs','volume-proof.mjs','volume-contract.mjs','volume-agent-proof.mjs','ui-workflows.mjs','ui-cohort-proof.mjs','recorder.mjs','check-recorded-playback.mjs','ingest-fixture.mjs','check-media-search-ui.mjs','check-colour-panels.mjs','check-controls-audio.mjs','editor-proof.mjs','agent-proof.mjs','agent-tools.mjs','observations.mjs','physical-input.mjs','macos-input.mjs','macos-input.swift','check-core.mjs','check-editor.mjs','check-paths.mjs','check-support.mjs','check-workspace.mjs','check-scopes.mjs','check-spellbook.mjs','check-compounds.mjs','check-selection-bin.mjs','check-next.mjs','check-surface.mjs','check-lifecycle.mjs','check-unset-rate.mjs','check-offline-export.mjs','check-playback.mjs','check-spell-ui.mjs','check-relink.mjs','check-curves.mjs','export-dialog.mjs','generated-fixture.mjs','course.json','native/bridge.cpp','native/build.sh','native/smoke-style.json','check-guards.mjs'])report.sources[name]=await sha(path.join(here,name));
 const unsupported=course.cases.filter(c=>missingCheckOperations(c.id,session.schema).length);
 if(unsupported.length&&course.cases.every(c=>c.id==='D-CLI-01'||unsupported.includes(c))){
@@ -29,7 +30,7 @@ async function script(name,result,expectedCount=0,args=[],merge=false){
  if(!wants(name))return;if(isCancelled())throw Object.assign(Error('Course cancelled; no further actions dispatched.'),{status:'Unknown'});
  const receipt=await command(process.execPath,[path.join(here,name),file,...args],{timeout:desktopScriptTimeout(course.cases.filter(c=>map[name]?.includes(c.id))),signal,processGroup:true,onSpawn:pid=>retainChild(session,pid)});await writeJSON(path.join(session.root,name+args.join('-')+'.execution.json'),receipt);
  requireScriptReceipt(receipt,name);const r=await readJSON(path.join(session.root,result));
- for(const value of r.results){assert(ids.includes(value.id),'Script executed an unselected check: '+value.id);const initial=report.results.find(x=>x.id===value.id);if(initial){initial.reopen=value;if(initial.status==='Pass'&&value.status!=='Pass'){initial.status=value.status;initial.error=value.error;}}else report.results.push(value);await onResult(report.results.find(x=>x.id===value.id),session.root);}
+ for(const value of r.results){assert(ids.includes(value.id),'Script executed an unselected check: '+value.id);const initial=report.results.find(x=>x.id===value.id);if(initial)Object.assign(initial,mergeReopenResult(initial,value));else report.results.push(value);await onResult(report.results.find(x=>x.id===value.id),session.root);}
  requireScriptCompletion(receipt,r,name);
 }
 try{
@@ -56,6 +57,11 @@ try{
   await script('check-colour-panels.mjs','desktop-colour-panels-report.json');
   await script('check-controls-audio.mjs','desktop-controls-audio-report.json');
   await script('check-recorded-playback.mjs','desktop-recorded-playback-report.json');
+  await script('check-functional-cohort.mjs','desktop-functional-cohort-report.json');
+  if(ids.includes('D-RAW-NOTES-PERSIST')){
+    pendingVerification=['D-RAW-NOTES-PERSIST'];await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file));
+    await script('check-functional-cohort.mjs','desktop-functional-cohort-reopen-report.json',1,['verify'],true);pendingVerification=[];
+  }
   for(const id of map['check-projects.mjs']||[])if(ids.includes(id)){
     currentCheck=id;await beginCheck(file,id);const holder={live};let value;
     try{value=await projectWorkflow(file,holder,id);}finally{live=holder.live;}
@@ -112,9 +118,9 @@ export function missingDesktopResults(cases,results,events,error='',evidence=nul
 export function desktopGroups(ids,map,mode='grouped'){
   assert(['grouped','isolated'].includes(mode),'Unknown desktop execution mode');
   const remaining=new Set(ids),groups=[];
-  for(const name of ['check-physical-editor.mjs','check-physical.mjs','check-checklist.mjs','check-checklist-expansion.mjs','check-projects.mjs','check-volume-search.mjs','check-media-search-ui.mjs','check-colour-panels.mjs','check-controls-audio.mjs','check-recorded-playback.mjs'])for(const id of map[name]||[])if(remaining.delete(id)){
+  for(const name of ['check-physical-editor.mjs','check-physical.mjs','check-checklist.mjs','check-checklist-expansion.mjs','check-projects.mjs','check-volume-search.mjs','check-media-search-ui.mjs','check-colour-panels.mjs','check-controls-audio.mjs','check-recorded-playback.mjs','check-functional-cohort.mjs'])for(const id of map[name]||[])if(remaining.delete(id)){
     // Lifecycle, live scripted input, disk reload and preference-changing gestures keep their own session.
-    const isolated=mode==='isolated'||name==='check-projects.mjs'||['P-CURVE-LIVE','D-EXTERNAL-RELOAD','D-SHORTCUT-CONFLICT','D-DOCK-MODIFIER','D-HISTORY-50','D-IMPORT-DIALOG','D-INGEST-SEARCH-LIVE'].includes(id);
+    const isolated=mode==='isolated'||name==='check-projects.mjs'||['P-CURVE-LIVE','D-EXTERNAL-RELOAD','D-SHORTCUT-CONFLICT','D-DOCK-MODIFIER','D-HISTORY-50','D-IMPORT-DIALOG','D-INGEST-SEARCH-LIVE','D-MISSING-MEDIA-LIVE','D-RAW-NOTES-PERSIST'].includes(id);
     const nameKey=isolated?name+'#'+id:name,group=groups.find(g=>g.name===nameKey);
     if(group)group.ids.push(id);else groups.push({name:nameKey,ids:[id],recoverUnstarted:mode==='grouped'&&!isolated});
   }

@@ -13,7 +13,7 @@ export function stageObservation(id,report,events){
 }
 
 
-const reopenChecks=new Set(['D-MEDIA-RELINK','D-DOCUMENT-EDIT','D-SB-PERSIST','D-SB-TAB-RENAME','D-BIN-RENAME','D-BIN-DUPLICATE','D-BIN-DELETE','D-BIN-MGFX']);
+const reopenChecks=new Set(['D-MEDIA-RELINK','D-DOCUMENT-EDIT','D-SB-PERSIST','D-SB-TAB-RENAME','D-BIN-RENAME','D-BIN-DUPLICATE','D-BIN-DELETE','D-BIN-MGFX','D-RAW-NOTES-PERSIST','S-MGFX-TAIL-TIMING']);
 export function liveStageObservation(event,previous){
  if(previous?.final)return null;
  if(event.final)return event;

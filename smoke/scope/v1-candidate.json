@@ -75,9 +75,9 @@
     },
     {
       "file": "desktop/course.json",
-      "sha256": "1c609542dcb2319b66cac9d7097ed18efe8880d678dfff4c8c2a33d868a8240c",
+      "sha256": "27d0b0ccf2f9e0f64cc9bf505e223ce94a71fd8acc7181944af5f2c61b4643c8",
       "id": "local-desktop-v1",
-      "revision": 23,
+      "revision": 24,
       "target": "Instrumented local GUI with isolated Qt runtime",
       "requiredCheckIds": [
         "D-CLI-01",
@@ -184,14 +184,16 @@
         "D-MIXER-UI",
         "D-METER-PLAYBACK",
         "D-INSPECTOR-PLAYBACK",
-        "D-INGEST-PLAYBACK"
+        "D-INGEST-PLAYBACK",
+        "D-MISSING-MEDIA-LIVE",
+        "D-RAW-NOTES-PERSIST"
       ]
     },
     {
       "file": "desktop/service-course.json",
-      "sha256": "233729da9fe0fc4c0dafdee32ea0d4a8f6b14f4e8a110488d055aacc8ec2f8ab",
+      "sha256": "027a1478643babe19ce6a537263143a11525fd42faa23c1986fc64760421e6e6",
       "id": "local-services-v1",
-      "revision": 4,
+      "revision": 5,
       "target": "Owned background GUI services and app export worker; no keyboard/mouse or foreground UI acceptance",
       "requiredCheckIds": [
         "S-MGFX-MOTION",
@@ -202,7 +204,8 @@
         "S-MGFX-PERSIST",
         "S-EXPORT-PRORES",
         "S-EXPORT-AV1",
-        "S-PF-IDLE"
+        "S-PF-IDLE",
+        "S-MGFX-TAIL-TIMING"
       ]
     },
     {

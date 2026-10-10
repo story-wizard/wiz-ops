@@ -483,6 +483,7 @@
   "MGFX-01": {
     "specHash": "02ed05f42374928d8988874650056b3bcff18b0cc471cefc80685c3047f306b8",
     "checkIds": [
+      "S-MGFX-TAIL-TIMING",
       "D-EDIT-SPLIT-REDO",
       "P-TL-TRIM"
     ],
@@ -490,9 +491,14 @@
     "assertions": [
       {
         "id": "MGFX-01:1",
-        "checks": [],
+        "checks": [
+          {
+            "id": "S-MGFX-TAIL-TIMING",
+            "definitionHash": "ceed4cf21387420124fd9b55f972948f7dc569a05945b0ae05b91e41fdb9d6f3"
+          }
+        ],
         "remaining": [
-          "Use the same animated native graphic. Decode equivalent source-time frames after split, tail extension and Undo/Redo; static graphics and generic trim omit this oracle."
+          "The native animated candidate compares exact pre-split frames after split, trim, source-bounded extension and Undo/Redo. Qualify it on the designated package. Extension beyond the admitted source and any requested physical gesture remain separate."
         ]
       },
       {
@@ -505,10 +511,14 @@
           {
             "id": "P-TL-TRIM",
             "definitionHash": "d6f799d48fd9b5477a6247efae45de258caeab8446ce36d532d65ba7e78635e7"
+          },
+          {
+            "id": "S-MGFX-TAIL-TIMING",
+            "definitionHash": "ceed4cf21387420124fd9b55f972948f7dc569a05945b0ae05b91e41fdb9d6f3"
           }
         ],
         "remaining": [
-          "Use the same animated native graphic. Decode equivalent source-time frames after split, tail extension and Undo/Redo; static graphics and generic trim omit this oracle."
+          "The native animated candidate compares exact pre-split frames after split, trim, source-bounded extension and Undo/Redo. Qualify it on the designated package. Extension beyond the admitted source and any requested physical gesture remain separate."
         ]
       }
     ]
@@ -516,15 +526,21 @@
   "MGFX-02": {
     "specHash": "77cdf17b5a6ff1335e1f56ded658a55a4a13082c7d39ccc14c5705f21755013e",
     "checkIds": [
+      "S-MGFX-TAIL-TIMING",
       "S-MGFX-PERSIST"
     ],
     "status": "Source overlap reviewed; independent assertion execution required",
     "assertions": [
       {
         "id": "MGFX-02:1",
-        "checks": [],
+        "checks": [
+          {
+            "id": "S-MGFX-TAIL-TIMING",
+            "definitionHash": "ceed4cf21387420124fd9b55f972948f7dc569a05945b0ae05b91e41fdb9d6f3"
+          }
+        ],
         "remaining": [
-          "Copy an actual split animated tail and compare its offset and equivalent frames, including fresh-process reopen."
+          "The candidate copies a split animated tail with the application timeline operation and verifies original source-clock frames after a new process. Actual keyboard copy/paste and independently editable duplicated MGFX state remain separate."
         ]
       },
       {
@@ -533,10 +549,14 @@
           {
             "id": "S-MGFX-PERSIST",
             "definitionHash": "a5459743cc512681f1f8b4325fbf53a6d0dca26164181cdc9d76816ae32fba86"
+          },
+          {
+            "id": "S-MGFX-TAIL-TIMING",
+            "definitionHash": "ceed4cf21387420124fd9b55f972948f7dc569a05945b0ae05b91e41fdb9d6f3"
           }
         ],
         "remaining": [
-          "Copy an actual split animated tail and compare its offset and equivalent frames, including fresh-process reopen."
+          "The candidate copies a split animated tail with the application timeline operation and verifies original source-clock frames after a new process. Actual keyboard copy/paste and independently editable duplicated MGFX state remain separate."
         ]
       }
     ]
@@ -2120,14 +2140,21 @@
   },
   "NOTES-UNDO-01": {
     "specHash": "1be05fbb14fbb50fb1af2fd433ae46f1d35e518de3604abf68fe3d67be25c6e6",
-    "checkIds": [],
+    "checkIds": [
+      "D-RAW-NOTES-PERSIST"
+    ],
     "status": "Source overlap reviewed; independent assertion execution required",
     "assertions": [
       {
         "id": "NOTES-UNDO-01:1",
-        "checks": [],
+        "checks": [
+          {
+            "id": "D-RAW-NOTES-PERSIST",
+            "definitionHash": "ba37244301f77f78daca69a529511829983d494c73391fb6a09c4475519566d2"
+          }
+        ],
         "remaining": [
-          "Raw notes require explicit retained readback across unrelated history and reopen; generic Undo checks omit notes."
+          "The source-backed candidate protects unmanaged disk-backed document bytes through physical history and a new process. The legacy script says clip/timeline raw notes; those annotation controls remain unmapped until that intent is clarified."
         ]
       }
     ]
@@ -2393,7 +2420,8 @@
   "MISSING-MEDIA-01": {
     "specHash": "99eaadf3dd2b53e8f7cd7b4cedcf238c239350f5baaf4320c8a6efcb1d32502b",
     "checkIds": [
-      "A-IN-08-R"
+      "A-IN-08-R",
+      "D-MISSING-MEDIA-LIVE"
     ],
     "status": "Source overlap reviewed; independent assertion execution required",
     "assertions": [
@@ -2403,10 +2431,14 @@
           {
             "id": "A-IN-08-R",
             "definitionHash": "1afdfb14e5e56a6ae4c81c85bb4f6aa5774b8e03827b35b303230e3bc9e737cc"
+          },
+          {
+            "id": "D-MISSING-MEDIA-LIVE",
+            "definitionHash": "972dfb7fcb4bb95148f8d562f53d8df267eb82ab397004a5930a97c953244ed3"
           }
         ],
         "remaining": [
-          "Use the ordinary GUI build and owned source copy; observe actual timeline availability marks and playback stall/recovery when renaming and restoring it."
+          "This candidate checks hot removal/restoration in the same instrumented GUI and retains Preview/timeline paint changes, identities and advancing playback. The original ordinary uninstrumented build and semantic missing-icon confirmation still require their own evidence."
         ]
       },
       {
@@ -2415,10 +2447,14 @@
           {
             "id": "A-IN-08-R",
             "definitionHash": "1afdfb14e5e56a6ae4c81c85bb4f6aa5774b8e03827b35b303230e3bc9e737cc"
+          },
+          {
+            "id": "D-MISSING-MEDIA-LIVE",
+            "definitionHash": "972dfb7fcb4bb95148f8d562f53d8df267eb82ab397004a5930a97c953244ed3"
           }
         ],
         "remaining": [
-          "Use the ordinary GUI build and owned source copy; observe actual timeline availability marks and playback stall/recovery when renaming and restoring it."
+          "This candidate checks hot removal/restoration in the same instrumented GUI and retains Preview/timeline paint changes, identities and advancing playback. The original ordinary uninstrumented build and semantic missing-icon confirmation still require their own evidence."
         ]
       }
     ]

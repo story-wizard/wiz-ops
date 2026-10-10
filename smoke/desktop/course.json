@@ -1,6 +1,6 @@
 {
   "id": "local-desktop-v1",
-  "revision": 23,
+  "revision": 24,
   "title": "Local desktop smoke",
   "target": "Instrumented local GUI with isolated Qt runtime",
   "cases": [
@@ -1329,7 +1329,7 @@
       "steps": [
         {
           "id": "ingest",
-          "title": "Run the selected package\u2019s offline ingest",
+          "title": "Run the selected package’s offline ingest",
           "phase": "prepare"
         },
         {
@@ -1382,7 +1382,7 @@
         },
         {
           "id": "ingest",
-          "title": "Run the selected package\u2019s offline ingest",
+          "title": "Run the selected package’s offline ingest",
           "phase": "prepare"
         },
         {
@@ -2004,6 +2004,133 @@
         "playback.query_transport"
       ],
       "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-MISSING-MEDIA-LIVE",
+      "area": "Media availability",
+      "title": "Live local source loss and recovery",
+      "expected": "Removing one owned local source changes presented Preview and timeline marks without losing clip identity. Restoring the same bytes clears stale missing marks and playback advances in the same process.",
+      "operations": [
+        "media.resolve_path",
+        "media.add_media_root",
+        "media.import_asset",
+        "media.probe",
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect",
+        "playback.seek",
+        "playback.query_transport"
+      ],
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "Create a disposable source copy and timeline",
+          "phase": "prepare"
+        },
+        {
+          "id": "step-2",
+          "title": "Capture the available frame and timeline",
+          "phase": "execute"
+        },
+        {
+          "id": "step-3",
+          "title": "Remove only the owned source and inspect missing output",
+          "phase": "execute"
+        },
+        {
+          "id": "step-4",
+          "title": "Restore the source and verify pixels, identity and playback",
+          "phase": "verify"
+        }
+      ],
+      "legacyCases": [
+        "MISSING-MEDIA-01"
+      ],
+      "scriptTimeoutMs": 240000,
+      "scope": "Unaccepted qualification candidate. Fresh disposable fixture on the exact selected build; component proof and live acceptance remain separate.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-owned CLI and physical-input receipts."
+        },
+        {
+          "id": "state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent fixture, timeline, file-byte and pixel comparisons."
+        },
+        {
+          "id": "images",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Original and observed preview/timeline or generated-frame captures."
+        }
+      ]
+    },
+    {
+      "id": "D-RAW-NOTES-PERSIST",
+      "area": "Documents and history",
+      "title": "Raw document notes survive history and reopen",
+      "expected": "Latest externally authored raw document bytes, including CRLF and Unicode, survive a physical Undo/Redo of an independent timeline rename, Save and a new process. Clip/timeline annotation controls are separate.",
+      "operations": [
+        "timeline.inspect",
+        "timeline.update"
+      ],
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "Create an unmanaged raw document in the owned project",
+          "phase": "prepare"
+        },
+        {
+          "id": "step-2",
+          "title": "Rename the timeline and update the raw file",
+          "phase": "execute"
+        },
+        {
+          "id": "step-3",
+          "title": "Undo and Redo the independent edit; compare exact note bytes",
+          "phase": "execute"
+        },
+        {
+          "id": "step-4",
+          "title": "Save and reopen in a fresh process; compare notes and timeline",
+          "phase": "verify"
+        }
+      ],
+      "legacyCases": [
+        "NOTES-UNDO-01"
+      ],
+      "scriptTimeoutMs": 240000,
+      "scope": "Unaccepted qualification candidate. Fresh disposable fixture on the exact selected build; component proof and live acceptance remain separate.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-owned CLI and physical-input receipts."
+        },
+        {
+          "id": "state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent fixture, timeline, file-byte and pixel comparisons."
+        },
+        {
+          "id": "images",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Original and observed preview/timeline or generated-frame captures."
+        }
+      ]
     }
   ]
 }
