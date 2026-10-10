@@ -3,6 +3,7 @@
 #include <QtWidgets>
 #include "bug-report-prefill.h"
 #include <QtTest/QTest>
+#include <QtTest/QSignalSpy>
 #include <QStylePlugin>
 #include <QScreen>
 #include <QSaveFile>
@@ -14,10 +15,12 @@
 #include <objc/message.h>
 #include <ApplicationServices/ApplicationServices.h>
 #import <ScreenCaptureKit/ScreenCaptureKit.h>
+#include "workspace-probe.h"
 
 class SmokeBridge : public QObject {
     QString root, generation=QUuid::createUuid().toString(QUuid::WithoutBraces);
     QHash<QString,QPointer<QObject>> objects;
+    QHash<QString,QSharedPointer<QSignalSpy>> previewSpies;
     std::unique_ptr<QMimeData> previousClipboard;
     QByteArray ownedClipboardHash;
     QByteArray clipboardHash() {
@@ -92,7 +95,7 @@ class SmokeBridge : public QObject {
         output.write(QJsonDocument(value).toJson());output.commit();
     }
     static QJsonObject capabilities(){
-        return {{"protocol",1},{"version",10},{"operations",QJsonArray{"capabilities","inspect","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
+        return {{"protocol",1},{"version",12},{"operations",QJsonArray{"capabilities","inspect","add-floating-panel","workspace-inspect","workspace-append","workspace-hover","workspace-scroll","workspace-pipeline-inspect","workspace-request-selection","workspace-model-fixture","workspace-header","workspace-image-width","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
                 {"buttonClickGeometry",true},{"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
                 {"timelinePoint",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget7timeToXEd")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11trackHeightEi"))},
                 {"limits",QJsonObject{{"modelRows",64},{"modelPageRows",64},{"timelineClipIds",1024},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
@@ -135,7 +138,7 @@ class SmokeBridge : public QObject {
         QJsonArray widgets,actions;QSet<QAction*> seen;
         for(auto* w:QApplication::allWidgets()){
             if(!w->isVisible()||(scope&&w!=scope&&!scope->isAncestorOf(w)&&!w->isAncestorOf(scope)))continue;
-            QJsonObject item{{"active",w->isActiveWindow()},{"id",id(w)},{"class",w->metaObject()->className()},{"name",w->objectName()},{"tooltip",w->toolTip()},{"parent",w->parentWidget()?id(w->parentWidget()):QString()},{"enabled",w->isEnabled()},{"title",w->windowTitle()},{"window",id(w->window())},{"width",w->width()},{"height",w->height()}};
+            QJsonObject item{{"visible",w->isVisible()},{"active",w->isActiveWindow()},{"id",id(w)},{"class",w->metaObject()->className()},{"name",w->objectName()},{"tooltip",w->toolTip()},{"parent",w->parentWidget()?id(w->parentWidget()):QString()},{"enabled",w->isEnabled()},{"title",w->windowTitle()},{"window",id(w->window())},{"width",w->width()},{"height",w->height()}};
             const auto pos=w->mapTo(w->window(),QPoint{});item["x"]=pos.x();item["y"]=pos.y();
             item["accessibleName"]=w->accessibleName();item["accessibleDescription"]=w->accessibleDescription();
             if(w->objectName()=="InspectorParamControlRow"){
@@ -145,7 +148,7 @@ class SmokeBridge : public QObject {
             }
             const auto visible=w->visibleRegion().boundingRect();item["visibleRect"]=QJsonObject{{"x",visible.x()},{"y",visible.y()},{"width",visible.width()},{"height",visible.height()}};
             item["focused"]=w==qApp->focusWidget();
-            if(w->isWindow()){NSView* view=(__bridge NSView*)reinterpret_cast<void*>(w->winId());item["nativeWindow"]=qint64(view.window.windowNumber);item["keyWindow"]=view.window.isKeyWindow;}
+            if(w->isWindow()){NSView* view=(__bridge NSView*)reinterpret_cast<void*>(w->winId());item["nativeWindow"]=qint64(view.window.windowNumber);item["keyWindow"]=view.window.isKeyWindow;const auto order=[NSApp.orderedWindows indexOfObject:view.window];item["nativeOrder"]=order==NSNotFound?QJsonValue(QJsonValue::Null):QJsonValue(double(order));item["nativeLevel"]=double(view.window.level);item["nativeHasParent"]=view.window.parentWindow!=nil;item["nativeHidesOnDeactivate"]=view.window.hidesOnDeactivate;}
             for(auto* owner=w;owner;owner=owner->parentWidget())if(auto* proxy=owner->graphicsProxyWidget();proxy&&proxy->scene()&&!proxy->scene()->views().isEmpty()){item["graphView"]=id(proxy->scene()->views().front());break;}
             if(auto* p=qobject_cast<QLabel*>(w))item["text"]=p->text();
             if(auto* p=qobject_cast<QAbstractButton*>(w)){item["text"]=p->text();item["checked"]=p->isChecked();}
@@ -165,6 +168,7 @@ class SmokeBridge : public QObject {
             if(QString(w->metaObject()->className())=="TimelineWidget"){
                 for(auto* owner=w->parentWidget();owner;owner=owner->parentWidget())if(QString(owner->metaObject()->className())=="TimelinePanel"){
                     item["timelinePanel"]=id(owner);
+                    using Mode=int(*)(const QWidget*);auto mode=reinterpret_cast<Mode>(dlsym(RTLD_DEFAULT,"_ZNK13TimelinePanel8toolModeEv"));if(mode)item["toolMode"]=mode(owner);
                     using TrackId=QString(*)(const QWidget*,int,bool);
                     using TrackY=int(*)(const QWidget*,int);
                     auto trackId=reinterpret_cast<TrackId>(dlsym(RTLD_DEFAULT,"_ZN13TimelinePanel15trackIdForIndexEPK14TimelineWidgetib"));
@@ -206,6 +210,10 @@ class SmokeBridge : public QObject {
                 for(int r=0;r<qMin(64,m->rowCount(p->rootIndex()));r++){QJsonArray cols;for(int col=0;col<qMin(6,m->columnCount(p->rootIndex()));col++)cols.append(m->data(m->index(r,col,p->rootIndex())).toString());rows.append(cols);}item["model"]=rows;item["viewport"]=id(p->viewport());item["currentRow"]=p->currentIndex().row();QJsonArray selected;for(const auto& index:p->selectionModel()->selectedRows())selected.append(index.row());item["selectedRows"]=selected;
                 QJsonArray rects;for(int r=0;r<qMin(64,m->rowCount(p->rootIndex()));r++){auto rect=p->visualRect(m->index(r,0,p->rootIndex()));rects.append(QJsonObject{{"row",r},{"x",rect.x()},{"y",rect.y()},{"width",rect.width()},{"height",rect.height()}});}item["itemRects"]=rects;
             }
+            if(QString(w->metaObject()->className())=="PreviewPanel"){
+                const auto index=w->metaObject()->indexOfSignal("playClicked()");
+                if(index>=0){const auto key=id(w);if(!previewSpies.contains(key))previewSpies[key]=QSharedPointer<QSignalSpy>::create(w,w->metaObject()->method(index));if(previewSpies[key]->isValid())item["playClickedCount"]=previewSpies[key]->count();}
+            }
             widgets.append(item);
             for(auto* a:w->findChildren<QAction*>(QString{},scope?Qt::FindDirectChildrenOnly:Qt::FindChildrenRecursively))if(!seen.contains(a)){seen.insert(a);QJsonObject action{{"id",id(a)},{"text",a->text()},{"name",a->objectName()},{"enabled",a->isEnabled()},{"checked",a->isChecked()},{"checkable",a->isCheckable()},{"shortcut",a->shortcut().toString()}};if(a->property("mediaSearchBaseLabel").isValid())action["mediaSearchSource"]=a->property("mediaSearchBaseLabel").toString();actions.append(action);}
         }
@@ -246,6 +254,25 @@ class SmokeBridge : public QObject {
         const auto op=request["op"].toString(),key=request["target"].toString();
         QObject* target=objects.value(key);auto* widget=qobject_cast<QWidget*>(target);
         if(op=="capabilities")return capabilities();
+        if(op=="add-floating-panel"){
+            using Add=void(*)(QWidget*,const QString&);auto add=reinterpret_cast<Add>(dlsym(RTLD_DEFAULT,"_ZN10MainWindow16addFloatingPanelERK7QString"));const auto panel=request["panel"].toString();
+            if(!add||!widget||!widget->isVisible()||QString(widget->metaObject()->className())!="MainWindow"||QApplication::activeModalWidget()||(panel!="Timeline"&&panel!="Preview"))throw QString("Adding a floating panel requires the owned main window and Timeline or Preview");
+            add(widget,panel);return {{"added",panel}};
+        }
+        if(op.startsWith("workspace-")){
+            WorkspaceProbe probe(widget);
+            if(op=="workspace-inspect")return probe.inspect(widget,request);
+            if(op=="workspace-pipeline-inspect")return probe.pipelineState();
+            if(op=="workspace-append")probe.append(widget,request);
+            else if(op=="workspace-hover")probe.hover(request);
+            else if(op=="workspace-scroll")probe.scroll(request);
+            else if(op=="workspace-request-selection")probe.requestSelection(request);
+            else if(op=="workspace-model-fixture")probe.modelFixture(request);
+            else if(op=="workspace-header")probe.header(request);
+            else if(op=="workspace-image-width")probe.imageWidth(request);
+            else throw QString("Unsupported workspace operation");
+            return {{"dispatched",op}};
+        }
         if(op=="inspect"){if(request.contains("target")&&(!widget||!widget->isVisible()))throw QString("Scoped target is unavailable; observe again");return inspect(widget);}
         if(op=="model-page")return modelPage(widget,request);
         if(op=="model-value"){

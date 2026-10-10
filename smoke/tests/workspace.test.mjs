@@ -26,8 +26,8 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
   try{
     await start();
     const setup=(await request('/run-setup')).data;
-    assert.equal(setup.courses[0].id,'smoke-full');assert.equal(setup.courses[0].checkCount,177);
-    assert.deepEqual(setup.courses[0].targets,{packaged:57,desktop:113,service:7});
+    assert.equal(setup.courses[0].id,'smoke-full');assert.equal(setup.courses[0].checkCount,180);
+    assert.deepEqual(setup.courses[0].targets,{packaged:57,desktop:115,service:8});
     assert.ok(setup.courses.every(c=>!c.checkpoint));assert.deepEqual(setup.runtimes,[]);
     assert.equal((await fetch(base+'/run-setup.js')).status,200);assert.equal((await fetch(base+'/wizard-tokens.css')).status,200);
     assert.deepEqual((await request('/runs')).data,[],'Opening run setup must not launch tests');
@@ -79,11 +79,11 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     const history=await fetch(base+'/history');assert.equal(history.status,200);assert.match(history.headers.get('Content-Security-Policy'),/sandbox/);
     assert.match(await history.text(),/Retained history fixture/);assert.equal((await fetch(base+'/history',{method:'POST'})).status,405);
     const {data:catalog}=await request('/catalog');
-    assert.equal(catalog.tests.length,315);
+    assert.equal(catalog.tests.length,331);
     assert.equal(catalog.checkpoint.rows.length,137);
-    assert.equal(catalog.tests.filter(t=>t.course==='Local desktop').length,105);
-    assert.equal(catalog.tests.filter(t=>t.course==='Local services').length,8);
-    assert.equal((await request('/desktop')).data.serviceCourse.cases.length,8);
+    assert.equal(catalog.tests.filter(t=>t.course==='Local desktop').length,119);
+    assert.equal(catalog.tests.filter(t=>t.course==='Local services').length,10);
+    assert.equal((await request('/desktop')).data.serviceCourse.cases.length,10);
     assert.ok(catalog.checkpoint.rows.find(r=>r.id==='EX-02').checks.some(c=>c.id==='S-EXPORT-UNSET-RATE'));
     assert.ok(catalog.checkpoint.rows.find(r=>r.id==='TL-02').checks.some(c=>c.id==='D-EDIT-SPLIT-REDO'));
     assert.deepEqual((await request('/desktop')).data.runs,[]);
@@ -91,7 +91,8 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     assert.equal(tower.status,200);
     assert.equal(tower.data.format,'wizard-smoke-tower/v1');
     assert.equal(tower.data.historyUrl,'/history');
-    assert.equal(tower.data.checks.length,183);
+    assert.equal(tower.data.checks.length,199);
+    const discovery=(await request('/checks')).data;assert.equal(discovery.checks.length,199);assert.equal(discovery.candidates.length,2);assert.ok(discovery.candidates.every(c=>c.executable===false&&c.accepted===false));
     assert.deepEqual(tower.data.runs,[]);
     assert.equal(tower.data.runner.prepared,false);
     assert.equal((await request('/desktop/start','POST',{kind:'handoff',sourceRun:'../../other',caseId:'D-TRACK-ADD'})).status,409);
@@ -102,8 +103,8 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     assert.equal(catalog.checkpoint.rows.find(r=>r.id==='RG-03').sourceIssue,'WIZ-475');
     assert.ok(catalog.checkpoint.rows.every(r=>r.remaining&&r.nextAdapter));
     assert.ok(catalog.checkpoint.rows.filter(r=>r.environment==='NAS').every(r=>r.coverage==='Deferred'&&r.checks.length===0));
-    assert.equal(new Set(catalog.tests.map(t=>t.id)).size,315);
-    assert.equal(catalog.tests.filter(t=>t.kind==='Automated counterpart').length,173);
+    assert.equal(new Set(catalog.tests.map(t=>t.id)).size,331);
+    assert.equal(catalog.tests.filter(t=>t.kind==='Automated counterpart').length,174);
     assert.equal(catalog.tests.filter(t=>t.course==='First automated').length,71);
     assert.equal(catalog.tests.filter(t=>t.readiness==='Ready').length,0);
     assert.deepEqual((await request('/runs')).data,[],'imported source Pass must not create passing runs');

@@ -75,9 +75,9 @@
     },
     {
       "file": "desktop/course.json",
-      "sha256": "1c609542dcb2319b66cac9d7097ed18efe8880d678dfff4c8c2a33d868a8240c",
+      "sha256": "c85ff0f0c9c48ccb1896c92e49e4c140fa7c27537e188205e97bd464da0d08f8",
       "id": "local-desktop-v1",
-      "revision": 23,
+      "revision": 27,
       "target": "Instrumented local GUI with isolated Qt runtime",
       "requiredCheckIds": [
         "D-CLI-01",
@@ -184,16 +184,31 @@
         "D-MIXER-UI",
         "D-METER-PLAYBACK",
         "D-INSPECTOR-PLAYBACK",
-        "D-INGEST-PLAYBACK"
+        "D-INGEST-PLAYBACK",
+        "D-MISSING-MEDIA-LIVE",
+        "D-RAW-NOTES-PERSIST",
+        "D-MAC-RESUME",
+        "D-MAC-WINDOW-ORDER",
+        "D-MAC-FLOAT-TIMELINE",
+        "D-MAC-FLOAT-PREVIEW",
+        "D-AGENT-TAIL",
+        "D-AGENT-SELECTORS",
+        "D-AGENT-HEADER",
+        "D-AGENT-IMAGE",
+        "D-AGENT-SCROLL-AWAY",
+        "D-AGENT-GESTURE-ANCHOR",
+        "D-AGENT-CUSTOM-MODEL",
+        "D-AGENT-PIPELINE-CONFIG"
       ]
     },
     {
       "file": "desktop/service-course.json",
-      "sha256": "89e69c0f5f4569c6f208fb3a2d0b2d94f07da608a5b5aa7f6c80de860af1448a",
+      "sha256": "027a1478643babe19ce6a537263143a11525fd42faa23c1986fc64760421e6e6",
       "id": "local-services-v1",
-      "revision": 3,
+      "revision": 5,
       "target": "Owned background GUI services and app export worker; no keyboard/mouse or foreground UI acceptance",
       "requiredCheckIds": [
+        "S-MGFX-MOTION",
         "S-MGFX-DUPLICATE-DEFAULT",
         "S-MGFX-DUPLICATE",
         "S-MGFX-CLIP-COPY",
@@ -201,7 +216,8 @@
         "S-MGFX-PERSIST",
         "S-EXPORT-PRORES",
         "S-EXPORT-AV1",
-        "S-PF-IDLE"
+        "S-PF-IDLE",
+        "S-MGFX-TAIL-TIMING"
       ]
     },
     {
@@ -1381,7 +1397,8 @@
       "disposition": "Partial",
       "checkIds": [
         "D-MGFX-01",
-        "S-MGFX-PERSIST"
+        "S-MGFX-PERSIST",
+        "S-MGFX-MOTION"
       ],
       "originalProjectVariants": [
         "Fresh",

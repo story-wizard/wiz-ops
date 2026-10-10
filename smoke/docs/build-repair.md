@@ -7,8 +7,10 @@ Start with the error, the selected build and the intended checks. A preparation 
 Use the existing service URL with `smoke.mjs setup`, `builds` and `context`. Identify the exact local app, tag or asset and package hash. Read the packaged CLI schema without starting Wizard:
 
 ```sh
-"/absolute/path/to/Wizard.app/Contents/MacOS/wiz-cli" project create --schema --no-spawn
+"/absolute/path/to/Wizard.app/Contents/MacOS/wiz-cli" project --schema --no-spawn
 ```
+
+Use the shared `readCliSchema` in `runner/cli-schema.mjs` for harness code. It requests the full registry and supports the older operation-scoped entry point only when root discovery is unsupported. A single-operation fragment, malformed response, permission failure or timeout is not a qualified registry.
 
 Retain that JSON and your comparison outside Git. Compare it with `runner/contracts/installed-schema.json`, including requests, responses, required fields, enums and referenced definitions. Ignore object key order when comparing. Compute structured schema identities with the existing `digest` helper in `runner/files.mjs`; hashing the JSON file's bytes produces a different identity.
 

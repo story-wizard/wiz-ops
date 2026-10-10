@@ -15,7 +15,9 @@ Work from the command root: `smoke/` in a checkout or `workspace/` in a bundle. 
 
 | Task | Start here |
 | --- | --- |
+| Collect nightly evidence or record private delivery | [Evidence and delivery](docs/evidence-baseline.md) |
 | Administer a managed MBP/Mini or consolidate nightly assertions | [Workers and nightly reports](docs/workers.md) |
+| Plan the combined nightly catalog and legacy functional assertions | [Workers and nightly reports](docs/workers.md) |
 | Run or compose an existing course | [Agent courses](docs/agent-courses.md) |
 | Explore Wizard with mouse, keyboard and app operations | [Computer-use guide](docs/computer-use-agent.md) |
 | Understand how the CLI, Qt adapter and physical input work together | [Harness control](docs/harness-control.md) |
@@ -23,12 +25,13 @@ Work from the command root: `smoke/` in a checkout or `workspace/` in a bundle. 
 | Gather task-specific context or review a procedure from a run | [Task packets](docs/task-packets.md) |
 | Turn a functional script into fixture-backed tests and execution groups | [Functional testing agent](docs/functional-testing-agent.md) |
 | Check the App caller of a Core persistence change | [Caller preflight](docs/caller-preflight.md) |
+| Qualify packaged macOS playback, native focus or Agent Workspace regressions | [macOS regression course](docs/macos-regression.md) |
 | Compare or improve agent control tooling | [Control harness baseline](docs/control-comparison.md) |
 | Investigate failed checks and prepare bug drafts | [Investigations](docs/investigations.md) |
 | Inventory a supplied .wiz project and plan representative-media checks | [Golden Project intake](docs/golden-project-intake.md) |
 | Repair build compatibility or edit a test | [Build repair](docs/build-repair.md), then [test authoring](docs/test-evidence.md) |
 
-Use `setup`, `list` and `courses` to discover readiness, current definitions and membership. Accepted definitions, runnable candidates, exploratory definitions and original Logan checklist rows are different inventories. Never substitute a documentation count for the catalog.
+Use `setup`, `list` and `courses` to discover readiness, current definitions and membership. Nightly/weekly plans freeze the grouped baseline selection and assertion-level support map. Related checks remain partial overlaps; execute `support.remaining` independently and review changed definition hashes before reuse. Accepted definitions, runnable candidates, exploratory definitions and original Logan checklist rows are different inventories. Never substitute a documentation count for the catalog.
 
 ## Dashboard design
 
@@ -128,6 +131,10 @@ review failures name paths and retain a receipt in the external `schema-reviews`
 directory. Changed defaults, descriptions, responses and constraints still need
 review. Do not replace baselines or suppress application dialogs to get Ready.
 See `docs/build-repair.md`; compatibility is separate from a passing course.
+Use `runner/cli-schema.mjs` for full-registry discovery; `project create --schema`
+can return only one operation on newer builds. GUI pairing must match the frozen
+plan’s registry hash. Native MGFX fixture contracts come from the selected app,
+not a different checkout’s manuals. See `docs/maintaining-harness.md`.
 
 Fresh desktop fixtures retain `fixture-version.json`: after the creator engine
 closes, Athanor records its selected package version only when the newly created
@@ -137,7 +144,7 @@ through it or stamp an older project to force readiness.
 
 A fresh launcher defaults to `smoke-full`: accepted core checks plus the maintained allowlist of physical/checklist qualification candidates. `automated-full` remains accepted-only; custom courses cannot promote candidates. Read `docs/agent-courses.md` for current composition. New physical groups must expose their selected definitions in `agent-context.json`, execute in fresh owned projects, preserve failures and retain native-input receipts in the course report. Stage executors run from the retained source snapshot. Keep the Mac unlocked for desktop checks; never attempt to bypass the lock screen or change system security settings.
 
-The default `smoke-full` revision 9 excludes `S-PF-IDLE`. It adds ten qualification candidates for project search across timeline focus, physical blur Inspector editing, mask clipboard/history, vectorscope tap response, New Project, Save As, projectless Preferences, missing-term search, 100-clip clipboard and 50-step physical history. Read the current qualification notes in `docs/harness-control.md`; lead acceptance remains separate. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.
+The default `smoke-full` revision 10 excludes `S-PF-IDLE`. It adds ten qualification candidates for project search across timeline focus, physical blur Inspector editing, mask clipboard/history, vectorscope tap response, New Project, Save As, projectless Preferences, missing-term search, 100-clip clipboard and 50-step physical history. Read the current qualification notes in `docs/harness-control.md`; lead acceptance remains separate. Keep the ten-minute idle measurement as a separate candidate probe for later; do not put it back into ordinary runs. See `docs/idle-candidate.md`.
 
 ## Local investigations
 
@@ -248,7 +255,7 @@ measurements. See the focus/recovery section of `docs/agent-sequences.md`.
 
 ### Grouped course execution
 
-New selections freeze `desktopMode: "grouped"` by default. `smoke-full` revision 9
+New selections freeze `desktopMode: "grouped"` by default. `smoke-full` revision 10
 runs compatible driver families in one owned session; every check keeps its own
 authored fixture, assertions and captures. Lifecycle, live curve sampling, external disk reload,
 preference-changing gestures, long history and import/live-indexing probes remain
@@ -312,3 +319,14 @@ retained operation timings, read more only if unfinished and never resend pendin
 input. Close idle clients with stdin EOF after final replies and reconciliation;
 verify their exit separately from Wizard cleanup. No summary removes a frozen
 assertion, capture or Unknown stop.
+
+The full course revision 10 includes unaccepted candidates for hot local-media loss/recovery, unmanaged raw document persistence and native animated split-tail timing. Read docs/functional-cohort.md for exact routes, fixtures, evidence and qualification limits. No new lead acceptance is implied.
+
+The macOS regression course revision 2 adds transcript scroll-away/gesture-anchor,
+custom-model popup and shared pipeline-state candidates. Read
+`docs/macos-regression.md` and `docs/pipeline-automation.md`. Qt gesture simulation
+and physical input are labeled separately. The pipeline candidate requires a
+supporting package and an explicitly suppressed launch; older packages retain
+Blocked before selection input. Do not enable that fixture flag for ordinary
+Oz execution. Combined nightly preparation uses `examples/nightly/selection.json`;
+retain the plan's course revisions and execution mode when preparing its run.

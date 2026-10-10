@@ -17,6 +17,8 @@ export async function attachSelectedBuild({app,dataDir=dataDirectory(),preparedS
  const tools=preparedSession?.plan.runtime?.tools||await setupAttachmentTools(app,dataDir);await verifyAttachmentTools(tools);const version=tools.qtVersion;
  const executableName=existsSync(path.join(app,'Contents/MacOS/wizard-bin'))?'wizard-bin':'wizard';
  const source=await fingerprint(app,{packageTree:true});
+ const lease=await acquireDesktopLease(dataDir);let stdout,stderr,child;
+ try{
  await mkdir(path.join(dataDir,'attachments'),{recursive:true});
  const root=preparedSession?.root||await mkdtemp(path.join(dataDir,'attachments','attach-')),copy=path.join(root,'Wizard Smoke.app');
  assert(inside(dataDir,root),'Attachment root must stay in the owned workspace.');
@@ -30,14 +32,14 @@ export async function attachSelectedBuild({app,dataDir=dataDirectory(),preparedS
  const session={...preparedSession,format:'wizard-smoke-attachment/v1',dataDir,root,bundle:preparedSession?.bundle||path.join(root,'projects'),app:copy,sourceApp:app,executableName,executable:path.join(copy,'Contents/MacOS',executableName),guiHash:source.sha256,sourcePackageHash:source.sha256,native,harnessId:path.basename(root),generation,inputMode:'desktop',state:'Preparing',scope:'Selected packaged build with an external Qt test plugin; original app and bundled Qt unchanged',toolHash:await sha(bridge),qtVersion:version};
  if(session.agentProof)session.agentProof={...session.agentProof,tainted:true};
  const file=path.join(root,'session.json');await writeJSON(file,session);
- const stdout=await open(path.join(root,'stdout.log'),'a'),stderr=await open(path.join(root,'stderr.log'),'a');
- let lease;try{lease=await acquireDesktopLease(dataDir);}catch(e){await stdout.close();await stderr.close();throw e;}
+ stdout=await open(path.join(root,'stdout.log'),'a');stderr=await open(path.join(root,'stderr.log'),'a');
  session.desktopLease=lease.receipt;
  const env={PATH:path.join(copy,'Contents/MacOS')+':/usr/bin:/bin',HOME:home,LANG:'en_US.UTF-8',TMPDIR:temp,WIZARD_SETTINGS:settings,XDG_CONFIG_HOME:settings,QT_PLUGIN_PATH:plugins,WIZ_SMOKE_CONTROL_DIR:native,WIZ_SMOKE_SETTINGS_DIR:settings,WIZ_HARNESS_RUN_ID:session.harnessId,WIZSERVER_RUNTIME_DIR:path.join(root,'gui-runtime-'+generation),WIZSERVER_SANDBOX_ROOT:root,HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1'};
  // Use the shipped launcher so its packaged configuration bootstrap runs.
- const child=spawn(path.join(copy,'Contents/MacOS/wizard'),['-style','Basic'],{cwd:root,env,stdio:['ignore',stdout.fd,stderr.fd]});await stdout.close();await stderr.close();
+ child=spawn(path.join(copy,'Contents/MacOS/wizard'),['-style','Basic'],{cwd:root,env,stdio:['ignore',stdout.fd,stderr.fd]});
  const closed=new Promise(resolve=>child.once('close',async()=>{await lease.release();resolve();}));let spawnError;child.once('error',e=>spawnError=e);
  try{
+  await stdout.close();stdout=null;await stderr.close();stderr=null;
   let ready;const deadline=Date.now()+30000;
   while(Date.now()<deadline){if(spawnError)throw spawnError;assert(child.exitCode===null&&!child.signalCode,'Selected build exited before attachment.');try{ready=await readJSON(path.join(native,'ready.json'));break;}catch(e){if(e.code!=='ENOENT')throw e;}await pause(100);}
   assert(ready?.pid===child.pid&&ready.harness===session.harnessId,'Attachment did not bind to the launched process.');
@@ -55,6 +57,7 @@ export async function attachSelectedBuild({app,dataDir=dataDirectory(),preparedS
   await writeJSON(path.join(root,'attachment-evidence.json'),{selectedApp:app,copy,packageHash:source.sha256,executable:session.executable,pid:session.pid,settingsFile:ready.settingsFile,qtVersion:version,toolHash:session.toolHash,capabilities:session.capabilities,loaded,widgetCount:ui.widgets.length});
   return {session,file,child,closed};
  }catch(e){child.kill('SIGTERM');const force=setTimeout(()=>child.kill('SIGKILL'),3000);await closed;clearTimeout(force);session.state='Blocked';session.error=e.message;await writeJSON(file,session);throw e;}
+ }catch(error){await stdout?.close();await stderr?.close();if(!child)await lease.release();throw error;}
 }
 
 if(process.argv[1]===fileURLToPath(import.meta.url)){

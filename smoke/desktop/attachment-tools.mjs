@@ -9,7 +9,7 @@ const run=(cmd,args,options={})=>execFileSync(cmd,args,{encoding:'utf8',timeout:
 export async function setupAttachmentTools(app,configuredDataDir){
  const data=dataDirectory(configuredDataDir),sdk='/opt/homebrew/opt/qtbase';
  const qtVersion=run('/usr/libexec/PlistBuddy',['-c','Print :CFBundleVersion',path.join(app,'Contents/Frameworks/QtCore.framework/Versions/A/Resources/Info.plist')]).trim();
- const sourceHash=digest(await Promise.all([...['bridge.cpp','bug-report-prefill.h','build.sh','smoke-style.json'].map(file=>sha(path.join(ROOT,'desktop/native',file))),sha(new URL(import.meta.url))]));
+ const sourceHash=digest(await Promise.all([...['bridge.cpp','bug-report-prefill.h','workspace-probe.h','build.sh','smoke-style.json'].map(file=>sha(path.join(ROOT,'desktop/native',file))),sha(new URL(import.meta.url))]));
  const parent=path.join(data,'attachment-tools'),key=digest({qtVersion,sourceHash,arch:process.arch}),destination=path.join(parent,key);
  if(existsSync(destination)){
   const tools=await readJSON(path.join(destination,'tools.json'));

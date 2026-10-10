@@ -1,6 +1,7 @@
 import {beginCheck,endCheck} from './check-support.mjs';
 import path from 'node:path';
-import {mkdir,writeFile} from 'node:fs/promises';
+import {mkdir} from 'node:fs/promises';
+import {createLocalGraphic} from './generated-fixture.mjs';
 import {exportDialog} from './export-dialog.mjs';
 import {desktopCall,nativeCall} from './adapter.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
@@ -44,9 +45,7 @@ await check('D-INSPECTOR-01',async()=>{
 });
 await check('D-EXPORT-01',async()=>{await focusTimeline();return exportDialog({s,n:native,ui,until},path.join(directory,'export.mp4'));});
 await check('D-MGFX-01',async()=>{
-  const d=await call('generate.renderers',{detail:'full'}),p=d.profile,t=await call('timeline.create',{name:`Local MGFX ${attempt}`,video_format:{preset:'hd_1080p_24'},audio:{sample_rate:48000,channels:2}}),source=`.wiz/generate/staging/smoke-${attempt}`;
-  const adapter=d.renderers.find(r=>r.id==='web').adapters.find(a=>a.id==='hyperframes');assert(adapter.contract.execution.network==='disabled','MGFX must be local');const scaffold=adapter.contract.entry.scaffold.find(f=>f.path==='src/index.html').content.replace('<body>','<body style="margin:0;background:#ff0000">');await mkdir(path.join(s.bundle,source,'src'),{recursive:true});await writeFile(path.join(s.bundle,source,'src/index.html'),scaffold);
-  const g=await call('generate.graphics',{renderer:{id:'web',adapter:'hyperframes'},content:{source_path:source,entry:'src/index.html'},parameters:{profile_id:p.profile_id,profile_version:p.profile_version,profile_hash:p.profile_hash,descriptors:[{param_path:'title.text',param_type:'string',default_value:'Synthetic smoke title',display_label:'Title'}],initial_values:{}},label:'Synthetic smoke title',render:{duration_frames:48,width:1920,height:1080,fps:{num:24,den:1}},destination:{kind:'timeline',timeline_id:t.timeline_id,at:{offset_seconds:0},fit:{mode:'fit_to_timeline'},overlap:'reject'}});
+  const g=await createLocalGraphic(call,s),t={timeline_id:g.timeline};
   assert(g.destination.state==='committed','MGFX placement did not commit');const original=await frame('mgfx-before',t.timeline_id);assert(pixelStats(original).max>100,'MGFX frame is blank');const target={kind:'generation',generation_id:g.generation.generation_id},before=await call('generate.inspect',{target});
   await call('generate.set_params',{target,expected_owner_revision:before.owner_revision,expected_params_revision:before.params_rev,values:{'title.text':'CHANGED SMOKE TITLE 123456789'},reset:[]});const after=await call('generate.inspect',{target});assert(after.parameters.find(p=>p.descriptor.param_path==='title.text').value==='CHANGED SMOKE TITLE 123456789','MGFX title was not retained');const delta=pixelDifference(original,await frame('mgfx-after',t.timeline_id));assert(delta>0.01,'MGFX title did not change pixels');return {generationId:g.generation.generation_id,timeline:t.timeline_id,pixelDelta:delta,network:'disabled'};
 });

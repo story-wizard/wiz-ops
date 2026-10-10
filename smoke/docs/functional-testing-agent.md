@@ -5,6 +5,8 @@ it, then review the results later. The agent translates that script into tests,
 uses suitable fixtures and groups compatible work. Start with the existing
 catalog and recipes; create a new check only for behavior they do not cover.
 
+For nightly or weekly testing, use [workers](workers.md) to freeze both the maintained functional assertions and the full catalog inventory. The maintained assertion map provides pinned partial overlaps and explicit gaps; read each `support.remaining` before reusing baseline evidence. A changed definition requires mapping review. New release-note tests enter as proposals with source provenance, fixture needs and independent expectations.
+
 For ordinary trim/edit/history exploration, use the
 [task packet](task-packets.md) to gather current context and valid request shapes
 in one reply. After a run, its offline learning command exports review facts for

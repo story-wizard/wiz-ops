@@ -1,4 +1,5 @@
 import path from 'node:path';
+import {beginPerformance,endPerformance} from '../runner/performance.mjs';
 import {writeFileSync} from 'node:fs';
 import {captureDesktop} from './diagnostics.mjs';
 import {randomUUID} from 'node:crypto';
@@ -28,6 +29,11 @@ export function requireScriptCompletion(receipt,report,name){
 export function requirePassed(results,ids){
  const missing=ids.filter(id=>results.find(r=>r.id===id)?.status!=='Pass');
  if(missing.length)throw new OutcomeError('Required checks did not pass: '+missing.map(id=>id+' ('+(results.find(r=>r.id===id)?.status||'not executed')+')').join(', '),'Blocked');
+}
+export function mergeReopenResult(initial,verification){
+ assert(initial.id===verification.id,'Reopen belongs to another check');
+ return {...initial,reopen:verification,status:initial.status==='Pass'?verification.status:initial.status,error:initial.status==='Pass'?verification.error:initial.error,
+  evidence:{...initial.evidence,reopen:verification.evidence,reopenPending:false,artifacts:[...new Set([...(initial.evidence?.artifacts||[]),...(verification.evidence?.artifacts||[])])]}};
 }
 export async function waitForObservation(fn,{description='Expected observation',timeoutMs=5000,intervalMs=100,stableForMs=0}={}){
  assert(Number.isFinite(timeoutMs)&&timeoutMs>0&&timeoutMs<=60000&&Number.isFinite(intervalMs)&&intervalMs>0&&Number.isFinite(stableForMs)&&stableForMs>=0&&stableForMs<=2000&&stableForMs<=timeoutMs,'Observation wait must be bounded');
@@ -216,14 +222,15 @@ export async function captureInvestigation(file,id,phase,capture=captureDesktop)
 }
 export async function beginCheck(file,id){
  const s=await readJSON(file);if(s.selectedChecks&&!s.selectedChecks.includes(id))return false;
- s.currentCheck=id;s.currentStep=null;await writeJSON(file,s);
+ s.currentCheck=id;s.currentStep=null;s.performanceFile=await beginPerformance(s.root,id,{pid:s.pid,processStart:s.processStart,generation:s.generation,packageHash:s.guiHash});await writeJSON(file,s);
  await captureInvestigation(file,id,'before');
  await appendFile(path.join(s.root,'check-events.jsonl'),JSON.stringify({id,status:'Running',at:new Date().toISOString()})+'\n');return true;
 }
 export async function endCheck(file,result){
  if(!['Pass','Fail','Blocked','Unknown','N/A'].includes(result.status))result.status=failureStatus(result);
  await captureInvestigation(file,result.id,'after');
- const s=await readJSON(file);await appendFile(path.join(s.root,'check-events.jsonl'),JSON.stringify({...result,at:new Date().toISOString()})+'\n');
+ const s=await readJSON(file);if(s.performanceFile){await endPerformance(s.performanceFile,{pid:s.pid,processStart:s.processStart,generation:s.generation,packageHash:s.guiHash});result.evidence={...result.evidence,performance:s.performanceFile};s.performanceFile=null;await writeJSON(file,s);}
+ await appendFile(path.join(s.root,'check-events.jsonl'),JSON.stringify({...result,at:new Date().toISOString()})+'\n');
 }
 export async function recordStep(file,definition,fn){
  const session=await readJSON(file);if(!session.currentCheck||session.currentStep)throw Error('A step requires an active check and cannot be nested.');

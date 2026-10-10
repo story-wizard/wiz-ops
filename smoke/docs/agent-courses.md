@@ -25,7 +25,7 @@ node scripts/smoke.mjs run --plan /tmp/full-plan.json --operator "Your name" --w
 
 Preparation attaches the adapter to a disposable copy of that exact package. Keep the Mac unlocked and available for foreground stages. Every desktop execution group gets a fresh project and owned session; compatible checks keep their own fixture state within that group. Fail and Blocked continue into unrelated groups after confirmed cleanup; an uncertain action stops its session. A package missing required operations retains a Blocked result instead of substituting another build.
 
-`automated-full` remains the accepted-only course. User-created courses remain accepted-only. Warm live-grade sampling stays outside the default because it does not establish Logan's cold-cache criterion. Idle CPU measurement is retained as a separate candidate probe; see [idle candidate](idle-candidate.md). The default revision is now 9. NAS remains deferred.
+`automated-full` remains the accepted-only course. User-created courses remain accepted-only. Warm live-grade sampling stays outside the default because it does not establish Logan's cold-cache criterion. Idle CPU measurement is retained as a separate candidate probe; see [idle candidate](idle-candidate.md). The default revision is now 10. NAS remains deferred.
 
 ## Acceptance boundary
 
@@ -416,10 +416,10 @@ Use `investigation create/show/triage/link/review/export` and `investigations --
 
 ## Grouped and isolated execution
 
-`smoke-full` revision 9 freezes the same 177 checks as revision 8, with grouped
-desktop execution. Compatible checks from one driver reuse its owned Wizard
-session while creating their separate test timelines or Spells. The current full
-selection plans 35 desktop groups instead of 56. Project lifecycle, live curve sampling, external
+`smoke-full` revision 10 keeps grouped desktop execution and adds the three
+[functional cohort candidates](functional-cohort.md) to the earlier 177-check
+baseline. Compatible checks from one driver reuse its owned Wizard
+session while creating their separate test timelines or Spells. Its file-loss and raw-note history checks use isolated sessions. Project lifecycle, live curve sampling, external
 reload, preference changes, long history and selected import probes still use
 separate sessions. Save/reopen assertions keep their required process restarts.
 
@@ -443,3 +443,15 @@ Desktop group receipts record `startedAt`, `preparedAt`, `finishedAt` and
 package/fixture preparation and cleanup. Keep these separate from action timings
 and model reasoning time when comparing performance. Profiling collectors remain
 future work.
+
+## Combined nightly qualification
+
+The nightly planner now defaults to `smoke-full` plus `macos-regression`.
+Use `examples/nightly/selection.json` to prepare that same selection. Compatible
+checks stay grouped; the macOS driver keeps each candidate in an isolated app
+and project. The ordinary full and accepted-only courses keep their membership.
+
+Use `nightly.mjs plan --courses smoke-full` to retain only the baseline or
+`--courses automated-full` for accepted checks. The combined report keeps the
+legacy functional assertions and release-note proposals alongside catalog
+results. A catalog pass alone leaves related legacy assertions unexecuted.

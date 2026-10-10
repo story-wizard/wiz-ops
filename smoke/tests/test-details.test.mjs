@@ -17,6 +17,13 @@ test('recorded agent actions make a step Observed without inventing a completion
  assert.equal(stepHistory(spec,[{stepId:'edit',status:'Running',at:actions[0].at}],actions)[0].status,'Unknown');
 });
 
+test('unbound actions leave step execution unrecorded rather than claiming it did not run',()=>{
+ const spec={steps:[{id:'prepare',title:'Prepare'},{id:'verify',title:'Verify'}]},actions=[{stepId:null,status:'Completed'}];
+ assert.deepEqual(stepHistory(spec,[],actions).map(s=>s.status),['No step record','No step record']);
+ assert.deepEqual(stepHistory(spec,[],[]).map(s=>s.status),['Not run','Not run']);
+ assert.deepEqual(stepHistory(spec,[{stepId:'prepare',status:'Fail'}],actions).map(s=>s.status),['Fail','No step record']);
+});
+
 test('a lost mutation response stays Unknown, later steps remain unexecuted and receipts belong to the active step',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'smoke-steps-')),file=path.join(root,'session.json');
  const check={id:'CHECK',title:'Drop clip',expected:'Correct placement',steps:[{id:'setup',title:'Prepare',phase:'prepare'},{id:'drop',title:'Drag',phase:'execute'},{id:'verify',title:'Inspect',phase:'verify'}]};
@@ -42,6 +49,14 @@ test('evidence collection is independent of verdict and an expected rejection is
  assert.throws(()=>evidenceSpec({...check,evidence:[{id:'escape',kind:'html',when:'after',required:true,caption:'Script'}]}),/Invalid evidence/);
  assert.equal(actionHistory([{operation:'check.observation',status:'Pass'}]).length,0,'A verdict summary cannot stand in for a dispatched operation');
  const manual=testSpecification({...check,steps:['Click the button and inspect the track.']});assert.equal(manual.steps.length,0);assert.deepEqual(manual.procedure,['Click the button and inspect the track.'],'Manual instructions must not be presented as recorded execution steps');
+});
+
+test('packaged regression state observations satisfy their declared collection phase without substituting input receipts',()=>{
+ const spec=testSpecification(checkRegistry().find(c=>c.id==='D-AGENT-HEADER'));
+ const coverage=files=>evidenceCoverage(spec,evidenceItems(files,spec),[],'Pass').find(e=>e.id==='observations').status;
+ assert.equal(coverage(['D-AGENT-HEADER-3-graph-observations-wide.txt']),'Collected');
+ assert.equal(coverage(['D-AGENT-HEADER-1-graph-observations-before.txt']),'Missing');
+ assert.equal(coverage(['native-receipt.txt']),'Missing');
 });
 
 test('an agent pack snapshots its definition, guides and sources outside Git with a reproducible manifest',async()=>{

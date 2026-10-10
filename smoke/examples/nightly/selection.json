@@ -1,0 +1,6 @@
+{
+  "title": "Athanor combined nightly regression",
+  "project": "fresh",
+  "courseIds": ["smoke-full", "macos-regression"],
+  "desktopMode": "grouped"
+}

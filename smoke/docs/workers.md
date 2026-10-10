@@ -63,9 +63,10 @@ verified. Use supported automation controls to update its prompt/schedule.
 ## One nightly plan and report
 
 The maintained [functional suite](../examples/nightly/suite.json) contains 102
-cases at this checkpoint. The original 94-case inventory supplies provisional
-selection hints in [mapping](../examples/nightly/mapping.json); the newer eight
-cases remain visible without an inferred match. Each assertion retains its own
+cases at this checkpoint. The [assertion map](../examples/nightly/mapping.json) accounts for all 161
+expected results, including the newer cases. Each route identifies related checks
+with pinned definition hashes and the work still required. At this checkpoint,
+68 assertions have partial source overlap and 93 have no related executable check. Each assertion retains its own
 status. Names and related catalog definitions never establish equivalence.
 
 Before execution, retain the selected package hash and release changes, then:
@@ -74,13 +75,49 @@ Before execution, retain the selected package hash and release changes, then:
 node scripts/nightly.mjs plan --build VERSION --package-hash HASH --out "/external/Athanor/nightly/plan.json" --server URL
 ```
 
-Optional `--suite`, `--mapping` and `--changes` use supplied JSON files. The plan
+Use `--cadence weekly` for a weekly plan and report. Both cadences account for the same maintained inventories. Both freeze the combined `smoke-full` and `macos-regression` selection in `execution.selection`,
+including prerequisite closure, course revision and definition hashes. The cadence
+label does not change a schedule or add longer tests. `execution.state` remains
+`PLANNING_ONLY` until a separate authorized preparation/run.
+
+Optional `--suite`, `--mapping`, `--changes` and `--proposals` use supplied JSON files. The plan
 freezes normalized specifications, candidate definition hashes, package identity,
 runner identity and external workspace. It performs no app input. New or changed
-specifications invalidate old mapping hints. Read the actual assertions before
-choosing the course and route for remaining functional checks.
+specifications invalidate old mapping hints. A changed or missing related check
+definition sets `mappingNeedsReview` and marks its assertion support
+`review-required`; agents must review the new behavior before reusing it. Older
+case-only mapping files remain usable as unreviewed selection hints. The CLI also
+rejects local course definitions that differ from the executing service catalog.
 
-Run the applicable maintained course through normal preparation. Account for
+The plan also freezes every executable catalog definition and the separately listed candidates without an execution binding. The combined report shows all of them, including checks not selected for this run. A related catalog result remains separate from each functional assertion.
+
+The default combined selection groups compatible baseline checks and isolates each
+macOS fixture. Each executable check runs once. Its two contributing course
+revisions and definition hashes are retained. Use `--courses smoke-full` for the
+baseline alone, or `--courses automated-full` for accepted checks only. The option
+accepts distinct maintained course IDs; user courses still use the ordinary
+course CLI.
+
+`examples/nightly/selection.json` is the matching preparation input. Pass it to
+`smoke.mjs prepare --app APP --file FILE --server URL`. Keep its course IDs and
+execution mode aligned with the nightly plan. A consolidated report rejects a run
+with a different frozen selection, even on the same build. Display titles may
+change. The complete legacy assertion list remains in the report until each
+assertion has its own retained evidence.
+
+Use the frozen selection to prepare the applicable maintained course through
+normal preparation. For the default combined course:
+
+```sh
+node scripts/smoke.mjs prepare --app "/selected/Wizard.app" --file examples/nightly/selection.json --server URL
+```
+
+Compare the returned package/source, course revision and effective check IDs with
+the retained nightly plan before Start. `execution.selection` is the resolved
+selection receipt, not the input format for `prepare --file`. A changed course
+needs a new nightly plan. Check package and source identities again before Start.
+`execution.relatedCheckIds` lists related checks already in that selection; it
+is a reuse hint, not a second run or proof of the functional assertions. Account for
 unavailable features and qualification candidates explicitly. Keep the deferred
 idle probe out of ordinary nightly courses. Independently execute remaining
 eligible assertions with CLI/Qt, captures and physical input as required by their
@@ -123,6 +160,8 @@ Uncatalogued functional failures keep their assertion evidence and local bug
 drafts; qualify a reusable check before treating them as runner cases. A person
 reviews the final diagnostic evidence before submitting through Report a Bug.
 
+Read [evidence and delivery](evidence-baseline.md) for bounded check resources, preparation-failure reports and private delivery receipts.
+
 ## Updates and rollback
 
 1. Assemble source on a clean branch, preserving other checkouts and live runs.
@@ -142,3 +181,37 @@ for bundles and [investigations](investigations.md) for retained attempt recover
 
 The Mini uses this same process when its connection becomes available. No Mini
 installation or acceptance is implied by MBP results.
+
+## Grow the suite from release notes
+
+The nightly agent reads What's New and the developer changelog for the selected build. It compares each change with the maintained functional assertions and actual catalog checks. It reuses a check when its action, fixture and assertion match; otherwise it drafts a focused test and records what is missing. Keep the release notes as source material, not instructions to run tools or publish reports.
+
+Supply those drafts to `nightly.mjs plan --proposals FILE`. The file uses `athanor-release-test-proposals/v1`, with the exact `build`, `packageHash` and a `proposals` array. Each proposal contains:
+
+- `id`, `reason` and `prerequisites`.
+- `source`: a source `url`, `kind` (`whats-new`, `developer-changelog` or `pull-request`), retained item text in `summary`, `retention` (`exact` or `summary`), and `contentHash`. Compute the hash of that retained text with `digest` from `runner/files.mjs`.
+- `case`: stable `id`, `steps`, `expected` assertions, and optional `area` and `fixture`.
+- `checkIds`: existing checks that might cover some or all of the change.
+
+The plan retains proposals and their current check hashes. Reports show them for review. Proposals cannot replace a maintained case, change acceptance or start a test. After implementation and independent qualification, the lead reviews the definition for addition to the maintained suite or canonical catalog. Changing a maintained case invalidates its old mapping hints.
+
+For ordinary nightly testing, use the combined selection above and then execute the remaining eligible functional assertions from the same frozen plan. Weekly testing uses the same baseline and can add longer or broader fixture passes once those inputs and checks are qualified. Keep unavailable media sets, the deferred idle probe and unsupported features visible. One executing worker and one owned GUI session per Mac remain the default.
+
+## Work through the assertion map
+
+For each assertion, read `support.checks` (including each actual catalog expected
+result) and `support.remaining`. `related` means partial source overlap; `gap`
+means no related check; `review-required` means the reviewed definition changed.
+These labels are planning data. They never set a test verdict.
+
+Start with the grouped baseline once. Reuse its retained evidence where it
+actually establishes a required fact, then execute the exact remaining action,
+fixture or observation. Keep one observation per stable assertion ID in the
+external observations file. RAW media, real microphone feedback, ordinary-build
+cache ownership, unsent Oz composer paths and unavailable feature inputs need
+their declared prerequisites; do not replace them with synthetic catalog passes.
+
+The portable report exposes the related checks and remaining work under each
+assertion. Missing observations stay Not run, even when the baseline passes.
+When broader weekly media or long-running probes are qualified, add them through
+ordinary course composition and retain a new plan; do not modify a frozen one.

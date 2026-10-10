@@ -7,16 +7,17 @@ import {realpathSync,appendFileSync,constants} from 'node:fs';
 import {PackagedEngine,assert,pause,OutcomeError} from '../runner/engine.mjs';
 import {ProjectSession} from '../runner/interactions.mjs';
 import {checkPrepared} from '../runner/prepare.mjs';
-import {ROOT,dataDirectory,externalPath,readJSON,writeJSON,fingerprint,inside,sha} from '../runner/files.mjs';
+import {ROOT,dataDirectory,externalPath,readJSON,writeJSON,fingerprint,inside,sha,digest} from '../runner/files.mjs';
+import {readCliSchema} from '../runner/cli-schema.mjs';
 import {runtimeEnvironment} from '../runner/runtime.mjs';
 import {attachSelectedBuild} from './attach.mjs';
 import {recordFixtureVersion} from './fixture-version.mjs';
 import {verifyDesktopLease} from './desktop-lease.mjs';
 import {currentAction,withAgentAction,withAdapterAction,validateApplicationParams,validateNativeParams,markUnknown,requireProof,jsonLines,terminalResult} from './agent-proof.mjs';
 
-export const agentReadOperations=['project.get_name','timeline.inspect','playback.query_transport','graph.get_clip_graph','media.list_assets','media.resolve_path','media.probe','spellbook.inspect','spellbook.list'];
+export const agentReadOperations=['project.get_name','timeline.inspect','playback.query_transport','graph.get_clip_graph','media.list_assets','media.resolve_path','media.probe','spellbook.inspect','spellbook.list','generate.inspect','generate.status'];
 // Observations and ownership-checked clipboard bookkeeping do not edit the test project.
-export const agentReadNative=['capabilities','inspect','model-page','model-value','timeline-clip-rect','timeline-point','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview','clipboard-save','clipboard-mark','clipboard-restore'];
+export const agentReadNative=['capabilities','inspect','workspace-inspect','workspace-pipeline-inspect','model-page','model-value','timeline-clip-rect','timeline-point','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview','clipboard-save','clipboard-mark','clipboard-restore'];
 export async function markAgentMutation(file,session){
   if(!session.agentTracking)return;
   if(currentAction(file)?.purpose==='shutdown')return;
@@ -53,9 +54,12 @@ export function retainChild(session,pid){
 export async function pairDesktopCli(session,pairedCli){
   const directory=path.join(session.root,'cli');await mkdir(directory,{recursive:true});
   const source=pairedCli||path.join(path.dirname(session.sourceApp),'wiz-cli');
-  const cli=path.join(directory,'wiz-cli');await cp(source,cli);
-  session.desktopCli=cli;session.desktopCliHash=await sha(cli);
-  session.schema=JSON.parse(execFileSync(cli,['project','create','--schema','--no-spawn'],{encoding:'utf8',timeout:10000,maxBuffer:8*1024*1024,env:{...process.env,...runtimeEnvironment(session.plan.runtime)}}));
+  const schema=readCliSchema(source,{env:{...process.env,...runtimeEnvironment(session.plan.runtime)}});
+  assert(digest(schema)===session.plan.schemaHash,'Paired CLI registry differs from the prepared build. Prepare again.');
+  assert(await sha(source)===session.plan.runtime.cliHash,'Paired CLI binary differs from the prepared build. Prepare again.');
+  const cli=path.join(directory,'wiz-cli');await cp(source,cli);const cliHash=await sha(cli);
+  assert(cliHash===session.plan.runtime.cliHash,'Paired CLI binary changed during copying. Prepare again.');
+  session.desktopCli=cli;session.desktopCliHash=cliHash;session.schema=schema;
   session.scope=session.plan.runtime?.kind==='selected-build-attachment'?'Selected packaged GUI and its shipped CLI with an external test plugin':'Instrumented local GUI build and paired CLI; separate from release smoke';
   await writeJSON(path.join(session.root,'session.json'),session);
 }
@@ -152,6 +156,7 @@ export async function launchDesktop(session,{foreground=true,missingMediaFixture
   env.WIZ_SEARCH_WORKER=path.join(session.cliApp,'Contents/Resources/python',process.arch==='arm64'?'arm64':'x86_64','bin/wiz-search-worker');
   Object.assign(env,runtimeEnvironment(session.plan.runtime));
   const stdout=await open(path.join(session.root,`gui-${generation}.stdout.log`),'a'),stderr=await open(path.join(session.root,`gui-${generation}.stderr.log`),'a');
+  if(session.selectedChecks?.includes('D-AGENT-PIPELINE-CONFIG'))env.WIZARD_AUTOMATION_AGENT_FIXTURE='1';
   const child=spawn(session.executable,['-style','Basic'],{env,cwd:session.root,stdio:['ignore',stdout.fd,stderr.fd]});await stdout.close();await stderr.close();
   let spawnError;child.on('error',e=>{spawnError=e;});const closed=new Promise(resolve=>child.once('close',resolve));
   try{

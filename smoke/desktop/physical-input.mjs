@@ -6,11 +6,12 @@ import {nativeDesktopInput} from './macos-input.mjs';
 import {assert,pause,OutcomeError} from '../runner/engine.mjs';
 import {withAdapterAction,markUnknown,fields,requireProof,validateTimelinePoint} from './agent-proof.mjs';
 
-const inputFields={click:['x','y','chrome','button','modifiers','clickCount','clipId','expectedClip'],drag:['x','y','chrome','toTarget','toX','toY','button','modifiers','path','durationMs','clipId','expectedClip','expectedToTarget','modelTarget','itemText','toTimelinePoint'],key:['key','requireFocus'],type:['text','commit'],scroll:['x','y','deltaX','deltaY'],screenshot:['crop']};
+const inputFields={click:['preserveWindowOrder','x','y','chrome','button','modifiers','clickCount','clipId','expectedClip'],drag:['x','y','chrome','toTarget','toX','toY','button','modifiers','path','durationMs','clipId','expectedClip','expectedToTarget','modelTarget','itemText','toTimelinePoint'],key:['key','requireFocus'],type:['text','commit'],scroll:['x','y','deltaX','deltaY'],screenshot:['crop']};
 export function validatePhysicalInput(command,params){
  requireProof(Object.hasOwn(inputFields,command),'unsupported_physical_command','Choose click, drag, key, type, scroll or screenshot',['correct_parameters']);
  fields(params,['target','expected',...inputFields[command]],'physical input');
  requireProof(typeof params.target==='string'&&params.target.length>0,'invalid_params','Supply the ID of an observed physical target',['observe']);
+ if(params.preserveWindowOrder!==undefined)requireProof(command==='click'&&typeof params.preserveWindowOrder==='boolean','invalid_params','preserveWindowOrder is a click-only native ordering guard',['correct_parameters']);
  if(params.requireFocus!==undefined)requireProof(command==='key'&&typeof params.requireFocus==='boolean','invalid_params','requireFocus is a boolean keyboard guard',['correct_parameters']);
  if(params.clipId!==undefined)requireProof(typeof params.clipId==='string'&&params.clipId.length>0,'invalid_params','Supply an observed clip identity',['observe']);
  if(params.toTimelinePoint!==undefined){fields(params.toTimelinePoint,['trackIndex','timeSeconds'],'toTimelinePoint');validateTimelinePoint(params.toTimelinePoint);requireProof(!params.path&&!params.chrome,'invalid_geometry','Track/time drops cannot mix paths or chrome',['correct_parameters']);}
@@ -112,7 +113,7 @@ async function physicalInputOwned(file,command,params={}){
  const readCommit=()=>adapter.desktopCall(file,'spellbook.inspect',{document_id:params.commit.documentId,view:'raw'});
  const commit=params.commit?spellTextBaseline(await readCommit(),widget,params.commit,params.text):null;
  measured('targetReadMs');
- const activationRequested=command!=='screenshot'&&!(window.active===true&&window.keyWindow===true);
+ const activationRequested=command!=='screenshot'&&params.preserveWindowOrder!==true&&!(window.active===true&&window.keyWindow===true);
  if(activationRequested)await nativeCall(file,'activate',{target:window.id});
  measured('activationMs');
  const native=await nativeDesktopInput(file,{command:'inspect',depth:0,mode:'window-server'});
@@ -120,7 +121,8 @@ async function physicalInputOwned(file,command,params={}){
  const matches=native.windows.filter(w=>(window.nativeWindow?w.window===window.nativeWindow:w.title===window.title)&&Math.abs(w.frame.width-window.width)<=1&&Math.abs(w.frame.height-window.height)<=80);
  assert(matches.length===1,'Native window title/geometry is absent or ambiguous');
  const target=matches[0],request={command,mode:'window-server',pid:native.pid,started:native.started,window:target.window,frame:target.frame};
- if(command==='screenshot'&&params.crop){const r=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height},p=windowPoint(widget,window,target,r.x,r.y);request.captureRect={...p,width:r.width,height:r.height};}
+ // A top-level QWidget's visible region can exclude its embedded Qt Quick content.
+ if(command==='screenshot'&&params.crop&&widget.id!==window.id){const r=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height},p=windowPoint(widget,window,target,r.x,r.y);request.captureRect={...p,width:r.width,height:r.height};}
  if(command==='key'){request.key=params.key;if(params.requireFocus)request.focusTarget=widget.id;}
  else if(command==='type'){request.text=params.text;request.focusTarget=widget.id;}
  else if(command!=='screenshot'){

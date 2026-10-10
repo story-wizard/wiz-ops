@@ -1,6 +1,6 @@
 {
   "id": "local-desktop-v1",
-  "revision": 23,
+  "revision": 27,
   "title": "Local desktop smoke",
   "target": "Instrumented local GUI with isolated Qt runtime",
   "cases": [
@@ -1329,7 +1329,7 @@
       "steps": [
         {
           "id": "ingest",
-          "title": "Run the selected package\u2019s offline ingest",
+          "title": "Run the selected package’s offline ingest",
           "phase": "prepare"
         },
         {
@@ -1382,7 +1382,7 @@
         },
         {
           "id": "ingest",
-          "title": "Run the selected package\u2019s offline ingest",
+          "title": "Run the selected package’s offline ingest",
           "phase": "prepare"
         },
         {
@@ -2004,6 +2004,565 @@
         "playback.query_transport"
       ],
       "scriptTimeoutMs": 240000
+    },
+    {
+      "id": "D-MISSING-MEDIA-LIVE",
+      "area": "Media availability",
+      "title": "Live local source loss and recovery",
+      "expected": "Removing one owned local source changes presented Preview and timeline marks without losing clip identity. Restoring the same bytes clears stale missing marks and playback advances in the same process.",
+      "operations": [
+        "media.resolve_path",
+        "media.add_media_root",
+        "media.import_asset",
+        "media.probe",
+        "timeline.create",
+        "timeline.place_cuts",
+        "timeline.inspect",
+        "playback.seek",
+        "playback.query_transport"
+      ],
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "Create a disposable source copy and timeline",
+          "phase": "prepare"
+        },
+        {
+          "id": "step-2",
+          "title": "Capture the available frame and timeline",
+          "phase": "execute"
+        },
+        {
+          "id": "step-3",
+          "title": "Remove only the owned source and inspect missing output",
+          "phase": "execute"
+        },
+        {
+          "id": "step-4",
+          "title": "Restore the source and verify pixels, identity and playback",
+          "phase": "verify"
+        }
+      ],
+      "legacyCases": [
+        "MISSING-MEDIA-01"
+      ],
+      "scriptTimeoutMs": 240000,
+      "scope": "Unaccepted qualification candidate. Fresh disposable fixture on the exact selected build; component proof and live acceptance remain separate.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-owned CLI and physical-input receipts."
+        },
+        {
+          "id": "state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent fixture, timeline, file-byte and pixel comparisons."
+        },
+        {
+          "id": "images",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Original and observed preview/timeline or generated-frame captures."
+        }
+      ]
+    },
+    {
+      "id": "D-RAW-NOTES-PERSIST",
+      "area": "Documents and history",
+      "title": "Raw document notes survive history and reopen",
+      "expected": "Latest externally authored raw document bytes, including CRLF and Unicode, survive a physical Undo/Redo of an independent timeline rename, Save and a new process. Clip/timeline annotation controls are separate.",
+      "operations": [
+        "timeline.inspect",
+        "timeline.update"
+      ],
+      "steps": [
+        {
+          "id": "step-1",
+          "title": "Create an unmanaged raw document in the owned project",
+          "phase": "prepare"
+        },
+        {
+          "id": "step-2",
+          "title": "Rename the timeline and update the raw file",
+          "phase": "execute"
+        },
+        {
+          "id": "step-3",
+          "title": "Undo and Redo the independent edit; compare exact note bytes",
+          "phase": "execute"
+        },
+        {
+          "id": "step-4",
+          "title": "Save and reopen in a fresh process; compare notes and timeline",
+          "phase": "verify"
+        }
+      ],
+      "legacyCases": [
+        "NOTES-UNDO-01"
+      ],
+      "scriptTimeoutMs": 240000,
+      "scope": "Unaccepted qualification candidate. Fresh disposable fixture on the exact selected build; component proof and live acceptance remain separate.",
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Process-owned CLI and physical-input receipts."
+        },
+        {
+          "id": "state",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "caption": "Independent fixture, timeline, file-byte and pixel comparisons."
+        },
+        {
+          "id": "images",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Original and observed preview/timeline or generated-frame captures."
+        }
+      ]
+    },
+    {
+      "id": "D-MAC-RESUME",
+      "title": "Start, pause, seek and resume playback",
+      "expected": "Physical Space starts and pauses playback, paused seek lands on frame 48, and Space resumes from there with fresh presented pixels.",
+      "stage": "Playback",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "start",
+          "title": "Start playback with the timeline Space shortcut"
+        },
+        {
+          "id": "seek",
+          "title": "Seek the paused clip to two seconds"
+        },
+        {
+          "id": "resume",
+          "title": "Resume playback from the seek with Space"
+        }
+      ]
+    },
+    {
+      "id": "D-MAC-WINDOW-ORDER",
+      "title": "Native owner and floating-window order",
+      "expected": "Owner click makes it key while both floating panels stay above it, preserve sibling order and retain normal independent native windows.",
+      "stage": "Native window ordering",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Open two independent floating panels"
+        },
+        {
+          "id": "owner-click",
+          "title": "Physically click the owner without first raising it"
+        }
+      ]
+    },
+    {
+      "id": "D-MAC-FLOAT-TIMELINE",
+      "title": "Focused floating timeline shortcut",
+      "expected": "Physical C changes only the focused floating timeline to Cut; original timeline stays Select and clips remain unchanged.",
+      "stage": "Native shortcut routing",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "cut-shortcut",
+          "title": "Send C to the physically focused floating timeline"
+        }
+      ]
+    },
+    {
+      "id": "D-MAC-FLOAT-PREVIEW",
+      "title": "Focused floating Preview shortcut",
+      "expected": "Physical Space emits one playClicked signal in the focused floating Preview and none in the original Preview.",
+      "stage": "Native shortcut routing",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "space-shortcut",
+          "title": "Send Space in the floating Preview"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-TAIL",
+      "title": "Transcript tail follows an appended response",
+      "expected": "A scrollable local transcript adds exactly one row and remains at its tail across retained append samples.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "transcript",
+          "title": "Append eighteen deterministic local responses"
+        },
+        {
+          "id": "append",
+          "title": "Append one local response at the tail"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-SELECTORS",
+      "title": "Accessible model and effort selectors",
+      "expected": "Both selectors expose nonempty accessible descriptions and stay tooltip-free after a 500ms Qt hover.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "AgentWorkspaceModelSelector",
+          "title": "Hover the model selector through Qt input"
+        },
+        {
+          "id": "AgentWorkspaceEffortSelector",
+          "title": "Hover the effort selector through Qt input"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-HEADER",
+      "title": "Narrow active Agent Workspace header",
+      "expected": "At 280 points the title retains at least 62 points and active controls do not overlap; after hiding the fixture Cancel control, the events menu appears at 600 points.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "active-fixture",
+          "title": "Set local options and a fake active event"
+        },
+        {
+          "id": "idle-controls",
+          "title": "Hide Cancel before checking the wide events control"
+        },
+        {
+          "id": "restore",
+          "title": "Restore controller options and Cancel state"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-IMAGE",
+      "title": "Inline Markdown image sizing",
+      "expected": "A local square image uses a rounded resource, caps at 200, shrinks to 120 and restores 200 when widened.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "inline-image",
+          "title": "Append a local project-relative Markdown image"
+        },
+        {
+          "id": "width-0",
+          "title": "Apply the 200 point image cap"
+        },
+        {
+          "id": "width-1",
+          "title": "Shrink the inline image to 120 points"
+        },
+        {
+          "id": "width-2",
+          "title": "Restore the original 200 point cap"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-SCROLL-AWAY",
+      "title": "Appends preserve the history reader position",
+      "expected": "After detaching 120 points from the tail, exactly one appended row leaves follow disabled and the settled position unchanged; explicit resume restores the tail.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged regression using controlled local transcript/model fixtures. Qt gesture simulation is separate from physical wheel or drag delivery.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "transcript",
+          "title": "Prepare a scrollable local transcript"
+        },
+        {
+          "id": "scroll-away",
+          "title": "Simulate the source gesture away from the tail"
+        },
+        {
+          "id": "append",
+          "title": "Append while reading history"
+        },
+        {
+          "id": "resume",
+          "title": "Explicitly resume tail follow"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-GESTURE-ANCHOR",
+      "title": "An active transcript gesture retains its anchor",
+      "expected": "A taller response appended during an active tail gesture retains the same row identity and viewport offset within 0.5 points; release restores the tail.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged regression using controlled local transcript/model fixtures. Qt gesture simulation is separate from physical wheel or drag delivery.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "transcript",
+          "title": "Prepare the scrolling transcript"
+        },
+        {
+          "id": "gesture",
+          "title": "Begin the source regression tail gesture"
+        },
+        {
+          "id": "append",
+          "title": "Append during the active gesture"
+        },
+        {
+          "id": "release",
+          "title": "End the gesture and catch up"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-CUSTOM-MODEL",
+      "title": "Custom model popup fits the narrow header",
+      "expected": "A physical click opens the model popup at 280 points; the exact custom label is untruncated, the popup stays inside its header, and original model options are restored.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged regression using controlled local transcript/model fixtures. Qt gesture simulation is separate from physical wheel or drag delivery.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "fixture",
+          "title": "Install the source custom model fixture"
+        },
+        {
+          "id": "open",
+          "title": "Physically open the model popup"
+        },
+        {
+          "id": "restore",
+          "title": "Restore original model options"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-PIPELINE-CONFIG",
+      "title": "Model and effort reach the shared pipeline",
+      "stage": "Agent Workspace",
+      "expected": "The controller requests Luna, Low, Max and Sol; independent state from the same idle, spawn-suppressed pipeline matches each choice and preserves effort across model changes.",
+      "scope": "Candidate requires the versioned application-owned pipeline readback and dedicated launch suppression. No agent input, restart or provider request is submitted.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "model-5",
+          "title": "Request Luna"
+        },
+        {
+          "id": "effort-0",
+          "title": "Request Low"
+        },
+        {
+          "id": "effort-4",
+          "title": "Request Max"
+        },
+        {
+          "id": "model-4",
+          "title": "Request Sol"
+        }
+      ]
     }
   ]
 }

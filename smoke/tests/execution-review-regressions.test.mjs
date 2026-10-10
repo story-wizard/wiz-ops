@@ -19,7 +19,7 @@ test('script completion separates assertion verdicts from crashes after Pass or 
  const root=await mkdtemp(path.join(tmpdir(),'athanor-exit-review-'));
  try{
   for(const name of ['service-course.json','check-map.json'])await copyFile(path.join(ROOT,'desktop',name),path.join(root,name));
-  for(const name of ['adapter.mjs','check-support.mjs','generated-fixture.mjs','check-offline-export.mjs','check-idle.mjs','native/bridge.cpp','native/build.sh','native/smoke-style.json']){await mkdir(path.dirname(path.join(root,name)),{recursive:true});await writeFile(path.join(root,name),'boundary fixture');}
+  for(const name of ['adapter.mjs','check-support.mjs','generated-fixture.mjs','check-generated-tail.mjs','functional-cohort-proof.mjs','check-offline-export.mjs','check-idle.mjs','native/bridge.cpp','native/build.sh','native/smoke-style.json']){await mkdir(path.dirname(path.join(root,name)),{recursive:true});await writeFile(path.join(root,name),'boundary fixture');}
   const adapter=path.join(root,'fake-adapter.mjs');await writeFile(adapter,`
    import {mkdir,writeFile} from 'node:fs/promises';import path from 'node:path';let live;
    export async function prepareDesktop(a,b,c,p){const root=path.join(p.directory,'owned'),app=path.join(root,'Fixture.app');await mkdir(path.join(app,'Contents/MacOS'),{recursive:true});await writeFile(path.join(app,'Contents/MacOS/wizard-export-worker'),'fixture');return {root,app,scope:'isolated fixture'};}
@@ -104,4 +104,31 @@ test('desktop live progress publishes a verified reopen before later groups and 
   const {executeStages}=await boundaryModule('runner/stages.mjs',path.join(root,'stages.mjs'),{'../desktop/run.mjs':pathToFileURL(mock).href,'../desktop/service-run.mjs':pathToFileURL(mock).href});
   await executeStages({plan:{runtime:{}},course:{cases:[{id:'D-BIN-DUPLICATE'},{id:'D-DOCUMENT-EDIT'}]},root,dataDir:root,isCancelled:()=>false,onResult:async(c,status)=>events.push({id:c.id,status})});
  }finally{delete globalThis.liveCheckpoint;await rm(root,{recursive:true,force:true});}
+});
+
+test('animated-tail service finalizes only after fresh-process verification and retains both capture sets',async()=>{
+ for(const mode of ['verified','reopen-fail','launch-blocked']){
+  const root=await mkdtemp(path.join(tmpdir(),'athanor-tail-executor-'));
+  try{
+   for(const name of ['service-course.json','check-map.json'])await copyFile(path.join(ROOT,'desktop',name),path.join(root,name));
+   for(const name of ['adapter.mjs','check-support.mjs','generated-fixture.mjs','functional-cohort-proof.mjs','check-generated.mjs','check-offline-export.mjs','check-idle.mjs','native/bridge.cpp','native/build.sh','native/smoke-style.json']){await mkdir(path.dirname(path.join(root,name)),{recursive:true});await writeFile(path.join(root,name),'component boundary fixture');}
+   const adapter=path.join(root,'boundary-adapter.mjs');await writeFile(adapter,`
+    import {mkdir,writeFile,readFile} from 'node:fs/promises';import path from 'node:path';let live;
+    export async function prepareDesktop(a,b,c,p){const root=path.join(p.directory,'owned'),app=path.join(root,'Fixture.app');await mkdir(path.join(app,'Contents/MacOS'),{recursive:true});await writeFile(path.join(app,'Contents/MacOS/wizard-export-worker'),'fixture');return {root,app,pid:0,generation:0,scope:'component-only'};}
+    export async function launchDesktop(s){if(s.generation===1&&${JSON.stringify(mode)}==='launch-blocked')throw Object.assign(Error('fresh process blocked'),{status:'Blocked'});const state={...s,pid:100+s.generation+1,generation:s.generation+1,bridgeHash:'fixture'};await writeFile(path.join(s.root,'session.json'),JSON.stringify(state));return live={child:{exitCode:null,signalCode:null},closed:Promise.resolve()};}
+    export async function stopDesktop(){live.child.exitCode=0;}
+    export function retainChild(){} export async function nativeCall(){throw Error('cannot dispatch UI input');}
+   `);
+   await writeFile(path.join(root,'check-generated-tail.mjs'),`
+    import {readFile,writeFile} from 'node:fs/promises';import path from 'node:path';const s=JSON.parse(await readFile(process.argv[2])),verify=process.argv[3]==='verify',status=verify&&${JSON.stringify(mode)}==='reopen-fail'?'Fail':'Pass',image=path.join(s.root,verify?'reopened.png':'original.png');await writeFile(image,'synthetic component evidence');
+    await writeFile(path.join(s.root,verify?'service-generated-tail-reopen-report.json':'service-generated-tail-report.json'),JSON.stringify({completed:true,results:[{id:'S-MGFX-TAIL-TIMING',status,evidence:{artifacts:[image],pid:s.pid,reopenPending:!verify}}]}));process.exitCode=status==='Pass'?0:1;
+   `);
+   const {executeService}=await boundaryModule('desktop/service-run.mjs',path.join(root,'service-run.mjs'),{'./adapter.mjs':pathToFileURL(adapter).href});
+   const result=await executeService({runtime:{app:'Fixture.app'},directory:path.join(root,'run'),ids:['S-MGFX-TAIL-TIMING']}),value=result.report.results[0];
+   assert.equal(result.report.results.length,1);assert.equal(value.status,mode==='verified'?'Pass':mode==='reopen-fail'?'Fail':'Blocked');
+   const events=(await readFile(path.join(result.root,'check-events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);assert.equal(events.at(-1).final,true);assert.equal(events.at(-1).status,value.status);
+   if(mode!=='launch-blocked'){assert.deepEqual(value.evidence.artifacts.map(p=>path.basename(p)),['original.png','reopened.png']);assert.notEqual(value.evidence.pid,value.evidence.reopen.pid);assert.equal(value.evidence.reopenPending,false);}
+   else assert.match(value.error,/reopen did not complete/);
+  }finally{await rm(root,{recursive:true,force:true});}
+ }
 });

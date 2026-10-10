@@ -239,7 +239,7 @@ const server=http.createServer(async(req,res)=>{
         }
       }
       if(req.method==='GET'&&url.pathname==='/api/catalog')return send(200,await catalogPayload());
-      if(req.method==='GET'&&url.pathname==='/api/checks')return send(200,{format:'wizard-smoke-checks/v1',target:'all',checks:checkRegistry()});
+      if(req.method==='GET'&&url.pathname==='/api/checks')return send(200,{format:'wizard-smoke-checks/v1',target:'all',checks:checkRegistry(),candidates:candidateChecks().map(c=>({...c,executable:false}))});
       if(parts[1]==='checks'&&parts[3]==='context'&&parts.length===4&&['GET','POST'].includes(req.method)){
         const current=[...checkRegistry(),...candidateChecks()].find(c=>c.id===parts[2]);if(!current)fail(404,'Check not found.');
         let definition=current,options={accepted:current.accepted,servicePort:server.address().port};const runId=req.method==='GET'?url.searchParams.get('run'):body.runId;

@@ -1,4 +1,5 @@
 import {fileURLToPath} from 'node:url';
+import {beginPerformance,endPerformance,performancePolicy} from './performance.mjs';
 import {mkdir,cp,realpath} from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -17,9 +18,12 @@ export async function executeCourse({course,engine,fixtures,onResult,isCancelled
   let stopReason=null;const outcomes=[];const overallDeadline=Date.now()+course.timeoutSeconds*1000;
   for(const item of course.cases){
     if(stopReason||isCancelled()||Date.now()>=overallDeadline){const note=stopReason||(isCancelled()?'Run stopped by operator.':'Course deadline exceeded.');outcomes.push({id:item.id,status:'Blocked',note});await onResult(item,'Blocked',note);continue;}
+    const binding=()=>({pid:engine.child?.pid,processStart:engine.processStart,generation:engine.generation,packageHash:engine.plan?.packageHash});
+    const measurement=await beginPerformance(engine.root,item.id,binding());
     engine.caseId=item.id;engine.deadline=Math.min(overallDeadline,Date.now()+(item.timeoutSeconds||course.caseTimeoutSeconds)*1000);await onResult(item,'Running',item.scope);
     try{const note=await cases[item.id](new CaseContext(engine,item.id,fixtures));if(isCancelled())throw new OutcomeError('Run stopped during the check. Inspect the retained project before a new run.','Unknown');outcomes.push({id:item.id,status:'Pass',note});await onResult(item,'Pass',note);}
     catch(error){const status=isCancelled()?'Unknown':error.status||'Fail',note=error.message;outcomes.push({id:item.id,status,note});await onResult(item,status,note);if(status==='Unknown'||item.id==='A-CLI-01'||!engine.child||engine.child.exitCode!==null||engine.child.signalCode)stopReason=`Blocked after ${item.id}: ${note}`;}
+    finally{await endPerformance(measurement,binding());}
   }
   return outcomes;
 }
@@ -40,7 +44,7 @@ async function run(dataDir,runId){
     await writeJSON(path.join(root,'test-specifications.json'),specifications);
     await cp(path.join(ROOT,'scope/v1-candidate.json'),path.join(root,'scope.json'));
     const sourceHash=await snapshotSource(path.join(root,'source'));
-    await writeJSON(path.join(root,'execution-context.json'),{startedAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,node:process.version,osRelease:os.release(),operator:db.prepare('SELECT operator FROM runs WHERE id=?').get(runId).operator,sourceHash,testSpecificationsHash:digest(specifications),evidenceMode:course.target,diagnostics:course.selection?.diagnostics||'standard',runtime:plan.runtime||null,runnerHash:plan.runnerHash});
+    await writeJSON(path.join(root,'execution-context.json'),{startedAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,node:process.version,osRelease:os.release(),operator:db.prepare('SELECT operator FROM runs WHERE id=?').get(runId).operator,sourceHash,testSpecificationsHash:digest(specifications),evidenceMode:course.target,performancePolicy,diagnostics:course.selection?.diagnostics||'standard',runtime:plan.runtime||null,runnerHash:plan.runnerHash});
     await cp(plan.fixtureRoot,path.join(root,'media'),{recursive:true,errorOnExist:true,force:false});
     engine=new PackagedEngine(plan,root,runId,schema);await engine.start();
     updateExecution(db,runId,'Running','Running the local packaged-engine course.',process.pid);

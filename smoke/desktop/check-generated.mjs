@@ -1,8 +1,9 @@
 import path from 'node:path';
 import {checks,requirePassed} from './check-support.mjs';
-import {createLocalGraphic,generatedPlacement} from './generated-fixture.mjs';
-import {readJSON,writeJSON} from '../runner/files.mjs';
-import {assert,same,clips,snapshotState,OutcomeError} from '../runner/engine.mjs';
+import {retainChild} from './adapter.mjs';
+import {createLocalGraphic,generatedPlacement,proveGraphicMotion} from './generated-fixture.mjs';
+import {readJSON,writeJSON,sha} from '../runner/files.mjs';
+import {assert,same,clips,snapshotState,OutcomeError,command} from '../runner/engine.mjs';
 import {readPPM,pixelDifference} from '../runner/pixels.mjs';
 const verify=process.argv[3]==='verify';
 const {s,c,check,finish,report}=await checks(process.argv[2],verify?'service-generated-reopen-report.json':'service-generated-report.json');
@@ -17,6 +18,15 @@ if(verify){
   await check('S-MGFX-PERSIST',async()=>{requirePassed((await readJSON(path.join(s.root,'service-generated-report.json'))).results,['S-MGFX-DUPLICATE']);const expected=await readJSON(expectedFile).catch(e=>{if(e.code==='ENOENT')throw new OutcomeError('MGFX persistence setup did not retain its expected state','Blocked');throw e;});assert(expected.generations.length>=2,'Missing independent-generation fixture');for(const g of expected.generations)same(values(await inspect(g.generation_id)),g,'Reopened generation identity and values');for(const t of expected.timelines)same(snapshotState(await timeline(t.timeline.timeline_id)),t,'Reopened generated timeline');const image=await frame(expected.renderTimeline);assert(pixelDifference(await readPPM(expected.reference),image)<=1,'Reopened MGFX pixels changed');return {generations:expected.generations.map(g=>g.generation_id),newProcess:s.pid,pixelsRestored:true};});finish();
 }else{
   let valid,copy,copyTimeline,copyFrame;
+  await check('S-MGFX-MOTION',async()=>{
+    const g=await createLocalGraphic(c,s,{animated:true}),frames=[],captures=[];
+    for(const value of [0,24,47]){
+      const output=path.join(s.root,`mgfx-motion-${g.generation.generation_id}-${value}.ppm`),preview=output.replace(/\.ppm$/,'.png');await c('render.export_still',{timeline_id:g.timeline,time:{value,rate:24},output});frames.push({frame:value,image:await readPPM(output)});
+      const conversion=await command(path.join(s.app,'Contents/MacOS/ffmpeg'),['-v','error','-i',output,preview],{timeout:10000,processGroup:true,onSpawn:pid=>retainChild(s,pid)});await writeJSON(preview+'.conversion.json',conversion);assert(conversion.code===0&&!conversion.timedOut&&!conversion.overflow,'MGFX evidence preview conversion failed');
+      captures.push({frame:value,path:preview,sha256:await sha(preview),decodedPath:output,decodedSha256:await sha(output)});
+    }
+    return {generation:g.generation.generation_id,fixture:g.evidence,...proveGraphicMotion(frames),captures};
+  });
   await check('S-MGFX-DUPLICATE-DEFAULT',async()=>{const g=await createLocalGraphic(c,s),before=values(await inspect(g.generation.generation_id));const result=await c('generate.duplicate',{source_generation_id:g.generation.generation_id,label_suffix:' default descriptor copy'});assert(result.generation_id!==g.generation.generation_id,'Duplicate reused source identity');same(values(await inspect(g.generation.generation_id)),before,'Duplication preserves source');return {source:g.generation.generation_id,copy:result.generation_id,scope:'Copy must accept an optional group label omitted during successful admission'};});
   await check('S-MGFX-DUPLICATE',async()=>{
     valid=await createLocalGraphic(c,s,{groupLabel:'Title'});const source=valid.generation.generation_id,before=values(await inspect(source)),original=await frame(valid.timeline);

@@ -3,7 +3,7 @@ import {readFileSync,readdirSync,realpathSync} from 'node:fs';
 import {mkdir,mkdtemp,writeFile,rename,rm} from 'node:fs/promises';
 import {ROOT,digest,dataDirectory,inside} from './runner/files.mjs';
 import {methods,procedures} from './explainer/notes.mjs';
-import {rawChecks,fullSmokeCourse} from './runner/catalog.mjs';
+import {rawChecks,fullSmokeCourse,macosRegressionCourse} from './runner/catalog.mjs';
 import {volumeContract} from './desktop/volume-contract.mjs';
 
 export function evidenceSpec(check){
@@ -31,7 +31,7 @@ const names={
  'clipboard-save':'Preserve the system clipboard','clipboard-restore':'Restore the system clipboard'
 };
 export function actionHistory(operations=[],native=[],input=[]){
- const rows=[...operations.filter(r=>r.operation!=='check.observation').map(r=>({...r,op:r.operation,channel:'Application'})),...native.map(r=>({...r,op:r.request?.op,params:r.request,channel:'Editor adapter'})),...input.map(r=>({...r,op:r.command||r.input?.command,params:r.input,channel:'macOS input'}))];
+ const rows=[...operations.filter(r=>r.operation!=='check.observation'&&!r.operation?.startsWith('performance.')).map(r=>({...r,op:r.operation,channel:'Application'})),...native.map(r=>({...r,op:r.request?.op,params:r.request,channel:'Editor adapter'})),...input.map(r=>({...r,op:r.command||r.input?.command,params:r.input,channel:'macOS input'}))];
  return rows.sort((a,b)=>String(a.startedAt||a.at||'').localeCompare(String(b.startedAt||b.at||''))).map((r,i)=>{
   let envelope=r.response;try{if(!envelope&&r.stdout)envelope=JSON.parse(r.stdout);}catch{}
   const uncertain=r.status==='Unknown'||r.timedOut||r.signal||r.error&&!envelope;
@@ -45,11 +45,12 @@ export function actionHistory(operations=[],native=[],input=[]){
 export function stepHistory(spec,events=[],actions=[]){
  return (spec.steps||[]).map(step=>{
   const records=events.filter(e=>e.stepId===step.id),terminal=records.at(-1)?.status==='Running'?null:records.findLast(e=>e.status!=='Running'),start=records.find(e=>e.status==='Running'),observed=actions.filter(a=>a.stepId===step.id);
-  return {...step,status:terminal?.status||(start?'Unknown':observed.length?'Observed':'Not run'),startedAt:start?.at||observed[0]?.at||null,finishedAt:terminal?.at||null,observation:terminal?.observation||'',actionCount:observed.length};
+  return {...step,status:terminal?.status||(start?'Unknown':observed.length?'Observed':actions.some(a=>!a.stepId)?'No step record':'Not run'),startedAt:start?.at||observed[0]?.at||null,finishedAt:terminal?.at||null,observation:terminal?.observation||'',actionCount:observed.length};
  });
 }
 export function evidenceCaption(file){
  const name=path.basename(file).replace(/^computer-use-[a-f0-9]{12}-/,'');
+ if(/^performance-/.test(name))return 'Check duration, collection overhead and process-bound CPU/RSS observations.';
  if(/^P-RG-.*-before\./.test(name))return 'Render Graph before the tested action.';
  if(/^P-RG-.*-after\./.test(name))return 'Render Graph after the tested action.';
  if(/^P-RG-.*-undo\./.test(name))return 'Render Graph after Undo restored the original graph.';
@@ -78,7 +79,7 @@ export function evidenceCaption(file){
  return words(name.replace(/\.[^.]+$/,''));
 }
 export const mediaKind=file=>/\.(png|jpe?g|gif)$/i.test(file)?'image':/\.(mp4|mov|webm)$/i.test(file)?'video':/\.(wav|mp3|m4a|aac)$/i.test(file)?'audio':'json';
-export function evidenceItems(files=[],spec=null,defaultWhen='after'){return files.map(file=>{const kind=mediaKind(file),when=/-before\./.test(file)?'before':/-sample-\d+|preview-clip|live-observations/.test(file)?'during':/-failure|rejection/.test(file)?'failure':/-undo\.|-after\.|graph-observations/.test(file)?'after':defaultWhen;const match=spec?.evidence.find(e=>e.id!=='operations'&&e.kind===kind&&e.when===when&&(e.id!=='preview-clip'||file.includes('preview-clip'))&&(e.id!=='graph-state'||file.includes('graph-observations')));return {file,kind,when,caption:evidenceCaption(file),specId:match?.id||null};});}
+export function evidenceItems(files=[],spec=null,defaultWhen='after'){return files.map(file=>{const kind=mediaKind(file),when=/-before\./.test(file)?'before':(/-sample-\d+|preview-clip|live-observations/.test(file)||/graph-observations/.test(file)&&spec?.evidence.some(e=>e.id==='observations'&&e.kind==='json'&&e.when==='during'))?'during':/-failure|rejection/.test(file)?'failure':/-undo\.|-after\.|graph-observations/.test(file)?'after':defaultWhen;const match=!/^(?:computer-use-[a-f0-9]{12}-)?performance-/.test(path.basename(file))&&spec?.evidence.find(e=>e.id!=='operations'&&e.kind===kind&&e.when===when&&(e.id!=='preview-clip'||file.includes('preview-clip'))&&(e.id!=='graph-state'||file.includes('graph-observations')));return {file,kind,when,caption:evidenceCaption(file),specId:match?.id||null};});}
 export function evidenceCoverage(spec,items=[],actions=[],outcome){
  return spec.evidence.map(e=>({...e,status:(e.id==='operations'?actions.length>0:items.some(a=>a.specId===e.id))?'Collected':outcome==='Blocked'&&e.when!=='failure'?'Not reached':e.required?'Missing':'Optional'}));
 }
@@ -97,10 +98,11 @@ export function agentPrompt(spec,{root=ROOT,runId=null,outcome=null,sources=sour
 export function agentContext(check,options={}){
  const spec=options.specification||testSpecification(check),root=options.root||ROOT,sources=options.sources||sourcePointers(check.id,root);
  const physicalCourse=check.candidateCourse||(check.id.startsWith('P-')?(check.id.startsWith('P-SB-')?'spellbook':'editor'):null);
- const qualifiedCandidate=!options.accepted&&!physicalCourse&&fullSmokeCourse().qualificationChecks.includes(check.id);
- const selection=qualifiedCandidate?{courseIds:['smoke-full'],subsetIds:[check.id],project:'fresh',title:check.title}:{checkIds:[check.id],project:'fresh',title:check.title};
+ const candidateCourse=macosRegressionCourse().qualificationChecks.includes(check.id)?'macos-regression':'smoke-full';
+ const qualifiedCandidate=!options.accepted&&!physicalCourse&&(candidateCourse==='macos-regression'||fullSmokeCourse().qualificationChecks.includes(check.id));
+ const selection=qualifiedCandidate?{courseIds:[candidateCourse],subsetIds:[check.id],project:'fresh',title:check.title}:{checkIds:[check.id],project:'fresh',title:check.title};
  const port=options.servicePort===undefined?null:Number(options.servicePort);if(port!==null&&(!Number.isInteger(port)||port<1||port>65535))throw Error('Choose a valid local service port.');
- const context={format:'wizard-smoke-agent-context/v1',check:spec,sources,selection,accepted:options.accepted||false,runId:options.runId||null,prompt:agentPrompt(spec,{...options,root,sources}),repairPrompt:'Repair Athanor for this build or feature: [identity]. Intended course or checks: [selection]. Failure or missing behavior: [observation]. Work in the current source checkout and read AGENTS.md and docs/build-repair.md. Compare the actual contract with the mapped baseline. Qualify only reviewed schema hashes; update affected requests and independent assertions when behavior changes. Add new feature checks as candidates for lead acceptance. Validate preparation and authorized focused checks. Preserve frozen runs, Fail, Blocked and Unknown, and never replay an uncertain mutation. Commit and build a new versioned bundle. Return the cause, changes, evidence and remaining work.',guides:['docs/functional-testing-agent.md','docs/agent-sequences.md','docs/agent-workflows.md','docs/media-procedure.md','docs/golden-project-intake.md','docs/harness-control.md','docs/investigations.md','AGENTS.md','docs/changes-2026-10-02.md','docs/computer-use-agent.md','docs/agent-tools.md','docs/desktop-tools-setup.md','docs/agent-courses.md','docs/interaction-library.md','docs/test-evidence.md','docs/source-handoff.md','docs/maintaining-harness.md','docs/build-finder.md','docs/shared-build-catalog.md','docs/demo-guide.md','examples/agent-onboarding.txt','docs/build-repair.md'],
+ const context={format:'wizard-smoke-agent-context/v1',check:spec,sources,selection,accepted:options.accepted||false,runId:options.runId||null,prompt:agentPrompt(spec,{...options,root,sources}),repairPrompt:'Repair Athanor for this build or feature: [identity]. Intended course or checks: [selection]. Failure or missing behavior: [observation]. Work in the current source checkout and read AGENTS.md and docs/build-repair.md. Compare the actual contract with the mapped baseline. Qualify only reviewed schema hashes; update affected requests and independent assertions when behavior changes. Add new feature checks as candidates for lead acceptance. Validate preparation and authorized focused checks. Preserve frozen runs, Fail, Blocked and Unknown, and never replay an uncertain mutation. Commit and build a new versioned bundle. Return the cause, changes, evidence and remaining work.',guides:['docs/functional-testing-agent.md','docs/agent-sequences.md','docs/agent-workflows.md','docs/media-procedure.md','docs/golden-project-intake.md','docs/harness-control.md','docs/macos-regression.md','docs/pipeline-automation.md','docs/workers.md','docs/investigations.md','AGENTS.md','docs/changes-2026-10-02.md','docs/computer-use-agent.md','docs/agent-tools.md','docs/desktop-tools-setup.md','docs/agent-courses.md','docs/interaction-library.md','docs/test-evidence.md','docs/source-handoff.md','docs/maintaining-harness.md','docs/build-finder.md','docs/shared-build-catalog.md','docs/demo-guide.md','examples/agent-onboarding.txt','docs/build-repair.md'],
   commands:{schemaReview:'"/path/to/Wizard.app/Contents/MacOS/wiz-cli" project create --schema --no-spawn',discover:'node scripts/smoke.mjs setup',plan:`node scripts/smoke.mjs plan --app /path/to/Wizard.app --checks ${!options.accepted?'D-CLI-01':check.id} --out /tmp/smoke-plan.json`,run:physicalCourse?`node scripts/probe-physical.mjs --course ${physicalCourse} --plan /tmp/smoke-plan.json --checks ${check.id}`:!options.accepted?'node desktop/session.mjs start --plan /tmp/smoke-plan.json':'node scripts/smoke.mjs run --plan /tmp/smoke-plan.json --operator "Your name" --wait',context:`node scripts/smoke.mjs context --check ${check.id}`}};
  if(qualifiedCandidate){
   context.commands.plan='node scripts/smoke.mjs plan --app /path/to/Wizard.app --file /tmp/smoke-selection.json --out /tmp/smoke-plan.json';

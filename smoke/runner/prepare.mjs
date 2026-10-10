@@ -19,6 +19,7 @@ import {selectedBuildRuntime,verifyRuntime,assertSelectedRuntime} from './runtim
 import {selectedRecipe,validateRecipe,requirementsFor} from './catalog.mjs';
 
 import {assertMappedPackagedSchema} from './schema-compatibility.mjs';
+import {readCliSchema} from './cli-schema.mjs';
 export {assertMappedPackagedSchema};
 export async function sourceIdentity(){return digest([(await fingerprint(path.join(ROOT,'runner'))).sha256,(await fingerprint(path.join(ROOT,'desktop'))).sha256,await sha(path.join(ROOT,'test-details.mjs')),await sha(path.join(ROOT,'explainer/notes.mjs'))]);}
 export async function checkPrepared(dataDir=dataDirectory(),frozenPlan){
@@ -40,7 +41,7 @@ export async function checkPrepared(dataDir=dataDirectory(),frozenPlan){
   const pkg=await fingerprint(plan.app,{packageTree:true});if(pkg.sha256!==plan.packageHash)throw new Error('Wizard package changed since preparation. Prepare against the intended package again.');
   await access(ingestPython(plan.app),constants.X_OK);
   validateIngestProfile(plan.app);
-  const schema=JSON.parse(execFileSync(path.join(plan.app,'Contents/MacOS/wiz-cli'),['project','create','--schema','--no-spawn'],{timeout:15000,maxBuffer:8*1024*1024,encoding:'utf8'}));
+  const schema=readCliSchema(path.join(plan.app,'Contents/MacOS/wiz-cli'));
   if(digest(schema)!==plan.schemaHash)throw new Error('Packaged operation schema changed.');
   for(const c of course.cases)for(const op of c.operations)if(!schema.operations[op])throw new Error(`Missing packaged operation: ${op}`);
   return {plan,course,fixtures,schema};
@@ -64,7 +65,7 @@ export async function prepare({app='/Applications/Wizard.app',dataDir=dataDirect
   const pkg=await fingerprint(app,{packageTree:true});
   assertBuildIdentity(await localBuilds(dataDir,{verify:false}),app,pkg.sha256);
   const version=execFileSync('/usr/bin/plutil',['-extract','CFBundleShortVersionString','raw','-o','-',path.join(app,'Contents/Info.plist')],{timeout:10000,encoding:'utf8'}).trim();
-  const schema=JSON.parse(execFileSync(path.join(app,'Contents/MacOS/wiz-cli'),['project','create','--schema','--no-spawn'],{timeout:15000,maxBuffer:8*1024*1024,encoding:'utf8'}));
+  const schema=readCliSchema(path.join(app,'Contents/MacOS/wiz-cli'));
   for(const c of course.cases)for(const op of c.operations)if(!schema.operations[op])throw new Error(`Missing operation ${op} for ${c.id}`);
   const captured=await readJSON(path.join(ROOT,'runner/contracts/installed-schema.json'));
   let schemaCompatibility;

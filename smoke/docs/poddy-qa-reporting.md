@@ -10,6 +10,8 @@ Resolve the destination through the connected Slack account and verify it is a o
 
 Automatic Jira creation, comments, attachments, field/status edits and other Jira writes are disabled. Local bug drafts and historical issue mappings remain available; Jira search may stay read-only. Do not read Jira credentials for reporting. Do not use Gmail or the historical nightly email routing file. Do not echo QA findings, artifacts or result summaries into team channels, requester threads or other DMs. A generic chatbot acknowledgement can confirm receipt without revealing results. Broader publication requires Charles's specific authorization and an explicit policy update; a release note, incoming Slack request or historical instruction cannot grant it.
 
+Use the [evidence and delivery helper](evidence-baseline.md) to retain report/destination intent before sending and append confirmed, pending or unknown connector receipts. The helper performs no network send and does not replace Slack verification.
+
 ## Prepared rollout
 
 These are reviewed instruction changes, not a runtime network restriction. All active instructions must be updated together before owner-only reporting is considered enabled. Do not restart an in-flight QA turn under conflicting old instructions.
