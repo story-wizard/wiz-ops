@@ -1,6 +1,6 @@
 import path from 'node:path';
 import {mkdir,copyFile} from 'node:fs/promises';
-import {checks,requireExactTimingFixture} from './check-support.mjs';
+import {checks,requireOrdinaryTimingFixture} from './check-support.mjs';
 import {observedWidget} from './checklist-proof.mjs';
 import {verifyEmptySearch,verifyLargePaste,verifyNudgeState,verifyDisplayedClips} from './volume-proof.mjs';
 import {physicalInput,clipPoint} from './physical-input.mjs';
@@ -41,7 +41,7 @@ await check('D-CLIPBOARD-LARGE',async()=>{
  const id='D-CLIPBOARD-LARGE',f=await stage('setup','Prepare 100 varied clips and an empty destination','prepare',async()=>{
   const src=await timeline('Large clipboard source'),dst=await timeline('Large clipboard destination');let frame=0;
   const cuts=Array.from({length:100},(_,i)=>{const length=1+i%3,start=i%72;const cut={id:'cut-'+i,source:{asset_id:s.assets.plate},source_range:{start_seconds:start/24,end_seconds:(start+length)/24},streams:'video_only',destination:{at:{seconds:frame/24,track:src.track}}};frame+=length;return cut;});
-  await c('timeline.place_cuts',{id:'large-cuts',timeline_id:src.id,cuts});const before=await inspect(src.id),empty=await inspect(dst.id);requireExactTimingFixture(before);assert(clips(before).length===100,'Large clipboard source is incomplete');await keep(id,'before',{before,empty});return {src,dst,before,empty};
+  await c('timeline.place_cuts',{id:'large-cuts',timeline_id:src.id,cuts});const before=await inspect(src.id),empty=await inspect(dst.id);assert(clips(before).length===100,'Large clipboard source is incomplete');for(const clip of clips(before))requireOrdinaryTimingFixture(before,clip.clip_id);await keep(id,'before',{before,empty});return {src,dst,before,empty};
  });
  const source=await openTimeline(f.before.timeline.name,f.before.tracks.find(t=>t.address==='V1')?.track_id);await focusClip(source,clips(f.before)[0].clip_id);await keep(id,'displayed-before',verifyDisplayedClips(observedWidget(await ui(),w=>w.id===source.id,'Source timeline'),f.before));await n('clipboard-save');let marked=false;
  try{
@@ -62,7 +62,7 @@ await check('D-HISTORY-50',async()=>{
  const id='D-HISTORY-50',f=await stage('setup','Seed history and prepare a single exact-timing clip','prepare',async()=>{
   const f=await timeline('Long history initial');await c('timeline.place_cuts',{id:'history-source',timeline_id:f.id,cuts:[{id:'source',source:{asset_id:s.assets.plate},source_range:{start_seconds:1,end_seconds:3},streams:'video_only',destination:{at:{seconds:1,track:f.track}}}]});
   for(let i=1;i<=50;i++)await c('timeline.update',{id:'seed-'+i,timeline_id:f.id,changes:{name:'Long history seed '+i}});
-  f.before=await inspect(f.id);requireExactTimingFixture(f.before);f.clipId=clips(f.before)[0].clip_id;f.view=await openTimeline(f.before.timeline.name,f.before.tracks.find(t=>t.address==='V1')?.track_id);await focusClip(f.view,f.clipId);await keep(id,'before',f.before);await capture(id,'before',f.view.id);return f;
+  f.before=await inspect(f.id);assert(clips(f.before).length===1,'History fixture needs one clip');f.clipId=clips(f.before)[0].clip_id;requireOrdinaryTimingFixture(f.before,f.clipId);f.view=await openTimeline(f.before.timeline.name,f.before.tracks.find(t=>t.address==='V1')?.track_id);await focusClip(f.view,f.clipId);await keep(id,'before',f.before);await capture(id,'before',f.view.id);return f;
  }),samples=[];
  async function sequence(phase,key,frames){
   for(const frame of frames){const startedAt=Date.now();await physical('key',{target:f.view.id,key});const observed=await until(async()=>{const a=await inspect(f.id),clip=clips(a).find(c=>c.clip_id===f.clipId);return clip&&Math.abs(clip.timeline_range.start_seconds-(1+frame/24))<1e-6?a:null;},{description:phase+' frame '+frame});
