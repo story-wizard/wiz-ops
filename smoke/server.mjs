@@ -158,6 +158,8 @@ async function admitRun(body){
 }
 
 async function beginPreparation(body,preparationId){
+ if(body.preparationId!==undefined){if(preparationId!==undefined&&preparationId!==body.preparationId)fail(400,'Preparation identities differ.');preparationId=body.preparationId;}
+ if(preparationId!==undefined&&!/^[a-f0-9-]{36}$/.test(preparationId))fail(400,'Invalid preparation ID.');
  if(preparing||(await runnerStatus()).active||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'A course, desktop setup or preparation is active.');
  if(typeof body.app!=='string'||!path.isAbsolute(body.app))fail(400,'Choose an explicit absolute app path.');
  let selection;try{selection=resolveSelection(db,body.selection);}catch(e){fail(409,e.message);}

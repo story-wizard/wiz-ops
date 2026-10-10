@@ -1,0 +1,22 @@
+{
+  "timeZone": "America/Los_Angeles",
+  "hour": 3,
+  "minute": 0,
+  "request": {
+    "requestId": "replace-with-a-new-reviewed-request-id",
+    "build": {
+      "kind": "latest-nightly"
+    },
+    "selection": {
+      "title": "Athanor combined nightly regression",
+      "project": "fresh",
+      "courseIds": [
+        "smoke-full",
+        "macos-regression"
+      ],
+      "desktopMode": "grouped"
+    },
+    "operator": "Athanor scheduler",
+    "timeoutMinutes": 180
+  }
+}

@@ -58,7 +58,7 @@ A process supervisor may run `worker.mjs serve` in the runner user's Aqua login
 session. Keep one scheduler per worker. A scheduled trigger uses this same
 prepare/admission path; it does not own a separate testing engine. Keep a stopped
 or paused automation paused until its source, desktop and reporting cutover is
-verified. Use supported automation controls to update its prompt/schedule.
+verified. Retired Codex automations stay paused. The [Athanor job controller](job-controller.md) owns the replacement daily schedule and durable queue; it runs independently of Codex chat availability.
 
 ## One nightly plan and report
 

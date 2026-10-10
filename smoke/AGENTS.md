@@ -15,6 +15,7 @@ Work from the command root: `smoke/` in a checkout or `workspace/` in a bundle. 
 
 | Task | Start here |
 | --- | --- |
+| Schedule or administer durable jobs | [Job controller](docs/job-controller.md) |
 | Collect nightly evidence or record private delivery | [Evidence and delivery](docs/evidence-baseline.md) |
 | Administer a managed MBP/Mini or consolidate nightly assertions | [Workers and nightly reports](docs/workers.md) |
 | Plan the combined nightly catalog and legacy functional assertions | [Workers and nightly reports](docs/workers.md) |
