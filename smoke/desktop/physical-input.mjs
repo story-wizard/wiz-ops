@@ -121,7 +121,8 @@ async function physicalInputOwned(file,command,params={}){
  const matches=native.windows.filter(w=>(window.nativeWindow?w.window===window.nativeWindow:w.title===window.title)&&Math.abs(w.frame.width-window.width)<=1&&Math.abs(w.frame.height-window.height)<=80);
  assert(matches.length===1,'Native window title/geometry is absent or ambiguous');
  const target=matches[0],request={command,mode:'window-server',pid:native.pid,started:native.started,window:target.window,frame:target.frame};
- if(command==='screenshot'&&params.crop){const r=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height},p=windowPoint(widget,window,target,r.x,r.y);request.captureRect={...p,width:r.width,height:r.height};}
+ // A top-level QWidget's visible region can exclude its embedded Qt Quick content.
+ if(command==='screenshot'&&params.crop&&widget.id!==window.id){const r=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height},p=windowPoint(widget,window,target,r.x,r.y);request.captureRect={...p,width:r.width,height:r.height};}
  if(command==='key'){request.key=params.key;if(params.requireFocus)request.focusTarget=widget.id;}
  else if(command==='type'){request.text=params.text;request.focusTarget=widget.id;}
  else if(command!=='screenshot'){

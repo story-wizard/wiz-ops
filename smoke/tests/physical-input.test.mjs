@@ -140,3 +140,15 @@ test('focus-bound keyboard input refuses another control in the same owned windo
  assert.throws(()=>keyboardWindowProof({...ui,widgets:ui.widgets.filter(w=>w.id!=='timeline')},request),e=>e.status==='Blocked');
  assert.deepEqual(keyboardWindowProof({...ui,focus:'search'},{command:'key',key:'cmd+s',window:10}),{verifiedKeyWindow:10},'Window shortcuts retain their explicit window scope');
 });
+
+test('window screenshots retain embedded Quick content while child targets keep their visible crop',async()=>{
+ const root=await mkdtemp('/private/tmp/athanor-window-capture-');
+ try{
+  const file=root+'/session.json';await writeFile(file,JSON.stringify({root}));const stub=pathToFileURL(root+'/stub.mjs').href;
+  await writeFile(root+'/stub.mjs',`export async function nativeCall(){return {widgets:[{id:'main',window:'main',nativeWindow:10,title:'Wizard',width:600,height:600,x:0,y:0,visibleRect:{x:0,y:0,width:600,height:26}},{id:'child',window:'main',width:60,height:40,x:10,y:20,visibleRect:{x:0,y:0,width:60,height:40}}]};}export async function nativeDesktopInput(file,p){return p.command==='inspect'?{pid:123,started:'observed',windows:[{window:10,title:'Wizard',frame:{width:600,height:628}}]}:{status:'Observed',request:p};}`);
+  const source=(await readFile(new URL('../desktop/physical-input.mjs',import.meta.url),'utf8')).replace(/from '(\.\.?\/[^']+)'/g,(_,relative)=>"from '"+(['./adapter.mjs','./macos-input.mjs'].includes(relative)?stub:new URL(relative,new URL('../desktop/',import.meta.url)).href)+"'");await writeFile(root+'/probe.mjs',source);
+  const {physicalInput}=await import(pathToFileURL(root+'/probe.mjs').href);
+  assert.equal((await physicalInput(file,'screenshot',{target:'main',crop:true})).request.captureRect,undefined);
+  assert.deepEqual((await physicalInput(file,'screenshot',{target:'child',crop:true})).request.captureRect,{x:10,y:48,width:60,height:40});
+ }finally{await rm(root,{recursive:true,force:true});}
+});
