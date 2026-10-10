@@ -51,6 +51,14 @@ test('evidence collection is independent of verdict and an expected rejection is
  const manual=testSpecification({...check,steps:['Click the button and inspect the track.']});assert.equal(manual.steps.length,0);assert.deepEqual(manual.procedure,['Click the button and inspect the track.'],'Manual instructions must not be presented as recorded execution steps');
 });
 
+test('packaged regression state observations satisfy their declared collection phase without substituting input receipts',()=>{
+ const spec=testSpecification(checkRegistry().find(c=>c.id==='D-AGENT-HEADER'));
+ const coverage=files=>evidenceCoverage(spec,evidenceItems(files,spec),[],'Pass').find(e=>e.id==='observations').status;
+ assert.equal(coverage(['D-AGENT-HEADER-3-graph-observations-wide.txt']),'Collected');
+ assert.equal(coverage(['D-AGENT-HEADER-1-graph-observations-before.txt']),'Missing');
+ assert.equal(coverage(['native-receipt.txt']),'Missing');
+});
+
 test('an agent pack snapshots its definition, guides and sources outside Git with a reproducible manifest',async()=>{
  const data=await mkdtemp(path.join(tmpdir(),'smoke-agent-pack-'));
  try{

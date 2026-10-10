@@ -42,9 +42,10 @@ export const fullSmokeCourse=()=>{
  return {id:'smoke-full',title:'Logan’s checklist — full automated course',revision:10,project:'fresh',kind:'maintained',qualificationChecks:checks.filter(c=>!c.accepted).map(c=>c.id),groups:[...['packaged','service','desktop'].map(target=>({id:target,title:({packaged:'Build engine',service:'Background services',desktop:'Desktop editor'})[target],checks:checks.filter(c=>c.target===target&&!c.id.startsWith('P-')).map(c=>c.id)})),{id:'physical',title:'Physical computer use',checks:checks.filter(c=>c.id.startsWith('P-')).map(c=>c.id)}].filter(g=>g.checks.length)};
 };
 export const isolatedSmokeCourse=()=>({...fullSmokeCourse(),id:'smoke-isolated',revision:1,title:'Logan’s checklist — isolated desktop checks',desktopMode:'isolated'});
-export function courseList(db){return [fullSmokeCourse(),allAutomatedCourse(),builtinCourse(),isolatedSmokeCourse(),...db.prepare('SELECT definition FROM user_courses c WHERE revision=(SELECT MAX(revision) FROM user_courses WHERE id=c.id) ORDER BY id').all().map(r=>JSON.parse(r.definition))];}
+export const macosRegressionCourse=()=>{const checks=['D-MAC-RESUME','D-MAC-WINDOW-ORDER','D-MAC-FLOAT-TIMELINE','D-MAC-FLOAT-PREVIEW','D-AGENT-TAIL','D-AGENT-SELECTORS','D-AGENT-HEADER','D-AGENT-IMAGE'];return {id:'macos-regression',title:'macOS packaged regression candidates',revision:1,project:'fresh',kind:'maintained',desktopMode:'isolated',qualificationChecks:checks,groups:[{id:'macos',title:'Native windows and Agent Workspace',checks}]};};
+export function courseList(db){return [fullSmokeCourse(),allAutomatedCourse(),builtinCourse(),isolatedSmokeCourse(),macosRegressionCourse(),...db.prepare('SELECT definition FROM user_courses c WHERE revision=(SELECT MAX(revision) FROM user_courses WHERE id=c.id) ORDER BY id').all().map(r=>JSON.parse(r.definition))];}
 export function getCourse(db,id,revision){
- if(['packaged-full','automated-full','smoke-full','smoke-isolated'].includes(id)){const c=id==='packaged-full'?builtinCourse():id==='smoke-full'?fullSmokeCourse():id==='smoke-isolated'?isolatedSmokeCourse():allAutomatedCourse();if(revision!==undefined&&revision!==c.revision)throw Error('Maintained course revision is unavailable.');return c;}
+ if(['packaged-full','automated-full','smoke-full','smoke-isolated','macos-regression'].includes(id)){const c=id==='packaged-full'?builtinCourse():id==='smoke-full'?fullSmokeCourse():id==='smoke-isolated'?isolatedSmokeCourse():id==='macos-regression'?macosRegressionCourse():allAutomatedCourse();if(revision!==undefined&&revision!==c.revision)throw Error('Maintained course revision is unavailable.');return c;}
  const r=revision===undefined?db.prepare('SELECT definition FROM user_courses WHERE id=? ORDER BY revision DESC LIMIT 1').get(id):db.prepare('SELECT definition FROM user_courses WHERE id=? AND revision=?').get(id,revision);
  if(!r)throw Error('Course not found: '+id);return JSON.parse(r.definition);
 }
@@ -62,7 +63,7 @@ function groups(input,registry,maxID=80){
 }
 export function saveCourse(db,input,review=acceptance()){
  if(!input||Object.keys(input).some(k=>!['id','revision','title','project','groups','checkpoint'].includes(k)))throw Error('Courses contain references and groups only; test definitions and acceptance cannot be changed here.');
- const id=text(input.id,'course ID',80);if(!/^[a-z][a-z0-9-]*$/.test(id)||['packaged-full','automated-full','smoke-full','smoke-isolated'].includes(id))throw Error('Invalid or reserved course ID.');
+ const id=text(input.id,'course ID',80);if(!/^[a-z][a-z0-9-]*$/.test(id)||['packaged-full','automated-full','smoke-full','smoke-isolated','macos-regression'].includes(id))throw Error('Invalid or reserved course ID.');
  if(input.project!=='fresh')throw Error('Project variant unavailable: '+input.project);
  if(!Number.isInteger(input.revision)||input.revision<0)throw Error('Supply revision 0 to create, or the current revision to edit.');
  const definition={id,revision:input.revision+1,title:text(input.title,'course title'),project:'fresh',kind:'user',groups:groups(input.groups,checkRegistry(review)),...(checkpointID(input.checkpoint)?{checkpoint:input.checkpoint}:{})};
@@ -123,7 +124,7 @@ export function validateRecipe(recipe,review=acceptance()){
  if(s.desktopMode!==undefined&&!['grouped','isolated'].includes(s.desktopMode))throw Error('Unknown desktop execution mode.');
  if(s.diagnostics!==undefined&&s.diagnostics!=='investigation')throw Error('Unknown diagnostic profile.');
  if(s.project!=='fresh'||!ids.length||ids[0]!=='A-CLI-01'||new Set(ids).size!==ids.length||digest(ids)!==digest(s.effectiveIds)||digest(recipe)!==digest(selectedRecipe(s))||digest(s.requirements)!==digest(requirementsFor(ids,s.checkpoint)))throw Error('Selected recipe or prerequisites changed.');
- const registry=checkRegistry(review),qualifying=s.courseRevisions.some(c=>c.id==='smoke-full'&&[8,fullSmokeCourse().revision].includes(c.revision)||c.id==='smoke-isolated'&&c.revision===isolatedSmokeCourse().revision)?fullSmokeCourse().qualificationChecks:[];
+ const registry=checkRegistry(review),qualifying=[...new Set(s.courseRevisions.flatMap(c=>c.id==='smoke-full'&&[8,fullSmokeCourse().revision].includes(c.revision)||c.id==='smoke-isolated'&&c.revision===isolatedSmokeCourse().revision?fullSmokeCourse().qualificationChecks:c.id==='macos-regression'&&c.revision===macosRegressionCourse().revision?macosRegressionCourse().qualificationChecks:[]))];
  if(digest(s.qualificationIds||[])!==digest(ids.filter(id=>qualifying.includes(id))))throw Error('Candidate qualification selection changed.');
  for(const id of ids)if(!registry.some(c=>c.id===id&&(c.accepted||qualifying.includes(id))))throw Error('Selected check acceptance is missing or stale: '+id);
 }

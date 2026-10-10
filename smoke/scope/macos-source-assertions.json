@@ -1,0 +1,2082 @@
+{
+  "format": "athanor-macos-source-coverage/v1",
+  "revision": 1,
+  "reviewedAt": "2026-10-10T08:13:50.237Z",
+  "course": "macos-regression",
+  "sourceHeadsDifferFromQualificationPackage": true,
+  "qualificationBuild": {
+    "tag": "nightly-2026.10.10-ad6fa5e",
+    "app": "ad6fa5e777058534c387b37ceab42347bb9c5e8a",
+    "core": "2a8a5ff3e2851103ce0e9b256b7bbb2936d47f49",
+    "packageHash": "b84ea1b117ec6ecb4e361ea4227c8b7f04b64d98cc13f20511bfa848aba3b8e1"
+  },
+  "sources": [
+    {
+      "id": "native-window-order",
+      "repo": "wizard",
+      "revision": "f3dc5402bae072f0281ff0e75a9f0c74c80f2cca",
+      "path": "tests/test_main_window_window_order.cpp",
+      "sha256": "0e9ed02d4b12ccdf8d9ecb632298a2a312d040441cbaf50ca4d65262e214ae35",
+      "inventory": "Method-level discovery; partial packaged assertion coverage is named separately.",
+      "remaining": "Lifecycle, hidden-window, deactivation, multiscreen and destruction assertions remain source-only until a specific packaged fixture is authored."
+    },
+    {
+      "id": "app-playback",
+      "repo": "wizard",
+      "revision": "f3dc5402bae072f0281ff0e75a9f0c74c80f2cca",
+      "path": "tests/test_playback.cpp",
+      "sha256": "d41926e37413d42ff571de02ca9212c33f5d72cf78fb6ea31c9da8dac855abf7",
+      "inventory": "Method-level discovery; partial packaged assertion coverage is named separately.",
+      "relatedChecks": [
+        {
+          "id": "D-PB-01",
+          "definitionHash": "03295012be8e28dade498d96bcb92c92c9ecde79020cb3e90d952ed7a973f21f"
+        },
+        {
+          "id": "D-TRANSPORT-KEYS",
+          "definitionHash": "4efa368d865592e0e60faeee9f43054f8096b7524fc5f2af511cd9c76717b7b2"
+        },
+        {
+          "id": "D-PREVIEW-SCRUB",
+          "definitionHash": "3e2977a9ddbed606f9022d74b291fec2041a84d498e14a6300936e3f590fc503"
+        },
+        {
+          "id": "D-PLAYBACK-SWITCH",
+          "definitionHash": "820cd0461224b87803bab0d4f5925997d5a4ba616c91af2ca6783a39a4f2cec2"
+        },
+        {
+          "id": "D-MAC-RESUME",
+          "definitionHash": "5763821ba2cb022a4a1b904d4f64d28be13476581f07fc893ed38f6f74acaf99"
+        }
+      ],
+      "remaining": "Related user paths only. No per-method equivalence: private fake audio clocks, decoder/generator fault injection, lifetime, precision and timing assertions must keep their source-suite results."
+    },
+    {
+      "id": "core-playback",
+      "repo": "wizard-core",
+      "revision": "e4410fe97d74e2475922ca73ce4ff19d5b2b946c",
+      "path": "c++/wiz-playback/tests/test_playback_engine_basic.cpp",
+      "sha256": "e2151e230579c1f1a6daa49180982a8b3f02cd8aa9b9f23be89dccb2b44a8905",
+      "inventory": "Method-level discovery; partial packaged assertion coverage is named separately.",
+      "relatedChecks": [
+        {
+          "id": "D-PB-01",
+          "definitionHash": "03295012be8e28dade498d96bcb92c92c9ecde79020cb3e90d952ed7a973f21f"
+        },
+        {
+          "id": "D-TRANSPORT-KEYS",
+          "definitionHash": "4efa368d865592e0e60faeee9f43054f8096b7524fc5f2af511cd9c76717b7b2"
+        },
+        {
+          "id": "D-PREVIEW-SCRUB",
+          "definitionHash": "3e2977a9ddbed606f9022d74b291fec2041a84d498e14a6300936e3f590fc503"
+        },
+        {
+          "id": "D-PLAYBACK-SWITCH",
+          "definitionHash": "820cd0461224b87803bab0d4f5925997d5a4ba616c91af2ca6783a39a4f2cec2"
+        },
+        {
+          "id": "D-MAC-RESUME",
+          "definitionHash": "5763821ba2cb022a4a1b904d4f64d28be13476581f07fc893ed38f6f74acaf99"
+        }
+      ],
+      "remaining": "Related user paths only. No per-method equivalence: private fake audio clocks, decoder/generator fault injection, lifetime, precision and timing assertions must keep their source-suite results."
+    },
+    {
+      "id": "agent-workspace",
+      "repo": "wizard",
+      "revision": "f3dc5402bae072f0281ff0e75a9f0c74c80f2cca",
+      "path": "tests/test_main_window_chat_ingest.cpp",
+      "sha256": "166399e3da2c32cdb44eccf73a0ad56460aea6980da2b5f09099db1cd71fd608",
+      "inventory": "Method-level discovery; partial packaged assertion coverage is named separately."
+    }
+  ],
+  "rows": [
+    {
+      "source": "native-window-order",
+      "symbol": "persistentInteractiveWindows_useExpectedPolicies",
+      "line": 186,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "ephemeralNoFocusTools_remainAutoHiding",
+      "line": 217,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "applicationActivation_raisesVisibleFocusableToolsOnNonMacOS",
+      "line": 234,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "persistentFloatingPanels_useAuxiliaryFullScreenBehavior",
+      "line": 263,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "floatingPanels_areIndependentNormalWindows",
+      "line": 282,
+      "status": "Candidate partial",
+      "checks": [
+        {
+          "id": "D-MAC-WINDOW-ORDER",
+          "definitionHash": "c84f98ae1c4b5540436748e776335efcd4fc418e7892db0c65cd964cd5bc03b5"
+        }
+      ],
+      "remaining": "Real packaged panels with native physical focus; source test setup/lifecycle assumptions remain separate."
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "ownerAndPanelMoves_preserveIndependentPositions",
+      "line": 317,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "floatingPanel_canRemainVisibleOnAnotherScreen",
+      "line": 368,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "floatingContainer_runsWindowShortcutsButPreservesTextInput",
+      "line": 421,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "floatingPreview_spaceTargetsFocusedPreview",
+      "line": 456,
+      "status": "Candidate partial",
+      "checks": [
+        {
+          "id": "D-MAC-FLOAT-PREVIEW",
+          "definitionHash": "a27c36d8bd084240e4716df0084d31ce2cfe179c380e687c3ec673722348c1c7"
+        }
+      ],
+      "remaining": "Real packaged panels with native physical focus; source test setup/lifecycle assumptions remain separate."
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "floatingTimeline_toolShortcutTargetsFocusedTimeline",
+      "line": 514,
+      "status": "Candidate partial",
+      "checks": [
+        {
+          "id": "D-MAC-FLOAT-TIMELINE",
+          "definitionHash": "a037beddbf684ab029d5e5905ec79a392388560d406869fc7b6cf86310112f4a"
+        }
+      ],
+      "remaining": "Real packaged panels with native physical focus; source test setup/lifecycle assumptions remain separate."
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "hiddenFloatingPanel_nativeCreationDoesNotRevealOrAttachIt",
+      "line": 563,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "hiddenFloatingPanel_staysHiddenAcrossApplicationActivationChanges",
+      "line": 592,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "ownerHide_doesNotSurfaceOrDetachSiblingPanels",
+      "line": 624,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "floatingPanels_stayAboveOwnerWhenOwnerBecomesKey",
+      "line": 685,
+      "status": "Candidate partial",
+      "checks": [
+        {
+          "id": "D-MAC-WINDOW-ORDER",
+          "definitionHash": "c84f98ae1c4b5540436748e776335efcd4fc418e7892db0c65cd964cd5bc03b5"
+        }
+      ],
+      "remaining": "Real packaged panels with native physical focus; source test setup/lifecycle assumptions remain separate."
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "floatingPanels_preserveSiblingOrderWhenOwnerBecomesKey",
+      "line": 711,
+      "status": "Candidate partial",
+      "checks": [
+        {
+          "id": "D-MAC-WINDOW-ORDER",
+          "definitionHash": "c84f98ae1c4b5540436748e776335efcd4fc418e7892db0c65cd964cd5bc03b5"
+        }
+      ],
+      "remaining": "Real packaged panels with native physical focus; source test setup/lifecycle assumptions remain separate."
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "floatingPanels_preserveNativeOrderOnApplicationDeactivation",
+      "line": 750,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "reregisteredFloatingPanel_ordersAboveNewOwnerWhenShown",
+      "line": 831,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "deletedRegisteredOwner_allowsPanelReregistration",
+      "line": 867,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "deletedRegisteredPanel_doesNotLeaveOrderingCallbacks",
+      "line": 910,
+      "status": "Source-only"
+    },
+    {
+      "source": "native-window-order",
+      "symbol": "quitShortcutTargetsMainWindowWhenFloatingPanelIsFocused",
+      "line": 948,
+      "status": "Source-only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "heldAudioSnapshotWaitsForRelease",
+      "line": 629,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "timelinePlayReleasesHeldAudioSnapshot",
+      "line": 650,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "bindTimelineAnnouncesHandleAndPlayhead",
+      "line": 671,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "feedbackSessionRecorderPausesWhileAnotherTimelineIsBound",
+      "line": 693,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "openPreservesAuthoredRate_andPlaybackUsesIt",
+      "line": 723,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "playback_controller_requests_preserving_decode_precision",
+      "line": 762,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "preview_resolution_drives_render_and_decode_for_non_raw_timeline",
+      "line": 796,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "preview_resolution_covers_mixed_raw_and_non_raw_timeline",
+      "line": 897,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "preview_resolution_floors_blackmagic_raw_at_an_eighth",
+      "line": 957,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "preview_auto_step_down_is_visible_and_disabled_by_full",
+      "line": 1014,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "shutdown_resets_shared_engine_preview_decode_ratio",
+      "line": 1092,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "unavailableAssetPredicateMasksVideoAndAudioSources",
+      "line": 1126,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "unavailableAssetPredicateCanBeEnabledAndClearedAfterBinding",
+      "line": 1169,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "transientVisualSessionsRejectStaleSetAndEnd",
+      "line": 1204,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "emptyTransientVisualSessionDoesNotMoveTransport",
+      "line": 1267,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "transientVisualSwitchesKeepCanonicalAudioBound",
+      "line": 1294,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "publishDuringTransientVisualSessionKeepsCanonicalAudio",
+      "line": 1378,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "transientVisualSnapshotDrivesDecodeTargetRatio",
+      "line": 1464,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "publishDerivesFilteredSnapshotExactlyOnce",
+      "line": 1511,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "timelineCommitReachesPublishWithOneDerivation",
+      "line": 1540,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "interpolationCommitUsesSnapshotRequirementProvider",
+      "line": 1575,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "publishWithoutBoundTimelineIsANoOp",
+      "line": 1612,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "decodeTargetRatioWithoutBoundTimelineStaysFullResolution",
+      "line": 1647,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "publishDuringTransientSessionDerivesTwiceByDesign",
+      "line": 1682,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "filteredSnapshot_doesNotStampNestedPlacementOntoInnerWindow",
+      "line": 1712,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "filteredSnapshot_twoPlacementsComposeIndependently",
+      "line": 1773,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "filteredSnapshot_nestedPlacementDoesNotCopySnapshot",
+      "line": 1826,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "filteredSnapshot_preservesAssetsWhenNoAvailabilityProvider",
+      "line": 1854,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "filteredSnapshot_blocksUnavailableAssetsWithoutStampingNestedPlacement",
+      "line": 1895,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "filteredSnapshot_leavesAudioAndSingleLayerTransformsUntouched",
+      "line": 1976,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "playbackResultForPresentation_keepsNestedVideoInParentSpace",
+      "line": 2023,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "filteredSnapshot_nestedChildStaysOnParentCanvasForCulling",
+      "line": 2150,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "nestedPlacementDoesNotCompoundAcrossSharedWindowRows",
+      "line": 2193,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "unavailableVisibleAssetInjectsMissingMediaRenderInput",
+      "line": 2253,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "unavailableLowerLayerKeepsHealthyUpperLayerTopmost",
+      "line": 2300,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "missingSourceAssetInjectsFallbackOnlyWhenNoDecodedInput",
+      "line": 2400,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "missingSourceAssetDoesNotBlockPlaybackStart",
+      "line": 2446,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "missingMediaDecodedFramePersistsAfterCallerRelease",
+      "line": 2478,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "seek_to_updates_playhead_and_time_through_public_bridge",
+      "line": 2491,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "scrub_to_uses_scrub_transport_and_end_scrub_closes_it",
+      "line": 2511,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "paused_scrub_engages_media_active_gate",
+      "line": 2535,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "scrub_from_playing_keeps_media_active_gate_engaged",
+      "line": 2569,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "stationary_scrub_request_is_deduped",
+      "line": 2605,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "stationary_scrub_audio_idles_without_release",
+      "line": 2631,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "scheduled_audio_snapshot_reaches_audio_engine_after_mutation",
+      "line": 2651,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "audio_snapshot_uses_timeline_ids_and_layouts",
+      "line": 2669,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "audio_snapshot_folds_nested_authoring_chain",
+      "line": 2725,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "transport_commands_flush_pending_audio_snapshot_immediately",
+      "line": 2804,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "scrub_does_not_move_playhead_from_engine_tick",
+      "line": 2861,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "scrub_while_playing_uses_scrub_transport_until_release",
+      "line": 2888,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "stale_scrub_publication_does_not_backtrack_playhead",
+      "line": 2927,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "scheduled_audio_snapshot_reaches_audio_engine_while_playing",
+      "line": 2953,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "play_uses_engine_transport_time_after_seek",
+      "line": 2972,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "pause_republishes_current_frame_without_transport_reseek",
+      "line": 2990,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "transport_play_state_does_not_depend_on_audio_ack",
+      "line": 3010,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "audition_while_playing_pauses_once_and_holds_the_playhead",
+      "line": 3037,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "audition_after_playing_again_pauses_the_transport_again",
+      "line": 3075,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "audition_during_audio_preroll_still_holds_the_playhead",
+      "line": 3111,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "paused_seek_keeps_exact_settle_loop_alive_without_held_publications",
+      "line": 3134,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "transport_and_binding_operations_preserve_core_generation_fence",
+      "line": 3160,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "paused_seek_rejects_publication_queued_before_generation_advance",
+      "line": 3206,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "scrub_publications_do_not_start_paused_exact_settle_loop",
+      "line": 3229,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "shutdown_stops_refresh_paths_and_future_transport_requests",
+      "line": 3250,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "bind_sequence_null_after_paused_and_playing_states_clears_transport_activity",
+      "line": 3287,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "refresh_current_frame_ignores_active_playback_and_services_paused_state",
+      "line": 3318,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "foreign_thread_tick_request_runs_on_controller_thread",
+      "line": 3348,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "seek_and_scrub_clamp_to_canvas_extent",
+      "line": 3376,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "seekTo_withoutTimeline_isNoOp",
+      "line": 3410,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "seekToFrame_clamps_to_canvas_frame_boundaries",
+      "line": 3424,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "seek_past_content_end_within_canvas_lands_on_canvas_position",
+      "line": 3450,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "setCanvasExtent_belowTotalDuration_clampsToTotalDuration",
+      "line": 3490,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "setTotalDuration_negative_clampsToZero",
+      "line": 3506,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "setCanvasExtent_negative_clampsToZero",
+      "line": 3521,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "setTotalDuration_aboveCanvas_raisesCanvasToMatch",
+      "line": 3541,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "defaultConstruction_canvasEqualsTotal",
+      "line": 3563,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "seekTo_nonFinite_inputIgnored",
+      "line": 3577,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "scrubTo_nonFinite_inputIgnored",
+      "line": 3602,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "setTotalDuration_nonFinite_inputIgnoredWithWarning",
+      "line": 3626,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "setCanvasExtent_nonFinite_inputIgnoredWithWarning",
+      "line": 3641,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "emitCurrentTime_pastContentEnd_emitsValueWithinCanvas",
+      "line": 3662,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "end_of_timeline_playback_submits_blank_publication_to_render_pipeline",
+      "line": 3684,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "loop_range_wraps_to_in_and_survives_pause",
+      "line": 3707,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "loop_wrap_revalidates_before_seeking",
+      "line": 3756,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "loop_range_with_no_seekable_frame_does_not_wrap",
+      "line": 3824,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "cpu_fallback_presentation_emits_decoded_frame_directly",
+      "line": 3862,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "seek_settled_emitted_after_paused_seek",
+      "line": 3924,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "seek_settled_not_emitted_during_active_playback",
+      "line": 3943,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "play_emits_playing_changed_true",
+      "line": 3961,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "pause_emits_playing_changed_false",
+      "line": 3979,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "cycle_playback_speed_cycles_and_forwards_rate",
+      "line": 3997,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "pause_resets_playback_speed_to_realtime",
+      "line": 4020,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "seek_resolution_uses_half_speed_source_pts",
+      "line": 4045,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "tick_input_uses_double_speed_source_pts",
+      "line": 4079,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "hidden_track_clip_excluded_from_preview",
+      "line": 4113,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "hidden_next_video_excluded_from_preload",
+      "line": 4135,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "resolve_preview_geometry_prefers_timeline_canvas",
+      "line": 4184,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "pinned_device_drop_pauses_falls_back_and_returns",
+      "line": 4210,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "missing_pin_falls_back_with_notice",
+      "line": 4244,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "system_default_ignores_device_changes",
+      "line": 4260,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "shutdown_detaches_devices_callback",
+      "line": 4276,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "llround_vs_truncation_at_29_97fps",
+      "line": 4293,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "resolve_seek_state_propagates_input_color_space",
+      "line": 4308,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "build_tick_input_next_video_empty_color_space",
+      "line": 4323,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "build_tick_input_propagates_inverse_dvt_to_active_and_next",
+      "line": 4355,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "active_preview_video_clip_uses_innermost_authoring_through_timeline_ref",
+      "line": 4412,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "active_preview_video_clip_falls_through_to_published_when_editorial_is_timeline_ref_only",
+      "line": 4490,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_excludes_every_locked_scaffolding_pass",
+      "line": 4647,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_does_not_carry_normalize_inward",
+      "line": 4667,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_collects_a_grade_wired_after_the_transform",
+      "line": 4735,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_orders_pre_and_post_transform_passes",
+      "line": 4752,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_is_empty_for_an_ungraded_compound",
+      "line": 4767,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_refuses_a_cyclic_pixel_spine",
+      "line": 4792,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_refuses_a_dangling_pixel_edge",
+      "line": 4825,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_falls_back_when_nothing_feeds_the_tail",
+      "line": 4852,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_refuses_a_cycle_after_the_transform",
+      "line": 4878,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_refuses_a_dangling_edge_after_the_transform",
+      "line": 4903,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_ignores_a_composite_that_is_not_the_output",
+      "line": 4933,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_rejects_a_decoy_branch_with_no_output_boundary",
+      "line": 4976,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_prefers_the_output_boundary_over_a_reachable_decoy",
+      "line": 5014,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_passes_collects_a_grade_when_there_is_no_composite",
+      "line": 5062,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "diagnosticOnceSaysEachSubjectReasonPairExactlyOnce",
+      "line": 5090,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "diagnosticOnceReportsWhatItHasAlreadySaidWithoutClaimingIt",
+      "line": 5108,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "diagnosticOnceClearsAtCapacityRatherThanGrowingWithoutBound",
+      "line": 5127,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "diagnosticOnceTreatsZeroCapacityAsOne",
+      "line": 5148,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "spliceRollsBackAPartialInsertAndKeepsTheOriginalEdge",
+      "line": 5165,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "foldTreatsUnresolvableChainLevelsAsUngradedNotMalformed",
+      "line": 5217,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "foldKeepsAValidLevelWhenAnotherLevelIsUnresolvable",
+      "line": 5259,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "foldRefusesAndLeavesTheWindowCleanOnAMalformedSpine",
+      "line": 5294,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "spliced_compound_grade_lands_downstream_of_the_clip_grade",
+      "line": 5353,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "spliced_compound_grade_coexists_with_a_same_type_clip_grade",
+      "line": 5371,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "splice_refuses_a_window_with_no_transform_anchor",
+      "line": 5387,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "copresence_overlap_matches_brute_force",
+      "line": 5408,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "splice_reports_each_failure_cause_distinctly",
+      "line": 5455,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_is_automated_detects_keyframed_graph_params",
+      "line": 5491,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "foldRefusesWhenAnyChainLevelIsKeyframed",
+      "line": 5531,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "splice_of_an_empty_grade_is_a_no_op_success",
+      "line": 5587,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "cutting_a_compound_forks_its_grade_window_per_half",
+      "line": 5600,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "compound_grade_reaches_the_inner_layer_window_through_publication",
+      "line": 5674,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "cutting_a_graded_compound_grades_each_half_independently",
+      "line": 5778,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "a_compound_that_stacks_inner_video_is_still_graded_per_layer",
+      "line": 5921,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "a_compound_nested_in_a_compound_folds_every_level_in_order",
+      "line": 6002,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "a_cut_compound_is_not_treated_as_stacked",
+      "line": 6117,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "commonVideo_returnsVideoEmbedded",
+      "line": 6176,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "unknownExtension_returnsMemory",
+      "line": 6182,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "default_meter_snapshot_returns_silence",
+      "line": 6195,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "translates_plain_audio_clip",
+      "line": 6260,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "forwards_plugin_chain_through_boundary",
+      "line": 6285,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "translates_track_authoring",
+      "line": 6316,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "translates_buses",
+      "line": 6365,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "blocked_audio_clip_dropped_when_deleted_from_bin",
+      "line": 6438,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "blocked_audio_clip_dropped_when_missing_on_disk",
+      "line": 6460,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "mixed_timeline_drops_only_blocked_audio_clip",
+      "line": 6484,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "frame_to_sample_is_integer_exact_at_fractional_rates",
+      "line": 6515,
+      "status": "Related only"
+    },
+    {
+      "source": "app-playback",
+      "symbol": "frame_to_sample_guards_bad_inputs",
+      "line": 6525,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "tick_reads_audio_clock_once_during_playback",
+      "line": 189,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "tick_does_not_join_a_retired_backend_call",
+      "line": 217,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_seek_uses_frozen_frame_without_reading_audio",
+      "line": 265,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "timeline_frame_is_derived_from_transport_position_with_exact_flooring",
+      "line": 297,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "authored_gap_publishes_blank_result",
+      "line": 325,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "seek_eventually_publishes_target_frame",
+      "line": 345,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_seek_updates_current_frame_before_async_publication",
+      "line": 374,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_seek_buffer_hit_publishes_exact_frame_without_restart",
+      "line": 395,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_seek_buffer_hit_settles_immediately_without_retarget",
+      "line": 429,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_waits_for_exact_preroll_before_starting_audio",
+      "line": 463,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playing_slower_than_realtime_decode_publishes_late_frames",
+      "line": 587,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playing_missed_catchup_anchor_doubles_the_lead",
+      "line": 619,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playing_two_slow_layers_publish_matching_late_frames",
+      "line": 646,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playing_seek_waits_for_exact_frame_before_resuming_audio",
+      "line": 681,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_start_gate_releases_immediately_on_gap",
+      "line": 739,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playing_seek_to_gap_releases_start_gate_without_frame",
+      "line": 761,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "missing_exact_composite_recovers_after_decoder_retirement_and_cache_loss",
+      "line": 795,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "generator_only_start_gate_does_not_block_transport",
+      "line": 823,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "pending_generator_waits_for_complete_layer_set",
+      "line": 909,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_mixed_rate_generator_compound_publishes_exact_and_reuses_decoder",
+      "line": 993,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "start_gate_runway_cap_releases_before_full_lookahead",
+      "line": 1095,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playing_seek_preroll_respects_decoder_resident_window",
+      "line": 1130,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "inactive_sequence_sources_do_not_open_decoders_until_demanded",
+      "line": 1173,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_gap_seek_truthfully_blanks",
+      "line": 1204,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "steady_state_tick_does_not_retarget_streams_without_input_change",
+      "line": 1230,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "repeated_same_frame_playback_tick_is_a_noop_until_time_advances",
+      "line": 1264,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "gap_transition_emits_stop_and_clear",
+      "line": 1303,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "transport_api_bumps_playback_generation_exactly_once",
+      "line": 1334,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_requests_do_not_wait_for_engine_work",
+      "line": 1385,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "seek_publication_carries_current_playback_generation",
+      "line": 1426,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "media_clock_frame_is_the_source_frame",
+      "line": 1537,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_reversed_clip_stream_runs_backward",
+      "line": 1568,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playing_toward_reversed_clip_primes_its_first_segment",
+      "line": 1602,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "remap_turning_up_inside_the_start_runway_starts_playback",
+      "line": 1641,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "bind_timeline_applies_live_commits_while_paused",
+      "line": 1671,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "broll_placeholder_publishes_a_real_blank_playback_frame",
+      "line": 1707,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "bind_timeline_unbind_drops_runtime_and_ignores_future_commits",
+      "line": 1749,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "admitted_generator_without_resolver_never_reaches_file_decoder",
+      "line": 1783,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "set_snapshot_detaches_prior_live_binding",
+      "line": 1842,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_engine_destructor_tolerates_parent_project_close",
+      "line": 1880,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_seek_failure_requests_evaluation_wakeup",
+      "line": 1900,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "throwing_result_sink_is_contained",
+      "line": 1926,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "throwing_evaluation_wakeup_sink_is_contained",
+      "line": 1945,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_decode_failure_requests_evaluation_wakeup",
+      "line": 1965,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "sequence_swap_cold_start_waits_for_truthful_publication",
+      "line": 1991,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "equivalent_snapshot_preserves_effective_cpu_fallback",
+      "line": 2031,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "source_facts_refresh_preserves_effective_cpu_fallback",
+      "line": 2088,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "centered_scrub_candidate_can_select_frame_ahead_of_cursor",
+      "line": 2192,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_candidate_respects_direction_and_centered_tie_breaks",
+      "line": 2209,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "centered_scrub_candidate_uses_rational_mapping_for_retimed_clip",
+      "line": 2254,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_candidate_does_not_cross_active_interval_boundary",
+      "line": 2272,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_candidate_skips_sourceless_active_clips",
+      "line": 2293,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_missing_track_z_order_uses_sentinel",
+      "line": 2341,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "truthful_render_input_helper_accepts_real_publication",
+      "line": 2352,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "truthful_render_input_helper_rejects_mismatched_frame_identity",
+      "line": 2376,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "active_set_membership_helper_rejects_mismatched_bundle",
+      "line": 2392,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "published_input_requirements_reject_omitted_decode_row",
+      "line": 2421,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_uses_latest_owned_frame_then_waits_for_exact_cursor_frame",
+      "line": 2465,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "exact_scrub_publication_advances_monotonic_floor_for_next_cursor",
+      "line": 2553,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "reverse_exact_scrub_publication_respects_monotonic_floor",
+      "line": 2620,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "reverse_held_scrub_can_publish_exact_catchup",
+      "line": 2664,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "reverse_held_scrub_to_zero_publishes_exact_without_release",
+      "line": 2720,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "held_scrub_cpu_fallback_completion_publishes_exact_without_tick",
+      "line": 2769,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "subsequent_scrub_request_publishes_latest_target_after_tick",
+      "line": 2827,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_updates_current_timeline_frame_immediately_while_async_eval_is_pending",
+      "line": 2864,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "rapid_alternating_scrub_targets_latest_wins",
+      "line": 2888,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "overlapping_multitrack_scrub_publishes_atomically_without_external_tick",
+      "line": 2934,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_culls_opaque_full_canvas_layers_at_compile_time",
+      "line": 2979,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_invalid_geometry_rows",
+      "line": 3009,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_excludes_clips_on_disabled_tracks",
+      "line": 3038,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_reveals_lower_layer_in_later_interval",
+      "line": 3062,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_active_stack_tracks_boundary_enters_and_exits",
+      "line": 3088,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_resolves_sampling_grid_without_changing_source_time",
+      "line": 3136,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "keys_and_picture_agree_when_the_probe_rate_differs_from_the_document",
+      "line": 3207,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_preserves_source_phase_between_unsliced_and_sliced_tracks",
+      "line": 3314,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_raw_recipes_separate_sources_and_survive_proxy_projection",
+      "line": 3353,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_raw_recipe_edit_replaces_cached_frame_without_moving_playhead",
+      "line": 3388,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_skips_malformed_published_clips",
+      "line": 3447,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_keeps_uncertain_layers_decode_required",
+      "line": 3464,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_culls_off_canvas_layers_without_decode",
+      "line": 3496,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_rotation_coverage_is_conservative",
+      "line": 3517,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_geometry_edge_cases_match_decode_occlusion_policy",
+      "line": 3567,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_blend_and_opacity_barriers_remain_required",
+      "line": 3611,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_opacity_automation_keeps_lower_layer_required",
+      "line": 3673,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_opacity_fade_keeps_lower_layer_required",
+      "line": 3717,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_forward_entrants_walk_boundaries_nearest_first",
+      "line": 3773,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_backward_entrants_use_prior_interval_tail",
+      "line": 3794,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_backward_entrants_cross_empty_gap",
+      "line": 3815,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_entrant_walk_respects_contribution_reveals",
+      "line": 3833,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "snapshot_occlusion_culls_lower_layer_from_publication_and_scheduler",
+      "line": 3857,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "overlapping_same_source_clips_resolve_independent_active_streams",
+      "line": 3893,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "published_inputs_stamp_native_dimensions_from_source_metadata",
+      "line": 3935,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "proxy_shared_decoder_keeps_distinct_original_facts",
+      "line": 3985,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "proxy_decode_retains_original_geometry",
+      "line": 4018,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "adjacent_same_source_boundary_still_publishes_target_frame",
+      "line": 4050,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_seek_prewarms_upcoming_boundary_clip_decoder",
+      "line": 4075,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_prewarm_reaches_distant_timeline_clip_decoder",
+      "line": 4095,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_prewarm_materializes_inactive_generator_first_frame",
+      "line": 4118,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "exact_recovery_preserves_bounded_speculative_generator_requests",
+      "line": 4178,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_prewarm_materializes_each_generator_placement",
+      "line": 4280,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_prewarm_materializes_generators_in_separate_compounds",
+      "line": 4346,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "zero_prewarm_reach_restricts_paused_prewarm_to_lookahead",
+      "line": 4435,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "centered_scrub_prewarms_upcoming_boundary_clip_decoder",
+      "line": 4464,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_interval_prewarm_opens_beyond_old_two_request_cap",
+      "line": 4486,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_interval_prewarm_opens_all_stacked_boundary_entrants",
+      "line": 4516,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_prewarm_handoff_avoids_duplicate_decoder_open",
+      "line": 4553,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_direction_flip_does_not_block_new_direction",
+      "line": 4584,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "multitrack_scrub_publishes_best_intersected_T_across_streams",
+      "line": 4615,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_retimed_clip_reverse_map_roundtrip",
+      "line": 4650,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_gap_at_cursor_shortcircuits_to_blank",
+      "line": 4675,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_audio_dispatch_is_no_longer_owned_by_playback_engine",
+      "line": 4700,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "scrub_result_sink_swap_continues_publication",
+      "line": 4723,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "result_sink_failure_is_redelivered_on_next_evaluation",
+      "line": 4778,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "replacing_result_sink_while_paused_redelivers_current_frame",
+      "line": 4817,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "exact_lookup_respects_active_decode_output_preference",
+      "line": 4858,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "precision_policy_switch_invalidates_cached_preview_frame",
+      "line": 4914,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "preserve_policy_accepts_developed_raw_frames",
+      "line": 4958,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "preserve_policy_rejects_unknown_cached_preview_frame",
+      "line": 4981,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "decode_scheduler_options_copy_stream_buffer_settings",
+      "line": 5025,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_stream_budget_default_policy_is_core_owned",
+      "line": 5083,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "set_decode_target_ratio_canonicalizes_snaps_and_forwards_to_scheduler",
+      "line": 5101,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "set_preview_decode_target_ratio_retargets_mixed_timeline_and_restores_native",
+      "line": 5153,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "set_preview_decode_target_ratio_scales_non_raw_timeline",
+      "line": 5260,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_canvas_scale_follows_authored_placement",
+      "line": 5303,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_canvas_scale_honours_graph_param_scale_automation",
+      "line": 5410,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "playback_runtime_canvas_scale_honours_enclosing_scale_automation",
+      "line": 5450,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "exact_frame_pull_returns_source_preserving_captured_snapshot_frames",
+      "line": 5519,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "exact_frame_pull_without_waiting_returns_available_frames",
+      "line": 5570,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "exact_frame_pull_reports_missing_snapshot",
+      "line": 5612,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "exact_frame_pull_plus_one_resyncs_once_without_transport_seek",
+      "line": 5624,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "exact_frame_pull_wakeup_does_not_pay_the_timeout_floor",
+      "line": 5758,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "exact_frame_advisory_wakeups_do_not_consume_time_budget",
+      "line": 5788,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "exact_frame_timeout_without_generated_input_reports_base_diagnostic",
+      "line": 5820,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "exact_frame_fails_fast_when_source_never_decodes",
+      "line": 5858,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "exact_frame_wait_honours_cancel",
+      "line": 5901,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "exact_frame_generated_delivery_obeys_deadline_and_names_input",
+      "line": 5934,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "generation_input_preview_without_loaded_placements_is_a_noop",
+      "line": 6016,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "admitted_generation_preview_and_cancel_fence_stale_frames",
+      "line": 6154,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "generation_input_invalidation_failure_runs_one_contained_fallback",
+      "line": 6496,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "paused_generation_refresh_requests_immediate_evaluation",
+      "line": 6557,
+      "status": "Related only"
+    },
+    {
+      "source": "core-playback",
+      "symbol": "detached_generator_snapshot_lifecycle_is_worker_thread_affine",
+      "line": 6576,
+      "status": "Related only"
+    },
+    {
+      "source": "agent-workspace",
+      "symbol": "agentWorkspacePanel_tailFollowDoesNotBounceOnAppend",
+      "line": 2395,
+      "status": "Candidate partial",
+      "checks": [
+        {
+          "id": "D-AGENT-TAIL",
+          "definitionHash": "ef0a59d8150c2ff6c3cb3d99b8a5a19254e7d5c8954333cf43a05c5e8645e1b7"
+        }
+      ],
+      "remaining": "Plain-response append only; gesture anchor, scroll-away and tail-resume still need a typed no-provider gesture fixture."
+    },
+    {
+      "source": "agent-workspace",
+      "symbol": "agentConfiguration_selectorsHaveAccessibleDescriptionsWithoutHoverTooltips",
+      "line": 4497,
+      "status": "Candidate partial",
+      "checks": [
+        {
+          "id": "D-AGENT-SELECTORS",
+          "definitionHash": "e2c8240561b509baa982130f2a925a2934ac6298ca58a1053186332efd2a06b1"
+        }
+      ],
+      "remaining": "Qt-injected hover matches the source test. Physical hover is not implemented."
+    },
+    {
+      "source": "agent-workspace",
+      "symbol": "agentConfiguration_workspaceSharesSelectionAndEffortWithPipeline",
+      "line": 4540,
+      "status": "Blocked",
+      "checks": [],
+      "remaining": "Blocked: packaged independent pipeline model/effort getters and agent-spawn suppression are not exported. Do not run a provider to manufacture this fixture."
+    },
+    {
+      "source": "agent-workspace",
+      "symbol": "agentWorkspacePanel_narrowHeaderPreservesTitleWithActiveControls",
+      "line": 4694,
+      "status": "Candidate partial",
+      "checks": [
+        {
+          "id": "D-AGENT-HEADER",
+          "definitionHash": "5c1023ac76fdb56eefca92ec0c40203f3df21654885cba659f6c6c95dc05fec8"
+        }
+      ],
+      "remaining": "Title/control geometry and responsive events are covered by a candidate. Long custom-model popup and disabled choices remain unqualified."
+    },
+    {
+      "source": "agent-workspace",
+      "symbol": "agentWorkspacePanel_markdownImageIsRenderedInline",
+      "line": 8017,
+      "status": "Candidate partial",
+      "checks": [
+        {
+          "id": "D-AGENT-IMAGE",
+          "definitionHash": "dac47ee98a521436839a15ff045419477f3208a90107c457ede2ad8af243282f"
+        }
+      ],
+      "remaining": "Candidate uses a local square fixture and the packaged sizing method; independent document/resource and presented-image evidence."
+    }
+  ],
+  "policy": "A related or candidate packaged check never changes a source-suite verdict or definition acceptance."
+}

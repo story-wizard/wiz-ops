@@ -17,7 +17,7 @@ await onSession(session);
 const report={course,scope:session.scope,startedAt:new Date().toISOString(),guiHash:session.guiHash,cliHash:session.desktopCliHash,qtCocoa:session.qtCocoa,results:[],sources:{}};
 const map=await readJSON(new URL('./check-map.json',import.meta.url)),wants=name=>map[name]?.some(id=>ids.includes(id));
 const here=path.dirname(fileURLToPath(import.meta.url));
-for(const name of ['check-functional-cohort.mjs','functional-cohort-proof.mjs'])report.sources[name]=await sha(path.join(here,name));
+for(const name of ['check-functional-cohort.mjs','functional-cohort-proof.mjs','check-macos-regression.mjs','macos-proof.mjs','native/workspace-probe.h'])report.sources[name]=await sha(path.join(here,name));
 for(const name of ['adapter.mjs','run.mjs','check-physical-editor.mjs','check-physical.mjs','check-checklist.mjs','check-checklist-expansion.mjs','checklist-proof.mjs','check-projects.mjs','project-proof.mjs','check-volume-search.mjs','volume-proof.mjs','volume-contract.mjs','volume-agent-proof.mjs','ui-workflows.mjs','ui-cohort-proof.mjs','recorder.mjs','check-recorded-playback.mjs','ingest-fixture.mjs','check-media-search-ui.mjs','check-colour-panels.mjs','check-controls-audio.mjs','editor-proof.mjs','agent-proof.mjs','agent-tools.mjs','observations.mjs','physical-input.mjs','macos-input.mjs','macos-input.swift','check-core.mjs','check-editor.mjs','check-paths.mjs','check-support.mjs','check-workspace.mjs','check-scopes.mjs','check-spellbook.mjs','check-compounds.mjs','check-selection-bin.mjs','check-next.mjs','check-surface.mjs','check-lifecycle.mjs','check-unset-rate.mjs','check-offline-export.mjs','check-playback.mjs','check-spell-ui.mjs','check-relink.mjs','check-curves.mjs','export-dialog.mjs','generated-fixture.mjs','course.json','native/bridge.cpp','native/build.sh','native/smoke-style.json','check-guards.mjs'])report.sources[name]=await sha(path.join(here,name));
 const unsupported=course.cases.filter(c=>missingCheckOperations(c.id,session.schema).length);
 if(unsupported.length&&course.cases.every(c=>c.id==='D-CLI-01'||unsupported.includes(c))){
@@ -38,6 +38,7 @@ try{
   const guards=await command(process.execPath,[path.join(here,'check-guards.mjs'),file],{timeout:15000});assert(guards.code===0,`Desktop guards failed: ${guards.stderr}`);report.guards=await readJSON(path.join(session.root,'desktop-guards-report.json'));
   await script('check-core.mjs','desktop-core-report.json');
   assert(report.results.find(r=>r.id==='D-CLI-01')?.status==='Pass','Owned desktop connection failed');
+  await script('check-macos-regression.mjs','desktop-macos-report.json');
   await script('check-workspace.mjs','desktop-workspace-report.json',8);
   await script('check-scopes.mjs','desktop-scopes-report.json',1);
   if(ids.includes('D-LP-02-RELAUNCH')){
@@ -118,9 +119,9 @@ export function missingDesktopResults(cases,results,events,error='',evidence=nul
 export function desktopGroups(ids,map,mode='grouped'){
   assert(['grouped','isolated'].includes(mode),'Unknown desktop execution mode');
   const remaining=new Set(ids),groups=[];
-  for(const name of ['check-physical-editor.mjs','check-physical.mjs','check-checklist.mjs','check-checklist-expansion.mjs','check-projects.mjs','check-volume-search.mjs','check-media-search-ui.mjs','check-colour-panels.mjs','check-controls-audio.mjs','check-recorded-playback.mjs','check-functional-cohort.mjs'])for(const id of map[name]||[])if(remaining.delete(id)){
+  for(const name of ['check-physical-editor.mjs','check-physical.mjs','check-checklist.mjs','check-checklist-expansion.mjs','check-projects.mjs','check-volume-search.mjs','check-media-search-ui.mjs','check-colour-panels.mjs','check-controls-audio.mjs','check-recorded-playback.mjs','check-functional-cohort.mjs','check-macos-regression.mjs'])for(const id of map[name]||[])if(remaining.delete(id)){
     // Lifecycle, live scripted input, disk reload and preference-changing gestures keep their own session.
-    const isolated=mode==='isolated'||name==='check-projects.mjs'||['P-CURVE-LIVE','D-EXTERNAL-RELOAD','D-SHORTCUT-CONFLICT','D-DOCK-MODIFIER','D-HISTORY-50','D-IMPORT-DIALOG','D-INGEST-SEARCH-LIVE','D-MISSING-MEDIA-LIVE','D-RAW-NOTES-PERSIST'].includes(id);
+    const isolated=mode==='isolated'||name==='check-projects.mjs'||name==='check-macos-regression.mjs'||['P-CURVE-LIVE','D-EXTERNAL-RELOAD','D-SHORTCUT-CONFLICT','D-DOCK-MODIFIER','D-HISTORY-50','D-IMPORT-DIALOG','D-INGEST-SEARCH-LIVE','D-MISSING-MEDIA-LIVE','D-RAW-NOTES-PERSIST'].includes(id);
     const nameKey=isolated?name+'#'+id:name,group=groups.find(g=>g.name===nameKey);
     if(group)group.ids.push(id);else groups.push({name:nameKey,ids:[id],recoverUnstarted:mode==='grouped'&&!isolated});
   }

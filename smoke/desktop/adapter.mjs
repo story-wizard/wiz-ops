@@ -17,7 +17,7 @@ import {currentAction,withAgentAction,withAdapterAction,validateApplicationParam
 
 export const agentReadOperations=['project.get_name','timeline.inspect','playback.query_transport','graph.get_clip_graph','media.list_assets','media.resolve_path','media.probe','spellbook.inspect','spellbook.list','generate.inspect','generate.status'];
 // Observations and ownership-checked clipboard bookkeeping do not edit the test project.
-export const agentReadNative=['capabilities','inspect','model-page','model-value','timeline-clip-rect','timeline-point','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview','clipboard-save','clipboard-mark','clipboard-restore'];
+export const agentReadNative=['capabilities','inspect','workspace-inspect','model-page','model-value','timeline-clip-rect','timeline-point','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview','clipboard-save','clipboard-mark','clipboard-restore'];
 export async function markAgentMutation(file,session){
   if(!session.agentTracking)return;
   if(currentAction(file)?.purpose==='shutdown')return;

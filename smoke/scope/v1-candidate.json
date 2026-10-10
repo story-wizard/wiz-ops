@@ -75,9 +75,9 @@
     },
     {
       "file": "desktop/course.json",
-      "sha256": "27d0b0ccf2f9e0f64cc9bf505e223ce94a71fd8acc7181944af5f2c61b4643c8",
+      "sha256": "42de142b7bfcd3c915166fff03be1cbf0fb9a2141529d7911db3cf0086c4b92f",
       "id": "local-desktop-v1",
-      "revision": 24,
+      "revision": 26,
       "target": "Instrumented local GUI with isolated Qt runtime",
       "requiredCheckIds": [
         "D-CLI-01",
@@ -186,7 +186,15 @@
         "D-INSPECTOR-PLAYBACK",
         "D-INGEST-PLAYBACK",
         "D-MISSING-MEDIA-LIVE",
-        "D-RAW-NOTES-PERSIST"
+        "D-RAW-NOTES-PERSIST",
+        "D-MAC-RESUME",
+        "D-MAC-WINDOW-ORDER",
+        "D-MAC-FLOAT-TIMELINE",
+        "D-MAC-FLOAT-PREVIEW",
+        "D-AGENT-TAIL",
+        "D-AGENT-SELECTORS",
+        "D-AGENT-HEADER",
+        "D-AGENT-IMAGE"
       ]
     },
     {

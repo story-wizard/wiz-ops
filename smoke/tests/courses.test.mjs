@@ -91,14 +91,14 @@ test('every accepted definition resolves and every desktop/service check has an 
  try{
   const accepted=acceptance();assert.equal(accepted.checks.length,137);
   for(const c of accepted.checks){const s=resolveSelection(db,{checkIds:[c.id]},accepted);validateRecipe(selectedRecipe(s),accepted);if(c.target!=='packaged')assert.ok(bound.has(c.id),'Unbound check '+c.id);}
-  const all=resolveSelection(db,{checkIds:accepted.checks.map(c=>c.id)},accepted);assert.equal(all.effectiveIds.length,137);assert.equal(all.notSelected.length,50);
+  const all=resolveSelection(db,{checkIds:accepted.checks.map(c=>c.id)},accepted);assert.equal(all.effectiveIds.length,137);assert.equal(all.notSelected.length,58);
   const maintained=resolveSelection(db,{courseIds:['automated-full']},accepted);
   assert.deepEqual(new Set(maintained.effectiveIds),new Set(all.effectiveIds));
   assert.equal(maintained.checkpoint,undefined);assert.equal(maintained.requirements.foreground,true);
   assert.equal(courseList(db)[0].id,'smoke-full');
   assert.throws(()=>saveCourse(db,{...draft,id:'automated-full'},accepted),/reserved/);
   validateRecipe(selectedRecipe(maintained),accepted);
-  assert.equal(rawChecks.length,187);
+  assert.equal(rawChecks.length,195);
  }finally{db.close();}
 });
 

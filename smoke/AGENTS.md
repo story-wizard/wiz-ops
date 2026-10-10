@@ -23,6 +23,7 @@ Work from the command root: `smoke/` in a checkout or `workspace/` in a bundle. 
 | Gather task-specific context or review a procedure from a run | [Task packets](docs/task-packets.md) |
 | Turn a functional script into fixture-backed tests and execution groups | [Functional testing agent](docs/functional-testing-agent.md) |
 | Check the App caller of a Core persistence change | [Caller preflight](docs/caller-preflight.md) |
+| Qualify packaged macOS playback, native focus or Agent Workspace regressions | [macOS regression course](docs/macos-regression.md) |
 | Compare or improve agent control tooling | [Control harness baseline](docs/control-comparison.md) |
 | Investigate failed checks and prepare bug drafts | [Investigations](docs/investigations.md) |
 | Inventory a supplied .wiz project and plan representative-media checks | [Golden Project intake](docs/golden-project-intake.md) |

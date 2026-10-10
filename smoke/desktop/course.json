@@ -1,6 +1,6 @@
 {
   "id": "local-desktop-v1",
-  "revision": 24,
+  "revision": 26,
   "title": "Local desktop smoke",
   "target": "Instrumented local GUI with isolated Qt runtime",
   "cases": [
@@ -2129,6 +2129,278 @@
           "when": "after",
           "required": true,
           "caption": "Original and observed preview/timeline or generated-frame captures."
+        }
+      ]
+    },
+    {
+      "id": "D-MAC-RESUME",
+      "title": "Start, pause, seek and resume playback",
+      "expected": "Physical Space starts and pauses playback, paused seek lands on frame 48, and Space resumes from there with fresh presented pixels.",
+      "stage": "Playback",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "start",
+          "title": "Start playback with the timeline Space shortcut"
+        },
+        {
+          "id": "seek",
+          "title": "Seek the paused clip to two seconds"
+        },
+        {
+          "id": "resume",
+          "title": "Resume playback from the seek with Space"
+        }
+      ]
+    },
+    {
+      "id": "D-MAC-WINDOW-ORDER",
+      "title": "Native owner and floating-window order",
+      "expected": "Owner click makes it key while both floating panels stay above it, preserve sibling order and retain normal independent native windows.",
+      "stage": "Native window ordering",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "setup",
+          "title": "Open two independent floating panels"
+        },
+        {
+          "id": "owner-click",
+          "title": "Physically click the owner without first raising it"
+        }
+      ]
+    },
+    {
+      "id": "D-MAC-FLOAT-TIMELINE",
+      "title": "Focused floating timeline shortcut",
+      "expected": "Physical C changes only the focused floating timeline to Cut; original timeline stays Select and clips remain unchanged.",
+      "stage": "Native shortcut routing",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "cut-shortcut",
+          "title": "Send C to the physically focused floating timeline"
+        }
+      ]
+    },
+    {
+      "id": "D-MAC-FLOAT-PREVIEW",
+      "title": "Focused floating Preview shortcut",
+      "expected": "Physical Space emits one playClicked signal in the focused floating Preview and none in the original Preview.",
+      "stage": "Native shortcut routing",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "space-shortcut",
+          "title": "Send Space in the floating Preview"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-TAIL",
+      "title": "Transcript tail follows an appended response",
+      "expected": "A scrollable local transcript adds exactly one row and remains at its tail across retained append samples.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "transcript",
+          "title": "Append eighteen deterministic local responses"
+        },
+        {
+          "id": "append",
+          "title": "Append one local response at the tail"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-SELECTORS",
+      "title": "Accessible model and effort selectors",
+      "expected": "Both selectors expose nonempty accessible descriptions and stay tooltip-free after a 500ms Qt hover.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "AgentWorkspaceModelSelector",
+          "title": "Hover the model selector through Qt input"
+        },
+        {
+          "id": "AgentWorkspaceEffortSelector",
+          "title": "Hover the effort selector through Qt input"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-HEADER",
+      "title": "Narrow active Agent Workspace header",
+      "expected": "At 280 points the title retains at least 62 points and active controls do not overlap; after hiding the fixture Cancel control, the events menu appears at 600 points.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "active-fixture",
+          "title": "Set local options and a fake active event"
+        },
+        {
+          "id": "idle-controls",
+          "title": "Hide Cancel before checking the wide events control"
+        },
+        {
+          "id": "restore",
+          "title": "Restore controller options and Cancel state"
+        }
+      ]
+    },
+    {
+      "id": "D-AGENT-IMAGE",
+      "title": "Inline Markdown image sizing",
+      "expected": "A local square image uses a rounded resource, caps at 200, shrinks to 120 and restores 200 when widened.",
+      "stage": "Agent Workspace",
+      "scope": "Candidate packaged macOS regression; exact source assertion mapping and remaining gaps are in scope/macos-source-assertions.json.",
+      "evidence": [
+        {
+          "id": "observations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Independent packaged state and native window observations before and after the action."
+        },
+        {
+          "id": "presentation",
+          "kind": "image",
+          "when": "after",
+          "required": true,
+          "caption": "Owned presented window at the verified checkpoint."
+        }
+      ],
+      "steps": [
+        {
+          "id": "inline-image",
+          "title": "Append a local project-relative Markdown image"
+        },
+        {
+          "id": "width-0",
+          "title": "Apply the 200 point image cap"
+        },
+        {
+          "id": "width-1",
+          "title": "Shrink the inline image to 120 points"
+        },
+        {
+          "id": "width-2",
+          "title": "Restore the original 200 point cap"
         }
       ]
     }
