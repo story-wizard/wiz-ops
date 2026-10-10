@@ -1,4 +1,5 @@
 import path from 'node:path';
+import {beginPerformance,endPerformance} from '../runner/performance.mjs';
 import {writeFileSync} from 'node:fs';
 import {captureDesktop} from './diagnostics.mjs';
 import {randomUUID} from 'node:crypto';
@@ -221,14 +222,15 @@ export async function captureInvestigation(file,id,phase,capture=captureDesktop)
 }
 export async function beginCheck(file,id){
  const s=await readJSON(file);if(s.selectedChecks&&!s.selectedChecks.includes(id))return false;
- s.currentCheck=id;s.currentStep=null;await writeJSON(file,s);
+ s.currentCheck=id;s.currentStep=null;s.performanceFile=await beginPerformance(s.root,id,{pid:s.pid,processStart:s.processStart,generation:s.generation,packageHash:s.guiHash});await writeJSON(file,s);
  await captureInvestigation(file,id,'before');
  await appendFile(path.join(s.root,'check-events.jsonl'),JSON.stringify({id,status:'Running',at:new Date().toISOString()})+'\n');return true;
 }
 export async function endCheck(file,result){
  if(!['Pass','Fail','Blocked','Unknown','N/A'].includes(result.status))result.status=failureStatus(result);
  await captureInvestigation(file,result.id,'after');
- const s=await readJSON(file);await appendFile(path.join(s.root,'check-events.jsonl'),JSON.stringify({...result,at:new Date().toISOString()})+'\n');
+ const s=await readJSON(file);if(s.performanceFile){await endPerformance(s.performanceFile,{pid:s.pid,processStart:s.processStart,generation:s.generation,packageHash:s.guiHash});result.evidence={...result.evidence,performance:s.performanceFile};s.performanceFile=null;await writeJSON(file,s);}
+ await appendFile(path.join(s.root,'check-events.jsonl'),JSON.stringify({...result,at:new Date().toISOString()})+'\n');
 }
 export async function recordStep(file,definition,fn){
  const session=await readJSON(file);if(!session.currentCheck||session.currentStep)throw Error('A step requires an active check and cannot be nested.');

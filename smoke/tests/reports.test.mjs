@@ -89,6 +89,10 @@ test('report retains exact outcomes, detects missing or mismatched evidence and 
   report=(await localReport(run,data)).report;assert.equal(report.acceptance.evidenceStatus,'Gaps found');assert.equal(report.cases[0].status,'Pass','Do not rewrite the original assertion result');assert.ok(report.acceptance.gaps.some(s=>s.includes('no operation receipts')));
   await writeFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:'CHECK',operation:'check.observation',status:'Pass'})+'\n');
   report=(await localReport(run,data)).report;assert.ok(report.acceptance.gaps.some(s=>s.includes('no operation receipts')),'A summary receipt cannot stand in for an executed operation');
+  const perf=path.join(root,'performance','CHECK-resource.json');await mkdir(path.dirname(perf),{recursive:true});
+  await writeJSON(perf,{format:'athanor-check-performance/v1',id:'CHECK',status:'Incomplete',gaps:['Synthetic permission gap'],metrics:null});
+  await writeFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:'CHECK',operation:'performance.collect',evidence:{artifacts:[perf]}})+'\n');
+  report=(await localReport(run,data)).report;assert.equal(report.cases[0].status,'Pass');assert.equal(report.cases[0].performance[0].metrics,null);assert.ok(report.acceptance.gaps.some(s=>s.includes('performance collection incomplete')));assert.ok(report.acceptance.gaps.some(s=>s.includes('no operation receipts')),'Resource telemetry cannot qualify application behavior');
   await writeJSON(path.join(root,'report.json'),{runId:'other',state:'Passed',planHash:plan.planHash,results:[]});
   report=(await localReport(run,data)).report;assert.ok(report.acceptance.gaps.some(s=>s.includes('identity/state')));
   run.execution.state='Running';await assert.rejects(()=>localReport(run,data),/Wait for the run/);

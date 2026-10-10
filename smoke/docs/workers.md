@@ -160,6 +160,8 @@ Uncatalogued functional failures keep their assertion evidence and local bug
 drafts; qualify a reusable check before treating them as runner cases. A person
 reviews the final diagnostic evidence before submitting through Report a Bug.
 
+Read [evidence and delivery](evidence-baseline.md) for bounded check resources, preparation-failure reports and private delivery receipts.
+
 ## Updates and rollback
 
 1. Assemble source on a clean branch, preserving other checkouts and live runs.

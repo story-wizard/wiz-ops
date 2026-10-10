@@ -31,7 +31,7 @@ const names={
  'clipboard-save':'Preserve the system clipboard','clipboard-restore':'Restore the system clipboard'
 };
 export function actionHistory(operations=[],native=[],input=[]){
- const rows=[...operations.filter(r=>r.operation!=='check.observation').map(r=>({...r,op:r.operation,channel:'Application'})),...native.map(r=>({...r,op:r.request?.op,params:r.request,channel:'Editor adapter'})),...input.map(r=>({...r,op:r.command||r.input?.command,params:r.input,channel:'macOS input'}))];
+ const rows=[...operations.filter(r=>r.operation!=='check.observation'&&!r.operation?.startsWith('performance.')).map(r=>({...r,op:r.operation,channel:'Application'})),...native.map(r=>({...r,op:r.request?.op,params:r.request,channel:'Editor adapter'})),...input.map(r=>({...r,op:r.command||r.input?.command,params:r.input,channel:'macOS input'}))];
  return rows.sort((a,b)=>String(a.startedAt||a.at||'').localeCompare(String(b.startedAt||b.at||''))).map((r,i)=>{
   let envelope=r.response;try{if(!envelope&&r.stdout)envelope=JSON.parse(r.stdout);}catch{}
   const uncertain=r.status==='Unknown'||r.timedOut||r.signal||r.error&&!envelope;
@@ -50,6 +50,7 @@ export function stepHistory(spec,events=[],actions=[]){
 }
 export function evidenceCaption(file){
  const name=path.basename(file).replace(/^computer-use-[a-f0-9]{12}-/,'');
+ if(/^performance-/.test(name))return 'Check duration, collection overhead and process-bound CPU/RSS observations.';
  if(/^P-RG-.*-before\./.test(name))return 'Render Graph before the tested action.';
  if(/^P-RG-.*-after\./.test(name))return 'Render Graph after the tested action.';
  if(/^P-RG-.*-undo\./.test(name))return 'Render Graph after Undo restored the original graph.';
@@ -78,7 +79,7 @@ export function evidenceCaption(file){
  return words(name.replace(/\.[^.]+$/,''));
 }
 export const mediaKind=file=>/\.(png|jpe?g|gif)$/i.test(file)?'image':/\.(mp4|mov|webm)$/i.test(file)?'video':/\.(wav|mp3|m4a|aac)$/i.test(file)?'audio':'json';
-export function evidenceItems(files=[],spec=null,defaultWhen='after'){return files.map(file=>{const kind=mediaKind(file),when=/-before\./.test(file)?'before':(/-sample-\d+|preview-clip|live-observations/.test(file)||/graph-observations/.test(file)&&spec?.evidence.some(e=>e.id==='observations'&&e.kind==='json'&&e.when==='during'))?'during':/-failure|rejection/.test(file)?'failure':/-undo\.|-after\.|graph-observations/.test(file)?'after':defaultWhen;const match=spec?.evidence.find(e=>e.id!=='operations'&&e.kind===kind&&e.when===when&&(e.id!=='preview-clip'||file.includes('preview-clip'))&&(e.id!=='graph-state'||file.includes('graph-observations')));return {file,kind,when,caption:evidenceCaption(file),specId:match?.id||null};});}
+export function evidenceItems(files=[],spec=null,defaultWhen='after'){return files.map(file=>{const kind=mediaKind(file),when=/-before\./.test(file)?'before':(/-sample-\d+|preview-clip|live-observations/.test(file)||/graph-observations/.test(file)&&spec?.evidence.some(e=>e.id==='observations'&&e.kind==='json'&&e.when==='during'))?'during':/-failure|rejection/.test(file)?'failure':/-undo\.|-after\.|graph-observations/.test(file)?'after':defaultWhen;const match=!/^(?:computer-use-[a-f0-9]{12}-)?performance-/.test(path.basename(file))&&spec?.evidence.find(e=>e.id!=='operations'&&e.kind===kind&&e.when===when&&(e.id!=='preview-clip'||file.includes('preview-clip'))&&(e.id!=='graph-state'||file.includes('graph-observations')));return {file,kind,when,caption:evidenceCaption(file),specId:match?.id||null};});}
 export function evidenceCoverage(spec,items=[],actions=[],outcome){
  return spec.evidence.map(e=>({...e,status:(e.id==='operations'?actions.length>0:items.some(a=>a.specId===e.id))?'Collected':outcome==='Blocked'&&e.when!=='failure'?'Not reached':e.required?'Missing':'Optional'}));
 }
