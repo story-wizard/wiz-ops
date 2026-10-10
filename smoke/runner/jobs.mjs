@@ -12,6 +12,7 @@ export function validateJobRequest(request){
  const b=request.build;if(!b||Object.keys(b).some(k=>!['kind','value'].includes(k))||!['latest-nightly','tag','app'].includes(b.kind))throw Error('Choose latest-nightly, an official tag or an absolute app.');
  if(b.kind==='latest-nightly'?b.value!==undefined:typeof b.value!=='string'||!b.value||b.value.length>4096||b.kind==='app'&&(!path.isAbsolute(b.value)||!b.value.endsWith('.app')))throw Error('Invalid build request.');
  if(!request.selection||typeof request.selection!=='object'||Array.isArray(request.selection))throw Error('Supply a course selection.');
+ if(request.selection.checkpoint!==undefined)throw Error('Unattended jobs cannot wait for manual checkpoints. Use the ordinary interactive harness for that course.');
  const timeout=request.timeoutMinutes??180;if(!Number.isInteger(timeout)||timeout<1||timeout>720)throw Error('Job timeout must be 1–720 minutes.');
  return {...request,operator:request.operator.trim(),timeoutMinutes:timeout};
 }

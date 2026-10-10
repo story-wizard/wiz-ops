@@ -137,3 +137,6 @@ test('conflicting preparation or run identities are never adopted or cancelled',
  }
  assert.equal(writes,0);
 }));
+test('an unattended job rejects a manual checkpoint before queue or app admission',async()=>fixture(async store=>{
+ assert.throws(()=>store.submit({...request,selection:{...request.selection,checkpoint:'desktop'}},selection,digest(profile)),/manual checkpoints/);assert.equal(store.list().length,0);
+}));

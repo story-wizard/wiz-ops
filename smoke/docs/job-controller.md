@@ -31,6 +31,9 @@ ambiguous or unavailable newest packages produce a report; an older cached build
 is never substituted. The selected asset, release notes, normalized course,
 source/profile, preparation ID and run request ID are retained.
 
+Unattended jobs reject explicit manual checkpoints before queue admission. Use
+the ordinary interactive harness for a course that needs a person to resume it.
+
 Selections use the ordinary course/check selection format, including maintained
 or saved courses available in this worker's catalog. The queue freezes their
 resolved membership when submitted. The prepared membership must match before
