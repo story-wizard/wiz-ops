@@ -49,7 +49,7 @@ test('lost Start is recovered by request ID, and missing intent is Unknown witho
 }));
 test('failed checks finish reporting instead of cancelling or manufacturing a Pass',async()=>fixture(async store=>{
  const job=store.submit(request,selection,digest(profile));store.update(job.id,{state:'Running',runId:'run'});let posts=0;
- const controller=new JobController(store,{profile,call:async(route,body)=>{if(body)posts++;return {id:'run',execution:{state:'Failed',recipe:{}},results:[{test_id:'A-CLI-01',status:'Fail',snapshot:{title:'Connection'}}]};},report:async(s,j)=>{assert.equal(j.outcome,'Failed');return {path:'/retained/report',state:j.outcome};}});
+ const controller=new JobController(store,{profile,call:async(route,body)=>{if(body)posts++;if(route==='/api/worker')return idle;return {id:'run',execution:{state:'Failed',recipe:{}},results:[{test_id:'A-CLI-01',status:'Fail',snapshot:{title:'Connection'}}]};},report:async(s,j)=>{assert.equal(j.outcome,'Failed');return {path:'/retained/report',state:j.outcome};}});
  await controller.tick();await controller.tick();await controller.tick();assert.equal(store.get(job.id).state,'Complete');assert.equal(store.get(job.id).outcome,'Failed');assert.equal(store.get(job.id).delivery,'LOCAL_ONLY');assert.equal(posts,0);
 }));
 test('cancel/deadline requests one owned stop and leaves its uncertain response for inspection',async()=>fixture(async store=>{

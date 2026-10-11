@@ -9,11 +9,12 @@ import {JobStore} from '../runner/jobs.mjs';
 import {JobController} from '../runner/controller.mjs';
 import {verifyOwnerRoute} from '../runner/delivery.mjs';
 import {slackSender} from '../runner/slack-delivery.mjs';
+import {readJobBrief,readJobReport,retainInvestigationHandoff} from '../runner/job-handoff.mjs';
 
 export async function main(args){
  const command=args.shift(),flags={};for(let i=0;i<args.length;i++){const key=args[i],value=args[++i];if(!key?.startsWith('--')||Object.hasOwn(flags,key)||!value||value.startsWith('--'))throw Error('Invalid controller option.');flags[key]=value;}
- const allowed={init:['--config','--profile','--route'],submit:['--config','--file'],status:['--config','--id'],list:['--config'],schedule:['--config','--file'],enable:['--config'],pause:['--config'],cancel:['--config','--id'],tick:['--config'],serve:['--config'],service:['--config','--out','--label']};
- if(!allowed[command]||Object.keys(flags).some(k=>!allowed[command].includes(k)))throw Error('Usage: controller init | submit | status | list | schedule | enable | pause | cancel | tick | serve | service. See docs/job-controller.md.');
+ const allowed={init:['--config','--profile','--route'],submit:['--config','--file'],status:['--config','--id'],brief:['--config','--id'],handoff:['--config','--id'],list:['--config'],schedule:['--config','--file'],enable:['--config'],pause:['--config'],cancel:['--config','--id'],tick:['--config'],serve:['--config'],service:['--config','--out','--label']};
+ if(!allowed[command]||Object.keys(flags).some(k=>!allowed[command].includes(k)))throw Error('Usage: controller init | submit | status | brief | handoff | list | schedule | enable | pause | cancel | tick | serve | service. See docs/job-controller.md.');
  const required=k=>{if(!flags[k])throw Error('Required option: '+k);return flags[k];},file=externalPath(path.resolve(required('--config')));
  if(command==='init'){
   const profileFile=externalPath(path.resolve(required('--profile'))),profile=await checkWorkerProfile(await readJSON(profileFile));
@@ -32,7 +33,16 @@ export async function main(args){
  }
  const store=new JobStore(profile.dataDir),resolve=input=>{const db=connect(profile.dataDir);try{return resolveSelection(db,input);}finally{db.close();}};
  try{
-  if(command==='status'){if(flags['--id']){const job=store.get(flags['--id']);if(!job)throw Error('Job not found.');return {job,events:store.events(job.id)};}return {schedule:store.schedule(),jobs:store.list().map(j=>({id:j.id,state:j.state,outcome:j.outcome||null,runId:j.runId||null,delivery:j.delivery||null,deadline:j.deadline,lastError:j.lastError||null,error:j.error||null,report:j.report||null}))};}
+  if(command==='status'){if(flags['--id']){const job=store.get(flags['--id']);if(!job)throw Error('Job not found.');return {brief:await readJobBrief(store,job),job,events:store.events(job.id)};}return {schedule:store.schedule(),jobs:store.list().map(j=>({id:j.id,state:j.state,outcome:j.outcome||null,runId:j.runId||null,delivery:j.delivery||null,deadline:j.deadline,lastError:j.lastError||null,error:j.error||null,report:j.report||null,handoff:j.handoff?{state:j.handoff.state,id:j.handoff.id||null,error:j.handoff.error||null}:null}))};}
+  if(command==='brief'){const job=store.get(required('--id'));if(!job)throw Error('Job not found.');return readJobBrief(store,job);}
+  if(command==='handoff'){
+   const lease=store.claim();if(!lease)throw Error('Controller owns progression; wait before reconciling a handoff.');
+   try{const job=store.get(required('--id'));if(!job?.report)throw Error('Retain the completed local report before reconciling its handoff.');
+    if(job.profileHash!==config.profileHash)throw Error('Job belongs to another pinned worker profile. Preserve its source before reconciling.');
+    const report=await readJobReport(store,job),{call}=await workerClient(config.profileFile);
+    return await retainInvestigationHandoff(store,job,report,call,{reconcile:true});
+   }finally{store.release(lease);}
+  }
   if(command==='list')return store.list();
   if(command==='submit'){const request=await readJSON(required('--file'));return store.submit(request,resolve(request.selection),digest(profile));}
   if(command==='schedule'){const input=await readJSON(required('--file'));if(Object.keys(input).some(k=>!['timeZone','hour','minute','request'].includes(k)))throw Error('Unknown schedule field.');return store.saveSchedule({...input,selection:resolve(input.request.selection),profileHash:digest(profile)});}

@@ -19,6 +19,7 @@ node scripts/controller.mjs init --config CONFIG --profile PROFILE
 node scripts/controller.mjs submit --config CONFIG --file examples/controller/request.json
 node scripts/controller.mjs status --config CONFIG
 node scripts/controller.mjs status --config CONFIG --id REQUEST_ID
+node scripts/controller.mjs brief --config CONFIG --id REQUEST_ID
 node scripts/controller.mjs serve --config CONFIG
 ```
 
@@ -78,6 +79,57 @@ Read `outcome`, catalog results and functional assertion status separately.
 Unexecuted legacy assertions remain Not Run, even when related checks pass.
 Unknown source/response/evidence states remain visible for human or agent review.
 
+### Investigation and agent handoff
+
+New completed jobs with Fail, Blocked, Unknown or Not run catalog checks reuse
+the original run's investigation, or record one creation intent before creating
+it. The handoff verifies the run, build, package and source identities and exports
+the existing evidence package and triage task. Several matching investigations,
+changed identities or damaged evidence produce **Needs review**. The local job
+report still completes; its QA outcome remains separate from handoff and delivery.
+Jobs that never executed get repair guidance without a fictitious investigation.
+
+Open **Agent brief and investigation** in the job report. The adjacent files are:
+
+- `agent-brief.json`: frozen identities, catalog counts, independently recorded
+  functional assertion counts, checks needing review and original evidence links.
+- `AGENT-PROMPT.txt`: the existing investigation triage task, or stage-specific
+  repair instructions when no investigation is available.
+- `investigation-task.json`, when Ready: the prompt's complete task context,
+  observations and suggested groups. The evidence package also retains it in
+  `tasks/triage.json`.
+- `triage-proposal.json`, when applicable: explicit recorded blockers grouped
+  into a proposal. Missing build operations suggest Environment; a shared
+  prerequisite remains Unresolved. Review the evidence and preview before applying.
+- `handoff.html`: links to these files, the investigation and its evidence package.
+
+The retained brief is a reporting-time snapshot. `brief --config CONFIG --id ID`
+reads current job and delivery state without contacting Wizard, creating a task
+or sending a message. `status --id` includes that brief and the complete record
+and events. A damaged report remains visible as `reportReadError`; the retained
+QA outcome and original IDs are preserved.
+
+If a creation reply is lost, the controller lists original-run investigations
+and adopts only a unique, identity-verified record. It never repeats that creation
+intent. After resolving a handoff issue, explicitly reconcile it with:
+
+```sh
+node scripts/controller.mjs handoff --config CONFIG --id REQUEST_ID
+```
+
+This command takes the controller progression lease, checks the pinned worker,
+and links/exports the current investigation task. It does not Start, reproduce,
+triage, submit a bug or deliver a message. Read `brief` again for the updated
+handoff; the original report and its snapshot stay intact. If the original
+creation intent has no visible record, preserve it for inspection instead of
+creating a replacement automatically.
+
+An agent reviews the task context and evidence, returns a proposal, then uses
+the existing investigation `proposal` preview. Reviewed application, diagnostic
+repro execution and human bug confirmation remain separate steps described in
+[Investigations](investigations.md). This slice prepares the handoff; it does not
+launch an autonomous triage agent or change any original test result.
+
 Initialization without `--route` selects local-only reports. To use unattended
 Slack delivery, initialize a separate reviewed config with `--route ROUTE_JSON`.
 The route must be Charles's exact Story Company one-to-one DM:
@@ -113,9 +165,18 @@ silently starting a new preparation. Unknown app actions follow the harness's
 normal reconciliation rules. Report corruption or unresolved run identities
 retain a review state and their original records; a new job is a separate attempt.
 
+Every `brief` includes `recovery`: the actual failed stage, recorded error,
+read-only command argument arrays and an agent repair prompt. Replace `CONFIG`,
+`URL` and `REPORT_DIRECTORY` with the retained configuration, local service URL
+and report directory. Pass argument arrays directly when scripting; quote each
+argument when assembling a shell command. Import, preparation, Start, execution,
+reporting and delivery have separate inspection paths. Unknown operations and
+delivery intents are inspected, never blindly replayed. Recovery hints authorize
+neither execution nor external publication.
+
 The controller does not bypass a locked screen, desktop lease, permissions or
 another agent's process. A busy worker waits until the job deadline; GUI readiness
 still comes from real preparation and its existing process-bound qualification.
-Tower monitoring, Mini enrollment, autonomous investigation and novel functional
+Tower monitoring, Mini enrollment, autonomous investigation execution and novel functional
 course generation remain separate slices. This service supplies their durable
 job/run identities without requiring them for ordinary developer testing.

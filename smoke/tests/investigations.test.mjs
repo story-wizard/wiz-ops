@@ -55,6 +55,19 @@ test('investigation preserves first results, groups hypotheses, links build-boun
   const reportFile=path.join(path.dirname(current.cases[0].attempts[0].reportPath),'report.json');await writeFile(reportFile,'{}');await assert.rejects(()=>exportInvestigation(db,current.id,data),/report changed/);
  }finally{db.close();await rm(data,{recursive:true,force:true});}
 });
+test('portable triage proposals retain original blockers and task context without applying their suggested groups',async()=>{
+ const data=dataDirectory(await mkdtemp(path.join(tmpdir(),'athanor-triage-hints-'))),db=new DatabaseSync(':memory:');initializeInvestigations(db);
+ try{
+  const first=await fixture(data,{status:'Blocked'}),note='Selected build lacks search.query. Choose a build supporting this check.';
+  for(const r of first.results)r.note=note;
+  const file=path.join(first.execution.artifact_root,'report.json'),original=JSON.parse(await readFile(file,'utf8'));for(const r of original.results)r.note=note;await writeJSON(file,original);
+  const created=await createInvestigation(db,first,data,{actor:'Test agent'}),packed=await exportInvestigation(db,created.id,data),proposal=JSON.parse(await readFile(path.join(packed.path,'triage-proposal.json'),'utf8')),packet=JSON.parse(await readFile(path.join(packed.path,'tasks/triage.json'),'utf8'));
+  assert.equal(proposal.updates.length,2);assert.equal(proposal.updates[1].duplicateOf,'A-CO-01');assert.equal(packet.triageHints.hints[0].evidence[1].runId,first.id);assert.equal(packet.triageHints.hints[0].evidence[1].observation,note);
+  assert.equal(previewTriage(created,proposal).next.cases[1].classification,'Environment');const retained=investigation(db,created.id);assert.equal(retained.revision,1);assert.ok(retained.cases.every(c=>c.classification==='Unresolved'&&c.duplicateOf===null));assert.equal(retained.cases[1].original.status,'Blocked');assert.equal(retained.cases[1].original.observation,note);
+  const manifest=JSON.parse(await readFile(packed.manifest,'utf8'));assert.ok(manifest.inventory.some(([file])=>file==='triage-proposal.json'));
+ }finally{db.close();await rm(data,{recursive:true,force:true});}
+});
+
 test('diagnostic capture is opt-in, retains collected files, and records collection failures without rewriting the verdict',async()=>{
  const root=await realpath(await mkdtemp(path.join(tmpdir(),'athanor-diagnostic-'))),file=path.join(root,'session.json');let calls=0;
  try{

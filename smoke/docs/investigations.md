@@ -17,6 +17,21 @@ Grouping is an evidence-supported hypothesis. Same-observation hints do not esta
 
 Open **Work with an agent**. Choose triage, repair, repro or review; prepare the selected case's handoff and copy its prompt plus JSON context. Export the investigation when the agent needs a portable evidence package. `tasks/` contains all four prompts and context packets.
 
+Triage tasks also include `triageHints`: proposed groups from exact recorded
+missing-operation or shared-prerequisite blockers, with original run/check IDs,
+observations and evidence report links. Other failures receive no inferred cause.
+Existing classifications, resolved cases and reviewed groups are excluded from
+these suggestions. A shared blocker is a grouping hypothesis, not proof of an
+identical application defect. The optional `triage-proposal.json` in the portable
+package is ready for evidence review and the existing proposal preview; it is
+never applied by task generation or export. Reload after any investigation revision
+change before reviewing or applying a proposal.
+
+Managed job reports link directly to this workflow. Use the controller's `brief`
+for build/course identity, results, handoff state and recovery instructions; see
+[Job controller](job-controller.md#investigation-and-agent-handoff). Developer
+course runs still use Results → Investigate or the ordinary investigation CLI.
+
 For triage, have the agent return a JSON proposal using the packet's `proposalTemplate`. Paste it or select the JSON file, then press **Preview proposed changes**. Preview validates case IDs, classifications, grouping and revision without saving. Inspect the before/after changes and reasoning, then apply reviewed changes. Reload and regenerate a proposal after a revision conflict.
 
 Repairs belong in the current source checkout. Preserve frozen reports, explain the cause, provide the patch and verification, and identify the checks needing rerun. A task packet supplies context; execution is a separate user-authorized action.
