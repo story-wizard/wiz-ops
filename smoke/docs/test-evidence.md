@@ -81,6 +81,55 @@ await step({id:'verify', title:'Check source, position and duration', phase:'ver
 
 Requests made inside a step carry its ID. Assertions remain in the callback. Let errors propagate so the journal retains Fail, Blocked or Unknown. Do not catch an uncertain mutation and repeat it.
 
+Keep test steps inside the `check` callback. `endCheck` closes the matching check's
+action scope after a known terminal result, after collecting its diagnostics and
+performance evidence. Driver Save, Quit and project reopening remain in the raw
+journals under the adapter's ordinary `desktop-agent` identity; they do not belong
+to the preceding check. A later `beginCheck` establishes the next check's scope.
+Unknown retains its check identity for reconciliation and still stops execution.
+An older finalization cannot clear a different active check.
+
+Read-only diagnostic screenshots and state reads do not establish that an
+unentered step ran. An unbound mutation inside an active check still produces
+`No step record`; it must not be relabeled `Not run` merely because no step was
+declared. Historical journals retain their original attribution.
+
+### Retain the comparison behind an assertion
+
+Use `checks().assertion` for a decisive comparison that a reviewer should see
+without opening the project. Evaluate the condition independently, then provide
+small expected/actual values and any relevant source-state excerpts:
+
+```js
+const {assertion} = await checks(sessionFile, 'desktop-report.json');
+await assertion(
+  {id:'generation-identity', title:'Verify independent generation state', phase:'verify'},
+  {expected:{independent:true}, actual:{source:sourceId, copy:copyId}, sources:excerpts},
+  copyId !== sourceId
+);
+```
+
+The helper retains a unique JSON proof and a phase receipt on Pass or Fail.
+Comparisons are limited to 16 KiB; retain larger observations separately. Supply
+only the pertinent state, with source IDs and hashes where available. The helper
+records the comparison; the check author owns the independent assertion.
+
+The report copies each declared proof into the checksum inventory and surfaces
+its values in `conclusion`, alongside the first stopped phase, last completed
+phase and steps with no execution record. The live investigation, portable
+reviewer and agent task use that same conclusion. Raw operation receipts remain
+available. A completed operation is not a passed assertion, and an unreached
+editing or reopen phase is not a separately established app defect.
+
+`D-BIN-MGFX` is the first migrated example: setup, actual bin duplication, saved
+identity readback, independent generation assertion, copy edit, original/copy
+pixel checks and fresh-process reopen. Its proof includes original/copy timeline
+IDs, generation references and hashes of the saved timeline bytes. Other checks
+keep their existing evidence until their own authored comparisons are added. The
+changed definition remains a qualification candidate in `smoke-full` revision 12;
+its earlier accepted hash is preserved. Lead review is required before selecting
+the new definition directly in an accepted-only custom course.
+
 ## Give an agent the context
 
 ```sh
@@ -176,3 +225,21 @@ Project workflow examples are in `desktop/check-projects.mjs` and `desktop/proje
 ## Bounded long workflows
 
 A foreground check can declare `scriptTimeoutMs` between 1000 and 600000 milliseconds. A shared driver sums the selected per-check declarations, with a 120000 ms floor for ordinary drivers. Declare enough time for the entire authored driver sequence. The 50-step physical history candidate uses 480000 ms for 150 verified gestures. Keep per-step observation waits bounded and retain latency samples; the driver budget is not a speed acceptance threshold. Timeout, cancellation or output overflow retain Unknown and their process diagnostics before report parsing. A retry starts a new owned fixture and preserves the interrupted attempt.
+
+### Author a short comparison and dependency reason
+
+Add optional `invariant` and `question` sentences to the comparison: what must
+hold, and what the next inspection needs to answer. Each is at most 1,000
+characters. Keep expected/actual values small, name units and tolerances, and
+retain source excerpts in the proof. The compact agent view omits those excerpts
+but preserves the verified proof reference and evidence status.
+
+Existing drivers can use `recordVerification(sessionFile, definition,
+comparison, verify)` around their existing independent oracle. Its comparison is
+written on Pass or a known Fail; Blocked and Unknown propagate. Keep the oracle
+free of input dispatch. Do not nest it inside another recorded step.
+
+Object steps may declare `requires: ['earlier-step-id']`. Dependencies must be
+unique earlier steps in the same definition. Reports explain an unreached phase
+or recorded block from those receipts; dependencies do not replace the driver's
+own sequencing and cleanup. Always preserve the recorded block observation.

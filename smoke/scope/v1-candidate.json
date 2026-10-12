@@ -75,9 +75,9 @@
     },
     {
       "file": "desktop/course.json",
-      "sha256": "c85ff0f0c9c48ccb1896c92e49e4c140fa7c27537e188205e97bd464da0d08f8",
+      "sha256": "d241d661798159f6d90c11b8db3330d1478402f47edff942df602370721902b8",
       "id": "local-desktop-v1",
-      "revision": 27,
+      "revision": 29,
       "target": "Instrumented local GUI with isolated Qt runtime",
       "requiredCheckIds": [
         "D-CLI-01",

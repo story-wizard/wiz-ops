@@ -1,6 +1,6 @@
 {
   "id": "local-desktop-v1",
-  "revision": 27,
+  "revision": 29,
   "title": "Local desktop smoke",
   "target": "Instrumented local GUI with isolated Qt runtime",
   "cases": [
@@ -119,10 +119,60 @@
       "title": "Trim and undo",
       "expected": "Right-edge trimming changes matching timeline/source durations, preserves the other edge and maintains valid exact timing.",
       "steps": [
-        "The first video clip is selected. On the timeline, drag its right edge left to shorten it by roughly one second.",
-        "Confirm the left edge and the following clip remain in place. Play the shortened clip and inspect its end.",
-        "Press Command+Z to restore it, then Command+Shift+Z to restore the trim.",
-        "Record the visible result and Capture diagnostics. The automated finding concerns timing metadata as well as the visible edit."
+        {
+          "id": "prepare",
+          "title": "Select the clip and retain baseline timing",
+          "phase": "prepare"
+        },
+        {
+          "id": "trim",
+          "title": "Drag the right edge left",
+          "phase": "execute",
+          "requires": [
+            "prepare"
+          ]
+        },
+        {
+          "id": "read-timing",
+          "title": "Read and retain the changed timeline",
+          "phase": "verify",
+          "requires": [
+            "trim"
+          ]
+        },
+        {
+          "id": "restore",
+          "title": "Undo and retain the restored timeline",
+          "phase": "cleanup",
+          "requires": [
+            "read-timing"
+          ]
+        },
+        {
+          "id": "trim-timing",
+          "title": "Verify right-edge timing and unchanged neighbor",
+          "phase": "verify",
+          "requires": [
+            "read-timing"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Input receipts and independent timeline observations."
+        },
+        {
+          "id": "trim-timing",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "fileSuffix": "trim-timing.json",
+          "caption": "Expected and actual clip/source timing in seconds, tolerance, neighbor state and retained observations."
+        }
       ]
     },
     {
@@ -386,7 +436,96 @@
       "id": "D-BIN-MGFX",
       "sourceId": "OZ-08",
       "title": "Duplicate MGFX through the bin menu",
-      "expected": "Bin Duplicate creates independent generation state. Editing copied text changes only copied values/pixels, which survive reopen."
+      "expected": "Bin Duplicate creates independent generation state. Editing copied text changes only copied values/pixels, which survive reopen.",
+      "operations": [
+        "generate.graphics",
+        "generate.inspect",
+        "generate.set_params",
+        "timeline.inspect",
+        "project.checkpoint",
+        "render.export_still",
+        "Media Bin context-menu Duplicate"
+      ],
+      "steps": [
+        {
+          "id": "prepare-graphic",
+          "title": "Create a local graphic and capture the original",
+          "phase": "prepare"
+        },
+        {
+          "id": "duplicate-bin",
+          "title": "Duplicate the graphic through the Media Bin menu",
+          "phase": "execute",
+          "requires": [
+            "prepare-graphic"
+          ]
+        },
+        {
+          "id": "read-identity",
+          "title": "Save and read the original and copied generation references",
+          "phase": "verify",
+          "requires": [
+            "duplicate-bin"
+          ]
+        },
+        {
+          "id": "generation-identity",
+          "title": "Verify independent generation state",
+          "phase": "verify",
+          "requires": [
+            "read-identity"
+          ]
+        },
+        {
+          "id": "edit-copy",
+          "title": "Verify the initial copy image, then change only the copied text",
+          "phase": "execute",
+          "requires": [
+            "generation-identity"
+          ]
+        },
+        {
+          "id": "verify-original",
+          "title": "Check that original parameters and pixels remain unchanged",
+          "phase": "verify",
+          "requires": [
+            "edit-copy"
+          ]
+        },
+        {
+          "id": "verify-copy",
+          "title": "Check changed copy pixels and retain the reopen fixture",
+          "phase": "verify",
+          "requires": [
+            "verify-original"
+          ]
+        },
+        {
+          "id": "reopen",
+          "title": "Reopen in a fresh process and verify generated state and pixels",
+          "phase": "verify",
+          "requires": [
+            "verify-copy"
+          ]
+        }
+      ],
+      "evidence": [
+        {
+          "id": "operations",
+          "kind": "json",
+          "when": "during",
+          "required": true,
+          "caption": "Bin gesture, application operations and independent state observations."
+        },
+        {
+          "id": "generation-identity",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "fileSuffix": "generation-identity.json",
+          "caption": "Original and copy generation IDs, saved timeline excerpts and source hashes used by the identity assertion."
+        }
+      ]
     },
     {
       "id": "D-EDIT-SLIP",
@@ -794,6 +933,14 @@
           "when": "after",
           "required": true,
           "caption": "The observed result in the owned app."
+        },
+        {
+          "id": "scope-response",
+          "kind": "json",
+          "when": "after",
+          "required": true,
+          "fileSuffix": "scope-response.json",
+          "caption": "Scope tap, RGB difference threshold and measured colour/black source brightness."
         }
       ],
       "steps": [
@@ -804,8 +951,19 @@
         },
         {
           "id": "sample",
-          "title": "Compare vectorscope image response at each tap",
-          "phase": "verify"
+          "title": "Observe vectorscope response at each tap",
+          "phase": "verify",
+          "requires": [
+            "setup"
+          ]
+        },
+        {
+          "id": "scope-response",
+          "title": "Verify vectorscope response to colour versus black",
+          "phase": "verify",
+          "requires": [
+            "sample"
+          ]
         },
         {
           "id": "cleanup",

@@ -27,7 +27,7 @@ async function retain(file,value){
  try{await writeFile(file,bytes,{flag:'wx',mode:0o600});}catch(e){if(e.code!=='EEXIST')throw e;if(await readFile(file,'utf8')!==bytes)throw Error('Retained controller artifact differs; preserve it for review.');}
  return file;
 }
-export async function retainJobReport(store,job,call){
+export async function retainJobReport(store,job,call,context={}){
  const root=path.join(store.dataDir,'exports','athanor-job-'+job.id),catalog=await call('/api/checks'),suite=await readJSON(path.join(ROOT,'examples/nightly/suite.json'));
  const identity={build:job.preparation?.version||job.resolved?.tag||job.resolved?.label||job.request.build.value||'Requested latest nightly',runnerHash:job.workerRunnerHash,packageHash:job.preparation?.packageHash||null,dataDir:store.dataDir};
  let report;
@@ -43,23 +43,24 @@ export async function retainJobReport(store,job,call){
   const cases=nightlyCases(suite).map(c=>({...c,status:'NOT_RUN',assertions:c.expected.map((expected,i)=>({id:c.id+':'+(i+1),expected,status:'NOT_RUN',observation:'No course execution established.'}))}));
   report={format:'athanor-job-report/v1',jobId:job.id,runId:null,cadence:'nightly',identity,executionStarted:false,failedStage:job.failedStage||job.state,error:job.error||null,cases,caseCounts:{NOT_RUN:cases.length},assertionCounts:{NOT_RUN:cases.reduce((n,c)=>n+c.assertions.length,0)},catalog:{state:job.outcome||'Blocked',counts:{'Not run':checks.length},checks},jobRequest:job.request};
  }
- const handoff=await retainInvestigationHandoff(store,job,report,call);
+ const handoff=await retainInvestigationHandoff(store,job,report,call,context);
  report.jobHandoff={url:'handoff.html',state:handoff.state};
- const brief=jobResultBrief({...job,lastError:null,handoff,report:{path:root,url:'/exports/athanor-job-'+job.id+'/index.html'}},report);
+ const brief=jobResultBrief({...job,lastError:null,handoff,report:{path:root,url:'/exports/athanor-job-'+job.id+'/index.html'}},report,context);
  await retain(path.join(root,'report.json'),report);
  await retain(path.join(root,'agent-brief.json'),brief);
  await retain(path.join(root,'AGENT-PROMPT.txt'),handoff.task?.prompt||brief.recovery.prompt);
  if(handoff.task)await retain(path.join(root,'investigation-task.json'),handoff.task);
+ if(handoff.task?.firstRead)await retain(path.join(root,'first-read.json'),{...handoff.task.firstRead,evidencePackage:handoff.package});
  if(handoff.task?.triageHints?.proposal)await retain(path.join(root,'triage-proposal.json'),handoff.task.triageHints.proposal);
  const escape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const links=handoff.state==='Ready'?`<p><a href="${escape(handoff.url)}">Open investigation</a> · <a href="${escape(handoff.package.url)}">Open evidence package</a></p>`:'';
- await retain(path.join(root,'handoff.html'),`<!doctype html><html lang="en"><meta charset="utf-8"><title>Athanor job handoff</title><style>body{background:#14191f;color:#d6e1eb;font:16px system-ui;max-width:1100px;margin:40px auto;padding:24px}a{color:#9bc6e5}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>Athanor job ${escape(job.id)}</h1><p>QA ${escape(report.catalog.state)} · investigation ${escape(handoff.state)}</p><p><a href="index.html">Job report</a> · <a href="agent-brief.json">Agent context</a> · <a href="AGENT-PROMPT.txt">Agent prompt</a>${handoff.task?' · <a href="investigation-task.json">Task context</a>':''}${handoff.task?.triageHints?.proposal?' · <a href="triage-proposal.json">Review triage proposal</a>':''}</p>${links}<pre>${escape(handoff.error||'')}</pre><h2>Checks needing review</h2>${brief.checksNeedingReview.map(c=>`<p>${escape(c.id)} · ${escape(c.status)} · ${escape(c.observation)} ${c.evidenceUrl?`<a href="${escape(c.evidenceUrl)}">Evidence</a>`:''}</p>`).join('')}<h2>Next step</h2><pre>${escape(handoff.task?.brief||brief.recovery.action)}</pre><h2>Agent prompt</h2><pre>${escape(handoff.task?.prompt||brief.recovery.prompt)}</pre></html>`);
+ await retain(path.join(root,'handoff.html'),`<!doctype html><html lang="en"><meta charset="utf-8"><title>Athanor job handoff</title><style>body{background:#14191f;color:#d6e1eb;font:16px system-ui;max-width:1100px;margin:40px auto;padding:24px}a{color:#9bc6e5}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style><h1>Athanor job ${escape(job.id)}</h1><p>QA ${escape(report.catalog.state)} · investigation ${escape(handoff.state)}</p><p><a href="index.html">Job report</a> · <a href="agent-brief.json">Agent context</a> · <a href="AGENT-PROMPT.txt">Agent prompt</a>${handoff.task?.firstRead?' · <a href="first-read.json">First read</a>':''}${handoff.task?' · <a href="investigation-task.json">Task context</a>':''}${handoff.task?.triageHints?.proposal?' · <a href="triage-proposal.json">Review triage proposal</a>':''}</p>${links}<pre>${escape(handoff.error||'')}</pre><h2>Checks needing review</h2>${brief.checksNeedingReview.map(c=>`<p>${escape(c.id)} · ${escape(c.status)} · ${escape(c.observation)} ${c.evidenceUrl?`<a href="${escape(c.evidenceUrl)}">Evidence</a>`:''}</p>`).join('')}<h2>Next step</h2><pre>${escape(handoff.task?.brief||brief.recovery.action)}</pre><h2>Agent prompt</h2><pre>${escape(handoff.task?.prompt||brief.recovery.prompt)}</pre></html>`);
  const html=nightlyHTML(report);
  await retain(path.join(root,'index.html'),html);
  return {path:root,url:'/exports/athanor-job-'+job.id+'/index.html',reportHash:digest(report),state:report.catalog.state,catalogReport:report.catalogReport||null,handoff:{state:handoff.state,url:'/exports/athanor-job-'+job.id+'/handoff.html'},brief:path.join(root,'agent-brief.json')};
 }
 export class JobController{
- constructor(store,{profile,call,resolve=resolveJobBuild,report=retainJobReport,route=null,send=null,now=()=>Date.now()}){Object.assign(this,{store,profile,call,resolve,report,route,send,now});}
+ constructor(store,{profile,call,resolve=resolveJobBuild,report=retainJobReport,route=null,send=null,context={},now=()=>Date.now()}){Object.assign(this,{store,profile,call,resolve,report,route,send,context,now});}
  change(job,patch,note){return this.store.update(job.id,{lastError:null,...patch},note);}
  async worker(){return verifyWorkerState(await this.call('/api/worker'),this.profile);}
  async lookup(route){try{return await this.call(route);}catch(e){if(e.status===404)return null;throw e;}}
@@ -123,7 +124,7 @@ export class JobController{
   }
   if(job.state==='Reporting'){
    await this.worker();
-   const report=await this.report(this.store,job,this.call);return this.change(job,{state:'Delivery',report},'Local report retained.');
+   const report=await this.report(this.store,job,this.call,this.context);return this.change(job,{state:'Delivery',report},'Local report retained.');
   }
   if(job.state==='Delivery'){
    if(!this.route)return this.change(job,{state:'Complete',delivery:'LOCAL_ONLY'},'Complete; local report delivery selected.');

@@ -479,3 +479,11 @@ dialog.result-details { width:min(720px,70vw); padding:0; z-index:30; animation:
 .ley-progress[data-active="true"] .outcome-tick.leading{animation:ley-charge 3.2s ease-in-out infinite}
 @keyframes ley-charge{0%,100%{opacity:.75;filter:brightness(1.05)}50%{opacity:1;filter:brightness(1.8) drop-shadow(0 0 2px var(--mark))}}
 @media(prefers-reduced-motion:reduce){.outcome-tick{animation:none!important}}
+
+/* The decisive comparison stays above the full action journal. */
+.check-conclusion{margin:18px 0;padding:16px 18px;border:1px solid #425568;border-radius:6px;background:#1d2831}
+.check-conclusion h3,.check-conclusion h4{margin:0 0 10px}
+.check-conclusion pre{white-space:pre-wrap;overflow-wrap:anywhere;margin:0;font:13px/1.5 var(--font-ui)}
+.assertion-comparison dl{display:grid;grid-template-columns:85px minmax(0,1fr);gap:8px 12px}
+.assertion-comparison dt{color:#aabac8}
+.assertion-comparison dd{margin:0;min-width:0}

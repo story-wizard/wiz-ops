@@ -212,13 +212,13 @@ export async function twentyCutFixture(c,assets,name='Twenty-cut scrub smoke',on
 export const selectorNamesTimeline=(label,name)=>typeof label==='string'&&label.replace(/ \(\d+\)$/,'')===name;
 export async function captureInvestigation(file,id,phase,capture=captureDesktop){
  const s=await readJSON(file);if(s.plan?.recipe?.selection?.diagnostics!=='investigation'||!s.pid||s.state!=='Running')return null;
- const directory=path.join(s.root,'evidence','diagnostic-'+randomUUID());let error=null;
+ const directory=path.join(s.root,'evidence','diagnostic-'+randomUUID()),startedAt=new Date().toISOString(),start=performance.now();let error=null;
  try{await capture(file,directory);for(const stream of ['stdout','stderr'])await cp(path.join(directory,stream+'.log'),path.join(directory,stream+'.txt'));}catch(e){error=e.message;}
  const manifest=path.join(s.root,'diagnostic-'+randomUUID()+'.json'),at=new Date().toISOString();
  const artifacts=error?[]:[path.join(directory,'state.json'),path.join(directory,'window.png'),path.join(directory,'stdout.txt'),path.join(directory,'stderr.txt')];
  const files=[];try{for(const file of artifacts)files.push({path:file,sha256:await sha(file)});}catch(e){error=e.message;}
  await writeJSON(manifest,{format:'athanor-diagnostic-capture/v1',files,id,phase,at,pid:s.pid,generation:s.generation??null,artifacts,status:error?'Collection incomplete':'Collected',error,profile:'investigation',appTracing:'Not configured',profiling:'Not configured'});
- await appendFile(path.join(s.root,'operations.jsonl'),JSON.stringify({caseId:id,operation:'diagnostic.capture',at,phase,pid:s.pid,generation:s.generation??null,status:error?'Incomplete':'Completed',evidence:{artifacts:[manifest,...artifacts]}})+'\n');return {manifest,artifacts,error};
+ await appendFile(path.join(s.root,'operations.jsonl'),JSON.stringify({caseId:id,operation:'diagnostic.capture',at,startedAt,finishedAt:at,durationMs:performance.now()-start,phase,pid:s.pid,generation:s.generation??null,status:error?'Incomplete':'Completed',evidence:{artifacts:[manifest,...artifacts]}})+'\n');return {manifest,artifacts,error};
 }
 export async function beginCheck(file,id){
  const s=await readJSON(file);if(s.selectedChecks&&!s.selectedChecks.includes(id))return false;
@@ -231,15 +231,36 @@ export async function endCheck(file,result){
  await captureInvestigation(file,result.id,'after');
  const s=await readJSON(file);if(s.performanceFile){await endPerformance(s.performanceFile,{pid:s.pid,processStart:s.processStart,generation:s.generation,packageHash:s.guiHash});result.evidence={...result.evidence,performance:s.performanceFile};s.performanceFile=null;await writeJSON(file,s);}
  await appendFile(path.join(s.root,'check-events.jsonl'),JSON.stringify({...result,at:new Date().toISOString()})+'\n');
+ if(s.currentCheck===result.id&&result.status!=='Unknown'){s.currentCheck=null;s.currentStep=null;await writeJSON(file,s);}
 }
 export async function recordStep(file,definition,fn){
  const session=await readJSON(file);if(!session.currentCheck||session.currentStep)throw Error('A step requires an active check and cannot be nested.');
  if(!definition?.id||!definition.title)throw Error('A step needs an ID and readable title.');
- const journal=path.join(session.root,'steps.jsonl'),entry={caseId:session.currentCheck,stepId:definition.id,title:definition.title,phase:definition.phase||'execute'};
+ const journal=path.join(session.root,'steps.jsonl'),entry={caseId:session.currentCheck,stepId:definition.id,title:definition.title,phase:definition.phase||'execute',...(definition.assertion?{assertion:definition.assertion}:{})};
  session.currentStep=definition.id;await writeJSON(file,session);await appendFile(journal,JSON.stringify({...entry,status:'Running',at:new Date().toISOString()})+'\n');
  try{const value=await fn();await appendFile(journal,JSON.stringify({...entry,status:'Completed',at:new Date().toISOString()})+'\n');return value;}
- catch(e){await appendFile(journal,JSON.stringify({...entry,status:failureStatus(e),observation:e.message,at:new Date().toISOString()})+'\n');throw e;}
+ catch(e){await appendFile(journal,JSON.stringify({...entry,status:failureStatus(e),observation:e.message,evidence:e.evidence||null,at:new Date().toISOString()})+'\n');throw e;}
  finally{const latest=await readJSON(file);latest.currentStep=null;await writeJSON(file,latest);}
+}
+export async function recordAssertion(file,definition,comparison,condition){
+ if(!/^[a-z][a-z0-9-]{0,79}$/.test(definition?.id||'')||typeof definition.title!=='string'||!definition.title.trim())throw Error('An assertion needs a safe step ID and readable title.');
+ if(typeof condition!=='boolean'||!comparison||!Object.hasOwn(comparison,'expected')||!Object.hasOwn(comparison,'actual'))throw Error('An assertion needs expected, actual and an independently evaluated boolean.');
+ for(const key of ['invariant','question'])if(comparison[key]!==undefined&&(typeof comparison[key]!=='string'||!comparison[key].trim()||comparison[key].length>1000))throw Error('Keep assertion '+key+' a nonempty sentence of at most 1000 characters.');
+ if(Buffer.byteLength(JSON.stringify(comparison))>16384)throw Error('Keep assertion comparisons within 16 KiB; retain larger observations as separate evidence.');
+ const session=await readJSON(file);if(!session.currentCheck||session.currentStep)throw Error('An assertion requires an active check and cannot be nested.');
+ const artifact=path.join(session.root,'assertion-'+randomUUID()+'-'+definition.id+'.json');
+ const proof={...comparison,format:'athanor-assertion/v1',caseId:session.currentCheck,stepId:definition.id,status:condition?'Pass':'Fail',pid:session.pid,generation:session.generation,artifact};
+ await writeJSON(artifact,proof);
+ return recordStep(file,{...definition,assertion:proof},async()=>{
+  if(!condition)throw Object.assign(new OutcomeError(definition.title,'Fail'),{evidence:{artifacts:[artifact]}});
+  return proof;
+ });
+}
+// Keep the existing oracle; only a known assertion failure becomes a comparison.
+export async function recordVerification(file,definition,comparison,verify){
+ let error;
+ try{await verify();}catch(e){if(failureStatus(e)!=='Fail')throw e;error=e;}
+ return recordAssertion(file,definition,{...comparison,...(error?{failureReason:error.message}:{})},!error);
 }
 export function widgetPixelDifference(a,b){
   const rgb=v=>{assert(v.sampleWidth===64&&v.sampleHeight===32&&typeof v.sampleRgb==='string','Invalid widget raster');const bytes=Buffer.from(v.sampleRgb,'base64');assert(bytes.length===64*32*3,'Incomplete widget pixels');return bytes;};
@@ -280,5 +301,5 @@ export async function checks(file,name){
   }
   async function openTimeline(name,trackId){const tab=timelineDockToOpen(await ui());if(tab){await n('click',{target:tab.id});await until(async()=>(await ui()).widgets.some(w=>w.class==='TimelineWidget'),{description:'Timeline dock is visible'});}const view=await mediaItem(name);await activate(view);await n('item-click',{target:view.id,text:name,double:true});await until(async()=>(await ui()).widgets.some(w=>w.name==='panelSubtabSelector'&&selectorNamesTimeline(w.text,name)),{description:'Timeline '+name+' is open'});const v=timelineCanvas(await ui(),trackId);await activate(v);return v;}
   function finish(){report.completed=true;writeFileSync(output,JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(report.results.some(r=>r.status!=='Pass'))process.exitCode=1;}
-  return {s,report,n,c,ui,until,check,step:(definition,fn)=>recordStep(file,definition,fn),activate,action,mediaItem,mediaMenu,openTimeline,finish};
+  return {s,report,n,c,ui,until,check,step:(definition,fn)=>recordStep(file,definition,fn),assertion:(definition,comparison,condition)=>recordAssertion(file,definition,comparison,condition),activate,action,mediaItem,mediaMenu,openTimeline,finish};
 }

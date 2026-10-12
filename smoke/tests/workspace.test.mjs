@@ -29,7 +29,7 @@ test('catalog integrity, frozen run definitions, durable edits and honest result
     assert.equal(setup.courses[0].id,'smoke-full');assert.equal(setup.courses[0].checkCount,180);
     assert.deepEqual(setup.courses[0].targets,{packaged:57,desktop:115,service:8});
     assert.ok(setup.courses.every(c=>!c.checkpoint));assert.deepEqual(setup.runtimes,[]);
-    assert.equal((await fetch(base+'/run-setup.js')).status,200);assert.equal((await fetch(base+'/wizard-tokens.css')).status,200);
+    assert.equal((await fetch(base+'/run-setup.js')).status,200);assert.equal((await fetch(base+'/wizard-tokens.css')).status,200);assert.equal((await fetch(base+'/check-conclusion.js')).status,200);
     assert.deepEqual((await request('/runs')).data,[],'Opening run setup must not launch tests');
     const worker=(await request('/worker')).data;assert.equal(worker.name,'Local Athanor');assert.equal(worker.sourceMatches,true);assert.equal(worker.dataDir,realpathSync(dir));assert.equal(worker.active,null);assert.deepEqual(worker.ownedSessions,[]);assert.match(worker.desktopReadiness,/qualification/);
 

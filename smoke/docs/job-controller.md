@@ -57,6 +57,14 @@ receives one normal stop request. A lost stop reply is reconciled through its
 original run, never resent. An application assertion failure continues into
 independent checks under the course's normal cleanup rules.
 
+Foreground and background service courses attempt normal project shutdown first.
+If an interrupted checkpoint or call lock prevents it, the executor terminates
+only its recorded process after verifying the executable and process start time,
+waits for closure, and records `cleanupRecovery`. Interrupted action receipts and
+locks remain available for diagnosis. Cleanup failure stays Unknown; it never
+authorizes replaying input or releasing another actor's lease. Verify the worker
+has no active job or owned session before replacing its source.
+
 `service` writes an Aqua LaunchAgent plist with the current executable and exact
 checkout/config. It does not install, start or replace a service. An authorized
 operator can bootstrap that specific plist in `gui/UID`, verify the label and
@@ -92,7 +100,10 @@ Jobs that never executed get repair guidance without a fictitious investigation.
 Open **Agent brief and investigation** in the job report. The adjacent files are:
 
 - `agent-brief.json`: frozen identities, catalog counts, independently recorded
-  functional assertion counts, checks needing review and original evidence links.
+  functional assertion counts, checks needing review, concise case conclusions and
+  original evidence links. Full release notes stay in `report.json`; the compact
+  identity retains their tags and a link. The legacy functional ledger is labeled
+  separately from the selected catalog checks.
 - `AGENT-PROMPT.txt`: the existing investigation triage task, or stage-specific
   repair instructions when no investigation is available.
 - `investigation-task.json`, when Ready: the prompt's complete task context,
@@ -166,9 +177,12 @@ normal reconciliation rules. Report corruption or unresolved run identities
 retain a review state and their original records; a new job is a separate attempt.
 
 Every `brief` includes `recovery`: the actual failed stage, recorded error,
-read-only command argument arrays and an agent repair prompt. Replace `CONFIG`,
-`URL` and `REPORT_DIRECTORY` with the retained configuration, local service URL
-and report directory. Pass argument arrays directly when scripting; quote each
+read-only command argument arrays, the command root and an agent repair prompt.
+CLI and controller-generated briefs resolve the known config, service address and
+report directory. Direct helper consumers without runtime context retain `CONFIG`
+and `URL` placeholders. Unexpected one-shot `tick` errors retain a source-bound
+receipt in the external `controller-errors/` directory; the CLI prints its path.
+Inspect that receipt and job status before another progression attempt. Pass argument arrays directly when scripting; quote each
 argument when assembling a shell command. Import, preparation, Start, execution,
 reporting and delivery have separate inspection paths. Unknown operations and
 delivery intents are inspected, never blindly replayed. Recovery hints authorize
@@ -180,3 +194,10 @@ still comes from real preparation and its existing process-bound qualification.
 Tower monitoring, Mini enrollment, autonomous investigation execution and novel functional
 course generation remain separate slices. This service supplies their durable
 job/run identities without requiring them for ordinary developer testing.
+
+New investigation handoffs also include `first-read.json`, linked from
+`handoff.html`. Give this and AGENT-PROMPT.txt to the reviewer first; use the
+larger task and checksum-bound evidence when needed. The first read names its
+evidence package because its proof paths belong to that package, not the job
+report directory. `scripts/review-cost.mjs` measures these packets and recorded
+session intervals without launching Wizard; see docs/investigations.md.

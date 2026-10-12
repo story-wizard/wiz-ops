@@ -1,4 +1,5 @@
 import path from 'node:path';
+import {measurePhase} from '../runner/performance.mjs';
 import {fileURLToPath} from 'node:url';
 import {mkdir,mkdtemp,appendFile,readFile} from 'node:fs/promises';
 import {prepareDesktop,launchDesktop,stopDesktop,terminateOwnedDesktop,captureDesktopFailure,retainChild,desktopCall,nativeCall} from './adapter.mjs';
@@ -12,9 +13,10 @@ import {beginCheck,endCheck,selectorNamesTimeline,requireScriptCompletion,requir
 export async function executeDesktopGroup(prepared,{onResult=async()=>{},onSession=async()=>{},isCancelled=()=>false,signal}={}){
 const original=await readJSON(new URL('./course.json',import.meta.url)),fullCourse={...original,cases:[...original.cases,...physicalChecks]},ids=prepared?.ids||fullCourse.cases.map(c=>c.id),course={...fullCourse,cases:fullCourse.cases.filter(c=>ids.includes(c.id))},total=course.cases.length;
 const source=prepared?.runtime.app||process.argv[2],qtCocoaPlugin=prepared?.runtime.qtPlugin||process.argv[3];assert(source?.endsWith('.app'),'Choose an instrumented desktop app.');
-const session=await prepareDesktop(source,qtCocoaPlugin,prepared?.runtime.cli||process.argv[4],prepared),file=path.join(session.root,'session.json');session.selectedChecks=ids;session.agentDefinitions=fullCourse.cases.filter(c=>ids.includes(c.id));await writeJSON(file,session);
+const timings=[],timed=(phase,fn)=>measurePhase(timings,phase,fn);
+const session=await timed('prepare',()=>prepareDesktop(source,qtCocoaPlugin,prepared?.runtime.cli||process.argv[4],prepared)),file=path.join(session.root,'session.json');session.selectedChecks=ids;session.agentDefinitions=fullCourse.cases.filter(c=>ids.includes(c.id));await writeJSON(file,session);
 await onSession(session);
-const report={course,scope:session.scope,startedAt:new Date().toISOString(),guiHash:session.guiHash,cliHash:session.desktopCliHash,qtCocoa:session.qtCocoa,results:[],sources:{}};
+const report={course,timings,scope:session.scope,startedAt:new Date().toISOString(),guiHash:session.guiHash,cliHash:session.desktopCliHash,qtCocoa:session.qtCocoa,results:[],sources:{}};
 const map=await readJSON(new URL('./check-map.json',import.meta.url)),wants=name=>map[name]?.some(id=>ids.includes(id));
 const here=path.dirname(fileURLToPath(import.meta.url));
 for(const name of ['check-functional-cohort.mjs','functional-cohort-proof.mjs','check-macos-regression.mjs','macos-proof.mjs','native/workspace-probe.h'])report.sources[name]=await sha(path.join(here,name));
@@ -34,7 +36,7 @@ async function script(name,result,expectedCount=0,args=[],merge=false){
  requireScriptCompletion(receipt,r,name);
 }
 try{
-  live=await launchDesktop(session);report.bridgeHash=(await readJSON(file)).bridgeHash;
+  live=await timed('launch',()=>launchDesktop(session));report.bridgeHash=(await readJSON(file)).bridgeHash;
   const guards=await command(process.execPath,[path.join(here,'check-guards.mjs'),file],{timeout:15000});assert(guards.code===0,`Desktop guards failed: ${guards.stderr}`);report.guards=await readJSON(path.join(session.root,'desktop-guards-report.json'));
   await script('check-core.mjs','desktop-core-report.json');
   assert(report.results.find(r=>r.id==='D-CLI-01')?.status==='Pass','Owned desktop connection failed');
@@ -44,7 +46,7 @@ try{
   if(ids.includes('D-LP-02-RELAUNCH')){
   currentCheck='D-LP-02-RELAUNCH';await beginCheck(file,currentCheck);
   const before=await readJSON(file),ui=await nativeCall(file,'inspect'),selector=ui.widgets.find(w=>w.name==='panelSubtabSelector').text,expected=await readJSON(path.join(session.root,'gui-saved-timeline.json'));
-  await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file));const after=await readJSON(file);
+  await timed('close',async()=>{await stopDesktop(file);await live.closed;});live=await timed('reopen',async()=>launchDesktop(await readJSON(file)));const after=await readJSON(file);
   assert(after.pid!==before.pid&&after.generation===before.generation+1,'Relaunch reused process identity');
   same(snapshotState(await desktopCall(file,'timeline.inspect',{timeline_id:session.main.id})),snapshotState(expected),'GUI relaunch persistence');
   const reopened=await nativeCall(file,'inspect'),reopenedSelector=reopened.widgets.find(w=>w.name==='panelSubtabSelector')?.text;assert(selectorNamesTimeline(selector,expected.timeline.name)&&selectorNamesTimeline(reopenedSelector,expected.timeline.name),'GUI selector did not restore saved timeline');
@@ -60,7 +62,7 @@ try{
   await script('check-recorded-playback.mjs','desktop-recorded-playback-report.json');
   await script('check-functional-cohort.mjs','desktop-functional-cohort-report.json');
   if(ids.includes('D-RAW-NOTES-PERSIST')){
-    pendingVerification=['D-RAW-NOTES-PERSIST'];await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file));
+    pendingVerification=['D-RAW-NOTES-PERSIST'];await timed('close',async()=>{await stopDesktop(file);await live.closed;});live=await timed('reopen',async()=>launchDesktop(await readJSON(file)));
     await script('check-functional-cohort.mjs','desktop-functional-cohort-reopen-report.json',1,['verify'],true);pendingVerification=[];
   }
   for(const id of map['check-projects.mjs']||[])if(ids.includes(id)){
@@ -73,35 +75,37 @@ try{
   await script('check-editor.mjs','desktop-editor-report.json');
   await script('check-compounds.mjs','desktop-compounds-report.json',6);
   await script('check-spellbook.mjs','desktop-spellbook-report.json',9);
-  if(wants('check-spellbook.mjs')){pendingVerification=['D-SB-PERSIST'];await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file));await script('check-spellbook.mjs','desktop-spellbook-reopen-report.json',2,['verify']);pendingVerification=[];}
+  if(wants('check-spellbook.mjs')){pendingVerification=['D-SB-PERSIST'];await timed('close',async()=>{await stopDesktop(file);await live.closed;});live=await timed('reopen',async()=>launchDesktop(await readJSON(file)));await script('check-spellbook.mjs','desktop-spellbook-reopen-report.json',2,['verify']);pendingVerification=[];}
   await script('check-next.mjs','desktop-next-report.json',4);
   await script('check-surface.mjs','desktop-surface-report.json',3);
   if(ids.includes('D-SAVE-DISCARD')){await beginCheck(file,'D-SAVE-DISCARD');const holder={live};let lifecycle;try{lifecycle=await saveDiscard(file,holder);}finally{live=holder.live;}
   report.results.push(lifecycle);await endCheck(file,lifecycle);await onResult(lifecycle,session.root);assert(lifecycle.status==='Pass','Lifecycle did not restore a running saved project; inspect its report.');}
-  if(ids.includes('D-DOCUMENT-EDIT')){pendingVerification=['D-DOCUMENT-EDIT'];await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file));}
+  if(ids.includes('D-DOCUMENT-EDIT')){pendingVerification=['D-DOCUMENT-EDIT'];await timed('close',async()=>{await stopDesktop(file);await live.closed;});live=await timed('reopen',async()=>launchDesktop(await readJSON(file)));}
   await script('check-surface.mjs','desktop-document-reopen-report.json',1,['verify'],true);
   pendingVerification=[];
   await script('check-playback.mjs','desktop-playback-report.json',4);
   await script('check-spell-ui.mjs','desktop-spell-ui-report.json',4);
-  if(ids.includes('D-SB-TAB-RENAME')){pendingVerification=['D-SB-TAB-RENAME'];await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file));await script('check-spell-ui.mjs','desktop-spell-ui-reopen-report.json',1,['verify'],true);pendingVerification=[];}
+  if(ids.includes('D-SB-TAB-RENAME')){pendingVerification=['D-SB-TAB-RENAME'];await timed('close',async()=>{await stopDesktop(file);await live.closed;});live=await timed('reopen',async()=>launchDesktop(await readJSON(file)));await script('check-spell-ui.mjs','desktop-spell-ui-reopen-report.json',1,['verify'],true);pendingVerification=[];}
   if(ids.includes('D-MEDIA-RELINK')){const relinkPrep=await command(process.execPath,[path.join(here,'check-relink.mjs'),file,'prepare'],{timeout:120000});
   await writeJSON(path.join(session.root,'relink-prepare-execution.json'),relinkPrep);assert(relinkPrep.code===0,'Local relink fixture preparation failed');
-  pendingVerification=['D-MEDIA-RELINK'];await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file),{missingMediaFixture:path.join(session.root,'relink-prepared.json')});
+  pendingVerification=['D-MEDIA-RELINK'];await timed('close',async()=>{await stopDesktop(file);await live.closed;});live=await timed('reopen',async()=>launchDesktop(await readJSON(file),{missingMediaFixture:path.join(session.root,'relink-prepared.json')}));
   await script('check-relink.mjs','desktop-relink-report.json',1);
-  await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file));
+  await timed('close',async()=>{await stopDesktop(file);await live.closed;});live=await timed('reopen',async()=>launchDesktop(await readJSON(file)));
   await script('check-relink.mjs','desktop-relink-reopen-report.json',1,['verify'],true);pendingVerification=[];}
   await script('check-curves.mjs','desktop-curves-report.json',2);
   // Bin-duplication persistence can expose a display-name defect. Keep its
   // fixture changes after the established baseline checks to avoid cascading failures.
   await script('check-selection-bin.mjs','desktop-selection-bin-report.json',8);
   pendingVerification=ids.filter(id=>['D-BIN-RENAME','D-BIN-DUPLICATE','D-BIN-DELETE','D-BIN-MGFX'].includes(id));
-  if(pendingVerification.length){await stopDesktop(file);await live.closed;live=await launchDesktop(await readJSON(file));await script('check-selection-bin.mjs','desktop-bin-reopen-report.json',4,['verify'],true);pendingVerification=[];}
+  if(pendingVerification.length){await timed('close',async()=>{await stopDesktop(file);await live.closed;});live=await timed('reopen',async()=>launchDesktop(await readJSON(file)));await script('check-selection-bin.mjs','desktop-bin-reopen-report.json',4,['verify'],true);pendingVerification=[];}
   if(ids.includes('S-EXPORT-UNSET-RATE')){await beginCheck(file,'S-EXPORT-UNSET-RATE');const holder={live};let value;try{value=await unsetRateExport(file,holder);}finally{live=holder.live;}report.results.push(value);await endCheck(file,value);await onResult(value,session.root);}
 }catch(e){report.error=e.message;report.failureEvidence=e.evidence||await captureDesktopFailure(file,e,currentCheck||'group');if(currentCheck){const value={id:currentCheck,status:failureStatus(e),error:e.message,evidence:report.failureEvidence};report.results.push(value);await endCheck(file,value);}
   for(const id of pendingVerification){const prior=report.results.find(r=>r.id===id);if(prior?.status==='Pass'){prior.initial={status:prior.status,evidence:prior.evidence};prior.status=e.status==='Unknown'?'Unknown':'Blocked';prior.error='Persistence verification did not complete: '+e.message;prior.evidence={...prior.evidence,...report.failureEvidence};await endCheck(file,prior);}}
 }
 finally{
-  if(live&&live.child.exitCode===null&&!live.child.signalCode)try{await stopDesktop(file);await live.closed;}catch(e){try{await terminateOwnedDesktop(file,live);report.cleanupRecovery={error:e.message,terminated:true};}catch(cleanup){report.cleanupError=cleanup.message;}}
+  const cleanupStarted=performance.now(),cleanupAt=new Date().toISOString();
+  if(live&&live.child.exitCode===null&&!live.child.signalCode)try{await timed('close',async()=>{await stopDesktop(file);await live.closed;});}catch(e){try{await terminateOwnedDesktop(file,live);report.cleanupRecovery={error:e.message,terminated:true};}catch(cleanup){report.cleanupError=cleanup.message;}}
+  timings.push({phase:'cleanup',startedAt:cleanupAt,finishedAt:new Date().toISOString(),durationMs:performance.now()-cleanupStarted,status:report.cleanupError?'Failed':'Completed'});
   let events=[];try{events=(await readFile(path.join(session.root,'check-events.jsonl'),'utf8')).split('\n').filter(Boolean).map(JSON.parse);}catch(e){if(e.code!=='ENOENT')throw e;}
   report.results.push(...missingDesktopResults(course.cases,report.results,events,report.error,report.failureEvidence));
   report.qtCocoa=(await readJSON(file)).qtCocoa;report.finishedAt=new Date().toISOString();report.status=!report.error&&!report.cleanupError&&report.results.length===total&&report.results.every(r=>r.status==='Pass')?'Pass':'Fail';
@@ -148,7 +152,7 @@ export async function executeDesktop(prepared={}, {onResult=async()=>{},isCancel
     try{
       const result=await executeGroup({...prepared,runtime,directory:owned,ids:[...new Set(['D-CLI-01',...group.ids])]},{isCancelled,signal,onSession:s=>{session=s;},onResult:async()=>{}});
       clearInterval(timer);await poll();sessionFile=result.sessionFile;report.guiHash=result.report.guiHash;report.cliHash=result.report.cliHash;
-      report.groups.push({name:group.name,root:result.root,sessionFile,status:result.report.status,error:result.report.error||null,cleanupRecovery:result.report.cleanupRecovery||null,startedAt:groupStartedAt,preparedAt:result.report.startedAt||null,finishedAt:result.report.finishedAt||new Date().toISOString(),durationMs:Date.now()-Date.parse(groupStartedAt)});
+      report.groups.push({name:group.name,root:result.root,sessionFile,status:result.report.status,error:result.report.error||null,cleanupRecovery:result.report.cleanupRecovery||null,timings:result.report.timings||[],startedAt:groupStartedAt,preparedAt:result.report.startedAt||null,finishedAt:result.report.finishedAt||new Date().toISOString(),durationMs:Date.now()-Date.parse(groupStartedAt)});
       for(const id of group.ids){const value=result.report.results.find(r=>r.id===id)||{id,status:'Blocked',error:'Group did not retain this observation.'};if(value.notExecuted&&group.recoverUnstarted&&!group.recovery&&!isCancelled()&&!result.report.cleanupError){
         // Only untouched checks may start in a fresh session. Never replay an attempted mutation.
         groups.push({name:group.name+'#unstarted-'+id,ids:[id],recovery:true});continue;

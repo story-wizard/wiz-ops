@@ -8,9 +8,27 @@ import {digest} from '../runner/files.mjs';
 import {resolveSelection} from '../runner/catalog.mjs';
 import {prepareDelivery,inspectDelivery} from '../runner/delivery.mjs';
 import {slackSender} from '../runner/slack-delivery.mjs';
+import http from 'node:http';
+import {main as controllerCLI} from '../scripts/controller.mjs';
+import {ROOT,fingerprint} from '../runner/files.mjs';
 const profile={runnerHash:'a'.repeat(64)},selection=resolveSelection({},{checkIds:['A-CLI-01']}),request={requestId:'manual-1',build:{kind:'app',value:'/Selected/Wizard.app'},selection:{checkIds:['A-CLI-01']},operator:'Test',timeoutMinutes:60};
 const idle={sourceMatches:true,sourceHash:profile.runnerHash,ownedSessions:[],activeDesktopJobs:[],preparing:false,active:null},route={workspace:'story-company',userId:'U0BDBFNU0G1',user:'U0BDBFNU0G1',type:'im',channelId:'DTEST123'};
 async function fixture(fn){const root=await mkdtemp('/private/tmp/athanor-controller-'),store=new JobStore(root);try{await fn(store,root);}finally{store.close();await rm(root,{recursive:true,force:true});}}
+
+test('one-shot CLI awaits progression and releases its lease before closing the database',async()=>fixture(async(store,root)=>{
+ let mutations=0;const server=http.createServer((req,res)=>{if(req.method!=='GET')mutations++;res.setHeader('Content-Type','application/json');res.end(JSON.stringify(state));});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ const pinned={format:'athanor-worker/v1',name:'Synthetic worker',dataDir:root,port:server.address().port,sourceHash:(await fingerprint(ROOT)).sha256,runnerHash:profile.runnerHash},state={...idle,name:pinned.name,dataDir:root,fullSourceHash:pinned.sourceHash,active:{run_id:'another-owner'}};
+ const profileFile=path.join(root,'worker.json'),configFile=path.join(root,'controller.json');await writeFile(profileFile,JSON.stringify(pinned));await writeFile(configFile,JSON.stringify({format:'athanor-controller/v1',profileFile,profileHash:digest({...pinned,server:'http://127.0.0.1:'+pinned.port}),delivery:'local',route:null}));
+ const job=store.submit(request,selection,digest({...pinned,server:'http://127.0.0.1:'+pinned.port}));store.update(job.id,{state:'Imported',imported:{app:request.build.value}});
+ try{const result=await controllerCLI(['tick','--config',configFile]);assert.equal(result.state,'Waiting');assert.equal(store.get(job.id).state,'Imported');assert.equal(mutations,0);const lease=store.claim();assert.ok(lease);store.release(lease);
+  const tick=JobController.prototype.tick;try{
+   JobController.prototype.tick=async()=>{throw Error('Synthetic unexpected progression failure');};
+   let failure;try{await controllerCLI(['tick','--config',configFile]);}catch(e){failure=e;}
+   assert.match(failure.message,/Synthetic unexpected/);const receipt=JSON.parse(await readFile(failure.receipt));assert.equal(receipt.command,'tick');assert.equal(receipt.sourceHash,pinned.sourceHash);assert.equal(receipt.jobs[0].state,'Imported');assert.equal(mutations,0);
+  }finally{JobController.prototype.tick=tick;}
+ }finally{await new Promise(resolve=>server.close(resolve));}
+}));
 // These tests exercise durable records and observable dispatch counts, not a second implementation of the stage machine.
 test('duplicate requests retain one job, reject changed inputs and survive reopening',async()=>fixture(async(store,root)=>{
  const first=store.submit(request,selection,digest(profile));assert.equal(store.submit({...request},selection,digest(profile)).id,first.id);assert.equal(store.list().length,1);

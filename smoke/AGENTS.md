@@ -52,7 +52,7 @@ Use Find a build in New run, or the `builds` / `build` agent commands. Read `doc
 
 Read `docs/demo-guide.md` for the short team walkthrough and `examples/agent-onboarding.txt` for the complete setup prompt.
 
-Read `docs/changes-2026-10-02.md` for the current update. Use the maintained course and catalog as the authority for counts; historical pilot sections describe earlier tooling.
+Read `docs/changes-2026-10-11.md` for the current update and `docs/changes-2026-10-02.md` for the earlier release. Use the maintained course and catalog as the authority for counts; historical pilot sections describe earlier tooling.
 
 ## Start from a checkout or bundle
 
@@ -155,6 +155,26 @@ The default `smoke-full` revision 10 excludes `S-PF-IDLE`. It adds ten qualifica
 Read [the October 4 investigation update](docs/changes-2026-10-04-investigations.md) for the current local slice.
 
 Read `docs/investigations.md` after a failing course. Open the exported `index.html` for human review and `review-data.json` for process-bound captures and attachment roles; `drafts/` holds individual bug text. Use frozen procedures when available, preserve the legacy method fallback, and never invent missing steps. Exported review is read-only; record a person's decision in the live investigation. Results → Investigate packages the first report for agent triage, groups supported duplicates, creates a diagnostic repro selection and retains linked attempts. Classify harness/environment/app/unresolved with evidence, preserve original outcomes, and log actions with revision-checked updates. Report a Bug drafts require a person to review and confirm before they submit. Use `investigation reporter --id ID --case CHECK_ID --server URL` for a verified evidence parcel and the draft-only GUI prefill prompt. Read `docs/bug-reporter-interop.md`; prefill requires separate GUI authorization and an owned session on the same build/project. Do not inject parcels into Wizard's pending-report store or claim attachments were delivered by field prefill. The local workflow never submits externally or creates Jira issues. Investigation diagnostics add qualified captures; do not claim app tracing/profiling is enabled without a collector.
+
+The handoff-hardening slice keeps changed `D-BIN-MGFX` available through
+`smoke-full` revision 11 as a qualification candidate. Its original accepted hash
+remains in the acceptance record; do not replace it without lead review. Other
+accepted checks and the full course membership remain unchanged.
+
+Start investigation review with the case `conclusion`: recorded expected/actual
+values, stopped phase, last completed phase and unreached work. Follow its
+checksum-bound assertion proof before opening the whole journal. Return a cause
+hypothesis with evidence citations, limits and the next useful inspection.
+Use `checks().assertion` when adding a decisive comparison; keep its values within
+16 KiB and declare the proof in the check's evidence specification. Historical
+records keep their missing-data limits. See `docs/test-evidence.md`.
+
+Keep named test steps inside the check callback. Known terminal results close
+their action scope; later driver Save, Quit and reopening remain in the journals
+without inheriting the check. Unknown retains its identity for reconciliation.
+Read-only diagnostics cannot establish that an untouched phase ran, and an
+unbound mutation cannot be declared Not run. Historical exports remain unchanged.
+The planned follow-ups from the MGFX validation are in `docs/investigations.md`.
 
 Use `investigation task --id ID --task triage|repair|repro|review --case CHECK_ID --server URL` for a scoped agent handoff, and `investigation evidence` for case-owned evidence. Return triage proposals for `investigation proposal` preview before applying reviewed updates. The investigation page has Brief, Evidence, Attempts and Bug draft tabs; use recorded outcomes and frozen procedures, not operation exit alone. Draft edits clear prior confirmation and remain bound to the latest attempt. Managed `investigation prepare/start` retain admission IDs and link completed repros on inspection; they reuse the normal execution guards. Preparation can launch Wizard for attachment verification. Obtain desktop availability first. Inspect a retained request after a lost response, never replay unknown app mutations, and never bypass an active foreground lease. See the investigation guide for JSON edit and review contracts.
 
@@ -259,7 +279,7 @@ measurements. See the focus/recovery section of `docs/agent-sequences.md`.
 
 ### Grouped course execution
 
-New selections freeze `desktopMode: "grouped"` by default. `smoke-full` revision 10
+New selections freeze `desktopMode: "grouped"` by default. `smoke-full`
 runs compatible driver families in one owned session; every check keeps its own
 authored fixture, assertions and captures. Lifecycle, live curve sampling, external disk reload,
 preference-changing gestures, long history and import/live-indexing probes remain
@@ -324,7 +344,7 @@ input. Close idle clients with stdin EOF after final replies and reconciliation;
 verify their exit separately from Wizard cleanup. No summary removes a frozen
 assertion, capture or Unknown stop.
 
-The full course revision 10 includes unaccepted candidates for hot local-media loss/recovery, unmanaged raw document persistence and native animated split-tail timing. Read docs/functional-cohort.md for exact routes, fixtures, evidence and qualification limits. No new lead acceptance is implied.
+The full course includes unaccepted candidates for hot local-media loss/recovery, unmanaged raw document persistence and native animated split-tail timing. Read docs/functional-cohort.md for exact routes, fixtures, evidence and qualification limits. No new lead acceptance is implied.
 
 The macOS regression course revision 2 adds transcript scroll-away/gesture-anchor,
 custom-model popup and shared pipeline-state candidates. Read
@@ -334,3 +354,11 @@ supporting package and an explicitly suppressed launch; older packages retain
 Blocked before selection input. Do not enable that fixture flag for ordinary
 Oz execution. Combined nightly preparation uses `examples/nightly/selection.json`;
 retain the plan's course revisions and execution mode when preparing its run.
+
+For investigation review, start with the portable `tasks/TASK-first-read.json`
+or managed job `first-read.json`, then open the checksum-bound proof when needed.
+Keep authored invariant/next-question sentences separate from cause hypotheses.
+Use `scripts/review-cost.mjs` for headless packet and session measurements; record
+reviewer correctness and elapsed time explicitly rather than treating parsing
+speed or packet size as agent speed. Changed trim/scope definitions retain their
+historical acceptance/mapping pins and need lead review.

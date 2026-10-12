@@ -17,6 +17,8 @@ export function evidenceSpec(check){
  return spec;
 }
 export function testSpecification(check){
+ const steps=(check.steps||[]).filter(s=>s&&typeof s==='object'&&s.id&&s.title),seen=new Set();
+ for(const step of steps){if(seen.has(step.id)||step.requires!==undefined&&(!Array.isArray(step.requires)||new Set(step.requires).size!==step.requires.length||step.requires.some(id=>!seen.has(id))))throw Error('Step dependencies must name unique earlier steps in '+check.id);seen.add(step.id);}
  return {id:check.id,title:check.title,definitionHash:check.definitionHash||digest(check),method:methods[check.id]||check.scope||check.expected,expected:check.expected,steps:(check.steps||[]).filter(s=>s&&typeof s==='object'&&s.id&&s.title),procedure:(check.steps||procedures[check.id]||[]).filter(s=>typeof s==='string'),evidence:evidenceSpec(check),...(check.proof?{proof:volumeContract(check)}:{})};
 }
 export function candidateChecks(){return ['desktop/physical-course.json','desktop/physical-editor-course.json'].flatMap(file=>JSON.parse(readFileSync(path.join(ROOT,file),'utf8')).cases.filter(c=>!rawChecks.some(r=>r.id===c.id)).map(c=>({...c,definitionHash:digest(c),accepted:false,candidateCourse:file.includes('physical-editor')?'editor':'spellbook'})));}
@@ -44,13 +46,35 @@ export function actionHistory(operations=[],native=[],input=[]){
  });
 }
 export function stepHistory(spec,events=[],actions=[]){
- return (spec.steps||[]).map(step=>{
+ const history=(spec.steps||[]).map(step=>{
   const records=events.filter(e=>e.stepId===step.id),terminal=records.at(-1)?.status==='Running'?null:records.findLast(e=>e.status!=='Running'),start=records.find(e=>e.status==='Running'),observed=actions.filter(a=>a.stepId===step.id);
-  return {...step,status:terminal?.status||(start?'Unknown':observed.length?'Observed':actions.some(a=>!a.stepId)?'No step record':'Not run'),startedAt:start?.at||observed[0]?.at||null,finishedAt:terminal?.at||null,observation:terminal?.observation||'',actionCount:observed.length};
+    return {...step,status:terminal?.status||(start?'Unknown':observed.length?'Observed':actions.some(a=>!a.stepId&&!['diagnostic.capture','project.get_name','timeline.inspect','media.list_assets','inspect','screenshot'].includes(a.operation))?'No step record':'Not run'),startedAt:start?.at||observed[0]?.at||null,finishedAt:terminal?.at||null,observation:terminal?.observation||'',actionCount:observed.length,...(terminal?.assertion?{assertion:terminal.assertion}:{})};
  });
+ const stopped=history.find(s=>['Fail','Blocked','Unknown'].includes(s.status));
+ return history.map((step,index)=>{
+  if(!['Not run','Blocked'].includes(step.status))return step;
+  const unmet=(step.requires||[]).map(id=>history.find(s=>s.id===id)).filter(s=>s&&s.status!=='Completed');
+  const reason=unmet.length?(step.status==='Blocked'&&step.observation?step.observation+' — ':'')+'Requires '+unmet.map(s=>s.title+' ('+s.status+')').join('; '):step.status==='Blocked'?step.observation:stopped&&index>history.indexOf(stopped)?(stopped.status==='Unknown'?'Input outcome requires reconciliation at ':'Check stopped at ')+stopped.title+' ('+stopped.status+'). No execution receipt for this phase.':'No execution receipt for this phase.';
+  return {...step,reason,unmetPrerequisites:unmet.map(s=>({id:s.id,title:s.title,status:s.status}))};
+ });
+}
+export function caseConclusion(item){
+ const steps=item.steps||[],failedIndex=steps.findIndex(s=>['Fail','Blocked','Unknown'].includes(s.status)),failed=steps[failedIndex],completed=(failedIndex<0?steps:steps.slice(0,failedIndex)).filter(s=>s.status==='Completed');
+ return {expected:item.expected,observed:item.observation,failedStep:failed?{id:failed.id,title:failed.title,phase:failed.phase,status:failed.status,observation:failed.observation}:null,
+  lastCompletedStep:completed.at(-1)?{id:completed.at(-1).id,title:completed.at(-1).title}:null,
+  assertions:steps.filter(s=>s.assertion).map(s=>({stepId:s.id,title:s.title,status:s.status,...s.assertion})),
+  notRun:steps.filter(s=>s.status==='Not run').map(s=>({id:s.id,title:s.title,phase:s.phase,reason:s.reason||null})),
+  blocked:steps.filter(s=>s.status==='Blocked').map(s=>({id:s.id,title:s.title,phase:s.phase,reason:s.reason||s.observation})),
+  stepEvidence:steps.length?'Recorded phases':'No authored phase record retained'};
+}
+export function compactConclusion(summary){
+ if(!summary)return null;
+ return {...summary,assertions:(summary.assertions||[]).map(a=>({stepId:a.stepId,title:a.title,status:a.status,expected:a.expected,actual:a.actual,artifact:a.artifact||null,...(a.invariant?{invariant:a.invariant}:{}),...(a.question?{question:a.question}:{}),...(a.failureReason?{failureReason:a.failureReason}:{}),...(a.evidenceStatus?{evidenceStatus:a.evidenceStatus}:{})})),
+  unansweredQuestion:(summary.assertions||[]).find(a=>a.stepId===summary.failedStep?.id)?.question|| (summary.failedStep?.status==='Unknown'?'Did the input occur? Reconcile the retained receipt before any retry.':'What explains the recorded outcome, and which unreached behavior still needs a repro?')};
 }
 export function evidenceCaption(file){
  const name=path.basename(file).replace(/^computer-use-[a-f0-9]{12}-/,'');
+ if(/^assertion-/.test(name))return 'Expected and observed values used by the assertion, with retained source-state excerpts.';
  if(/^performance-/.test(name))return 'Check duration, collection overhead and process-bound CPU/RSS observations.';
  if(/^P-RG-.*-before\./.test(name))return 'Render Graph before the tested action.';
  if(/^P-RG-.*-after\./.test(name))return 'Render Graph after the tested action.';

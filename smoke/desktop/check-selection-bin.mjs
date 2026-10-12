@@ -1,12 +1,13 @@
 import path from 'node:path';
-import {readdir} from 'node:fs/promises';
+import {readdir,readFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import {checks,gapFixture} from './check-support.mjs';
 import {createLocalGraphic} from './generated-fixture.mjs';
 import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 import {assert,same,near,clips,snapshotState,pause,OutcomeError} from '../runner/engine.mjs';
 import {readPPM,pixelDifference,visibleImage} from '../runner/pixels.mjs';
 const verify=process.argv[3]==='verify';
-const {s,n,c,ui,until,check,activate,mediaItem,mediaMenu,openTimeline,finish}=await checks(process.argv[2],verify?'desktop-bin-reopen-report.json':'desktop-selection-bin-report.json');
+const {s,n,c,ui,until,check,step,assertion,activate,mediaItem,mediaMenu,openTimeline,finish}=await checks(process.argv[2],verify?'desktop-bin-reopen-report.json':'desktop-selection-bin-report.json');
 const inspect=timeline_id=>c('timeline.inspect',{timeline_id});
 const assets=async()=>(await c('media.list_assets')).assets;
 const byId=async id=>(await assets()).find(a=>a.asset_id===id);
@@ -27,14 +28,22 @@ async function header(kind,button){
 }
 async function activeOnDisk(id,track){await c('project.checkpoint');const saved=await readJSON(path.join(s.bundle,'timelines',id,'timeline.otio'));const row=saved.tracks.children.find(t=>t.metadata.wiz.track_id===track);assert(row,'Track missing from saved fixture');return row.metadata.wiz.active!==false;}
 async function rename(name,next){await mediaMenu(name,'Rename...');const e=await until(async()=>(await ui()).widgets.find(w=>['QLineEdit','QExpandingLineEdit'].includes(w.class)&&w.text===name));await n('text',{target:e.id,text:next});await key(e,'Return');await mediaItem(next);}
-async function generationIn(id){await c('project.checkpoint');const t=await readJSON(path.join(s.bundle,'timelines',id,'timeline.otio'));const ids=t.tracks.children.flatMap(t=>t.children||[]).map(x=>x.metadata?.wiz?.generator?.generation_id).filter(Boolean);assert(ids.length===1,'Expected one saved generator in the copied compound');return ids[0];}
+async function generationIn(id){
+ const file=path.join(s.bundle,'timelines',id,'timeline.otio'),bytes=await readFile(file),t=JSON.parse(bytes);
+ const refs=t.tracks.children.flatMap(t=>t.children||[]).filter(x=>x.metadata?.wiz?.generator?.generation_id).map(x=>({clipId:x.metadata.wiz.clip_id||null,generationId:x.metadata.wiz.generator.generation_id}));
+ assert(refs.length===1,'Expected one saved generator in the compound');
+ return {generationId:refs[0].generationId,saved:{timelineId:id,name:t.name,source:path.relative(s.bundle,file),sha256:createHash('sha256').update(bytes).digest('hex'),generationRefs:refs}};
+}
 if(verify){
   const expected=await readJSON(expectedFile);await writeJSON(path.join(s.root,'bin-reopen-observed.json'),{ui:await ui(),assets:await assets()});assert(expected.pid!==s.pid&&s.generation>expected.generation,'Bin persistence must use a fresh process');
   for(const id of binIds)await check(id,async()=>{
+    const verifySaved=async()=>{
     const e=expected.cases[id];if(!e)throw new OutcomeError('Initial bin check did not establish a persistence fixture','Blocked');
     for(const a of e.assets||[]){same(await byId(a.asset_id),a,'Reopened asset identity/name/path');const name=a.display_name||path.basename(a.local_path);try{await mediaItem(name);}catch{const names=(await ui()).widgets.filter(w=>w.class==='QTreeView').flatMap(w=>w.model.map(r=>r[0]));throw new Error(`Reopened bin is missing ${name}; displayed names: ${JSON.stringify(names)}`);}assert(await sha(a.local_path)===e.sourceHash,'Reopened source bytes changed');}
     if(e.graphic){for(const g of e.graphic.generations)same((await c('generate.inspect',{target:{kind:'generation',generation_id:g.id}})).parameters,g.parameters,'Reopened generated parameters');const actual=await frame(e.graphic.timeline,'reopened');assert(pixelDifference(await readPPM(e.graphic.reference),actual.image)<=1,'Reopened copied graphic pixels changed');}
     return {freshPid:s.pid,generation:s.generation,restored:true};
+    };
+    return id==='D-BIN-MGFX'?step({id:'reopen',title:'Reopen in a fresh process and verify generated state and pixels',phase:'verify'},verifySaved):verifySaved();
   });finish();
 }else{
   await check('D-LINKED-SELECTION',async()=>{
@@ -83,10 +92,35 @@ if(verify){
     same(await byId(original.asset_id),original,'Delete undo restores original asset');retained.cases['D-BIN-DELETE']={assets:[original],sourceHash};return {assetId:original.asset_id,sourceHash,placedClipsIntact:true,pixelDelta:changedPixels,undoRestored:true};
   });
   await check('D-BIN-MGFX',async()=>{
-    const g=await createLocalGraphic(c,s,{groupLabel:'Title',label:'Bin graphic'});
-    const sourceTimeline=g.placement.nestedTimelineId||g.timeline,sourceName=(await inspect(sourceTimeline)).timeline.name;
-    const sourceId=g.generation.generation_id,source=await c('generate.inspect',{target:{kind:'generation',generation_id:sourceId}}),reference=await frame(g.timeline,'bin-mgfx-original');
-    await mediaMenu(sourceName,'Duplicate');await mediaItem(sourceName+' copy');await c('project.checkpoint');const rows=[];for(const id of await readdir(path.join(s.bundle,'timelines'))){if(!/^(cmp|tl)_[a-z0-9-]+$/.test(id))continue;const t=await readJSON(path.join(s.bundle,'timelines',id,'timeline.otio'));if(t.name===sourceName+' copy')rows.push({timeline_id:id,name:t.name});}assert(rows.length===1,'Expected one copied graphic timeline');const copy=rows[0];const copyId=await generationIn(copy.timeline_id);assert(copyId!==sourceId,'Bin duplicate shares source generation');const target={kind:'generation',generation_id:copyId},before=await c('generate.inspect',{target});assert(pixelDifference(reference.image,(await frame(copy.timeline_id,'bin-mgfx-copy')).image)<=1,'Initial copied image differs');await c('generate.set_params',{target,expected_owner_revision:before.owner_revision,expected_params_revision:before.params_rev,values:{'title.text':'INDEPENDENT BIN DUPLICATE 123456789'},reset:[]});same((await c('generate.inspect',{target:{kind:'generation',generation_id:sourceId}})).parameters,source.parameters,'Copy edit leaves original parameters');assert(pixelDifference(reference.image,(await frame(g.timeline,'bin-mgfx-preserved')).image)<=1,'Copy edit changed original image');const edited=await frame(copy.timeline_id,'bin-mgfx-edited');assert(pixelDifference(reference.image,edited.image)>.01,'Copied text did not change pixels');retained.cases['D-BIN-MGFX']={graphic:{timeline:copy.timeline_id,reference:edited.file,generations:[{id:sourceId,parameters:source.parameters},{id:copyId,parameters:(await c('generate.inspect',{target})).parameters}]}};return {source:sourceId,copy:copyId,placementKind:g.placement.kind,sourceTimeline,sourceName,independentValuesAndPixels:true,scope:'Actual bin context-menu duplication; omitted-group-label failure is retained separately in service course'};
+    const g=await step({id:'prepare-graphic',title:'Create a local graphic and capture the original',phase:'prepare'},async()=>{
+      const graphic=await createLocalGraphic(c,s,{groupLabel:'Title',label:'Bin graphic'});
+      const sourceTimeline=graphic.placement.nestedTimelineId||graphic.timeline,sourceName=(await inspect(sourceTimeline)).timeline.name,sourceId=graphic.generation.generation_id;
+      return {...graphic,sourceTimeline,sourceName,sourceId,source:await c('generate.inspect',{target:{kind:'generation',generation_id:sourceId}}),reference:await frame(graphic.timeline,'bin-mgfx-original')};
+    });
+    await step({id:'duplicate-bin',title:'Duplicate the graphic through the Media Bin menu',phase:'execute'},async()=>{await mediaMenu(g.sourceName,'Duplicate');await mediaItem(g.sourceName+' copy');});
+    const identity=await step({id:'read-identity',title:'Save and read the original and copied generation references',phase:'verify'},async()=>{
+      await c('project.checkpoint');const rows=[];
+      for(const id of await readdir(path.join(s.bundle,'timelines'))){if(!/^(cmp|tl)_[a-z0-9-]+$/.test(id))continue;const t=await readJSON(path.join(s.bundle,'timelines',id,'timeline.otio'));if(t.name===g.sourceName+' copy')rows.push(id);}
+      assert(rows.length===1,'Expected one copied graphic timeline');
+      return {copyTimeline:rows[0],original:await generationIn(g.sourceTimeline),copy:await generationIn(rows[0])};
+    });
+    const proof=await assertion({id:'generation-identity',title:'Verify independent generation state',phase:'verify'},
+      {invariant:'Bin Duplicate must create a separate generation so edits to the copy cannot mutate the original.',question:'Which duplication path explains the shared saved generation reference?',expected:{originalGeneration:g.sourceId,copyMustDifferFrom:g.sourceId},actual:{originalGeneration:identity.original.generationId,copyGeneration:identity.copy.generationId},sources:[identity.original.saved,identity.copy.saved]},
+      identity.original.generationId===g.sourceId&&identity.copy.generationId!==g.sourceId);
+    const copyId=identity.copy.generationId,target={kind:'generation',generation_id:copyId};
+    await step({id:'edit-copy',title:'Verify the initial copy image, then change only the copied text',phase:'execute'},async()=>{
+      const before=await c('generate.inspect',{target});assert(pixelDifference(g.reference.image,(await frame(identity.copyTimeline,'bin-mgfx-copy')).image)<=1,'Initial copied image differs');
+      await c('generate.set_params',{target,expected_owner_revision:before.owner_revision,expected_params_revision:before.params_rev,values:{'title.text':'INDEPENDENT BIN DUPLICATE 123456789'},reset:[]});
+    });
+    await step({id:'verify-original',title:'Check that original parameters and pixels remain unchanged',phase:'verify'},async()=>{
+      same((await c('generate.inspect',{target:{kind:'generation',generation_id:g.sourceId}})).parameters,g.source.parameters,'Copy edit leaves original parameters');
+      assert(pixelDifference(g.reference.image,(await frame(g.timeline,'bin-mgfx-preserved')).image)<=1,'Copy edit changed original image');
+    });
+    await step({id:'verify-copy',title:'Check changed copy pixels and retain the reopen fixture',phase:'verify'},async()=>{
+      const edited=await frame(identity.copyTimeline,'bin-mgfx-edited');assert(pixelDifference(g.reference.image,edited.image)>.01,'Copied text did not change pixels');
+      retained.cases['D-BIN-MGFX']={graphic:{timeline:identity.copyTimeline,reference:edited.file,generations:[{id:g.sourceId,parameters:g.source.parameters},{id:copyId,parameters:(await c('generate.inspect',{target})).parameters}]}};
+    });
+    return {source:g.sourceId,copy:copyId,artifacts:[proof.artifact],placementKind:g.placement.kind,sourceTimeline:g.sourceTimeline,sourceName:g.sourceName,independentValuesAndPixels:true,scope:'Actual bin context-menu duplication; omitted-group-label failure is retained separately in service course'};
   });
   if(main)await openTimeline(main.timeline.name,main.tracks.find(t=>t.address==='V1')?.track_id);await c('project.checkpoint');await writeJSON(expectedFile,retained);finish();
 }

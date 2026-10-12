@@ -16,7 +16,7 @@ For agents driving Wizard with mouse and keyboard, use the [computer-use toolkit
 
 For managed Macs, use the [worker guide](docs/workers.md): pinned source profiles, shared admission, nightly assertion reports and updates. Developer clones use the ordinary local launcher without a worker profile or scheduler.
 
-Read the [October 2 changes](docs/changes-2026-10-02.md) for the expanded mixed course, physical checks and composable authoring guidance.
+Read the [October 11 changes](docs/changes-2026-10-11.md) for investigation packets, assertion evidence and cancellation cleanup, and the [October 2 changes](docs/changes-2026-10-02.md) for the expanded mixed course and composable authoring guidance.
 
 For a user-supplied `.wiz` and representative media, start with [Golden Project intake](docs/golden-project-intake.md). The service-free CLI inventories saved metadata and finds candidates for semantic media roles. Execution on populated projects needs fixture and test qualification; the maintained course continues to use Fresh.
 

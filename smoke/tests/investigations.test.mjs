@@ -18,6 +18,34 @@ async function fixture(data,{status='Fail',packageHash='a'.repeat(64),diagnostic
  for(const [file,value] of Object.entries({'plan.json':plan,'course.json':recipe,'report.json':{runId:id,state:run.execution.state,planHash:plan.planHash,results:results.map(r=>({id:r.test_id,status:r.status,note:r.note}))},'media/manifest.json':fixtures,'scope.json':{sourceRows:[]},'execution-context.json':{runnerHash:plan.runnerHash}}))await writeJSON(path.join(root,file),value);
  await writeFile(path.join(root,'operations.jsonl'),recipe.cases.map(c=>JSON.stringify({caseId:c.id,operation:'render.frame'})).join('\n')+'\n');return run;
 }
+
+test('first-run diagnostic profile survives creation and legacy records recover it from frozen selection',async()=>{
+ const data=dataDirectory(await mkdtemp(path.join(tmpdir(),'athanor-baseline-profile-'))),db=new DatabaseSync(':memory:');initializeInvestigations(db);
+ try{
+  const run=await fixture(data,{diagnostics:true}),r=await createInvestigation(db,run,data,{actor:'Test'});
+  assert.equal(r.baseline.diagnostics,'investigation');assert.equal((await investigationEvidence(r,'A-CO-01',data)).attempts[0].diagnostics,'investigation');assert.equal((await investigationEvidence(r,'A-CO-01',data)).attempts[0].diagnosticComplete,true);
+  const legacy=structuredClone(r);delete legacy.baseline.diagnostics;assert.equal((await investigationEvidence(legacy,'A-CO-01',data)).attempts[0].diagnostics,'investigation');assert.equal(bugDraft(r,r.cases[0]).ready,false,'Original diagnostics do not replace a linked repro');
+ }finally{db.close();await rm(data,{recursive:true,force:true});}
+});
+
+test('assertion values and unreached phases reach the task, reviewer and portable export without a project',async()=>{
+ const data=dataDirectory(await mkdtemp(path.join(tmpdir(),'athanor-decisive-export-'))),db=new DatabaseSync(':memory:');initializeInvestigations(db);
+ try{
+  const steps=[{id:'duplicate',title:'Duplicate through bin menu',phase:'execute'},{id:'identity',title:'Independent generation',phase:'verify'},{id:'edit',title:'Edit copy',phase:'execute'}],run=await fixture(data,{steps});
+  await writeFile(path.join(run.execution.artifact_root,'operations.jsonl'),JSON.stringify({caseId:'A-CO-01',stepId:'duplicate',operation:'render.frame'})+'\n');
+  const root=run.execution.artifact_root,artifact=path.join(root,'generation-identity.json'),comparison={format:'athanor-assertion/v1',caseId:'A-CO-01',stepId:'identity',expected:{independent:true},actual:{source:'gen-one',copy:'gen-one'},artifact};
+  await writeJSON(artifact,comparison);await writeFile(path.join(root,'steps.jsonl'),[{caseId:'A-CO-01',stepId:'duplicate',status:'Completed'},{caseId:'A-CO-01',stepId:'identity',status:'Fail',observation:'Shared generation',assertion:comparison,evidence:{artifacts:[artifact]}}].map(JSON.stringify).join('\n')+'\n');
+  const r=await createInvestigation(db,run,data,{actor:'Test'}),packet=investigationTask(r,{task:'triage',caseId:'A-CO-01'}),summary=packet.cases[0].conclusion;
+  assert.equal(summary.failedStep.id,'identity');assert.deepEqual(summary.assertions[0].actual,comparison.actual);assert.equal(summary.notRun[0].id,'edit');assert.ok(summary.assertions[0].artifact.startsWith('computer-use-'));
+  const live=await investigationEvidence(r,'A-CO-01',data);assert.equal(live.attempts[0].conclusion.failedStep.id,'identity');
+  const pack=await exportInvestigation(db,r.id,data),exported=JSON.parse(await readFile(path.join(pack.path,'tasks/triage.json'))),review=JSON.parse(await readFile(path.join(pack.path,'review-data.json')))[0];
+  const firstRead=JSON.parse(await readFile(path.join(pack.path,'tasks/triage-first-read.json')));assert.deepEqual(firstRead,exported.firstRead);assert.deepEqual(firstRead.cases[0].conclusion.assertions[0].actual,comparison.actual);assert.equal(firstRead.cases[0].evidenceBase,'report/evidence/');assert.equal(exported.cases[0].conclusion.assertions[0].sources,undefined);assert.deepEqual(exported.cases[0].conclusion,summary);assert.deepEqual(review.conclusion.assertions[0].actual,comparison.actual);
+  const proof=await readInvestigationArtifact(r,'A-CO-01',run.id,summary.assertions[0].artifact,data);assert.deepEqual(JSON.parse(proof).actual,comparison.actual);
+  assert.match(await readFile(path.join(pack.path,'report/index.html'),'utf8'),/Failed assertion/);assert.match(await readFile(path.join(pack.path,'index.html'),'utf8'),/gen-one/);assert.equal(investigation(db,r.id).revision,1);assert.equal(r.cases[0].original.status,'Fail');
+  await writeJSON(artifact,{...comparison,actual:{copy:'changed'}});const {localReport}=await import('../reports.mjs'),changed=(await localReport(run,data)).report;
+  assert.equal(changed.cases[0].status,'Fail');assert.ok(changed.acceptance.gaps.some(g=>g.includes('assertion proof differs')));assert.equal(changed.cases[0].conclusion.assertions[0].artifact,null);assert.equal(changed.cases[0].conclusion.assertions[0].evidenceStatus,'Needs review');
+ }finally{db.close();await rm(data,{recursive:true,force:true});}
+});
 test('investigation preserves first results, groups hypotheses, links build-bound attempts and requires diagnostic human review',async()=>{
  const data=dataDirectory(await mkdtemp(path.join(tmpdir(),'athanor-investigation-'))),db=new DatabaseSync(':memory:');initializeInvestigations(db);initializeCourses(db);
  try{

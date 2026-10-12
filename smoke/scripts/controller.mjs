@@ -1,6 +1,7 @@
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {mkdir,writeFile} from 'node:fs/promises';
+import {randomUUID} from 'node:crypto';
 import {ROOT,readJSON,externalPath,digest} from '../runner/files.mjs';
 import {checkWorkerProfile,workerClient} from '../runner/worker.mjs';
 import {resolveSelection} from '../runner/catalog.mjs';
@@ -31,16 +32,16 @@ export async function main(args){
   const plist=`<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>Label</key><string>${escape(label)}</string><key>ProgramArguments</key><array>${[process.execPath,path.join(ROOT,'scripts/controller.mjs'),'serve','--config',file].map(v=>'<string>'+escape(v)+'</string>').join('')}</array><key>WorkingDirectory</key><string>${escape(ROOT)}</string><key>LimitLoadToSessionType</key><string>Aqua</string><key>RunAtLoad</key><true/><key>KeepAlive</key><true/><key>ThrottleInterval</key><integer>30</integer><key>EnvironmentVariables</key><dict><key>PATH</key><string>${escape(path.dirname(process.execPath))}:/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin</string></dict><key>StandardOutPath</key><string>${escape(path.join(profile.dataDir,'controller.stdout.log'))}</string><key>StandardErrorPath</key><string>${escape(path.join(profile.dataDir,'controller.stderr.log'))}</string></dict></plist>`;
   const out=externalPath(path.resolve(required('--out')));await writeFile(out,plist,{flag:'wx',mode:0o600});return {path:out,label,started:false,domain:'gui/'+process.getuid()};
  }
- const store=new JobStore(profile.dataDir),resolve=input=>{const db=connect(profile.dataDir);try{return resolveSelection(db,input);}finally{db.close();}};
+ const context={configPath:file,serviceUrl:profile.server},store=new JobStore(profile.dataDir),resolve=input=>{const db=connect(profile.dataDir);try{return resolveSelection(db,input);}finally{db.close();}};
  try{
-  if(command==='status'){if(flags['--id']){const job=store.get(flags['--id']);if(!job)throw Error('Job not found.');return {brief:await readJobBrief(store,job),job,events:store.events(job.id)};}return {schedule:store.schedule(),jobs:store.list().map(j=>({id:j.id,state:j.state,outcome:j.outcome||null,runId:j.runId||null,delivery:j.delivery||null,deadline:j.deadline,lastError:j.lastError||null,error:j.error||null,report:j.report||null,handoff:j.handoff?{state:j.handoff.state,id:j.handoff.id||null,error:j.handoff.error||null}:null}))};}
-  if(command==='brief'){const job=store.get(required('--id'));if(!job)throw Error('Job not found.');return readJobBrief(store,job);}
+  if(command==='status'){if(flags['--id']){const job=store.get(flags['--id']);if(!job)throw Error('Job not found.');return {brief:await readJobBrief(store,job,context),job,events:store.events(job.id)};}return {schedule:store.schedule(),jobs:store.list().map(j=>({id:j.id,state:j.state,outcome:j.outcome||null,runId:j.runId||null,delivery:j.delivery||null,deadline:j.deadline,lastError:j.lastError||null,error:j.error||null,report:j.report||null,handoff:j.handoff?{state:j.handoff.state,id:j.handoff.id||null,error:j.handoff.error||null}:null}))};}
+  if(command==='brief'){const job=store.get(required('--id'));if(!job)throw Error('Job not found.');return await readJobBrief(store,job,context);}
   if(command==='handoff'){
    const lease=store.claim();if(!lease)throw Error('Controller owns progression; wait before reconciling a handoff.');
    try{const job=store.get(required('--id'));if(!job?.report)throw Error('Retain the completed local report before reconciling its handoff.');
     if(job.profileHash!==config.profileHash)throw Error('Job belongs to another pinned worker profile. Preserve its source before reconciling.');
     const report=await readJobReport(store,job),{call}=await workerClient(config.profileFile);
-    return await retainInvestigationHandoff(store,job,report,call,{reconcile:true});
+    return await retainInvestigationHandoff(store,job,report,call,{...context,reconcile:true});
    }finally{store.release(lease);}
   }
   if(command==='list')return store.list();
@@ -51,8 +52,13 @@ export async function main(args){
   let send=null;
   if(config.delivery==='slack'){const sender=slackSender(config.route);await sender.verify();send=sender.send;}
   if(command==='enable'){if(store.schedule()?.profileHash!==digest(profile))throw Error('Save and review a schedule for this pinned worker before enabling.');return store.enable(true);}
-  const {call}=await workerClient(config.profileFile),controller=new JobController(store,{profile,call,route:config.route,send});
-  if(command==='tick')return controller.tick();
+  const {call}=await workerClient(config.profileFile),controller=new JobController(store,{profile,call,route:config.route,send,context});
+  if(command==='tick')try{return await controller.tick();}catch(e){
+   const directory=path.join(profile.dataDir,'controller-errors'),receipt=path.join(directory,randomUUID()+'.json');
+   let jobs=null,jobReadError=null;try{jobs=store.list().map(j=>({id:j.id,state:j.state,runId:j.runId||null}));}catch(readError){jobReadError=readError.message;}
+   try{await mkdir(directory,{recursive:true});await writeFile(receipt,JSON.stringify({format:'athanor-controller-error/v1',at:new Date().toISOString(),command,sourceHash:profile.sourceHash,runnerHash:profile.runnerHash,error:e.message,jobs,jobReadError},null,2)+'\n',{flag:'wx',mode:0o600});e.receipt=receipt;}catch(retainError){e.receiptError=retainError.message;}
+   throw e;
+  }
   let stopping=false;const stop=()=>{stopping=true;};process.once('SIGTERM',stop);process.once('SIGINT',stop);
   try{while(!stopping){try{const value=await controller.tick();if(value.state!=='Idle')console.log(JSON.stringify({format:'athanor-controller-event/v1',at:new Date().toISOString(),result:{id:value.id||null,state:value.state,outcome:value.outcome||null,runId:value.runId||null,reason:value.reason||null,error:value.error||null,delivery:value.delivery||null}}));}catch(e){console.error(JSON.stringify({format:'athanor-controller-event/v1',at:new Date().toISOString(),error:e.message}));}
    if(!stopping)await new Promise(resolve=>{const finish=()=>{clearTimeout(timer);process.removeListener('SIGTERM',finish);process.removeListener('SIGINT',finish);resolve();},timer=setTimeout(finish,10000);process.once('SIGTERM',finish);process.once('SIGINT',finish);});
@@ -60,5 +66,5 @@ export async function main(args){
  }finally{store.close();}
 }
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url)){
- try{console.log(JSON.stringify({format:'athanor-controller-cli/v1',result:await main(process.argv.slice(2))},null,2));}catch(e){console.error(JSON.stringify({format:'athanor-controller-cli/v1',error:e.message}));process.exitCode=3;}
+ try{console.log(JSON.stringify({format:'athanor-controller-cli/v1',result:await main(process.argv.slice(2))},null,2));}catch(e){console.error(JSON.stringify({format:'athanor-controller-cli/v1',error:e.message,...(e.receipt?{receipt:e.receipt}:{}),...(e.receiptError?{receiptError:e.receiptError}:{})}));process.exitCode=3;}
 }

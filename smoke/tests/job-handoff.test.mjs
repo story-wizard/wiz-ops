@@ -13,6 +13,16 @@ const request={requestId:'handoff-1',build:{kind:'app',value:'/Selected/Wizard.a
 const id='11111111-1111-4111-8111-111111111111',identity={build:'Synthetic',packageHash:'b'.repeat(64),runnerHash:profile.runnerHash};
 const report={runId:'original-run',identity,catalog:{state:'Failed',counts:{Pass:1,Fail:1},checks:[{id:'A',title:'First',status:'Pass'},{id:'B',title:'Second',status:'Fail',observation:'Independent mismatch'}]},assertionCounts:{NOT_RUN:161},catalogReport:{url:'/exports/test/index.html'}};
 const record={id,revision:1,baseline:{runId:'original-run',identities:{version:identity.build,packageHash:identity.packageHash,runnerHash:identity.runnerHash}}};
+
+test('compact job context keeps resolved build identity but links large release notes and resolves local commands',()=>{
+ const job={id:'compact',state:'Complete',request,selection,resolved:{tag:'nightly-test',releaseNotes:'release-note '.repeat(1000),publishedAt:'2026-10-11'},runId:'original-run',report:{path:'/external/report'}};
+ const before=JSON.stringify(job),brief=jobResultBrief(job,null,{configPath:'/external/controller.json',serviceUrl:'http://127.0.0.1:12345'});
+ assert.equal(brief.identities.build.tag,'nightly-test');assert.equal(brief.identities.build.releaseNotes,undefined);assert.equal(brief.identities.build.releaseNotesAvailable,true);assert.ok(JSON.stringify(brief).length<6000);assert.equal(JSON.stringify(job),before);
+ assert.equal(brief.recovery.commandRoot.endsWith('/smoke'),true);assert.deepEqual(brief.recovery.commands[0].slice(-2),['--id','compact']);assert.ok(brief.recovery.commands[0].includes('/external/controller.json'));assert.ok(brief.recovery.commands.some(c=>c.includes('http://127.0.0.1:12345')));
+ assert.deepEqual(jobResultBrief(job,report).functionalAssertionScope,{label:'Separate legacy functional ledger',executed:false});
+ const retained=jobResultBrief({...job,report:{url:'/exports/athanor-job-compact/index.html'}},{...report,identity:{...identity,releaseChanges:[{tag:'nightly-test',notes:'notes '.repeat(1000)}]}});
+ assert.equal(retained.identities.build.releaseChanges,undefined);assert.deepEqual(retained.identities.build.releaseTags,['nightly-test']);assert.equal(retained.identities.build.releaseNotesUrl,'/exports/athanor-job-compact/report.json');
+});
 async function fixture(fn){const root=await mkdtemp('/private/tmp/athanor-handoff-'),store=new JobStore(root);try{let job=store.submit(request,selection,digest(profile));job=store.update(job.id,{state:'Reporting',outcome:'Failed',runId:'original-run'});await fn(store,job,root);}finally{store.close();await rm(root,{recursive:true,force:true});}}
 function service({existing=true,lost=false,foreign=false,exportFailure=false}={}){
  let created=existing;const writes=[];
@@ -29,6 +39,10 @@ function service({existing=true,lost=false,foreign=false,exportFailure=false}={}
 test('a completed failed job reuses its original investigation and retains a task without editing QA',async()=>fixture(async(store,job)=>{
  const original=JSON.stringify(report),api=service(),handoff=await retainInvestigationHandoff(store,job,report,api.call);
  assert.equal(handoff.state,'Ready');assert.equal(handoff.id,id);assert.equal(handoff.url,'/investigation?id='+id);assert.equal(handoff.task.prompt,'Review original evidence');assert.deepEqual(api.writes,['/api/investigations/'+id+'/export']);assert.equal(store.get(job.id).outcome,'Failed');assert.equal(JSON.stringify(report),original);
+}));
+test('managed handoff supplies the verified local command root and address without authorizing execution',async()=>fixture(async(store,job)=>{
+ const api=service(),handoff=await retainInvestigationHandoff(store,job,report,api.call,{serviceUrl:'http://127.0.0.1:12345'});
+ assert.equal(handoff.task.executionContext.serviceUrl,'http://127.0.0.1:12345');assert.ok(handoff.task.executionContext.commandRoot.endsWith('/smoke'));assert.match(handoff.task.prompt,/Local service: http:\/\/127\.0\.0\.1:12345/);assert.equal(store.get(job.id).outcome,'Failed');
 }));
 test('a lost creation reply recovers the original record with only one creation dispatch',async()=>fixture(async(store,job)=>{
  const api=service({existing:false,lost:true}),handoff=await retainInvestigationHandoff(store,job,report,api.call);

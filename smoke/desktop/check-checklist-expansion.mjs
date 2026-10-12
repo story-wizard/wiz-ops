@@ -5,7 +5,7 @@ import {observedWidget,verifyInspectorEdit,verifyMaskPaste,verifySearchFocus,pre
 import {physicalInput,clipPoint} from './physical-input.mjs';
 import {assert,same,clips,snapshotState,OutcomeError} from '../runner/engine.mjs';
 import {writeJSON} from '../runner/files.mjs';
-const file=process.argv[2],{s,n,c,ui,until,check:runCheck,step,action,openTimeline,finish}=await checks(file,'desktop-checklist-expansion-report.json');
+const file=process.argv[2],{s,n,c,ui,until,check:runCheck,step,assertion,action,openTimeline,finish}=await checks(file,'desktop-checklist-expansion-report.json');
 const inspect=id=>c('timeline.inspect',{timeline_id:id}),graph=f=>c('graph.get_clip_graph',f.scope),content=g=>({nodes:g.nodes,edges:g.edges});
 const stage=(id,title,phase,fn)=>step({id,title,phase},fn);
 const physical=(command,params)=>physicalInput(file,command,params);
@@ -138,7 +138,7 @@ await check('D-SCOPES-VECTOR',async()=>{
   const u=await ui();type=observedWidget(u,w=>w.name==='scopesTypeCombo','Scope type');tap=observedWidget(u,w=>w.name==='scopesTapCombo','Scope tap');
   const index=type.items.findIndex(mode=>/vectorscope/i.test(mode));if(index<0)throw new OutcomeError('Selected build exposes no vectorscope mode','Blocked');
   await n('select',{target:type.id,index});
-  for(let j=0;j<tap.items.length;j++)await stage('sample','Compare vectorscope response at '+tap.items[j],'verify',async()=>{
+  for(let j=0;j<tap.items.length;j++){const sample=await stage('sample','Observe vectorscope response at '+tap.items[j],'verify',async()=>{
    await n('select',{target:tap.id,index:j});const plot=observedWidget(await ui(),w=>w.window===type.window&&/VectorscopeView/.test(w.class),'Vectorscope plot');
    const preview=observedWidget(await ui(),w=>w.class==='MetalPreviewWidget','Scope source preview');
    const sourceFrames=[];
@@ -153,9 +153,19 @@ await check('D-SCOPES-VECTOR',async()=>{
     catch(e){if(e.status==='Unknown')throw e;const failure=new OutcomeError('Vectorscope source fixture was not established: '+e.message,'Blocked');failure.diagnostics={...e.diagnostics,time,black,sourceFrames};throw failure;}
    }
    const black=await seekFrame(5,true),gap=await capture(id,'before-'+j,plot.id,'widget');
-   const plate=await seekFrame(1,false),image=await until(async()=>{const image=await capture(id,'after-'+j,plot.id,'widget');return widgetPixelDifference(gap,image)>.5?image:null;},{description:'Vectorscope response at '+tap.items[j]});
-   observations.push({tap:tap.items[j],pixelDifference:widgetPixelDifference(gap,image),black,plate,gap:gap.path,image:image.path});await observe(id,{sourceFrames,observations});
-  });same(snapshotState(await inspect(f.id)),snapshotState(f.before),'Vectorscope preserves timeline');return {observations,scope:'Vectorscope response to colour versus black at available taps'};
+   const plate=await seekFrame(1,false);let image;
+   try{await until(async()=>{image=await capture(id,'after-'+j,plot.id,'widget');return widgetPixelDifference(gap,image)>.5?image:null;},{description:'Vectorscope response at '+tap.items[j]});}
+   catch(e){if(e.status!=='Fail'||e.diagnostics?.expected!=='Vectorscope response at '+tap.items[j]||!image)throw e;}
+   const sample={tap:tap.items[j],pixelDifference:widgetPixelDifference(gap,image),black,plate,gap:gap.path,image:image.path};observations.push(sample);await observe(id,{sourceFrames,observations});return sample;
+  });
+  const proof=await assertion({id:'scope-response',title:'Verify vectorscope response to colour versus black',phase:'verify'},{
+   invariant:'At each available tap, the vectorscope image must respond to a displayed colour plate versus the known black gap.',
+   question:'Does the displayed source reach the correct frame while the selected scope tap fails to respond?',
+   expected:{metric:'mean absolute RGB byte difference',sampleWidth:64,sampleHeight:32,greaterThan:.5,blackBrightnessBelow:2,plateBrightnessAbove:20,blackTimeSeconds:5,plateTimeSeconds:1,timeToleranceSeconds:1/24+.001},
+   actual:{tap:sample.tap,pixelDifference:sample.pixelDifference,blackBrightness:sample.black.brightness,plateBrightness:sample.plate.brightness,blackTimeSeconds:sample.black.transport.time,plateTimeSeconds:sample.plate.transport.time},
+   sources:{black:sample.black,plate:sample.plate,gap:sample.gap,image:sample.image}
+  },sample.pixelDifference>.5);keep(id,proof.artifact);
+  }same(snapshotState(await inspect(f.id)),snapshotState(f.before),'Vectorscope preserves timeline');return {observations,scope:'Vectorscope response to colour versus black at available taps'};
  }catch(e){uncertain=e.status==='Unknown';throw e;}
  finally{if(!uncertain)await stage('cleanup','Restore scope controls and close the scope window','cleanup',async()=>{if(type&&tap){await n('select',{target:type.id,index:type.index});await n('select',{target:tap.id,index:tap.index});await n('close-window',{target:type.window});}await c('playback.seek',{time:0});});}
 });
