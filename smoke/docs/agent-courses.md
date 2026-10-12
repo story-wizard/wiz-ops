@@ -455,3 +455,7 @@ Use `nightly.mjs plan --courses smoke-full` to retain only the baseline or
 `--courses automated-full` for accepted checks. The combined report keeps the
 legacy functional assertions and release-note proposals alongside catalog
 results. A catalog pass alone leaves related legacy assertions unexecuted.
+
+## Subsets from combined courses
+
+`subsetIds` can select from the union of multiple named courses. Qualification candidates must belong to one of those maintained courses. Prerequisite closure and source/definition checks remain unchanged. This is used by Nightly MVP change courses; it does not promote candidates to accepted checks.

@@ -209,3 +209,7 @@ all launch, diagnostic and cleanup time. New timers fill that gap prospectively.
 Agentic diagnosis, automatic Jira publication and a new planning engine remain
 separate work. A confirmed bug still needs a linked diagnostic repro and human
 review through the existing investigation and Bug Reporter flow.
+
+## Fix-verification references
+
+Use `smoke investigation fix-reference --id ID --file FILE` to retain a primary App failure’s fixing Wizard commit and PR, with the current investigation revision and actor. It preserves the original result, evidence and review. Nightly planning verifies revision inclusion and matching check definitions before selecting a later attempt. See [Nightly MVP](nightly-mvp.md). A passing later check needs human review and does not close Jira.

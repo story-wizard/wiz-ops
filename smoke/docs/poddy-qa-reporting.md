@@ -12,6 +12,10 @@ Automatic Jira creation, comments, attachments, field/status edits and other Jir
 
 Use the [evidence and delivery helper](evidence-baseline.md) to retain report/destination intent before sending and append confirmed, pending or unknown connector receipts. The helper performs no network send and does not replace Slack verification.
 
+## Approved Nightly MVP destinations
+
+Charles approved the Nightly MVP channel and owner-DM scope on October 12. Its reviewed configuration permits #wiz-smoketest-reports (C0C5F7K6DNV) and Charles’s exact verified DM, with separate intents and receipts. Use [Nightly MVP](nightly-mvp.md). The older procedures below describe the historical single-DM rollout; they do not override this explicitly configured extension. No other channel, recipient, email or automatic Jira write is enabled. Source changes alone do not deploy this policy to a worker.
+
 ## Prepared rollout
 
 These are reviewed instruction changes, not a runtime network restriction. All active instructions must be updated together before owner-only reporting is considered enabled. Do not restart an in-flight QA turn under conflicting old instructions.

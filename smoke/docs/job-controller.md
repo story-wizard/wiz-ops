@@ -201,3 +201,7 @@ larger task and checksum-bound evidence when needed. The first read names its
 evidence package because its proof paths belong to that package, not the job
 report directory. `scripts/review-cost.mjs` measures these packets and recorded
 session intervals without launching Wizard; see docs/investigations.md.
+
+## Nightly MVP extension
+
+For the ordered evergreen/change stages, bounded agent adapter, archived fix verification, read-only publication and independent DM/channel routes, use [Nightly MVP](nightly-mvp.md). Existing single-course and legacy DM configurations remain supported. New configurations pin the planner, publication and destinations at admission. Deploy to a new source/configuration after review; preserve historical attempts.

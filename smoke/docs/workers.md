@@ -215,3 +215,7 @@ The portable report exposes the related checks and remaining work under each
 assertion. Missing observations stay Not run, even when the baseline passes.
 When broader weekly media or long-running probes are qualified, add them through
 ordinary course composition and retain a new plan; do not modify a frozen one.
+
+## Nightly MVP courses
+
+Use [Nightly MVP](nightly-mvp.md) to execute a full evergreen course followed by a freshly planned change subset. This extension selects frozen qualified checks and separately retains unsupported scenarios. The older release-test proposal format remains planning-only. Keep both formats distinct. Developer clones need no managed scheduler or Slack sender.

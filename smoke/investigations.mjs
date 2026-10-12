@@ -298,3 +298,13 @@ export async function reconcileRepros(db,id,dataDir,{preparation,request,getRun}
  }
  return record;
 }
+
+// Fix links preserve the original failure; later builds are separate verification attempts.
+export function recordFixReference(db,id,input){
+ fields(input,['revision','actor','caseId','fix']);const previous=checked(db,id,input),next=structuredClone(previous),c=next.cases.find(c=>c.id===input.caseId);
+ if(!c||c.original.status!=='Fail'||c.classification!=='App'||c.duplicateOf)throw Error('Link a fixing revision to a primary App failure.');
+ fields(input.fix,['repository','revision','url']);const fix=input.fix;
+ if(fix.repository!=='story-wizard/wizard'||!/^[a-f0-9]{40}$/.test(fix.revision||'')||!/^https:\/\/github\.com\/story-wizard\/wizard\/pull\/[1-9][0-9]*$/.test(fix.url||''))throw Error('Use an exact Wizard fixing revision and PR URL.');
+ c.fix={...fix,recordedAt:now(),actor:text(input.actor,'the recording person or agent',120)};
+ return save(db,previous,next,input.actor,'Fix reference recorded',{caseId:c.id,fix});
+}
