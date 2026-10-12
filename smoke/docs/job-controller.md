@@ -141,6 +141,8 @@ repro execution and human bug confirmation remain separate steps described in
 [Investigations](investigations.md). This slice prepares the handoff; it does not
 launch an autonomous triage agent or change any original test result.
 
+Manual submissions are silent, including when Slack routes are configured. Only a job admitted by the durable daily schedule can send Slack. A request ID beginning with `nightly-` or `nightly: true` does not change that rule. Old jobs without scheduler provenance also remain silent; preserve any existing delivery receipts.
+
 Initialization without `--route` selects local-only reports. To use unattended
 Slack delivery, initialize a separate reviewed config with `--route ROUTE_JSON`.
 The route must be Charles's exact Story Company one-to-one DM:
@@ -201,3 +203,7 @@ larger task and checksum-bound evidence when needed. The first read names its
 evidence package because its proof paths belong to that package, not the job
 report directory. `scripts/review-cost.mjs` measures these packets and recorded
 session intervals without launching Wizard; see docs/investigations.md.
+
+## Nightly MVP extension
+
+For the ordered evergreen/change stages, bounded agent adapter, archived fix verification, read-only publication and independent DM/channel routes, use [Nightly MVP](nightly-mvp.md). Existing single-course and legacy DM configurations remain supported. New configurations pin the planner, publication and destinations at admission. Deploy to a new source/configuration after review; preserve historical attempts.

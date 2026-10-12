@@ -87,7 +87,7 @@ export function resolveSelection(db,input,review=acceptance()){
   selectedGroups.push(...c.groups.map(g=>({...g,id:c.id+'/'+g.id})));
  }
  if(input.subsetIds!==undefined){
-  if(input.courseIds?.length!==1||!input.subsetIds.length||input.checkIds?.length||input.categories?.length||input.groups)throw Error('Choose a nonempty subset of one course without additional selectors.');
+  if(!input.courseIds?.length||!input.subsetIds.length||input.checkIds?.length||input.categories?.length||input.groups)throw Error('Choose a nonempty subset of maintained courses without additional selectors.');
   const members=new Set(selectedGroups.flatMap(g=>g.checks));if(input.subsetIds.some(id=>!members.has(id)))throw Error('Subset check is not a member of the selected course.');
   const wanted=new Set(input.subsetIds);selectedGroups.splice(0,selectedGroups.length,...selectedGroups.map(g=>({...g,checks:g.checks.filter(id=>wanted.has(id))})).filter(g=>g.checks.length));
  }

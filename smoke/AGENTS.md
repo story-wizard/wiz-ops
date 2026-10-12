@@ -4,7 +4,7 @@ Athanor is the app name. Preserve the existing CLI names, formats and WizardSmok
 
 Use Athanor in outward-facing messages, status replies, report/course titles and generated agent prompts. Poddy is the internal execution platform name; preserve host names, paths, repositories, branches, identifiers and historical evidence.
 
-Developer clones use the harness locally with their agent; worker scheduling and delivery are optional. For QA on the managed MBP or Mini workers, read [interim reporting and administration](docs/poddy-qa-reporting.md). Worker results go only to Charles's verified Slack DM until he sanctions wider distribution; keep Jira read-only and automatic email disabled. Developer runs report locally to the requesting user. Other Wiz automation has its own reporting policy.
+Developer clones use the harness locally with their agent; worker scheduling and delivery are optional. For QA on the managed MBP or Mini workers, read [interim reporting and administration](docs/poddy-qa-reporting.md). Legacy worker delivery keeps Charles's verified Slack DM. For the approved Nightly MVP, use exactly that DM and #wiz-smoketest-reports (C0C5F7K6DNV), with independent verified intents. Read [Nightly MVP](docs/nightly-mvp.md) before configuration or rollout. Keep Jira read-only and automatic email disabled. Only jobs admitted by the durable daily scheduler may send Slack. Manual, pilot and on-demand jobs are silent even when routes are configured; retain reports and existing delivery history. Developer runs report locally to the requesting user. Other Wiz automation has its own reporting policy.
 
 
 The October 3 local slice adds fourteen further UI/playback candidates, scoped model observations, native gestures and timed evidence recording. Read [harness control](docs/harness-control.md) for how these layers work and the retained qualification state. Candidate availability is not lead acceptance.
@@ -386,3 +386,7 @@ new source; a previously prepared adapter does not acquire these operations.
 Managed job briefs expose a release-note planning handoff. Retained notes guide
 agent-authored proposals through the existing nightly proposal format; this does
 not autonomously generate tests or change acceptance, execution or delivery.
+
+## Nightly MVP planning and publication
+
+Read `docs/nightly-mvp.md` for WIZ-807 through WIZ-810. The durable controller runs the full evergreen course and then the validated change subset on the same package, using new preparation and request IDs. Unknown input is never repeated. Keep source comparisons, planner tasks, fix references, reports and independent delivery receipts outside Git. Source changes, configuration, worker rollout, schedules, model execution and external delivery need the scope of the current request. A local implementation request does not authorize deployment. The shared viewer is GET/HEAD-only and loopback-bound; do not expose the mutable dashboard or relax its origin checks. New tests require qualification; selecting an existing check does not establish full PR or legacy assertion coverage.

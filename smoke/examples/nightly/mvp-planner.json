@@ -1,0 +1,5 @@
+{
+  "command": ["/absolute/node", "/absolute/athanor/smoke/scripts/nightly-agent.mjs", "--codex", "/absolute/codex"],
+  "timeoutSeconds": 300,
+  "baseRevision": "REPLACE-WITH-REVIEWED-FULL-WIZARD-COMMIT"
+}

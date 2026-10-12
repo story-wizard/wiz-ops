@@ -145,3 +145,7 @@ Each actual run retains its build identity, immutable check snapshots, operation
 The optional native client consumes the same API; its source is not included. The lightweight read-only live feed is described in [tower-live.md](docs/tower-live.md). This import adds no build-pipeline hook, deployment, Studio service, scheduled job or external message delivery.
 
 For checkout handoff and the first team pilot, use [source-handoff.md](docs/source-handoff.md).
+
+## Managed nightly testing
+
+[The Nightly MVP guide](docs/nightly-mvp.md) covers full evergreen execution, change-based courses, preserved fix references, a read-only report viewer and separate Slack delivery to the smoke channel and owner. These optional worker features do not change ordinary local developer use.

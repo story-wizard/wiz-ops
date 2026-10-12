@@ -1,7 +1,7 @@
-import {initializeInvestigations,investigation,investigationList,createInvestigation,triageInvestigation,linkReproduction,reproSelection,bugDraft,reviewDraft,exportInvestigation,agentInvestigationPrompt,readInvestigationFile,reporterHandoff,previewTriage,editBugDraft,investigationTask,investigationEvidence,caseNextAction,recordRepro,updateRepro,reconcileRepros,closeRepro,readInvestigationArtifact,verifyReviewEvidence} from './investigations.mjs';
+import {initializeInvestigations,investigation,investigationList,createInvestigation,triageInvestigation,linkReproduction,reproSelection,bugDraft,reviewDraft,exportInvestigation,agentInvestigationPrompt,readInvestigationFile,reporterHandoff,previewTriage,editBugDraft,investigationTask,investigationEvidence,caseNextAction,recordRepro,updateRepro,reconcileRepros,closeRepro,readInvestigationArtifact,verifyReviewEvidence,recordFixReference} from './investigations.mjs';
 import {buildCatalogPage} from './build-catalog.mjs';
 import {findBuilds,localBuilds,importBuild,buildStage,receiveArchive} from './builds.mjs';
-import {rm} from 'node:fs/promises';
+import {rm,realpath} from 'node:fs/promises';
 import http from 'node:http';
 import {checkpoint as getCheckpoint,waitingCheckpoints,checkpointRequest,saveCheckpoint} from './runner/checkpoints.mjs';
 import {towerSnapshot} from './tower.mjs';
@@ -14,7 +14,7 @@ import path from 'node:path';
 import {randomUUID,createHash} from 'node:crypto';
 import {spawn,execFileSync} from 'node:child_process';
 import {initializeAutomation,course,execution,createExecution,updateExecution,record,recoverInterrupted,runnerAlive} from './runner/store.mjs';
-import {readJSON,writeJSON,digest,dataDirectory,fingerprint} from './runner/files.mjs';
+import {readJSON,writeJSON,digest,dataDirectory,fingerprint,inside} from './runner/files.mjs';
 import {checklistCoverage} from './coverage.mjs';
 import {desktopState,desktopCourse,serviceCourse,startDesktopJob,requestJob,jobDetails,initializeDesktopCatalog,ownedDesktopSessions} from './desktop/hub.mjs';
 import {checkPrepared,sourceIdentity,prepare} from './runner/prepare.mjs';
@@ -337,6 +337,7 @@ const server=http.createServer(async(req,res)=>{
             const admitted=await admitRun({planHash:repro.planHash,operator:repro.actor,requestId:repro.requestId});
             updateRepro(db,id,repro.id,{state:'Running',runId:admitted.result.runId});return send(admitted.status,admitted.result);
           }
+          if(req.method==='POST'&&parts[3]==='fix-reference')return send(200,recordFixReference(db,id,body));
           if(req.method==='POST'&&parts[3]==='triage')return send(200,triageInvestigation(db,id,body));
           if(req.method==='POST'&&parts[3]==='link'){const run=getRun(body.runId);if(!run)fail(404,'Reproduction run not found.');return send(200,await linkReproduction(db,id,run,dataDir,body));}
           if(req.method==='POST'&&parts[3]==='review'){if(body.decision==='Confirmed')await verifyReviewEvidence(investigation(db,id),body.caseId,dataDir);return send(200,reviewDraft(db,id,body));}
@@ -409,11 +410,12 @@ const server=http.createServer(async(req,res)=>{
       const content=readFileSync(path.join(dataDir,'history.html'));
       res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'self'; sandbox"});return res.end(req.method==='HEAD'?undefined:content);
     }
+    const jobExport=parts[0]==='exports'&&/^athanor-job-[A-Za-z0-9-]{1,120}$/.test(parts[1]||'')&&parts.length===3&&['index.html','report.json','handoff.html','agent-brief.json','AGENT-PROMPT.txt','investigation-task.json','first-read.json','triage-proposal.json'].includes(parts[2]);
     const investigationExport=parts[0]==='exports'&&/^investigation-[a-f0-9-]{36}-[a-f0-9]{12}$/.test(parts[1]||'')&&parts.length>=3;
     const agentExport=parts[0]==='exports'&&/^agent-report-[a-f0-9-]{36}$/.test(parts[1]||'')&&((parts.length===3&&['index.html','report.json'].includes(parts[2]))||(parts.length===4&&parts[2]==='evidence'&&/^agent-[a-f0-9-]{36}\.(png|json)$/.test(parts[3])));
-    if(investigationExport||agentExport||parts[0]==='exports'&&/^smoke-report-[a-f0-9-]{36}-[a-f0-9]{12}$/.test(parts[1]||'')&&((parts.length===3&&['index.html','report.json'].includes(parts[2]))||(parts.length===4&&parts[2]==='evidence'&&(['plan.json','course.json','report.json','operations.jsonl','media-manifest.json','scope.json','execution-context.json','checkpoint.json','test-specifications.json','steps.jsonl'].includes(parts[3])||/^computer-use-(pass\.json|[a-f0-9]{12}-[a-zA-Z0-9_-]+\.(png|jpg|jpeg|gif|mp4|mov|webm|wav|mp3|m4a|json|txt))$/.test(parts[3]))))){
-      let content;try{content=investigationExport?await readInvestigationFile(dataDir,parts[1],parts.slice(2).join('/')):readFileSync(path.join(dataDir,...parts));}catch{fail(404,'Report file not found.');}
-      const html=parts.at(-1)==='index.html',scriptHash=html?createHash('sha256').update(content.toString().match(/<script>([\s\S]*?)<\/script>/)?.[1]||'').digest('base64'):reportScriptHash;res.writeHead(200,{'Content-Type':html?'text/html; charset=utf-8':parts.at(-1).endsWith('.png')?'image/png':parts.at(-1).endsWith('.jpg')?'image/jpeg':({'gif':'image/gif','mp4':'video/mp4','mov':'video/quicktime','webm':'video/webm','wav':'audio/wav','mp3':'audio/mpeg','m4a':'audio/mp4','json':'application/json'})[path.extname(parts.at(-1)).slice(1)]||'text/plain; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':`default-src 'none'; img-src http://${host} data:; media-src http://${host}; script-src 'sha256-${scriptHash}'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'self'; sandbox allow-scripts allow-popups`});return res.end(req.method==='HEAD'?undefined:content);
+    if(jobExport||investigationExport||agentExport||parts[0]==='exports'&&/^smoke-report-[a-f0-9-]{36}-[a-f0-9]{12}$/.test(parts[1]||'')&&((parts.length===3&&['index.html','report.json'].includes(parts[2]))||(parts.length===4&&parts[2]==='evidence'&&(['plan.json','course.json','report.json','operations.jsonl','media-manifest.json','scope.json','execution-context.json','checkpoint.json','test-specifications.json','steps.jsonl'].includes(parts[3])||/^computer-use-(pass\.json|[a-f0-9]{12}-[a-zA-Z0-9_-]+\.(png|jpg|jpeg|gif|mp4|mov|webm|wav|mp3|m4a|json|txt))$/.test(parts[3]))))){
+      let content;try{if(jobExport){const parent=await realpath(path.join(dataDir,'exports')),file=await realpath(path.join(dataDir,...parts));if(!inside(parent,file))throw Error('Job report escaped its exports.');}content=investigationExport?await readInvestigationFile(dataDir,parts[1],parts.slice(2).join('/')):readFileSync(path.join(dataDir,...parts));}catch{fail(404,'Report file not found.');}
+      const html=parts.at(-1).endsWith('.html'),scriptHash=html?createHash('sha256').update(content.toString().match(/<script>([\s\S]*?)<\/script>/)?.[1]||'').digest('base64'):reportScriptHash;res.writeHead(200,{'Content-Type':html?'text/html; charset=utf-8':parts.at(-1).endsWith('.png')?'image/png':parts.at(-1).endsWith('.jpg')?'image/jpeg':({'gif':'image/gif','mp4':'video/mp4','mov':'video/quicktime','webm':'video/webm','wav':'audio/wav','mp3':'audio/mpeg','m4a':'audio/mp4','json':'application/json'})[path.extname(parts.at(-1)).slice(1)]||'text/plain; charset=utf-8','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':`default-src 'none'; img-src http://${host} data:; media-src http://${host}; script-src 'sha256-${scriptHash}'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'self'; sandbox allow-scripts allow-popups`});return res.end(req.method==='HEAD'?undefined:content);
     }
     if(parts[0]==='exports'&&parts.length===2&&/^wizard-smoke-\d+-[a-f0-9]{8}\.(csv|json)$/.test(parts[1])){
       let content;try{content=readFileSync(path.join(dataDir,'exports',parts[1]));}catch{fail(404,'Export not found.');}

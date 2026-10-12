@@ -1,0 +1,8 @@
+{
+  "requestId": "REPLACE-WITH-RETAINED-REQUEST-ID",
+  "nightly": true,
+  "build": {"kind": "latest-nightly"},
+  "selection": {"courseIds": ["smoke-full", "macos-regression"], "project": "fresh", "desktopMode": "grouped"},
+  "operator": "REPLACE-WITH-OPERATOR",
+  "timeoutMinutes": 180
+}
