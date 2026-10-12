@@ -198,3 +198,8 @@ test('retained planning bytes cannot silently change selection on recovery',asyn
 test('planning children do not inherit the worker Slack or GitHub credentials',async()=>{
  const previous=process.env.ATHANOR_SLACK_BOT_TOKEN;process.env.ATHANOR_SLACK_BOT_TOKEN='xoxb-test-not-for-planner';try{const config={command:[process.execPath,'-e','console.log(JSON.stringify({inherited:!!process.env.ATHANOR_SLACK_BOT_TOKEN,path:!!process.env.PATH}))'],timeoutSeconds:2};assert.deepEqual(await runPlanner(config,{}),{inherited:false,path:true});}finally{if(previous===undefined)delete process.env.ATHANOR_SLACK_BOT_TOKEN;else process.env.ATHANOR_SLACK_BOT_TOKEN=previous;}
 });
+
+test('the first-read brief summarizes change execution and links large planning data',async()=>{
+ const {jobResultBrief}=await import('../runner/job-handoff.mjs'),plan={state:'Ready',scenarios:[{id:'scenario'}],uncovered:[],comparison:{...comparison(),files:[{patch:'large patch '.repeat(10000)}]},courseStages=[{name:'evergreen',state:'Passed',runId:'old',counts:{Pass:192}},{name:'changes',state:'Passed',runId:'new',counts:{Pass:1}}],job={id:'nightly',state:'Complete',request,selection,report:{url:'/exports/athanor-job-nightly/index.html'}};
+ const brief=jobResultBrief(job,{identity:{build:version,releaseChanges:[{tag:version,notes:'notes'}]},catalog:{state:'Passed',counts:{Pass:193},checks:[]},changePlan:plan,courseStages});assert.equal(brief.releasePlanning.executed,true);assert.equal(brief.releasePlanning.state,'Ready');assert.equal(brief.changePlan.comparison.files,undefined);assert.equal(brief.changePlan.scenarioCount,1);assert.match(brief.changePlan.detailsUrl,/report.json$/);assert.ok(JSON.stringify(brief).length<6000);
+});
