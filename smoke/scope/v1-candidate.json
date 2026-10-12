@@ -75,9 +75,9 @@
     },
     {
       "file": "desktop/course.json",
-      "sha256": "c85ff0f0c9c48ccb1896c92e49e4c140fa7c27537e188205e97bd464da0d08f8",
+      "sha256": "9e559f1b85c989cbce5a3f77ed9b2f2219d9ac4a726f756dc0e6ee5380f6d662",
       "id": "local-desktop-v1",
-      "revision": 27,
+      "revision": 30,
       "target": "Instrumented local GUI with isolated Qt runtime",
       "requiredCheckIds": [
         "D-CLI-01",
@@ -203,9 +203,9 @@
     },
     {
       "file": "desktop/service-course.json",
-      "sha256": "027a1478643babe19ce6a537263143a11525fd42faa23c1986fc64760421e6e6",
+      "sha256": "e2b1d330466e76d16abb84d56484e4de4bb580f0d5b7bd014a3e709fc998d6f1",
       "id": "local-services-v1",
-      "revision": 5,
+      "revision": 6,
       "target": "Owned background GUI services and app export worker; no keyboard/mouse or foreground UI acceptance",
       "requiredCheckIds": [
         "S-MGFX-MOTION",

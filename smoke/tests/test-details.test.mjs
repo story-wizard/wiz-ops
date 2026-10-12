@@ -3,12 +3,83 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import {tmpdir} from 'node:os';
 import {mkdtemp,readFile,rm,mkdir,writeFile} from 'node:fs/promises';
-import {recordStep} from '../desktop/check-support.mjs';
+import {recordStep,endCheck} from '../desktop/check-support.mjs';
 import {OutcomeError} from '../runner/engine.mjs';
 import {writeJSON,readJSON,digest} from '../runner/files.mjs';
-import {testSpecification,actionHistory,stepHistory,evidenceSpec,evidenceCoverage,evidenceItems,exportAgentContext,agentContext,candidateChecks} from '../test-details.mjs';
+import {testSpecification,actionHistory,stepHistory,caseConclusion,compactConclusion,failureDiagnostics,evidenceSpec,evidenceCoverage,evidenceItems,exportAgentContext,agentContext,candidateChecks} from '../test-details.mjs';
 import {checkRegistry} from '../runner/catalog.mjs';
 import {briefContext} from '../desktop/agent-task.mjs';
+import {renderConclusion} from '../public/check-conclusion.js';
+
+test('setup failure identifies the untested behavior and cleanup never becomes its last successful action',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-setup-conclusion-')),file=path.join(root,'session.json');
+ try{
+  await writeJSON(file,{root,currentCheck:'D-MISSING-MEDIA-LIVE'});
+  const spec={steps:[{id:'setup',title:'Create timeline',phase:'prepare'},{id:'remove',title:'Remove media',phase:'execute'},{id:'restore',title:'Restore fixture',phase:'cleanup'}]};
+  await assert.rejects(()=>recordStep(file,spec.steps[0],()=>{throw Object.assign(new OutcomeError('Timeline recovery failed'),{diagnostics:{expected:'Created timeline',attempts:1}});}),/recovery failed/);
+  await recordStep(file,spec.steps[2],async()=>{});
+  const events=(await readFile(root+'/steps.jsonl','utf8')).trim().split('\n').map(JSON.parse),conclusion=caseConclusion({steps:stepHistory(spec,events)});
+  assert.equal(conclusion.failedStep.phase,'prepare');assert.equal(conclusion.lastCompletedStep,null);assert.equal(conclusion.notRun[0].id,'remove');assert.equal(conclusion.diagnostics.expected,'Created timeline');
+  assert.match(compactConclusion(conclusion).unansweredQuestion,/fixture setup/);
+  assert.equal(caseConclusion({steps:[{id:'action',title:'Actual action',status:'Completed',phase:'execute'},{id:'restore',title:'Cleanup',status:'Completed',phase:'cleanup'}]}).lastCompletedStep.id,'action');
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('compact guard diagnostics retain ownership and dispatch facts without window titles or full receipts',()=>{
+ const value={receipt:{status:'Unknown',code:'pointer_occluded',inputDispatched:true,diagnostics:{point:[20,30],expectedPid:123,expectedWindow:4,occluder:{pid:456,window:9,owner:'Another App',title:'Private document',layer:3,frame:{x:10,y:20,width:100,height:100}},elements:['unrelated']}},ui:{title:'Private'}};
+ const safe=failureDiagnostics(value);assert.equal(safe.inputDispatched,true);assert.equal(safe.occluder.pid,456);assert(!JSON.stringify(safe).includes('Private'));assert(!('receipt' in safe));assert.deepEqual(failureDiagnostics(safe),safe);
+ const conclusion=caseConclusion({diagnostics:value,steps:[]});assert.match(compactConclusion(conclusion).unansweredQuestion,/Did the input occur/);
+ assert.match(renderConclusion(conclusion),/pointer_occluded/);assert.equal(renderConclusion(caseConclusion({steps:[]})),'');
+ assert.match(failureDiagnostics({expected:'x'.repeat(5000)}).summary,/exceeds/);
+});
+
+test('dependencies explain unreached work and recorded blocks without changing Unknown or inferring app defects',()=>{
+ const spec=testSpecification({id:'C',steps:[{id:'identity',title:'Independent generation'},{id:'edit',title:'Edit copy',requires:['identity']},{id:'reopen',title:'Persistence',requires:['edit']}]});
+ const history=stepHistory(spec,[{stepId:'identity',status:'Fail'},{stepId:'reopen',status:'Blocked',observation:'No persistence fixture'}]);
+ assert.deepEqual(history.map(s=>s.status),['Fail','Not run','Blocked']);assert.match(history[1].reason,/Independent generation \(Fail\)/);assert.match(history[2].reason,/Edit copy \(Not run\)/);
+ const summary=caseConclusion({steps:history});assert.equal(summary.failedStep.id,'identity');assert.equal(summary.blocked[0].id,'reopen');assert.match(renderConclusion(summary),/Blocked: Persistence/);
+ const unknown=stepHistory(spec,[{stepId:'identity',status:'Unknown'}]);assert.equal(unknown[0].status,'Unknown');assert.match(unknown[1].reason,/Unknown/);
+ const unbound=stepHistory(spec,[],[{operation:'project.checkpoint'}]);assert.ok(unbound.every(s=>s.status==='No step record'));assert.ok(unbound.every(s=>!s.reason));
+ for(const requires of [['absent'],['edit'],['identity','identity']])assert.throws(()=>testSpecification({id:'C',steps:[{id:'identity',title:'Identity'},{id:'edit',title:'Edit',requires}]}),/dependencies/);
+});
+
+test('compact conclusions keep decisive values and proof but leave source excerpts in the immutable evidence',()=>{
+ const summary={failedStep:{id:'identity',status:'Fail'},assertions:[{stepId:'identity',title:'Identity',status:'Fail',expected:{distinct:true},actual:{source:'same',copy:'same'},artifact:'proof.json',sources:[{excerpt:'large source'}],invariant:'Copy must be independent.',question:'Which saved reference was reused?',evidenceStatus:'Needs review'}]},before=JSON.stringify(summary),brief=compactConclusion(summary);
+ assert.deepEqual(brief.assertions[0].actual,summary.assertions[0].actual);assert.equal(brief.assertions[0].artifact,'proof.json');assert.equal(brief.assertions[0].sources,undefined);assert.equal(brief.unansweredQuestion,summary.assertions[0].question);assert.equal(brief.assertions[0].evidenceStatus,'Needs review');assert.equal(JSON.stringify(summary),before);
+ assert.match(renderConclusion(brief),/Copy must be independent/);assert.match(renderConclusion(brief),/Which saved reference/);assert.equal(compactConclusion(null),null);
+});
+
+test('recording an existing verification preserves wrong-result values and never downgrades unknown input',async()=>{
+ const {recordVerification}=await import('../desktop/check-support.mjs');const root=await mkdtemp(path.join(tmpdir(),'athanor-verification-')),file=path.join(root,'session.json');
+ try{
+  await writeJSON(file,{root,currentCheck:'CHECK'});const definition={id:'timing',title:'Matching durations'},comparison={invariant:'Durations must agree.',expected:{seconds:3},actual:{seconds:4}};
+  let failure;try{await recordVerification(file,definition,comparison,()=>{throw new OutcomeError('Duration mismatch');});}catch(e){failure=e;}
+  const proof=await readJSON(failure.evidence.artifacts[0]);assert.equal(proof.status,'Fail');assert.equal(proof.failureReason,'Duration mismatch');assert.deepEqual(proof.actual,comparison.actual);
+  await assert.rejects(()=>recordVerification(file,{...definition,id:'unknown'},comparison,async()=>{throw new OutcomeError('Response lost','Unknown');}),e=>e.status==='Unknown');
+  const events=(await readFile(path.join(root,'steps.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);assert.ok(!events.some(e=>e.stepId==='unknown'));
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('conclusion UI shows the same comparison and unreached work while escaping authored text',()=>{
+ const summary={failedStep:{title:'<img src=x onerror=bad()>',phase:'verify',status:'Fail'},lastCompletedStep:{title:'Duplicate'},assertions:[{title:'Identity',status:'Fail',expected:{independent:true},actual:{copy:'<script>bad()</script>'},artifact:'proof.json'}],notRun:[{title:'Edit copy'}]};
+ const html=renderConclusion(summary,file=>'evidence/'+file);assert.match(html,/Failed assertion/);assert.match(html,/Not reached:.*Edit copy/);assert.match(html,/evidence\/proof.json/);assert.ok(html.includes('&lt;script&gt;'));assert.ok(!html.includes('<script>bad()'));assert.ok(!html.includes('<img src=x'));assert.equal(renderConclusion(null),'');
+});
+
+test('an assertion retains its exact comparison on failure and later steps stay unexecuted',async()=>{
+ const {recordAssertion}=await import('../desktop/check-support.mjs');
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-assertion-')),file=path.join(root,'session.json');
+ const definition={id:'identity',title:'Copy has independent generation state',phase:'verify'},comparison={expected:{independent:true},actual:{source:'gen-one',copy:'gen-one'},sources:[{timelineId:'copy',sha256:'a'.repeat(64),generationIds:['gen-one']}]};
+ try{
+  await writeJSON(file,{root,currentCheck:'CHECK',pid:123,generation:1});
+  let failure;try{await recordAssertion(file,definition,comparison,false);}catch(e){failure=e;}
+  assert.equal(failure.status,'Fail');assert.equal(failure.message,definition.title);
+  const proof=await readJSON(failure.evidence.artifacts[0]);assert.deepEqual(proof.actual,comparison.actual);assert.deepEqual(proof.sources,comparison.sources);assert.equal(proof.caseId,'CHECK');assert.equal(proof.status,'Fail');
+  const events=(await readFile(path.join(root,'steps.jsonl'),'utf8')).trim().split('\n').map(JSON.parse),history=stepHistory({steps:[definition,{id:'edit',title:'Edit copy'}]},events,[]);
+  assert.equal(history[0].status,'Fail');assert.deepEqual(history[0].assertion.actual,comparison.actual);assert.equal(history[1].status,'Not run');assert.equal((await readJSON(file)).currentStep,null);
+  const passed=await recordAssertion(file,{...definition,id:'different'}, {...comparison,actual:{source:'gen-one',copy:'gen-two'}},true);assert.equal(passed.status,'Pass');assert.notEqual(passed.artifact,proof.artifact);
+  await assert.rejects(()=>recordAssertion(file,definition,{expected:'x'.repeat(20000),actual:null},false),/16 KiB/);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
 
 test('recorded agent actions make a step Observed without inventing a completion receipt',()=>{
  const spec={steps:[{id:'edit',title:'Edit'},{id:'verify',title:'Verify'},{id:'unused',title:'Unused'}]},actions=[{stepId:'edit',at:'2026-10-01T10:00:00Z',status:'Completed'}];
@@ -22,6 +93,32 @@ test('unbound actions leave step execution unrecorded rather than claiming it di
  assert.deepEqual(stepHistory(spec,[],actions).map(s=>s.status),['No step record','No step record']);
  assert.deepEqual(stepHistory(spec,[],[]).map(s=>s.status),['Not run','Not run']);
  assert.deepEqual(stepHistory(spec,[{stepId:'prepare',status:'Fail'}],actions).map(s=>s.status),['Fail','No step record']);
+});
+
+test('diagnostic state reads do not hide phases skipped after the MGFX identity failure',()=>{
+ const spec={steps:[{id:'identity',title:'Verify independent generation'},{id:'edit',title:'Edit copy'},{id:'reopen',title:'Verify persistence'}]},events=[{stepId:'identity',status:'Fail'}];
+ const reads=actionHistory([{operation:'timeline.inspect',stdout:'{"ok":true}'},{operation:'media.list_assets',stdout:'{"ok":true}'},{operation:'diagnostic.capture',status:'Completed'}], [{request:{op:'screenshot'},response:{ok:true}}]);
+ assert.deepEqual(stepHistory(spec,events,reads).map(s=>s.status),['Fail','Not run','Not run']);
+ const mutation=actionHistory([{operation:'project.checkpoint',stdout:'{"ok":true}'}]);
+ assert.deepEqual(stepHistory(spec,events,[...reads,...mutation]).map(s=>s.status),['Fail','No step record','No step record']);
+});
+
+test('a settled check releases action attribution while uncertain and later checks keep their context',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-check-scope-')),file=path.join(root,'session.json');
+ try{
+  for(const status of ['Pass','Fail','Blocked','N/A']){
+   await writeJSON(file,{root,currentCheck:'CHECK',currentStep:null});
+   await endCheck(file,{id:'CHECK',status});
+   const state=await readJSON(file);assert.equal(state.currentCheck,null);
+   await assert.rejects(()=>recordStep(file,{id:'edit',title:'Edit copy'},async()=>{}),/active check/);
+   const spec={steps:[{id:'identity',title:'Verify identity'},{id:'edit',title:'Edit copy'}]};
+   const journal=[{caseId:'CHECK',operation:'timeline.inspect',stdout:'{"ok":true}'},{caseId:state.currentCheck||'desktop-agent',operation:'project.checkpoint',stdout:'{"ok":true}'}];
+   assert.deepEqual(stepHistory(spec,[{stepId:'identity',status:'Fail'}],actionHistory(journal.filter(x=>x.caseId==='CHECK'))).map(x=>x.status),['Fail','Not run']);
+  }
+  await writeJSON(file,{root,currentCheck:'CHECK',currentStep:null});await endCheck(file,{id:'CHECK',status:'Unknown'});assert.equal((await readJSON(file)).currentCheck,'CHECK');
+  await writeJSON(file,{root,currentCheck:'NEXT',currentStep:null});await endCheck(file,{id:'CHECK',status:'Fail'});assert.equal((await readJSON(file)).currentCheck,'NEXT');
+  const events=(await readFile(path.join(root,'check-events.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);assert.equal(events.find(e=>e.status==='Unknown').id,'CHECK');
+ }finally{await rm(root,{recursive:true,force:true});}
 });
 
 test('a lost mutation response stays Unknown, later steps remain unexecuted and receipts belong to the active step',async()=>{

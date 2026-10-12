@@ -30,6 +30,44 @@ The physical Render Graph checks require a `graph-state` JSON capture, retained 
 
 The physical live-preview checks retain timed PNG samples and before/after graph JSON. Report export can encode those samples into a video at their observed spacing. This is a sampled preview sequence. Full motion or audio checks should declare and capture their own recording.
 
+## Keep only useful passing images
+
+New prepared courses freeze `imageRetention: "failure-focused-v1"`. Collection and
+retention are separate: a required capture still must be collected to verify the
+check, even if its intermediate PNG is cleared afterward.
+
+At the first completed report export, pass-only intermediate PNGs are omitted
+from the report, their checksums and byte counts are recorded, and their owned
+run copies are cleared **after** the report is safely published. Captures remain
+available throughout course execution. Repeated exports use that retained
+decision and show no broken image links. The details panel explains when passing
+images were cleared; operation receipts, state, measurements and verdicts remain.
+
+Keep an authored visual checkpoint after a Pass by adding these fields:
+
+```json
+{"id":"drop-proof","kind":"image","when":"after","required":true,
+ "caption":"The clip visibly placed on V1.","retainOnPass":true,
+ "fileSuffix":"drop-after.png"}
+```
+
+`fileSuffix` matches the capture filename's ending, including in hashed exports.
+A specific filename declaration takes priority over a generic image declaration.
+Without a suffix, `retainOnPass: true` keeps all images matching that collection
+point. Use a descriptive capture name so the retained proof is unambiguous.
+
+Fail, Blocked, Unknown and other non-pass results retain their images. An image
+shared with any protected check remains. Maintained qualification candidates keep
+full images; for a changed accepted test, prepare a focused diagnostic selection
+with `diagnostics: "investigation"` to retain full repro evidence. Passing checks
+with evidence gaps also keep their captures for diagnosis. Global identity or
+journal gaps prevent a new pruning decision.
+
+Source media, fixtures, rendered project outputs, video, audio, JSON, logs and
+performance data are preserved. Standalone computer-use pilot archives keep their
+existing artifact contract. Historical plans without the frozen policy keep all
+their images; do not retrofit the policy or clean old runs using this mechanism.
+
 ## Record readable steps
 
 Declare a `steps` array in the check definition, with `id`, `title` and `phase`. In a desktop check:
@@ -42,6 +80,55 @@ await step({id:'verify', title:'Check source, position and duration', phase:'ver
 ```
 
 Requests made inside a step carry its ID. Assertions remain in the callback. Let errors propagate so the journal retains Fail, Blocked or Unknown. Do not catch an uncertain mutation and repeat it.
+
+Keep test steps inside the `check` callback. `endCheck` closes the matching check's
+action scope after a known terminal result, after collecting its diagnostics and
+performance evidence. Driver Save, Quit and project reopening remain in the raw
+journals under the adapter's ordinary `desktop-agent` identity; they do not belong
+to the preceding check. A later `beginCheck` establishes the next check's scope.
+Unknown retains its check identity for reconciliation and still stops execution.
+An older finalization cannot clear a different active check.
+
+Read-only diagnostic screenshots and state reads do not establish that an
+unentered step ran. An unbound mutation inside an active check still produces
+`No step record`; it must not be relabeled `Not run` merely because no step was
+declared. Historical journals retain their original attribution.
+
+### Retain the comparison behind an assertion
+
+Use `checks().assertion` for a decisive comparison that a reviewer should see
+without opening the project. Evaluate the condition independently, then provide
+small expected/actual values and any relevant source-state excerpts:
+
+```js
+const {assertion} = await checks(sessionFile, 'desktop-report.json');
+await assertion(
+  {id:'generation-identity', title:'Verify independent generation state', phase:'verify'},
+  {expected:{independent:true}, actual:{source:sourceId, copy:copyId}, sources:excerpts},
+  copyId !== sourceId
+);
+```
+
+The helper retains a unique JSON proof and a phase receipt on Pass or Fail.
+Comparisons are limited to 16 KiB; retain larger observations separately. Supply
+only the pertinent state, with source IDs and hashes where available. The helper
+records the comparison; the check author owns the independent assertion.
+
+The report copies each declared proof into the checksum inventory and surfaces
+its values in `conclusion`, alongside the first stopped phase, last completed
+phase and steps with no execution record. The live investigation, portable
+reviewer and agent task use that same conclusion. Raw operation receipts remain
+available. A completed operation is not a passed assertion, and an unreached
+editing or reopen phase is not a separately established app defect.
+
+`D-BIN-MGFX` is the first migrated example: setup, actual bin duplication, saved
+identity readback, independent generation assertion, copy edit, original/copy
+pixel checks and fresh-process reopen. Its proof includes original/copy timeline
+IDs, generation references and hashes of the saved timeline bytes. Other checks
+keep their existing evidence until their own authored comparisons are added. The
+changed definition remains a qualification candidate in `smoke-full` revision 13;
+its earlier accepted hash is preserved. Lead review is required before selecting
+the new definition directly in an accepted-only custom course.
 
 ## Give an agent the context
 
@@ -138,3 +225,39 @@ Project workflow examples are in `desktop/check-projects.mjs` and `desktop/proje
 ## Bounded long workflows
 
 A foreground check can declare `scriptTimeoutMs` between 1000 and 600000 milliseconds. A shared driver sums the selected per-check declarations, with a 120000 ms floor for ordinary drivers. Declare enough time for the entire authored driver sequence. The 50-step physical history candidate uses 480000 ms for 150 verified gestures. Keep per-step observation waits bounded and retain latency samples; the driver budget is not a speed acceptance threshold. Timeout, cancellation or output overflow retain Unknown and their process diagnostics before report parsing. A retry starts a new owned fixture and preserves the interrupted attempt.
+
+### Author a short comparison and dependency reason
+
+Add optional `invariant` and `question` sentences to the comparison: what must
+hold, and what the next inspection needs to answer. Each is at most 1,000
+characters. Keep expected/actual values small, name units and tolerances, and
+retain source excerpts in the proof. The compact agent view omits those excerpts
+but preserves the verified proof reference and evidence status.
+
+Existing drivers can use `recordVerification(sessionFile, definition,
+comparison, verify)` around their existing independent oracle. Its comparison is
+written on Pass or a known Fail; Blocked and Unknown propagate. Keep the oracle
+free of input dispatch. Do not nest it inside another recorded step.
+
+Object steps may declare `requires: ['earlier-step-id']`. Dependencies must be
+unique earlier steps in the same definition. Reports explain an unreached phase
+or recorded block from those receipts; dependencies do not replace the driver's
+own sequencing and cleanup. Always preserve the recorded block observation.
+
+## Setup and input diagnostics
+
+Recorded phase errors retain bounded wait and input-guard facts in the case
+conclusion. Managed stage reports carry those facts into investigations and the
+first-read packet. Older reports can recover them from a checksummed, case-owned
+failure-state capture. The summary includes covering-window identity and bounds,
+expected process/window, wait attempts and explicit dispatch state when recorded.
+Window titles, unrelated UI content and full input receipts stay out of this
+summary. Missing dispatch metadata remains unknown; do not infer that no input
+occurred from a Blocked or Unknown label alone.
+
+Cleanup is separate from the last completed test action. A failed prepare phase
+identifies a fixture problem; later behavior remains unreached. Missing-media
+checks now record their authored setup, available-source capture, removal and
+recovery phases. Bin duplication, native window order, header layout and inline
+image sizing retain independent comparison proofs. Changed definitions require
+fresh qualification; earlier acceptance records and run evidence are preserved.

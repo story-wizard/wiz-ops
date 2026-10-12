@@ -151,3 +151,17 @@ Final framework verification passed 224 tests with no failures or skips;
 scope integrity passed for 185 definitions and all 137 source rows. Local
 qualification is package-specific; candidates still await lead acceptance.
 Run evidence belongs in the configured external workspace, outside Git.
+
+## QtQuick composer support
+
+Adapter version 13 observes and targets Agent Workspace's actual QtQuick editor
+and Send control. Object identities, current draft text and visible bounds are
+rechecked inside the owned process before input. Text insertion verifies exact
+readback and preserves the draft and clipboard. Send posts one Qt click and
+returns a dispatch receipt; it does not assign a provider result. See
+[composer operations](agent-tools.md#enter-text-in-the-qtquick-agent-workspace-composer)
+for the bounded request contract and uncertainty handling.
+
+The component qualification uses real QtQuick controls on Qt's offscreen
+backend. Selected-package qualification remains a separate step. Generic macOS
+AX traversal is not used by these operations.

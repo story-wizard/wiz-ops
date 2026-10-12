@@ -16,6 +16,18 @@ Definitions declare image/video/audio/JSON requirements and collection points. I
 
 Add a bounded recording when the behavior needs motion evidence; avoid recording every check continuously. Reserve costly tracing/profiling for focused repros. Use the ordinary uninstrumented build for production performance or permission-persistence claims.
 
+## Image retention
+
+Ordinary new courses use failure-focused PNG retention. Capture during execution;
+retain full non-pass and diagnostic/qualification evidence. Completed report
+export clears only verified pass-only intermediate captures after saving the report,
+with an immutable pruning receipt. Shared images and declared `retainOnPass`
+visual proof remain. Collection gaps and intentional retention are distinct.
+Historical plans and existing exports are preserved. See
+[test evidence](test-evidence.md#keep-only-useful-passing-images) for the declaration
+and protected artifacts. This reduces stored/exported images, not the observations
+an agent needs to operate Wizard.
+
 ## Preparation blockers
 
 Retain a failed/interrupted preparation and export into a new external directory:

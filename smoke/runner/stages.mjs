@@ -53,7 +53,7 @@ export async function executeStages({plan,course,root,dataDir,onResult,isCancell
     const observation=stageObservation(c.id,result.report,events);
     const status=observation?.status||'Blocked';
     const r={id:c.id,status,note:observation?.error||result.report.error||('Independent '+target+' assertions completed; see retained stage evidence.')};
-    await appendFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:c.id,operation:'check.observation',stage:target,status:r.status,evidence:observation?.evidence||null,source:observation?.source||path.join(result.root,'desktop-course-report.json')})+'\n');
+    await appendFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:c.id,operation:'check.observation',stage:target,status:r.status,diagnostics:observation?.diagnostics||null,evidence:observation?.evidence||null,source:observation?.source||path.join(result.root,'desktop-course-report.json')})+'\n');
     results.push(r);await onResult(c,r.status,r.note);
    }
    if(results.some(r=>r.status==='Unknown'))throw Object.assign(Error('Uncertain stage outcome; later stages were not started.'),{status:'Unknown'});

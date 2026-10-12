@@ -7,7 +7,7 @@ import {assert,pause,same,snapshotState,command,OutcomeError} from '../runner/en
 import {nativeOrderProof,focusedTimelineProof,focusedPreviewProof,workspaceItem,tailFollowProof,selectorProof,headerProof,inlineImageProof,scrollAwayProof,gestureAnchorProof,customModelPopupProof,pipelineSelectionProof} from './macos-proof.mjs';
 
 const h=await uiWorkflows(process.argv[2],'desktop-macos-report.json');
-const {s,n,c,ui,until,check,stage,physical,observe,capture,unique,activate,finish}=h;
+const {s,n,c,ui,until,check,stage,verification,physical,observe,capture,unique,activate,finish}=h;
 const main=async()=>unique(await ui(),w=>w.class==='MainWindow','Main window');
 const readTimeline=()=>c('timeline.inspect',{timeline_id:s.main.id});
 async function addPanel(kind){
@@ -36,7 +36,7 @@ await check('D-MAC-WINDOW-ORDER',async()=>{
  // The exposed top-left owner area is resolved from the observed window; native input rejects occlusion.
  await stage('owner-click','Physically click the owner without first raising it','execute',()=>physical('click',{target:owner.id,x:16,y:16,preserveWindowOrder:true}));
  const after=await until(async()=>{const u=await ui();return u.widgets.find(w=>w.id===owner.id)?.keyWindow?u:null;},{description:'Owner becomes the native key window'});await observe(id,'after',after);
- const proof=nativeOrderProof(before,after,owner.id,panels.map(p=>p.window));same(snapshotState(await readTimeline()),baseline,'Native ordering preserves timeline content');await capture(id,'owner-key',owner.id);return {...proof,scope:'Real packaged floating Timeline and Preview; owner click, sibling order, normal window levels and independent native parents. Other lifecycle source cases remain separate.'};
+ let proof;await verification({id:'window-order',title:'Verify key window and independent floating-panel order',phase:'verify'},{invariant:'Owner click must preserve independent floating panels above the owner.',expected:{ownerKey:true,floatingPanelsAboveOwner:true,siblingOrderPreserved:true},actual:{before:before.widgets.filter(w=>[owner.id,...panels.map(p=>p.window)].includes(w.id)),after:after.widgets.filter(w=>[owner.id,...panels.map(p=>p.window)].includes(w.id))}},()=>{proof=nativeOrderProof(before,after,owner.id,panels.map(p=>p.window));});same(snapshotState(await readTimeline()),baseline,'Native ordering preserves timeline content');await capture(id,'owner-key',owner.id);return {...proof,scope:'Real packaged floating Timeline and Preview; owner click, sibling order, normal window levels and independent native parents. Other lifecycle source cases remain separate.'};
 });
 await check('D-MAC-FLOAT-TIMELINE',async()=>{
  const id='D-MAC-FLOAT-TIMELINE',baseline=snapshotState(await readTimeline()),original=await h.openTimeline((await readTimeline()).timeline.name),panel=await addPanel('Timeline');
@@ -70,16 +70,16 @@ await check('D-AGENT-HEADER',async()=>{
  try{
   await n('resize-window',{target:panel.window,width:280,height:800});await pause(300);const narrow=await workspaceRead(panel);await observe(id,'narrow',narrow);await capture(id,'narrow',panel.window);
   await stage('idle-controls','Hide Cancel before checking the wide events control','execute',()=>n('workspace-header',{target:panel.id,phase:'hide-cancel'}));
-  await n('resize-window',{target:panel.window,width:600,height:800});await pause(300);const wide=await workspaceRead(panel);await observe(id,'wide',wide);const proof=headerProof(narrow,wide);await capture(id,'wide',panel.window);return {...proof,fixture:'Synthetic running event; no real agent execution',scope:'Title and active-control geometry at 280 points, events menu at 600. Custom-model popup sizing remains separate.'};
+  await n('resize-window',{target:panel.window,width:600,height:800});await pause(300);const wide=await workspaceRead(panel);await observe(id,'wide',wide);let proof;await verification({id:'header-layout',title:'Verify narrow and wide header controls',phase:'verify'},{expected:{minimumTitleWidth:62,model:'Luna',effort:'Low',narrowCancelVisible:true,wideEventsVisible:true},actual:{narrow:narrow.items.filter(w=>/Title|Selector|Cancel|EventMenu/.test(w.name)),wide:wide.items.filter(w=>/Title|Selector|Cancel|EventMenu/.test(w.name))}},()=>{proof=headerProof(narrow,wide);});await capture(id,'wide',panel.window);return {...proof,fixture:'Synthetic running event; no real agent execution',scope:'Title and active-control geometry at 280 points, events menu at 600. Custom-model popup sizing remains separate.'};
  }catch(e){uncertain=e.status==='Unknown';throw e;}finally{if(!uncertain)await stage('restore','Restore the original controller options and Cancel state','cleanup',async()=>{await n('workspace-header',{target:panel.id,phase:'end'});const restored=(await workspaceRead(panel)).controller;for(const key of ['modelOptions','currentModelIndex','effortOptions','currentEffortIndex','cancelVisible'])same(restored[key],original[key],'Header fixture restores '+key);});}
 });
 await check('D-AGENT-IMAGE',async()=>{
  const id='D-AGENT-IMAGE',panel=await workspace(),directory=path.join(s.bundle,'assets/context/images'),source=path.join(s.root,'media','still.png');await mkdir(directory,{recursive:true});
  const image=path.join(directory,'athanor-square.png'),receipt=await command('ffmpeg',['-v','error','-y','-i',source,'-vf','scale=400:400',image],{timeout:10000});assert(receipt.code===0,'Square local image fixture could not be generated');
  await stage('inline-image','Append a local project-relative Markdown image','prepare',()=>append(panel,'![Athanor local image](assets/context/images/athanor-square.png)','inline-image'));
- await until(async()=>{const r=await workspaceRead(panel);return r.items.some(w=>w.images?.length)?r:null;},{description:'Packaged document contains an inline image'});
+ await stage('image-load','Wait for the packaged inline-image resource','verify',()=>until(async()=>{const r=await workspaceRead(panel);return r.items.some(w=>w.images?.length)?r:null;},{description:'Packaged document contains an inline image'}));
  const reads=[];for(const width of [400,120,400]){await stage('width-'+reads.length,'Apply packaged image sizing at '+width+' points','execute',()=>n('workspace-image-width',{target:panel.id,width}));await pause(100);reads.push(await workspaceRead(panel));}
- await observe(id,'sizes',reads);const proof=inlineImageProof(reads);await capture(id,'restored-image',panel.window);return {...proof,scope:'Real QTextDocument image formats/resources and packaged sizing method; controlled local square fixture, no download or provider call.'};
+ await observe(id,'sizes',reads);let proof;await verification({id:'image-sizing',title:'Verify cap, shrink and restored image resource',phase:'verify'},{expected:{sizes:[200,120,200],cornerAlpha:0,localResource:true},actual:reads.map(r=>({complete:r.complete,images:r.items.filter(w=>w.images?.length).flatMap(w=>w.images)}))},()=>{proof=inlineImageProof(reads);});await capture(id,'restored-image',panel.window);return {...proof,scope:'Real QTextDocument image formats/resources and packaged sizing method; controlled local square fixture, no download or provider call.'};
 });
 async function transcriptFixture(panel){
  for(let i=0;i<18;i++)await append(panel,'Existing transcript row '+i+' with enough text to establish a stable scrolling viewport.','cohort-'+i);

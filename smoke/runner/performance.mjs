@@ -43,3 +43,8 @@ export async function endPerformance(file,binding,{sample=sampleProcess}={}){
  const report=summarizePerformance(await readJSON(file),await collect(binding,sample));await writeJSON(file,report);
  const root=path.dirname(path.dirname(file));await appendFile(path.join(root,'operations.jsonl'),JSON.stringify({caseId:report.id,operation:'performance.collect',at:report.finishedAt,status:report.status==='Collected'?'Completed':'Incomplete',evidence:{artifacts:[file]},summary:{elapsedMs:report.elapsedMs,collectionMs:report.collectionMs,metrics:report.metrics,gaps:report.gaps}})+'\n');return report;
 }
+export async function measurePhase(timings,phase,fn){
+ const startedAt=new Date().toISOString(),start=performance.now();let status='Completed';
+ try{return await fn();}catch(e){status=e.status||'Failed';throw e;}
+ finally{timings.push({phase,startedAt,finishedAt:new Date().toISOString(),durationMs:performance.now()-start,status});}
+}

@@ -11,11 +11,11 @@ export async function prepareDelivery(directory,route){
  directory=externalPath(path.resolve(directory));const reportFile=path.join(directory,'report.json');
  if(!(await lstat(reportFile)).isFile())throw Error('Delivery requires a retained regular report file.');
  const report=await readJSON(reportFile);
- if(!['athanor-nightly-report/v1','athanor-preparation-report/v1'].includes(report.format)||!report.identity?.build||!report.catalog)throw Error('Use a retained Athanor nightly or preparation report.');
- const destination=verifyOwnerRoute(route),identity=report.runId||report.preparation?.id;
+ if(!['athanor-nightly-report/v1','athanor-preparation-report/v1','athanor-job-report/v1'].includes(report.format)||!report.identity?.build||!report.catalog)throw Error('Use a retained Athanor nightly, preparation or job report.');
+ const destination=verifyOwnerRoute(route),identity=report.runId||report.preparation?.id||report.jobId;
  if(!identity||!['Passed','Failed','Blocked','Cancelled','Unknown'].includes(report.catalog.state))throw Error('Delivery requires a terminal run or blocked preparation.');
  const content={format:'athanor-delivery-intent/v1',reportHash:digest(report),identity,destination,policy:ownerDelivery};
- const intent={...content,id:digest(content),createdAt:new Date().toISOString(),message:`Athanor · ${report.identity.build}\n${report.runId?'Run':'Preparation'}: ${identity}\nOutcome: ${report.catalog.state}\nCatalog: ${JSON.stringify(report.catalog.counts)}\nFunctional assertions: ${JSON.stringify(report.assertionCounts||{})}\n${report.preparation?.error?'Preparation: '+report.preparation.error+'\n':''}Report retained on the testing Mac: ${directory}\nEvidence is local; no files uploaded.`,state:'DELIVERY_PENDING'};
+ const intent={...content,id:digest(content),createdAt:new Date().toISOString(),message:`Athanor · ${report.identity.build}\n${report.runId?'Run':report.jobId?'Job':'Preparation'}: ${identity}\nOutcome: ${report.catalog.state}\nCatalog: ${JSON.stringify(report.catalog.counts)}\nFunctional assertions: ${JSON.stringify(report.assertionCounts||{})}\n${report.preparation?.error?'Preparation: '+report.preparation.error+'\n':''}${report.error?'Controller: '+report.error+'\n':''}Report retained on the testing Mac: ${directory}\nEvidence is local; no files uploaded.`,state:'DELIVERY_PENDING'};
  const output=path.join(directory,'delivery');await mkdir(output,{recursive:true,mode:0o700});
  await writeFile(path.join(output,'intent.json'),JSON.stringify(intent,null,2)+'\n',{flag:'wx',mode:0o600});
  return {intent,path:path.join(output,'intent.json'),networkDispatched:false};

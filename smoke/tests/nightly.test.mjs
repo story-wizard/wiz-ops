@@ -32,7 +32,7 @@ test('assertion routes pin related definitions, flag drift and never promote cat
 test('maintained assertion reconciliation and grouped selection retain all gaps without executing them',async()=>{
  const actual=JSON.parse(await readFile(new URL('../examples/nightly/suite.json',import.meta.url))),mappings=JSON.parse(await readFile(new URL('../examples/nightly/mapping.json',import.meta.url))),checks=checkRegistry(),selection=resolveSelection({},{courseIds:['smoke-full']});
  const plan=createNightlyPlan(actual,checks,{...identity,dataDir:'/private/tmp/athanor-plan-only'},mappings,{executionSelection:selection}),weekly=createNightlyPlan(actual,checks,{...identity,dataDir:'/private/tmp/athanor-plan-only'},mappings,{cadence:'weekly',executionSelection:selection});
- assert.deepEqual(plan.cases.map(c=>c.id),actual.cases.map(c=>c.id));assert.equal(plan.cases.some(c=>c.mappingNeedsReview),false);
+ assert.deepEqual(plan.cases.map(c=>c.id),actual.cases.map(c=>c.id));assert.deepEqual(plan.cases.filter(c=>c.mappingNeedsReview).map(c=>c.id),['MGFX-01','MGFX-02','TIME-01','SCOPES-01','MGFX-OFFLINE-01']);assert.deepEqual(plan.cases.flatMap(c=>c.assertions.flatMap(a=>a.support.checks)).filter(c=>c.needsReview).map(c=>c.id),['S-MGFX-TAIL-TIMING','S-MGFX-TAIL-TIMING','S-MGFX-TAIL-TIMING','S-MGFX-TAIL-TIMING','D-EDIT-TRIM','D-SCOPES-VECTOR','S-MGFX-UNDO-PUBLISH']);
  assert.ok(plan.cases.every(c=>c.assertions.every(a=>a.support.remaining.length&&a.status==='NOT_RUN')));
  assert.deepEqual(plan.execution.selection.effectiveIds,weekly.execution.selection.effectiveIds);assert.equal(plan.execution.selection.desktopMode,'grouped');assert.equal(plan.execution.selection.effectiveIds.includes('S-PF-IDLE'),false);assert.equal(plan.execution.state,'PLANNING_ONLY');
  assert.equal(plan.cases.find(c=>c.id==='RAW-01').assertions[0].support.coverage,'gap');assert.equal(plan.cases.find(c=>c.id==='SEARCH-01').candidates.length,0);assert.ok(plan.cases.find(c=>c.id==='MISSING-MEDIA-01').candidates.some(c=>c.id==='A-IN-08-R'));
@@ -49,8 +49,8 @@ test('nightly CLI freezes the actual selection and rejects a different service d
    await writeFile(module,rewritten);const {main}=await import(pathToFileURL(module).href),args=['plan','--build',identity.build,'--package-hash',identity.packageHash,'--out',out,'--server','http://127.0.0.1:1'];
    if(drift){await assert.rejects(()=>main(args),/differ from the service/);assert.equal(await lstat(out).catch(()=>null),null);}
    else{
-    const result=await main([...args]),plan=JSON.parse(await readFile(out));assert.equal(result.executionStarted,false);assert.equal(result.selectedCheckCount,192);assert.equal(result.selectedCheckCount,plan.execution.selection.effectiveIds.length);assert.deepEqual(result.assertionSupport,{related:68,gap:93});assert.equal(plan.execution.definitions.find(c=>c.id==='A-CLI-01').definitionHash,checks.find(c=>c.id==='A-CLI-01').definitionHash);
-    for(const [course,count,mode] of [['automated-full',137,'grouped'],['smoke-full',180,'grouped'],['smoke-isolated',180,'isolated']]){
+    const result=await main([...args]),plan=JSON.parse(await readFile(out));assert.equal(result.executionStarted,false);assert.equal(result.selectedCheckCount,192);assert.equal(result.selectedCheckCount,plan.execution.selection.effectiveIds.length);assert.deepEqual(result.assertionSupport,{related:61,gap:93,'review-required':7});assert.equal(plan.execution.definitions.find(c=>c.id==='A-CLI-01').definitionHash,checks.find(c=>c.id==='A-CLI-01').definitionHash);
+    for(const [course,count,mode] of [['automated-full',133,'grouped'],['smoke-full',180,'grouped'],['smoke-isolated',180,'isolated']]){
      const destination=root+'/'+course+'.json',request=[...args];request[request.indexOf('--out')+1]=destination;
      assert.equal((await main([...request,'--courses',course])).selectedCheckCount,count);assert.equal(JSON.parse(await readFile(destination)).execution.selection.desktopMode,mode);
     }

@@ -13,9 +13,48 @@ The left table shows each case's first outcome and next stage. Search by test na
 
 Grouping is an evidence-supported hypothesis. Same-observation hints do not establish a shared root cause. Duplicate cycles and targets outside the investigation are rejected. A block describes setup or capability until evidence establishes an app defect.
 
+## Start with the recorded conclusion
+
+New report cases expose `conclusion`: the expected/observed comparison, first
+stopped phase, last completed phase, and work that was not reached. Authored
+assertions include their exact values and a link to the checksum-bound proof.
+Read this before opening the full journal or a saved project. The Brief and
+Evidence tabs, portable reviewer and agent task show the same recorded facts.
+Older cases retain their original method/actions; missing values are not filled
+in from a later source version.
+
+An agent should return the likely cause with run/check and evidence citations,
+what remains untested, and the next useful inspection or focused repro. Keep a
+cause hypothesis separate from the recorded facts. A first run with complete
+investigation captures still needs a separate linked diagnostic repro and human
+review before bug submission. Original diagnostic profiles are read from their
+frozen selection, including older records that omitted the explicit profile.
+
+New desktop checks close their action scope when a known result settles. Driver
+cleanup and reopening stay in the raw journals without inheriting that check.
+Untouched phases can then appear as `Not run`, while a declared reopen phase that
+fails its fixture prerequisite remains `Blocked`. Unknown input and unbound
+mutations remain explicit. Earlier exports keep the scope information that was
+actually recorded; source repairs do not rewrite their phase history.
+
 ## Agent triage and repairs
 
 Open **Work with an agent**. Choose triage, repair, repro or review; prepare the selected case's handoff and copy its prompt plus JSON context. Export the investigation when the agent needs a portable evidence package. `tasks/` contains all four prompts and context packets.
+
+Triage tasks also include `triageHints`: proposed groups from exact recorded
+missing-operation or shared-prerequisite blockers, with original run/check IDs,
+observations and evidence report links. Other failures receive no inferred cause.
+Existing classifications, resolved cases and reviewed groups are excluded from
+these suggestions. A shared blocker is a grouping hypothesis, not proof of an
+identical application defect. The optional `triage-proposal.json` in the portable
+package is ready for evidence review and the existing proposal preview; it is
+never applied by task generation or export. Reload after any investigation revision
+change before reviewing or applying a proposal.
+
+Managed job reports link directly to this workflow. Use the controller's `brief`
+for build/course identity, results, handoff state and recovery instructions; see
+[Job controller](job-controller.md#investigation-and-agent-handoff). Developer
+course runs still use Results → Investigate or the ordinary investigation CLI.
 
 For triage, have the agent return a JSON proposal using the packet's `proposalTemplate`. Paste it or select the JSON file, then press **Preview proposed changes**. Preview validates case IDs, classifications, grouping and revision without saving. Inspect the before/after changes and reasoning, then apply reviewed changes. Reload and regenerate a proposal after a revision conflict.
 
@@ -111,3 +150,62 @@ Packaged checks retain their CLI receipts, state/output evidence and local proce
 An immutable export contains `index.html`, `review-data.json`, first and linked interactive reports, `investigation.json`, proposal template, `tasks/`, draft text/JSON, focused selection, curated agent guides and a SHA-256 inventory. Original evidence is verified before copying. App bytes, full projects and media stay in the external run workspace; use `kit --run RUN_ID` for a full repro kit.
 
 The portable reviewer works without a service. Record edits and final review in the live investigation, then export again. The [Bug Reporter bridge](bug-reporter-interop.md) prepares bounded evidence parcels and supports draft-only field prefill through the attached Qt plugin. Native attachment import remains a separate app integration. A person reviews and submits; the local workflow keeps `delivery=not_submitted` and does not publish Jira issues or upload evidence.
+
+## Next improvements from the MGFX validation
+
+The October 11 focused run reproduced a Media Bin duplicate with distinct timeline
+and clip IDs but a shared generation ID. The expected/actual comparison reached
+the brief, report and portable task, with 80 verified package files. The check
+stopped before editing the copy. This gives an agent a useful starting fact;
+the responsible duplication code path still needs investigation.
+
+These four slices are implemented in source. Framework and driver counterfactual
+checks exercise the reporting behavior; new packaged GUI acceptance remains a
+separate run.
+
+| Slice | Current behavior |
+| --- | --- |
+| Timing and displayed output | D-EDIT-TRIM retains seconds, duration tolerance, source projection and neighbor state. D-SCOPES-VECTOR retains the selected tap, RGB difference threshold, measured source brightness and frame times. Both keep their existing independent oracle. |
+| Dependent phases | Authored `requires` names earlier steps. Reports show the unmet phase and its recorded status, plus the original block observation. Unknown remains Unknown and unbound mutations remain unrecorded. This annotates evidence; it does not schedule or retry actions. |
+| First read | Portable tasks include `tasks/TASK-first-read.json`. Managed job handoffs link `first-read.json` and its evidence package. These retain the assertion, decisive values, proof reference, stopped/unreached phases and unanswered question. Full source excerpts stay in the immutable proof and report. |
+| Cost and overhead | `scripts/review-cost.mjs` compares packet bytes, approximate tokens, proof availability, reviewer receipts and execution intervals. Fresh desktop reports record runner-owned preparation, launch, reopen, close and cleanup durations; diagnostic events record collection duration. Historical missing timers remain gaps. |
+
+The maintained full course is revision 13. D-EDIT-TRIM remains runnable as an
+explicit qualification candidate; its historical acceptance is preserved. The
+legacy TIME-01 and SCOPES-01 support mappings correctly require review after
+these definition changes. Do not refresh their pins or promote acceptance just
+to remove the warning.
+
+## Measure the review path
+
+Use the same package, check set, evidence and review brief for each lane. Start
+with the retained full task in one lane and the first-read file in the other.
+Do not tell the reviewers the expected diagnosis or let them repair anything.
+Ask for the recorded failure, evidence citation, what was not exercised and the
+next useful inspection. Evaluate correctness and unsupported claims against the
+retained assertion and journal.
+
+```sh
+node scripts/review-cost.mjs BEFORE.json FIRST-READ.json DESKTOP-REPORT.json OPERATIONS.jsonl
+```
+
+Optional fifth input: a JSON array of review receipts. Each entry contains
+`lane`, `startedAt`, `concludedAt`, `correctConclusion`, `files` (absolute files
+actually read), and `unsupportedClaims` (evaluated statements). The tool returns
+elapsed time and time to a correct conclusion separately; an incorrect answer
+has no successful conclusion time. Reviewer correctness is an evaluated input,
+not inferred from fast completion. Repeated file opens are counted, but byte
+estimates use unique full files and exclude repeat/partial reads. Token estimates
+use bytes divided by four; they are not billed token counts.
+
+The same retained October 11 MGFX evidence needs 8,986 bytes in the full task
+versus 2,606 bytes in the first read: about 71% less initial context, with the
+same comparison and proof reference. This measures packet size, not reasoning
+speed. The desktop stage took 113.234 seconds while the failing MGFX check's
+boundary interval was 4.240 seconds; group setup and session overhead deserve
+measurement before combining mutable fixtures. Older journals cannot separate
+all launch, diagnostic and cleanup time. New timers fill that gap prospectively.
+
+Agentic diagnosis, automatic Jira publication and a new planning engine remain
+separate work. A confirmed bug still needs a linked diagnostic repro and human
+review through the existing investigation and Bug Reporter flow.

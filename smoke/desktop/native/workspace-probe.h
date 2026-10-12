@@ -5,6 +5,10 @@
 #include <QQmlComponent>
 #include <QTextBlock>
 #include <QTextFragment>
+#include <QInputMethodEvent>
+#include <functional>
+
+struct WorkspaceInputError { QString message, status; };
 
 // Typed fixture seams and bounded reads on the owned packaged panel; no script evaluation.
 struct WorkspaceProbe {
@@ -34,6 +38,55 @@ struct WorkspaceProbe {
         QQuickItem* found=nullptr;
         for(auto* item:items())if(item->objectName()==name){if(found)throw QString("Ambiguous workspace item");found=item;}
         if(!found)throw QString("Workspace item unavailable: ")+name;return found;
+    }
+    QRectF visibleBounds(QQuickItem* item) const {
+        if(!item->isVisible()||!item->isEnabled())throw QString("Workspace control is hidden or disabled");
+        QRectF bounds=item->mapRectToScene(QRectF(0,0,item->width(),item->height()));
+        bounds=bounds.intersected(QRectF(0,0,view->width(),view->height()));
+        for(auto* parent=item;parent;parent=parent->parentItem()){
+            if(!parent->isVisible()||!parent->isEnabled()||parent->opacity()<=0)throw QString("Workspace control has a hidden or disabled ancestor");
+            if(parent->clip())bounds=bounds.intersected(parent->mapRectToScene(QRectF(0,0,parent->width(),parent->height())));
+        }
+        if(bounds.isEmpty()||!qIsFinite(bounds.x())||!qIsFinite(bounds.y())||!qIsFinite(bounds.width())||!qIsFinite(bounds.height()))throw QString("Workspace control has no visible hit region");
+        return bounds;
+    }
+    QPoint hitPoint(QQuickItem* item) const {
+        const auto point=visibleBounds(item).center();auto* hit=view->contentItem();
+        for(int depth=0;depth<256;depth++){
+            auto* child=hit->childAt(hit->mapFromScene(point).x(),hit->mapFromScene(point).y());
+            if(!child){for(auto* parent=hit;parent;parent=parent->parentItem())if(parent==item)return point.toPoint();throw QString("Another QtQuick item covers the composer target; no input dispatched");}
+            hit=child;
+        }
+        throw QString("Composer hit tree exceeds observation bounds; no input dispatched");
+    }
+    QJsonObject composer(const std::function<QString(QObject*)>& id) const {
+        auto* editor=named("AgentWorkspaceMessageInput");auto* send=named("AgentWorkspaceSendButton");auto* owner=named("AgentWorkspaceComposer");
+        if(!editor->inherits("QQuickTextEdit")||!editor->property("readOnly").isValid()||!owner->property("canSend").isValid())throw QString("Workspace composer contract differs; no input dispatched");
+        const auto text=editor->property("text").toString();if(text.size()>4096)throw QString("Workspace draft exceeds the bounded composer observation");
+        const auto geometry=[&](QQuickItem* item){const auto rect=visibleBounds(item);return QJsonObject{{"x",rect.x()},{"y",rect.y()},{"width",rect.width()},{"height",rect.height()}};};
+        return {{"surfaceId",id(view)},{"editor",QJsonObject{{"id",id(editor)},{"text",text},{"editable",!editor->property("readOnly").toBool()},{"enabled",editor->isEnabled()},{"focus",editor->hasActiveFocus()},{"cursorPosition",editor->property("cursorPosition").toInt()},{"selectionStart",editor->property("selectionStart").toInt()},{"selectionEnd",editor->property("selectionEnd").toInt()},{"visibleRect",geometry(editor)}}},
+            {"send",QJsonObject{{"id",id(send)},{"enabled",send->isEnabled()&&owner->property("canSend").toBool()},{"visibleRect",geometry(send)}}},{"complete",true},{"scope","Owned QtQuick composer; text is observed, Send dispatch does not establish provider success"}};
+    }
+    QJsonObject composerInput(const QJsonObject& request,const std::function<QString(QObject*)>& id) const {
+        const auto state=composer(id);const auto op=request["op"].toString();
+        if(request["surfaceId"]!=state["surfaceId"]||request["editorId"]!=state["editor"].toObject()["id"]||request["sendId"]!=state["send"].toObject()["id"])throw WorkspaceInputError{"Workspace composer was replaced; observe again. No input dispatched","Blocked"};
+        auto* editor=named("AgentWorkspaceMessageInput");auto* send=named("AgentWorkspaceSendButton");
+        const auto before=state["editor"].toObject()["text"].toString();
+        if(!request["expectedText"].isString()||request["expectedText"].toString()!=before||QApplication::activeModalWidget()||QApplication::activePopupWidget())throw WorkspaceInputError{"Workspace draft or modal state changed; observe again. No input dispatched","Blocked"};
+        if(op=="workspace-composer-type"){
+            const auto text=request["text"].toString();const int cursor=editor->property("cursorPosition").toInt();
+            if(!state["editor"].toObject()["editable"].toBool()||!request["text"].isString()||text.isEmpty()||text.contains(QRegularExpression("[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f\\x7f]"))||before.size()+text.size()>4096||cursor<0||cursor>before.size()||!request["cursorPosition"].isDouble()||request["cursorPosition"].toDouble()!=cursor||editor->property("selectionStart")!=editor->property("selectionEnd"))throw WorkspaceInputError{"Composer must retain its observed caret, an empty selection and a bounded editable insertion; no input dispatched","Blocked"};
+            hitPoint(editor);
+            const auto expected=before.left(cursor)+text+before.mid(cursor);QPointer<QQuickItem> guarded(editor);
+            editor->forceActiveFocus();if(!editor->hasActiveFocus())throw WorkspaceInputError{"QtQuick editor did not acquire focus; no text dispatched","Blocked"};
+            QInputMethodEvent event;event.setCommitString(text);QCoreApplication::sendEvent(view,&event);
+            if(!guarded||guarded->property("text").toString()!=expected)throw WorkspaceInputError{"Composer input dispatched but readback differs; inspect before continuing","Unknown"};
+            return {{"dispatched",true},{"verified",true},{"text",expected},{"editorId",id(editor)},{"inputMode","Qt input-method event; no system clipboard access"}};
+        }
+        if(op!="workspace-composer-send"||!state["send"].toObject()["enabled"].toBool())throw WorkspaceInputError{"Composer Send is unavailable; no input dispatched","Blocked"};
+        // Use the visible MouseArea path once. The receipt acknowledges input, not a provider turn.
+        QTest::mouseClick(view,Qt::LeftButton,Qt::NoModifier,hitPoint(send));
+        return {{"dispatched",true},{"sendCount",1},{"inputMode","Qt pointer events; provider outcome requires separate observation"}};
     }
     QJsonObject inspect(QWidget* panel,const QJsonObject& request) const {
         QJsonArray result;const auto offset=container->mapTo(panel,QPoint{});

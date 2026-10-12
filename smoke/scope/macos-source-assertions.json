@@ -124,7 +124,7 @@
       "checks": [
         {
           "id": "D-MAC-WINDOW-ORDER",
-          "definitionHash": "c84f98ae1c4b5540436748e776335efcd4fc418e7892db0c65cd964cd5bc03b5"
+          "definitionHash": "7d3c68a7179324620d96af4f44ef7fe0abdd6a2764e2729a9707a78ac38dfbc3"
         }
       ],
       "remaining": "Real packaged panels with native physical focus; source test setup/lifecycle assumptions remain separate."
@@ -199,7 +199,7 @@
       "checks": [
         {
           "id": "D-MAC-WINDOW-ORDER",
-          "definitionHash": "c84f98ae1c4b5540436748e776335efcd4fc418e7892db0c65cd964cd5bc03b5"
+          "definitionHash": "7d3c68a7179324620d96af4f44ef7fe0abdd6a2764e2729a9707a78ac38dfbc3"
         }
       ],
       "remaining": "Real packaged panels with native physical focus; source test setup/lifecycle assumptions remain separate."
@@ -212,7 +212,7 @@
       "checks": [
         {
           "id": "D-MAC-WINDOW-ORDER",
-          "definitionHash": "c84f98ae1c4b5540436748e776335efcd4fc418e7892db0c65cd964cd5bc03b5"
+          "definitionHash": "7d3c68a7179324620d96af4f44ef7fe0abdd6a2764e2729a9707a78ac38dfbc3"
         }
       ],
       "remaining": "Real packaged panels with native physical focus; source test setup/lifecycle assumptions remain separate."
@@ -2072,7 +2072,7 @@
       "checks": [
         {
           "id": "D-AGENT-HEADER",
-          "definitionHash": "5c1023ac76fdb56eefca92ec0c40203f3df21654885cba659f6c6c95dc05fec8"
+          "definitionHash": "5cda710f8d97388146036a5d1bf2d706f7cd110741b44cc2f3c75012309f5a4c"
         },
         {
           "id": "D-AGENT-CUSTOM-MODEL",
@@ -2089,7 +2089,7 @@
       "checks": [
         {
           "id": "D-AGENT-IMAGE",
-          "definitionHash": "dac47ee98a521436839a15ff045419477f3208a90107c457ede2ad8af243282f"
+          "definitionHash": "1fbf2b9602b62da972d4135bfcd41304509a743ee0b40590b7bc79fd7004635e"
         }
       ],
       "remaining": "Candidate uses a local square fixture and the packaged sizing method; independent document/resource and presented-image evidence."

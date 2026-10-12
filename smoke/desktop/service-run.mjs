@@ -1,7 +1,7 @@
 import {requireScriptCompletion,requireScriptReceipt,endCheck,mergeReopenResult} from './check-support.mjs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {prepareDesktop,launchDesktop,stopDesktop,retainChild,nativeCall} from './adapter.mjs';
+import {prepareDesktop,launchDesktop,stopDesktop,terminateOwnedDesktop,retainChild,nativeCall} from './adapter.mjs';
 import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 import {assert,command} from '../runner/engine.mjs';
 import strict from 'node:assert/strict';
@@ -33,7 +33,7 @@ try{
   await script('check-generated-tail.mjs','service-generated-tail-reopen-report.json',1,['verify']);tailVerificationPending=false;}
 }catch(e){report.error=e.message;report.errorStatus=e.status;}
 finally{
-  if(live&&live.child.exitCode===null&&!live.child.signalCode)try{await stopDesktop(file);await live.closed;}catch(e){report.cleanupError=e.message;}
+  if(live&&live.child.exitCode===null&&!live.child.signalCode)try{await stopDesktop(file);await live.closed;}catch(e){try{await terminateOwnedDesktop(file,live);report.cleanupRecovery={error:e.message,terminated:true};}catch(cleanup){report.cleanupError=cleanup.message;}}
   if(tailVerificationPending){const prior=report.results.find(r=>r.id==='S-MGFX-TAIL-TIMING');if(prior?.status==='Pass'){prior.initial={status:prior.status,evidence:prior.evidence};prior.status=report.errorStatus==='Unknown'?'Unknown':'Blocked';prior.error='Animated tail reopen did not complete: '+(report.error||report.cleanupError||'interrupted');}}
   const tail=report.results.find(r=>r.id==='S-MGFX-TAIL-TIMING');if(tail&&!report.cleanupError)await endCheck(file,{...tail,final:true});
   for(const c of course.cases)if(!report.results.some(r=>r.id===c.id))report.results.push({id:c.id,status:'Blocked',error:'Not executed after an unmet prerequisite. '+(report.error||'')});

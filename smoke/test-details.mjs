@@ -11,11 +11,14 @@ export function evidenceSpec(check){
  const ids=new Set();
  for(const item of spec){
   if(!item||!/^[a-z][a-z0-9-]*$/.test(item.id||'')||ids.has(item.id)||!['image','video','audio','json'].includes(item.kind)||!['before','during','after','failure'].includes(item.when)||typeof item.required!=='boolean'||typeof item.caption!=='string'||!item.caption.trim())throw Error('Invalid evidence specification for '+check.id);
+  if(item.retainOnPass!==undefined&&typeof item.retainOnPass!=='boolean'||item.fileSuffix!==undefined&&(typeof item.fileSuffix!=='string'||!item.fileSuffix||/[\\/]/.test(item.fileSuffix)))throw Error('Invalid evidence retention declaration for '+check.id);
   ids.add(item.id);
  }
  return spec;
 }
 export function testSpecification(check){
+ const steps=(check.steps||[]).filter(s=>s&&typeof s==='object'&&s.id&&s.title),seen=new Set();
+ for(const step of steps){if(seen.has(step.id)||step.requires!==undefined&&(!Array.isArray(step.requires)||new Set(step.requires).size!==step.requires.length||step.requires.some(id=>!seen.has(id))))throw Error('Step dependencies must name unique earlier steps in '+check.id);seen.add(step.id);}
  return {id:check.id,title:check.title,definitionHash:check.definitionHash||digest(check),method:methods[check.id]||check.scope||check.expected,expected:check.expected,steps:(check.steps||[]).filter(s=>s&&typeof s==='object'&&s.id&&s.title),procedure:(check.steps||procedures[check.id]||[]).filter(s=>typeof s==='string'),evidence:evidenceSpec(check),...(check.proof?{proof:volumeContract(check)}:{})};
 }
 export function candidateChecks(){return ['desktop/physical-course.json','desktop/physical-editor-course.json'].flatMap(file=>JSON.parse(readFileSync(path.join(ROOT,file),'utf8')).cases.filter(c=>!rawChecks.some(r=>r.id===c.id)).map(c=>({...c,definitionHash:digest(c),accepted:false,candidateCourse:file.includes('physical-editor')?'editor':'spellbook'})));}
@@ -43,13 +46,46 @@ export function actionHistory(operations=[],native=[],input=[]){
  });
 }
 export function stepHistory(spec,events=[],actions=[]){
- return (spec.steps||[]).map(step=>{
+ const history=(spec.steps||[]).map(step=>{
   const records=events.filter(e=>e.stepId===step.id),terminal=records.at(-1)?.status==='Running'?null:records.findLast(e=>e.status!=='Running'),start=records.find(e=>e.status==='Running'),observed=actions.filter(a=>a.stepId===step.id);
-  return {...step,status:terminal?.status||(start?'Unknown':observed.length?'Observed':actions.some(a=>!a.stepId)?'No step record':'Not run'),startedAt:start?.at||observed[0]?.at||null,finishedAt:terminal?.at||null,observation:terminal?.observation||'',actionCount:observed.length};
+    return {...step,phase:terminal?.phase||start?.phase||step.phase,status:terminal?.status||(start?'Unknown':observed.length?'Observed':actions.some(a=>!a.stepId&&!['diagnostic.capture','project.get_name','timeline.inspect','media.list_assets','inspect','screenshot'].includes(a.operation))?'No step record':'Not run'),startedAt:start?.at||observed[0]?.at||null,finishedAt:terminal?.at||null,observation:terminal?.observation||'',actionCount:observed.length,...(terminal?.diagnostics?{diagnostics:terminal.diagnostics}:{}),...(terminal?.assertion?{assertion:terminal.assertion}:{})};
  });
+ const stopped=history.find(s=>['Fail','Blocked','Unknown'].includes(s.status));
+ return history.map((step,index)=>{
+  if(!['Not run','Blocked'].includes(step.status))return step;
+  const unmet=(step.requires||[]).map(id=>history.find(s=>s.id===id)).filter(s=>s&&s.status!=='Completed');
+  const reason=unmet.length?(step.status==='Blocked'&&step.observation?step.observation+' — ':'')+'Requires '+unmet.map(s=>s.title+' ('+s.status+')').join('; '):step.status==='Blocked'?step.observation:stopped&&index>history.indexOf(stopped)?(stopped.status==='Unknown'?'Input outcome requires reconciliation at ':'Check stopped at ')+stopped.title+' ('+stopped.status+'). No execution receipt for this phase.':'No execution receipt for this phase.';
+  return {...step,reason,unmetPrerequisites:unmet.map(s=>({id:s.id,title:s.title,status:s.status}))};
+ });
+}
+export function caseConclusion(item){
+ const steps=item.steps||[],failedIndex=steps.findIndex(s=>['Fail','Blocked','Unknown'].includes(s.status)),failed=steps[failedIndex],completed=(failedIndex<0?steps:steps.slice(0,failedIndex)).filter(s=>s.status==='Completed'&&s.phase!=='cleanup');
+ return {expected:item.expected,observed:item.observation,failedStep:failed?{id:failed.id,title:failed.title,phase:failed.phase,status:failed.status,observation:failed.observation}:null,
+  ...(item.diagnostics||failed?.diagnostics?{diagnostics:failureDiagnostics(item.diagnostics||failed.diagnostics)}:{}),
+  lastCompletedStep:completed.at(-1)?{id:completed.at(-1).id,title:completed.at(-1).title}:null,
+  assertions:steps.filter(s=>s.assertion).map(s=>({stepId:s.id,title:s.title,status:s.status,...s.assertion})),
+  notRun:steps.filter(s=>s.status==='Not run').map(s=>({id:s.id,title:s.title,phase:s.phase,reason:s.reason||null})),
+  blocked:steps.filter(s=>s.status==='Blocked').map(s=>({id:s.id,title:s.title,phase:s.phase,reason:s.reason||s.observation})),
+  stepEvidence:steps.length?'Recorded phases':'No authored phase record retained'};
+}
+// Keep the decisive guard/wait facts; raw receipts and unrelated UI content stay in evidence.
+export function failureDiagnostics(value){
+ const result={};if(!value||typeof value!=='object')return result;
+ const receipt=value.receipt||value,facts=receipt.diagnostics||value;
+ for(const key of ['expected','elapsedMs','attempts','stableForMs','expectedPid','expectedWindow','point','dispatch','expectedTarget','observedFocus','keyWindow','missingOperations','matches','timing','summary'])if(facts[key]!==undefined)result[key]=facts[key];
+ for(const key of ['code','status','inputDispatched','pointerCleanupReleased','modifierCleanupReleased'])if(receipt[key]!==undefined)result[key]=receipt[key];
+ for(const key of ['occluder','frontWindow'])if(facts[key]&&typeof facts[key]==='object')result[key]=Object.fromEntries(['pid','window','owner','layer','frame'].filter(k=>facts[key][k]!==undefined).map(k=>[k,facts[key][k]]));
+ if(Buffer.byteLength(JSON.stringify(result))>4096)return {summary:'Diagnostic summary exceeds 4 KiB; inspect the retained failure evidence.'};
+ return result;
+}
+export function compactConclusion(summary){
+ if(!summary)return null;
+ return {...summary,assertions:(summary.assertions||[]).map(a=>({stepId:a.stepId,title:a.title,status:a.status,expected:a.expected,actual:a.actual,artifact:a.artifact||null,...(a.invariant?{invariant:a.invariant}:{}),...(a.question?{question:a.question}:{}),...(a.failureReason?{failureReason:a.failureReason}:{}),...(a.evidenceStatus?{evidenceStatus:a.evidenceStatus}:{})})),
+  unansweredQuestion:(summary.assertions||[]).find(a=>a.stepId===summary.failedStep?.id)?.question|| (summary.failedStep?.status==='Unknown'||summary.diagnostics?.status==='Unknown'?'Did the input occur? Reconcile the retained receipt before any retry.':summary.failedStep?.phase==='prepare'?'Why did fixture setup fail? The later behavior has not been exercised.':'What explains the recorded outcome, and which unreached behavior still needs a repro?')};
 }
 export function evidenceCaption(file){
  const name=path.basename(file).replace(/^computer-use-[a-f0-9]{12}-/,'');
+ if(/^assertion-/.test(name))return 'Expected and observed values used by the assertion, with retained source-state excerpts.';
  if(/^performance-/.test(name))return 'Check duration, collection overhead and process-bound CPU/RSS observations.';
  if(/^P-RG-.*-before\./.test(name))return 'Render Graph before the tested action.';
  if(/^P-RG-.*-after\./.test(name))return 'Render Graph after the tested action.';
@@ -79,7 +115,7 @@ export function evidenceCaption(file){
  return words(name.replace(/\.[^.]+$/,''));
 }
 export const mediaKind=file=>/\.(png|jpe?g|gif)$/i.test(file)?'image':/\.(mp4|mov|webm)$/i.test(file)?'video':/\.(wav|mp3|m4a|aac)$/i.test(file)?'audio':'json';
-export function evidenceItems(files=[],spec=null,defaultWhen='after'){return files.map(file=>{const kind=mediaKind(file),when=/-before\./.test(file)?'before':(/-sample-\d+|preview-clip|live-observations/.test(file)||/graph-observations/.test(file)&&spec?.evidence.some(e=>e.id==='observations'&&e.kind==='json'&&e.when==='during'))?'during':/-failure|rejection/.test(file)?'failure':/-undo\.|-after\.|graph-observations/.test(file)?'after':defaultWhen;const match=!/^(?:computer-use-[a-f0-9]{12}-)?performance-/.test(path.basename(file))&&spec?.evidence.find(e=>e.id!=='operations'&&e.kind===kind&&e.when===when&&(e.id!=='preview-clip'||file.includes('preview-clip'))&&(e.id!=='graph-state'||file.includes('graph-observations')));return {file,kind,when,caption:evidenceCaption(file),specId:match?.id||null};});}
+export function evidenceItems(files=[],spec=null,defaultWhen='after'){return files.map(file=>{const kind=mediaKind(file),when=/-before\./.test(file)?'before':(/-sample-\d+|preview-clip|live-observations/.test(file)||/graph-observations/.test(file)&&spec?.evidence.some(e=>e.id==='observations'&&e.kind==='json'&&e.when==='during'))?'during':/-failure|rejection/.test(file)?'failure':/-undo\.|-after\.|graph-observations/.test(file)?'after':defaultWhen;const matches=!/^(?:computer-use-[a-f0-9]{12}-)?performance-/.test(path.basename(file))&&spec?.evidence.filter(e=>e.id!=='operations'&&e.kind===kind&&e.when===when&&(e.id!=='preview-clip'||file.includes('preview-clip'))&&(e.id!=='graph-state'||file.includes('graph-observations'))&&(!e.fileSuffix||file.endsWith(e.fileSuffix)));const match=matches?.find?.(e=>e.fileSuffix)||matches?.[0];return {file,kind,when,caption:evidenceCaption(file),specId:match?.id||null,...(match?.retainOnPass?{retainOnPass:true}:{})};});}
 export function evidenceCoverage(spec,items=[],actions=[],outcome){
  return spec.evidence.map(e=>({...e,status:(e.id==='operations'?actions.length>0:items.some(a=>a.specId===e.id))?'Collected':outcome==='Blocked'&&e.when!=='failure'?'Not reached':e.required?'Missing':'Optional'}));
 }
@@ -93,7 +129,7 @@ export function sourcePointers(id,root=ROOT){
 }
 export function agentPrompt(spec,{root=ROOT,runId=null,outcome=null,sources=sourcePointers(spec.id,root),accepted=false}={}){
  const locations=sources.map(s=>path.join(root,s.file)+':'+s.line).join('\n');
- return `Edit smoke check ${spec.id}: ${spec.title}\n\nRequested change: [describe the change here]\n\nReference workspace: ${root}\nDefinition hash: ${spec.definitionHash}\n${runId?'Reference run: '+runId+'\nObserved outcome: '+(outcome||'See retained report')+'\n':''}\nExpected behavior: ${spec.expected}\nMethod: ${spec.method}\n\nRead these implementation locations and their shared helpers:\n${locations||'Locate this ID in runner/course.json or desktop/*course.json.'}\nWork in a source checkout. Compare the reference definition with the current check before editing; preserve frozen run snapshots. Read AGENTS.md and docs/test-evidence.md. Keep setup, action, independent verification and cleanup distinct. Use CLI/Oz operations, the Qt adapter or verified native input as the path requires.\n\nDeclare needed images, video, audio and JSON in the test’s evidence specification. Give each artifact a purpose and connect it to the step that collected it. Preserve Fail, Blocked and Unknown. Never replay an uncertain mutation.\n\nRun node --test --test-concurrency=1 tests/*.test.mjs. Prove a focused behavioral assertion rejects incorrect state, then prepare a new plan for the changed test on an authorized disposable app. Preserve prior runs. ${accepted?'This definition was accepted; a changed definition needs lead review before entering custom courses again.':'This is a candidate; submit it for lead review before adding it to the accepted course.'}\n\nReturn the code change, readable steps, evidence collected and remaining coverage gaps. Do not publish issues or reports without the user’s request.`;
+ return `Edit smoke check ${spec.id}: ${spec.title}\n\nRequested change: [describe the change here]\n\nReference workspace: ${root}\nDefinition hash: ${spec.definitionHash}\n${runId?'Reference run: '+runId+'\nObserved outcome: '+(outcome||'See retained report')+'\n':''}\nExpected behavior: ${spec.expected}\nMethod: ${spec.method}\n\nRead these implementation locations and their shared helpers:\n${locations||'Locate this ID in runner/course.json or desktop/*course.json.'}\nWork in a source checkout. Compare the reference definition with the current check before editing; preserve frozen run snapshots. Read AGENTS.md and docs/test-evidence.md. Keep setup, action, independent verification and cleanup distinct. Use CLI/Oz operations, the Qt adapter or verified native input as the path requires.\n\nDeclare needed images, video, audio and JSON in the test’s evidence specification. Give each artifact a purpose and connect it to the step that collected it. New course reports clear pass-only intermediate PNGs after publication. Use retainOnPass:true and fileSuffix on image evidence for visual proof that must survive a Pass. Diagnostic repros and maintained qualification checks keep full captures; preserve their frozen intent. Preserve Fail, Blocked and Unknown. Never replay an uncertain mutation.\n\nRun node --test --test-concurrency=1 tests/*.test.mjs. Prove a focused behavioral assertion rejects incorrect state, then prepare a new plan for the changed test on an authorized disposable app. Preserve prior runs. ${accepted?'This definition was accepted; a changed definition needs lead review before entering custom courses again.':'This is a candidate; submit it for lead review before adding it to the accepted course.'}\n\nReturn the code change, readable steps, evidence collected and remaining coverage gaps. Do not publish issues or reports without the user’s request.`;
 }
 export function agentContext(check,options={}){
  const spec=options.specification||testSpecification(check),root=options.root||ROOT,sources=options.sources||sourcePointers(check.id,root);
