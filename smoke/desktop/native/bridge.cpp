@@ -95,7 +95,7 @@ class SmokeBridge : public QObject {
         output.write(QJsonDocument(value).toJson());output.commit();
     }
     static QJsonObject capabilities(){
-        return {{"protocol",1},{"version",12},{"operations",QJsonArray{"capabilities","inspect","add-floating-panel","workspace-inspect","workspace-append","workspace-hover","workspace-scroll","workspace-pipeline-inspect","workspace-request-selection","workspace-model-fixture","workspace-header","workspace-image-width","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
+        return {{"protocol",1},{"version",13},{"operations",QJsonArray{"capabilities","inspect","add-floating-panel","workspace-inspect","workspace-composer-inspect","workspace-composer-type","workspace-composer-send","workspace-append","workspace-hover","workspace-scroll","workspace-pipeline-inspect","workspace-request-selection","workspace-model-fixture","workspace-header","workspace-image-width","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
                 {"buttonClickGeometry",true},{"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
                 {"timelinePoint",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget7timeToXEd")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11trackHeightEi"))},
                 {"limits",QJsonObject{{"modelRows",64},{"modelPageRows",64},{"timelineClipIds",1024},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
@@ -259,8 +259,13 @@ class SmokeBridge : public QObject {
             if(!add||!widget||!widget->isVisible()||QString(widget->metaObject()->className())!="MainWindow"||QApplication::activeModalWidget()||(panel!="Timeline"&&panel!="Preview"))throw QString("Adding a floating panel requires the owned main window and Timeline or Preview");
             add(widget,panel);return {{"added",panel}};
         }
+        if(op=="workspace-composer-type"||op=="workspace-composer-send"){
+            try{WorkspaceProbe probe(widget);return probe.composerInput(request,[this](QObject* object){return id(object);});}
+            catch(const QString& error){throw WorkspaceInputError{error,"Blocked"};}
+        }
         if(op.startsWith("workspace-")){
             WorkspaceProbe probe(widget);
+            if(op=="workspace-composer-inspect")return probe.composer([this](QObject* object){return id(object);});
             if(op=="workspace-inspect")return probe.inspect(widget,request);
             if(op=="workspace-pipeline-inspect")return probe.pipelineState();
             if(op=="workspace-append")probe.append(widget,request);
@@ -441,7 +446,7 @@ public:
             if(!QRegularExpression("^[a-f0-9-]{36}$").match(requestId).hasMatch()){input.rename(root+"/invalid-request.json");return;}
             if(!input.rename(root+"/request-"+requestId+".json"))return;
             QJsonObject result{{"id",requestId},{"generation",generation},{"pid",qint64(QCoreApplication::applicationPid())}};
-            try{result["result"]=perform(request);result["ok"]=true;}catch(const QString& error){result["ok"]=false;result["error"]=error;}
+            try{result["result"]=perform(request);result["ok"]=true;}catch(const WorkspaceInputError& error){result["ok"]=false;result["error"]=error.message;result["status"]=error.status;result["inputDispatched"]=error.status=="Unknown";}catch(const QString& error){result["ok"]=false;result["error"]=error;}
             save("response-"+requestId+".json",result);
         });timer->start();
     }

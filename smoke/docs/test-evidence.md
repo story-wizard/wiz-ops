@@ -126,7 +126,7 @@ identity readback, independent generation assertion, copy edit, original/copy
 pixel checks and fresh-process reopen. Its proof includes original/copy timeline
 IDs, generation references and hashes of the saved timeline bytes. Other checks
 keep their existing evidence until their own authored comparisons are added. The
-changed definition remains a qualification candidate in `smoke-full` revision 12;
+changed definition remains a qualification candidate in `smoke-full` revision 13;
 its earlier accepted hash is preserved. Lead review is required before selecting
 the new definition directly in an accepted-only custom course.
 
@@ -243,3 +243,21 @@ Object steps may declare `requires: ['earlier-step-id']`. Dependencies must be
 unique earlier steps in the same definition. Reports explain an unreached phase
 or recorded block from those receipts; dependencies do not replace the driver's
 own sequencing and cleanup. Always preserve the recorded block observation.
+
+## Setup and input diagnostics
+
+Recorded phase errors retain bounded wait and input-guard facts in the case
+conclusion. Managed stage reports carry those facts into investigations and the
+first-read packet. Older reports can recover them from a checksummed, case-owned
+failure-state capture. The summary includes covering-window identity and bounds,
+expected process/window, wait attempts and explicit dispatch state when recorded.
+Window titles, unrelated UI content and full input receipts stay out of this
+summary. Missing dispatch metadata remains unknown; do not infer that no input
+occurred from a Blocked or Unknown label alone.
+
+Cleanup is separate from the last completed test action. A failed prepare phase
+identifies a fixture problem; later behavior remains unreached. Missing-media
+checks now record their authored setup, available-source capture, removal and
+recovery phases. Bin duplication, native window order, header layout and inline
+image sizing retain independent comparison proofs. Changed definitions require
+fresh qualification; earlier acceptance records and run evidence are preserved.

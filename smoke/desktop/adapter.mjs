@@ -17,7 +17,7 @@ import {currentAction,withAgentAction,withAdapterAction,validateApplicationParam
 
 export const agentReadOperations=['project.get_name','timeline.inspect','playback.query_transport','graph.get_clip_graph','media.list_assets','media.resolve_path','media.probe','spellbook.inspect','spellbook.list','generate.inspect','generate.status'];
 // Observations and ownership-checked clipboard bookkeeping do not edit the test project.
-export const agentReadNative=['capabilities','inspect','workspace-inspect','workspace-pipeline-inspect','model-page','model-value','timeline-clip-rect','timeline-point','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview','clipboard-save','clipboard-mark','clipboard-restore'];
+export const agentReadNative=['capabilities','inspect','workspace-inspect','workspace-composer-inspect','workspace-pipeline-inspect','model-page','model-value','timeline-clip-rect','timeline-point','screenshot','snapshot-widget','snapshot-presented','snapshot-node-preview','clipboard-save','clipboard-mark','clipboard-restore'];
 export async function markAgentMutation(file,session){
   if(!session.agentTracking)return;
   if(currentAction(file)?.purpose==='shutdown')return;
@@ -280,7 +280,7 @@ async function nativeCallOwned(file,op,params={}){
     await writeJSON(path.join(session.native,'request.json'),request);
     for(let i=0;i<100;i++){
       let response;try{response=parseNativeResponse(await readFile(path.join(session.native,`response-${id}.json`),'utf8'),{id,pid:session.pid,generation:ready.generation});}catch(e){if(e.code!=='ENOENT')throw e.status==='Unknown'?e:new OutcomeError('Cannot read the dispatched native response; outcome unknown. Inspect before continuing.','Unknown');}
-      if(response){await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),startedAt,durationMs:performance.now()-started,caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,response})+'\n');assert(response.ok,response.error||'Native operation failed');return response.result;}
+      if(response){await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),startedAt,durationMs:performance.now()-started,caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,response})+'\n');requireNativeSuccess(response);return response.result;}
       await pause(50);
     }
     await appendFile(path.join(session.root,'native-events.jsonl'),JSON.stringify({at:new Date().toISOString(),startedAt,durationMs:performance.now()-started,caseId:session.currentCheck||'desktop-agent',stepId:session.currentStep||null,request,status:'Unknown',error:'No native response within five seconds.'})+'\n');
@@ -292,6 +292,13 @@ export function parseNativeResponse(text,identity){
  let response;try{response=JSON.parse(text);}catch{throw new OutcomeError('Native response is unreadable; outcome unknown. Inspect before continuing.','Unknown');}
  if(!response||response.id!==identity.id||response.pid!==identity.pid||response.generation!==identity.generation||typeof response.ok!=='boolean')throw new OutcomeError('Native response identity or protocol differs; outcome unknown. Inspect before continuing.','Unknown');
  return response;
+}
+export function requireNativeSuccess(response){
+ if(response.ok)return;
+ const status=['Blocked','Unknown'].includes(response.status)?response.status:'Fail';
+ const error=new OutcomeError(response.error||'Native operation failed',status);
+ if(['Blocked','Unknown'].includes(response.status))error.diagnostics={status,inputDispatched:typeof response.inputDispatched==='boolean'?response.inputDispatched:null};
+ throw error;
 }
 
 export function assertQuitEvidence(receipt,observed,ready){

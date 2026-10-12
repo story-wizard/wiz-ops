@@ -48,7 +48,7 @@ export function actionHistory(operations=[],native=[],input=[]){
 export function stepHistory(spec,events=[],actions=[]){
  const history=(spec.steps||[]).map(step=>{
   const records=events.filter(e=>e.stepId===step.id),terminal=records.at(-1)?.status==='Running'?null:records.findLast(e=>e.status!=='Running'),start=records.find(e=>e.status==='Running'),observed=actions.filter(a=>a.stepId===step.id);
-    return {...step,status:terminal?.status||(start?'Unknown':observed.length?'Observed':actions.some(a=>!a.stepId&&!['diagnostic.capture','project.get_name','timeline.inspect','media.list_assets','inspect','screenshot'].includes(a.operation))?'No step record':'Not run'),startedAt:start?.at||observed[0]?.at||null,finishedAt:terminal?.at||null,observation:terminal?.observation||'',actionCount:observed.length,...(terminal?.assertion?{assertion:terminal.assertion}:{})};
+    return {...step,phase:terminal?.phase||start?.phase||step.phase,status:terminal?.status||(start?'Unknown':observed.length?'Observed':actions.some(a=>!a.stepId&&!['diagnostic.capture','project.get_name','timeline.inspect','media.list_assets','inspect','screenshot'].includes(a.operation))?'No step record':'Not run'),startedAt:start?.at||observed[0]?.at||null,finishedAt:terminal?.at||null,observation:terminal?.observation||'',actionCount:observed.length,...(terminal?.diagnostics?{diagnostics:terminal.diagnostics}:{}),...(terminal?.assertion?{assertion:terminal.assertion}:{})};
  });
  const stopped=history.find(s=>['Fail','Blocked','Unknown'].includes(s.status));
  return history.map((step,index)=>{
@@ -59,18 +59,29 @@ export function stepHistory(spec,events=[],actions=[]){
  });
 }
 export function caseConclusion(item){
- const steps=item.steps||[],failedIndex=steps.findIndex(s=>['Fail','Blocked','Unknown'].includes(s.status)),failed=steps[failedIndex],completed=(failedIndex<0?steps:steps.slice(0,failedIndex)).filter(s=>s.status==='Completed');
+ const steps=item.steps||[],failedIndex=steps.findIndex(s=>['Fail','Blocked','Unknown'].includes(s.status)),failed=steps[failedIndex],completed=(failedIndex<0?steps:steps.slice(0,failedIndex)).filter(s=>s.status==='Completed'&&s.phase!=='cleanup');
  return {expected:item.expected,observed:item.observation,failedStep:failed?{id:failed.id,title:failed.title,phase:failed.phase,status:failed.status,observation:failed.observation}:null,
+  ...(item.diagnostics||failed?.diagnostics?{diagnostics:failureDiagnostics(item.diagnostics||failed.diagnostics)}:{}),
   lastCompletedStep:completed.at(-1)?{id:completed.at(-1).id,title:completed.at(-1).title}:null,
   assertions:steps.filter(s=>s.assertion).map(s=>({stepId:s.id,title:s.title,status:s.status,...s.assertion})),
   notRun:steps.filter(s=>s.status==='Not run').map(s=>({id:s.id,title:s.title,phase:s.phase,reason:s.reason||null})),
   blocked:steps.filter(s=>s.status==='Blocked').map(s=>({id:s.id,title:s.title,phase:s.phase,reason:s.reason||s.observation})),
   stepEvidence:steps.length?'Recorded phases':'No authored phase record retained'};
 }
+// Keep the decisive guard/wait facts; raw receipts and unrelated UI content stay in evidence.
+export function failureDiagnostics(value){
+ const result={};if(!value||typeof value!=='object')return result;
+ const receipt=value.receipt||value,facts=receipt.diagnostics||value;
+ for(const key of ['expected','elapsedMs','attempts','stableForMs','expectedPid','expectedWindow','point','dispatch','expectedTarget','observedFocus','keyWindow','missingOperations','matches','timing','summary'])if(facts[key]!==undefined)result[key]=facts[key];
+ for(const key of ['code','status','inputDispatched','pointerCleanupReleased','modifierCleanupReleased'])if(receipt[key]!==undefined)result[key]=receipt[key];
+ for(const key of ['occluder','frontWindow'])if(facts[key]&&typeof facts[key]==='object')result[key]=Object.fromEntries(['pid','window','owner','layer','frame'].filter(k=>facts[key][k]!==undefined).map(k=>[k,facts[key][k]]));
+ if(Buffer.byteLength(JSON.stringify(result))>4096)return {summary:'Diagnostic summary exceeds 4 KiB; inspect the retained failure evidence.'};
+ return result;
+}
 export function compactConclusion(summary){
  if(!summary)return null;
  return {...summary,assertions:(summary.assertions||[]).map(a=>({stepId:a.stepId,title:a.title,status:a.status,expected:a.expected,actual:a.actual,artifact:a.artifact||null,...(a.invariant?{invariant:a.invariant}:{}),...(a.question?{question:a.question}:{}),...(a.failureReason?{failureReason:a.failureReason}:{}),...(a.evidenceStatus?{evidenceStatus:a.evidenceStatus}:{})})),
-  unansweredQuestion:(summary.assertions||[]).find(a=>a.stepId===summary.failedStep?.id)?.question|| (summary.failedStep?.status==='Unknown'?'Did the input occur? Reconcile the retained receipt before any retry.':'What explains the recorded outcome, and which unreached behavior still needs a repro?')};
+  unansweredQuestion:(summary.assertions||[]).find(a=>a.stepId===summary.failedStep?.id)?.question|| (summary.failedStep?.status==='Unknown'||summary.diagnostics?.status==='Unknown'?'Did the input occur? Reconcile the retained receipt before any retry.':summary.failedStep?.phase==='prepare'?'Why did fixture setup fail? The later behavior has not been exercised.':'What explains the recorded outcome, and which unreached behavior still needs a repro?')};
 }
 export function evidenceCaption(file){
  const name=path.basename(file).replace(/^computer-use-[a-f0-9]{12}-/,'');

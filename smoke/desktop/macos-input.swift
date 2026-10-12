@@ -437,7 +437,7 @@ func sampleRGB(_ image: CGImage) throws -> Data {
             try verifyOwner(); emit(result)
         } catch {
             let failure=error as? InputError
-            emit(["status":dispatched ? "Unknown":"Blocked","error":failure?.message ?? String(describing:error),"code":failure?.code ?? "native_input_failed","diagnostics":failure?.diagnostics ?? [:],"driver":"macos-verified-pid","pointerCleanupReleased":pointerCleanupReleased,"modifierCleanupReleased":modifierCleanupReleased]); exit(1)
+            emit(["status":dispatched ? "Unknown":"Blocked","inputDispatched":dispatched,"error":failure?.message ?? String(describing:error),"code":failure?.code ?? "native_input_failed","diagnostics":failure?.diagnostics ?? [:],"driver":"macos-verified-pid","pointerCleanupReleased":pointerCleanupReleased,"modifierCleanupReleased":modifierCleanupReleased]); exit(1)
         }
     }
     static func selfRectangle(_ value: CGRect) -> [String:Double] { rectangle(value) }

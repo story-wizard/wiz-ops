@@ -161,3 +161,40 @@ owned `desktopCall` bundle-revision guard. It reads back each inserted node,
 saturation value and both replacement edges before testing UI scrubbing.
 Use this only for isolated fixture setup on the qualified build; a stale or
 Unknown tested mutation still needs inspection and must not be replayed.
+
+## Enter text in the QtQuick Agent Workspace composer
+
+Use adapter version 13 or later. Observe the visible `AgentWorkspacePanel`, then
+call `workspace-composer-inspect` with its `target`. It returns `surfaceId`,
+`editor.id`, `editor.text`, cursor/selection state, a visible hit region and
+`send.id`/`send.enabled`. The response belongs to the owned process and native
+bridge generation. These are QtQuick objects; focusing the QWidget container
+does not establish editor focus.
+
+For `workspace-composer-type`, supply `target`, `surfaceId`, `editorId`, `sendId`,
+`expectedText`, `cursorPosition` and `text`. Copy all identities, caret position and expected text from that
+observation. The operation inserts at the current caret, requires an empty
+selection, preserves the existing draft, and verifies exact text readback. It
+uses Qt input-method events and never reads or changes the system clipboard.
+Both the draft and resulting text are bounded to 4096 characters. Reobserve after
+any draft, panel or project change.
+
+For `workspace-composer-send`, supply the same binding and exact current
+`expectedText`, with no `text` field. It checks the current composer `canSend`
+state and dispatches one Qt pointer click through the visible Send control.
+Review the prompt and authorize its consequences before using Send. A Send
+receipt is input evidence; provider progress or success needs its own observation.
+Input qualification uses an offscreen local signal sink, without a provider.
+
+Example toolkit envelope, after replacing every observed value:
+
+```json
+{"operation":"native","params":{"operation":"workspace-composer-type","params":{"target":"OBSERVED_PANEL","surfaceId":"OBSERVED_SURFACE","editorId":"OBSERVED_EDITOR","sendId":"OBSERVED_SEND","expectedText":"EXACT_OBSERVED_DRAFT","cursorPosition":0,"text":" insertion"}}}
+```
+
+Stale/replaced identities, changed draft text, modal state, hidden/disabled
+controls or an occupied selection reject the request before text/Send dispatch.
+If text was dispatched but readback differs, the session becomes Unknown and
+rejects further edits. Inspect its retained request; never repeat uncertain input.
+These operations exercise Qt event handling. Use physical input when the test
+specifically claims native focus, keyboard routing or pointer hit testing.

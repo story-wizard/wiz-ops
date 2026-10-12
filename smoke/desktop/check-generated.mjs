@@ -6,7 +6,7 @@ import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 import {assert,same,clips,snapshotState,OutcomeError,command} from '../runner/engine.mjs';
 import {readPPM,pixelDifference} from '../runner/pixels.mjs';
 const verify=process.argv[3]==='verify';
-const {s,c,check,finish,report}=await checks(process.argv[2],verify?'service-generated-reopen-report.json':'service-generated-report.json');
+const {s,c,check,step,assertion,verification,finish,report}=await checks(process.argv[2],verify?'service-generated-reopen-report.json':'service-generated-report.json');
 const inspect=generation_id=>c('generate.inspect',{target:{kind:'generation',generation_id}});
 const timeline=timeline_id=>c('timeline.inspect',{timeline_id});
 const values=g=>({generation_id:g.generation_id,content_id:g.content_id,parameters:g.parameters.map(p=>({path:p.descriptor.param_path,value:p.value}))});
@@ -43,7 +43,17 @@ if(verify){
     const target={kind:'generated_placement',timeline_id:valid.timeline,clip_id:added[0].clip_id},copied=await c('generate.inspect',{target});assert(copied.generation_id!==valid.generation.generation_id,'Copied placement still shares original generation');await title(copied.generation_id,'CLIP COPY CHANGED INDEPENDENTLY');same(values(await inspect(valid.generation.generation_id)),source,'Copied placement edit preserves source');assert(pixelDifference(original,await frame(valid.timeline))<=1,'Copied placement changed original pixels');assert(pixelDifference(original,await frame(valid.timeline,3))>.01,'Copied placement pixels did not change');return {original:valid.destination.parent.clip_id,copy:added[0].clip_id,generation:copied.generation_id,scope:'Application generate.duplicate operation used by MGFX copy/paste; actual keyboard routing remains separate'};
   });
   await check('S-MGFX-UNDO-PUBLISH',async()=>{
-    const g=await createLocalGraphic(c,s,{groupLabel:'Title',label:'Undo publish fixture'}),before=await timeline(g.timeline),original=await frame(g.timeline);assert(clips(before).length===1,'Unexpected publication fixture');assert((await c('undo.undo')).moved,'Undo publish was a no-op');assert(clips(await timeline(g.timeline)).length===0,'Undo publish left a placed clip');assert((await c('undo.redo')).moved,'Redo publish was a no-op');same(snapshotState(await timeline(g.timeline)),snapshotState(before),'Redo restores published identities');assert(pixelDifference(original,await frame(g.timeline))<=1,'Redo publish did not restore pixels');return {generation:g.generation.generation_id,placement:g.placement,undoRemovesPlacement:true,redoRestoresPixels:true,scope:'Placement history; retained undo assets are not classified as orphaned files'};
+    const {g,before,original}=await step({id:'prepare-publication',title:'Create a graphic and retain its published baseline',phase:'prepare'},async()=>{
+      const g=await createLocalGraphic(c,s,{groupLabel:'Title',label:'Undo publish fixture'}),before=await timeline(g.timeline),original=await frame(g.timeline);assert(clips(before).length===1,'Unexpected publication fixture');return {g,before,original};
+    });
+    const undone=await step({id:'undo-publication',title:'Undo the graphic publication',phase:'execute'},()=>c('undo.undo'));
+    await assertion({id:'undo-moved',title:'Verify Undo moved history',phase:'verify'},{expected:{moved:true},actual:undone},undone.moved===true);
+    const empty=await timeline(g.timeline);await assertion({id:'undo-placement',title:'Verify Undo removed the placement',phase:'verify'},{expected:{clips:0},actual:{clips:clips(empty).length,timeline:snapshotState(empty)}},clips(empty).length===0);
+    const redone=await step({id:'redo-publication',title:'Redo the graphic publication',phase:'execute'},()=>c('undo.redo'));
+    await assertion({id:'redo-moved',title:'Verify Redo moved history',phase:'verify'},{invariant:'Redo must restore the undone publication before its identity or pixels can be qualified.',expected:{moved:true},actual:redone},redone.moved===true);
+    const restored=await timeline(g.timeline);await verification({id:'redo-placement',title:'Verify Redo restored published identities',phase:'verify'},{expected:snapshotState(before),actual:snapshotState(restored)},()=>same(snapshotState(restored),snapshotState(before),'Redo restores published identities'));
+    const delta=pixelDifference(original,await frame(g.timeline));await assertion({id:'redo-pixels',title:'Verify Redo restored rendered pixels',phase:'verify'},{expected:{maximumPixelDifference:1},actual:{pixelDifference:delta}},delta<=1);
+    return {generation:g.generation.generation_id,placement:g.placement,undoRemovesPlacement:true,redoRestoresPixels:true,scope:'Placement history; retained undo assets are not classified as orphaned files'};
   });
   if(report.results.find(r=>r.id==='S-MGFX-DUPLICATE')?.status==='Pass'){const reference=path.join(s.root,'generated-persistence-reference.ppm');await c('render.export_still',{timeline_id:copyTimeline,time:{value:24,rate:24},output:reference});await writeJSON(expectedFile,{generations:[values(await inspect(valid.generation.generation_id)),values(await inspect(copy.generation_id))],timelines:[snapshotState(await timeline(valid.timeline)),snapshotState(await timeline(copyTimeline))],reference,renderTimeline:copyTimeline});}
   await c('project.checkpoint');finish();

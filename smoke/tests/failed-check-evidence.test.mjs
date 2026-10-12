@@ -6,6 +6,66 @@ import path from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {spawnSync} from 'node:child_process';
 
+test('missing-media setup failure records its phase and never removes or probes the source',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-availability-setup-'));
+ try{
+  const source=root+'/source.mov',file=root+'/session.json';await writeFile(source,'owned media');await writeFile(file,JSON.stringify({root,currentCheck:'D-MISSING-MEDIA-LIVE',assets:{plate:'plate'}}));
+  const stub=root+'/workflow.mjs',support=new URL('../desktop/check-support.mjs',import.meta.url).href;
+  await writeFile(stub,`import {readFile} from 'node:fs/promises';import {recordStep} from '${support}';
+export async function uiWorkflows(file){const s=JSON.parse(await readFile(file)),calls=[],results=[];return {s,stage:(id,title,phase,fn)=>recordStep(file,{id,title,phase},fn),c:async(op)=>{calls.push(op);if(op==='media.resolve_path')return {path:${JSON.stringify(source)}};if(op==='media.import_asset')return {asset_id:'owned'};if(op==='timeline.create')throw Error('timeline lifecycle recovery failed');return {};},check:async(id,fn)=>{if(id!=='D-MISSING-MEDIA-LIVE')return;try{await fn();results.push({id,status:'Pass'});}catch(e){results.push({id,status:'Fail',error:e.message});}},finish:()=>console.log(JSON.stringify({calls,results}))};}`);
+  const ingest=root+'/ingest.mjs';await writeFile(ingest,'export async function ingestFixture(){}');
+  const original=await readFile(new URL('../desktop/check-functional-cohort.mjs',import.meta.url),'utf8');
+  const driver=root+'/driver.mjs';await writeFile(driver,original.replace(/from '(\.\.?\/[^']+)'/g,(_,relative)=>"from '"+(relative==='./ui-workflows.mjs'?pathToFileURL(stub).href:relative==='./ingest-fixture.mjs'?pathToFileURL(ingest).href:new URL(relative,new URL('../desktop/',import.meta.url)).href)+"'"));
+  const run=spawnSync(process.execPath,[driver,file],{encoding:'utf8',timeout:5000});assert.equal(run.status,0,run.stderr);const result=JSON.parse(run.stdout);assert.equal(result.results[0].status,'Fail');assert(!result.calls.includes('media.probe'));assert.equal(await readFile(root+'/availability-fixture/availability.mov','utf8'),'owned media');
+  const steps=(await readFile(root+'/steps.jsonl','utf8')).trim().split('\n').map(JSON.parse);assert.equal(steps.at(-1).stepId,'step-1');assert.equal(steps.at(-1).phase,'prepare');assert.equal(steps.at(-1).status,'Fail');assert(!steps.some(s=>s.stepId==='step-3'));
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('an ambiguous media-menu name is Blocked before focus or a context click',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-ambiguous-menu-'));
+ try{
+  const file=root+'/session.json',stub=root+'/adapter.mjs';await writeFile(file,JSON.stringify({root}));
+  await writeFile(stub,`export async function desktopCall(){}export async function captureDesktopFailure(){return {};}export let clicks=0;export async function nativeCall(file,op){if(op!=='inspect'){clicks++;throw Error('Input must not occur');}return {widgets:[{id:'bin',class:'QTreeView',model:[['Same name'],['Same name']]}]};}`);
+  const original=await readFile(new URL('../desktop/check-support.mjs',import.meta.url),'utf8'),source=original.replace(/from '(\.\.?\/[^']+)'/g,(_,relative)=>"from '"+(relative==='./adapter.mjs'?pathToFileURL(stub).href:new URL(relative,new URL('../desktop/',import.meta.url)).href)+"'");
+  await writeFile(root+'/support.mjs',source);const {checks}=await import(pathToFileURL(root+'/support.mjs').href);const h=await checks(file,'report.json');
+  await assert.rejects(()=>h.mediaMenu('Same name','Rename...'),e=>e.status==='Blocked'&&e.diagnostics.matches===2);assert.equal((await import(pathToFileURL(stub).href)).clicks,0);
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('publication history keeps a no-op Redo comparison and never claims unexecuted pixel restoration',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-publication-history-'));
+ try{
+  const env=root+'/adapter.mjs',fixture=root+'/fixture.mjs';
+  await writeFile(env,`import {readFile,writeFile,appendFile} from 'node:fs/promises';let undone=false;
+const baseline={timeline:{timeline_id:'timeline'},tracks:[{track_id:'track',items:[{kind:'clip',clip_id:'clip',timeline_range:{start_seconds:0,end_seconds:2},source:{asset_id:'graphic'}}]}],links:[]};
+export async function desktopCall(file,op,p){const s=JSON.parse(await readFile(file));await appendFile(s.root+'/calls.jsonl',JSON.stringify({op})+'\\n');
+ if(op==='undo.undo'){undone=true;return {moved:true};}
+ if(op==='undo.redo'){if(s.mode==='unknown')throw Object.assign(Error('Redo response lost'),{status:'Unknown'});if(s.mode==='noop')return {moved:false};undone=false;return {moved:true};}
+ if(op==='timeline.inspect'){const value=structuredClone(baseline);if(undone)value.tracks[0].items=[];return value;}
+ if(op==='render.export_still'){await writeFile(p.output,Buffer.concat([Buffer.from('P6\\n1920 1080\\n255\\n'),Buffer.alloc(1920*1080*3,80)]));return {};}
+ if(op==='project.checkpoint')return {};throw Error('Unexpected operation '+op);
+}
+export async function nativeCall(){return {};}
+export async function captureDesktopFailure(){return {};}`);
+  await writeFile(fixture,"export async function createLocalGraphic(){return {timeline:'timeline',generation:{generation_id:'generation'},placement:{clip_id:'clip'}};}export function generatedPlacement(){}export function proveGraphicMotion(){}");
+  const supportSource=await readFile(new URL('../desktop/check-support.mjs',import.meta.url),'utf8');
+  await writeFile(root+'/support.mjs',supportSource.replace(/from '(\.\.?\/[^']+)'/g,(_,relative)=>"from '"+(relative==='./adapter.mjs'?pathToFileURL(env).href:new URL(relative,new URL('../desktop/',import.meta.url)).href)+"'"));
+  const original=await readFile(new URL('../desktop/check-generated.mjs',import.meta.url),'utf8');
+  const driver=root+'/driver.mjs';await writeFile(driver,original.replace(/from '(\.\.?\/[^']+)'/g,(_,relative)=>"from '"+(relative==='./adapter.mjs'?pathToFileURL(env).href:relative==='./check-support.mjs'?pathToFileURL(root+'/support.mjs').href:relative==='./generated-fixture.mjs'?pathToFileURL(fixture).href:new URL(relative,new URL('../desktop/',import.meta.url)).href)+"'"));
+  // The skipped motion branch still imports the owned-child hook.
+  await (await import('node:fs/promises')).appendFile(env,'\nexport function retainChild(){}');
+  for(const mode of ['valid','noop','unknown']){
+   const directory=root+'/'+mode;await (await import('node:fs/promises')).mkdir(directory);const file=directory+'/session.json';await writeFile(file,JSON.stringify({root:directory,selectedChecks:['S-MGFX-UNDO-PUBLISH'],mode}));
+   const run=spawnSync(process.execPath,[driver,file],{encoding:'utf8',timeout:10000});assert.equal(run.status,mode==='valid'?0:1,run.stderr);
+   const report=JSON.parse(await readFile(directory+'/service-generated-report.json')),result=report.results[0];assert.equal(result.status,mode==='valid'?'Pass':mode==='noop'?'Fail':'Unknown');
+   const events=(await readFile(directory+'/steps.jsonl','utf8')).trim().split('\n').map(JSON.parse),calls=(await readFile(directory+'/calls.jsonl','utf8')).trim().split('\n').map(JSON.parse);
+   assert.equal(calls.filter(c=>c.op==='undo.redo').length,1);assert.equal(calls.filter(c=>c.op==='render.export_still').length,mode==='valid'?2:1);
+   if(mode==='noop'){const proof=JSON.parse(await readFile(result.evidence.artifacts[0]));assert.equal(proof.expected.moved,true);assert.equal(proof.actual.moved,false);assert.equal(proof.stepId,'redo-moved');assert(!events.some(e=>e.stepId==='redo-pixels'));}
+   if(mode==='unknown'){assert.equal(events.at(-1).status,'Unknown');assert.equal(events.at(-1).stepId,'redo-publication');assert(!calls.some(c=>c.op==='project.checkpoint'));}
+  }
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
 test('the trim driver keeps the existing timing oracle and retains the wrong values after restoring the fixture',async()=>{
  const root=await mkdtemp(path.join(tmpdir(),'athanor-trim-driver-'));
  try{

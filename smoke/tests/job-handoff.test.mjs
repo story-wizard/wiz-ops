@@ -22,6 +22,9 @@ test('compact job context keeps resolved build identity but links large release 
  assert.deepEqual(jobResultBrief(job,report).functionalAssertionScope,{label:'Separate legacy functional ledger',executed:false});
  const retained=jobResultBrief({...job,report:{url:'/exports/athanor-job-compact/index.html'}},{...report,identity:{...identity,releaseChanges:[{tag:'nightly-test',notes:'notes '.repeat(1000)}]}});
  assert.equal(retained.identities.build.releaseChanges,undefined);assert.deepEqual(retained.identities.build.releaseTags,['nightly-test']);assert.equal(retained.identities.build.releaseNotesUrl,'/exports/athanor-job-compact/report.json');
+ assert.equal(retained.releasePlanning.state,'Agent review required');assert.equal(retained.releasePlanning.executed,false);assert.equal(retained.releasePlanning.providedProposals,0);assert.match(retained.releasePlanning.instructions,/No-change notes can justify zero proposals/);
+ const proposed=jobResultBrief(job,{...report,identity:{...identity,releaseNotes:'A real changed behavior'},releaseTestProposals:[{id:'candidate'}]});assert.equal(proposed.releasePlanning.providedProposals,1);assert.equal(proposed.releasePlanning.executed,false);assert.equal(proposed.counts.Fail,1);
+ assert.equal(jobResultBrief(job,report).releasePlanning,undefined,'A report without retained notes must not inherit an unrelated resolved note');
 });
 async function fixture(fn){const root=await mkdtemp('/private/tmp/athanor-handoff-'),store=new JobStore(root);try{let job=store.submit(request,selection,digest(profile));job=store.update(job.id,{state:'Reporting',outcome:'Failed',runId:'original-run'});await fn(store,job,root);}finally{store.close();await rm(root,{recursive:true,force:true});}}
 function service({existing=true,lost=false,foreign=false,exportFailure=false}={}){

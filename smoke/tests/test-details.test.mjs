@@ -6,10 +6,32 @@ import {mkdtemp,readFile,rm,mkdir,writeFile} from 'node:fs/promises';
 import {recordStep,endCheck} from '../desktop/check-support.mjs';
 import {OutcomeError} from '../runner/engine.mjs';
 import {writeJSON,readJSON,digest} from '../runner/files.mjs';
-import {testSpecification,actionHistory,stepHistory,caseConclusion,compactConclusion,evidenceSpec,evidenceCoverage,evidenceItems,exportAgentContext,agentContext,candidateChecks} from '../test-details.mjs';
+import {testSpecification,actionHistory,stepHistory,caseConclusion,compactConclusion,failureDiagnostics,evidenceSpec,evidenceCoverage,evidenceItems,exportAgentContext,agentContext,candidateChecks} from '../test-details.mjs';
 import {checkRegistry} from '../runner/catalog.mjs';
 import {briefContext} from '../desktop/agent-task.mjs';
 import {renderConclusion} from '../public/check-conclusion.js';
+
+test('setup failure identifies the untested behavior and cleanup never becomes its last successful action',async()=>{
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-setup-conclusion-')),file=path.join(root,'session.json');
+ try{
+  await writeJSON(file,{root,currentCheck:'D-MISSING-MEDIA-LIVE'});
+  const spec={steps:[{id:'setup',title:'Create timeline',phase:'prepare'},{id:'remove',title:'Remove media',phase:'execute'},{id:'restore',title:'Restore fixture',phase:'cleanup'}]};
+  await assert.rejects(()=>recordStep(file,spec.steps[0],()=>{throw Object.assign(new OutcomeError('Timeline recovery failed'),{diagnostics:{expected:'Created timeline',attempts:1}});}),/recovery failed/);
+  await recordStep(file,spec.steps[2],async()=>{});
+  const events=(await readFile(root+'/steps.jsonl','utf8')).trim().split('\n').map(JSON.parse),conclusion=caseConclusion({steps:stepHistory(spec,events)});
+  assert.equal(conclusion.failedStep.phase,'prepare');assert.equal(conclusion.lastCompletedStep,null);assert.equal(conclusion.notRun[0].id,'remove');assert.equal(conclusion.diagnostics.expected,'Created timeline');
+  assert.match(compactConclusion(conclusion).unansweredQuestion,/fixture setup/);
+  assert.equal(caseConclusion({steps:[{id:'action',title:'Actual action',status:'Completed',phase:'execute'},{id:'restore',title:'Cleanup',status:'Completed',phase:'cleanup'}]}).lastCompletedStep.id,'action');
+ }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('compact guard diagnostics retain ownership and dispatch facts without window titles or full receipts',()=>{
+ const value={receipt:{status:'Unknown',code:'pointer_occluded',inputDispatched:true,diagnostics:{point:[20,30],expectedPid:123,expectedWindow:4,occluder:{pid:456,window:9,owner:'Another App',title:'Private document',layer:3,frame:{x:10,y:20,width:100,height:100}},elements:['unrelated']}},ui:{title:'Private'}};
+ const safe=failureDiagnostics(value);assert.equal(safe.inputDispatched,true);assert.equal(safe.occluder.pid,456);assert(!JSON.stringify(safe).includes('Private'));assert(!('receipt' in safe));assert.deepEqual(failureDiagnostics(safe),safe);
+ const conclusion=caseConclusion({diagnostics:value,steps:[]});assert.match(compactConclusion(conclusion).unansweredQuestion,/Did the input occur/);
+ assert.match(renderConclusion(conclusion),/pointer_occluded/);assert.equal(renderConclusion(caseConclusion({steps:[]})),'');
+ assert.match(failureDiagnostics({expected:'x'.repeat(5000)}).summary,/exceeds/);
+});
 
 test('dependencies explain unreached work and recorded blocks without changing Unknown or inferring app defects',()=>{
  const spec=testSpecification({id:'C',steps:[{id:'identity',title:'Independent generation'},{id:'edit',title:'Edit copy',requires:['identity']},{id:'reopen',title:'Persistence',requires:['edit']}]});

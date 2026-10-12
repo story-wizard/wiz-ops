@@ -8,7 +8,7 @@ import {checkpoint} from './runner/checkpoints.mjs';
 import {readImageRetention,applyImageRetention,pruneReportedImages} from './runner/evidence-retention.mjs';
 import {execution,activeStates} from './runner/store.mjs';
 import {retainedUI} from './desktop/computer-use.mjs';
-import {testSpecification,actionHistory,stepHistory,caseConclusion,evidenceItems,evidenceCoverage,agentPrompt} from './test-details.mjs';
+import {testSpecification,actionHistory,stepHistory,caseConclusion,failureDiagnostics,evidenceItems,evidenceCoverage,agentPrompt} from './test-details.mjs';
 import {checkRegistry} from './runner/catalog.mjs';
 import {runTiming,formatDuration,progressBar,progressEffects} from './public/run-display.js';
 import {renderConclusion} from './public/check-conclusion.js';
@@ -152,6 +152,11 @@ export async function localReport(run,dataDir){
   const evidence=evidenceItems(evidenceFiles,spec),requirements=evidenceCoverage(spec,evidence,actions,r.status);
   for(const requirement of requirements.filter(x=>x.status==='Missing'))gaps.push(r.test_id+': missing required evidence '+requirement.id);
     const item={id:r.test_id,title:r.snapshot.title,area:r.snapshot.area,target,sourceId:c?.sourceId||r.snapshot.sourceId,expected:spec.expected,operations:c?.operations||[],status:r.status,observation:r.note,recordedAt:r.updated_at,performance:measurements,receiptCount:ops.length,operationDurationMs:ops.reduce((n,o)=>n+(Number(o.durationMs)||0),0),method:spec.method,procedure:spec.procedure||[],methodBasis:specifications?'Frozen with this run':'Current test guide',definitionHash:spec.definitionHash,steps,actions,evidence,evidenceRequirements:requirements,editPrompt:agentPrompt(spec,{runId:run.id,outcome:r.status,accepted:registry.find(x=>x.id===r.test_id)?.accepted||false})};
+    const diagnostic=ops.findLast(o=>o.operation==='check.observation'&&o.diagnostics)?.diagnostics;
+    // Older runs retained guard facts in the owned failure capture rather than the stage receipt.
+    let fallback;
+    for(const file of evidenceFiles.filter(f=>f.endsWith('-failure-state.json')))try{const state=JSON.parse(buffers[file]);if(state.status===r.status)fallback=state.diagnostics;}catch{}
+    if(diagnostic||fallback)item.diagnostics=failureDiagnostics(diagnostic||fallback);
     cases.push({...item,conclusion:caseConclusion(item)});
  }
  let computerUse=null;

@@ -1,6 +1,6 @@
 {
   "id": "local-services-v1",
-  "revision": 5,
+  "revision": 6,
   "title": "Local application services",
   "target": "Owned background GUI services and app export worker; no keyboard/mouse or foreground UI acceptance",
   "cases": [
@@ -46,7 +46,49 @@
       "id": "S-MGFX-UNDO-PUBLISH",
       "sourceId": "OZ-13",
       "title": "Undo and redo a graphic publication",
-      "expected": "Undo removes the generated placement; redo restores its identities and rendered pixels. Retained undo files are not classified as orphaned artifacts."
+      "expected": "Undo removes the generated placement; redo restores its identities and rendered pixels. Retained undo files are not classified as orphaned artifacts.",
+      "steps": [
+        {
+          "id": "prepare-publication",
+          "title": "Create graphic and retain published baseline",
+          "phase": "prepare"
+        },
+        {
+          "id": "undo-publication",
+          "title": "Undo graphic publication",
+          "phase": "execute"
+        },
+        {
+          "id": "undo-moved",
+          "title": "Verify Undo moved history",
+          "phase": "verify"
+        },
+        {
+          "id": "undo-placement",
+          "title": "Verify Undo removed placement",
+          "phase": "verify"
+        },
+        {
+          "id": "redo-publication",
+          "title": "Redo graphic publication",
+          "phase": "execute"
+        },
+        {
+          "id": "redo-moved",
+          "title": "Verify Redo moved history",
+          "phase": "verify"
+        },
+        {
+          "id": "redo-placement",
+          "title": "Verify Redo restored published identities",
+          "phase": "verify"
+        },
+        {
+          "id": "redo-pixels",
+          "title": "Verify Redo restored rendered pixels",
+          "phase": "verify"
+        }
+      ]
     },
     {
       "id": "S-MGFX-PERSIST",
@@ -103,13 +145,73 @@
           "phase": "execute"
         },
         {
-          "id": "step-3",
-          "title": "Trim and extend within the original source; verify Undo and Redo",
+          "id": "undo-extension-dispatch",
+          "title": "Dispatch undo-extension through application history",
           "phase": "execute"
+        },
+        {
+          "id": "undo-extension-moved",
+          "title": "Verify undo-extension moved history",
+          "phase": "verify"
+        },
+        {
+          "id": "undo-trim-dispatch",
+          "title": "Dispatch undo-trim through application history",
+          "phase": "execute"
+        },
+        {
+          "id": "undo-trim-moved",
+          "title": "Verify undo-trim moved history",
+          "phase": "verify"
+        },
+        {
+          "id": "undo-split-dispatch",
+          "title": "Dispatch undo-split through application history",
+          "phase": "execute"
+        },
+        {
+          "id": "undo-split-moved",
+          "title": "Verify undo-split moved history",
+          "phase": "verify"
+        },
+        {
+          "id": "redo-split-dispatch",
+          "title": "Dispatch redo-split through application history",
+          "phase": "execute"
+        },
+        {
+          "id": "redo-split-moved",
+          "title": "Verify redo-split moved history",
+          "phase": "verify"
+        },
+        {
+          "id": "redo-trim-dispatch",
+          "title": "Dispatch redo-trim through application history",
+          "phase": "execute"
+        },
+        {
+          "id": "redo-trim-moved",
+          "title": "Verify redo-trim moved history",
+          "phase": "verify"
+        },
+        {
+          "id": "redo-extension-dispatch",
+          "title": "Dispatch redo-extension through application history",
+          "phase": "execute"
+        },
+        {
+          "id": "redo-extension-moved",
+          "title": "Verify redo-extension moved history",
+          "phase": "verify"
         },
         {
           "id": "step-4",
           "title": "Copy the tail, Save and verify both placements in a fresh process",
+          "phase": "verify"
+        },
+        {
+          "id": "reopen-tail",
+          "title": "Verify saved tail and copy in a fresh process",
           "phase": "verify"
         }
       ],

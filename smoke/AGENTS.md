@@ -52,7 +52,7 @@ Use Find a build in New run, or the `builds` / `build` agent commands. Read `doc
 
 Read `docs/demo-guide.md` for the short team walkthrough and `examples/agent-onboarding.txt` for the complete setup prompt.
 
-Read `docs/changes-2026-10-11.md` for the current update and `docs/changes-2026-10-02.md` for the earlier release. Use the maintained course and catalog as the authority for counts; historical pilot sections describe earlier tooling.
+Read `docs/changes-2026-10-12.md` for the current local update and `docs/changes-2026-10-11.md` for the deployed update and `docs/changes-2026-10-02.md` for the earlier release. Use the maintained course and catalog as the authority for counts; historical pilot sections describe earlier tooling.
 
 ## Start from a checkout or bundle
 
@@ -362,3 +362,27 @@ Use `scripts/review-cost.mjs` for headless packet and session measurements; reco
 reviewer correctness and elapsed time explicitly rather than treating parsing
 speed or packet size as agent speed. Changed trim/scope definitions retain their
 historical acceptance/mapping pins and need lead review.
+
+
+### October 12 investigation follow-up
+
+`smoke-full` revision 13 retains Bin Duplicate and graphic publication Undo/Redo
+as qualification candidates with new identity/name and history proofs; their
+earlier accepted definitions stay unchanged. Animated-tail history also records
+each dispatch and movement. Legacy assertion links to revised definitions remain
+review-required until independently qualified and reviewed.
+Case conclusions now carry bounded guard/wait diagnostics and exclude cleanup
+from the last completed test action. Review setup failures before assigning app
+causes. Missing timing or calibration evidence is a reason to qualify the fixture,
+not to relax its oracle. Historical outcomes and source pins stay intact.
+
+For the Agent Workspace composer use the version-13 typed QtQuick operations in
+`docs/agent-tools.md`. Observe the actual editor and Send IDs, then provide the
+exact observed draft. Native input uncertainty blocks subsequent edits. Send can
+start a real provider turn; component qualification uses a local offscreen signal
+sink and does not authorize a live generation. Rebuild/prepare matching tools for
+new source; a previously prepared adapter does not acquire these operations.
+
+Managed job briefs expose a release-note planning handoff. Retained notes guide
+agent-authored proposals through the existing nightly proposal format; this does
+not autonomously generate tests or change acceptance, execution or delivery.

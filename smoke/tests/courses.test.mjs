@@ -90,11 +90,11 @@ test('every accepted definition resolves and every desktop/service check has an 
  const db=new DatabaseSync(':memory:');initializeCourses(db);
  try{
   const accepted=acceptance();assert.equal(accepted.checks.length,137);
-  const current=checkRegistry(accepted).filter(c=>c.accepted);assert.equal(current.length,135);
+  const current=checkRegistry(accepted).filter(c=>c.accepted);assert.equal(current.length,133);
   for(const c of current){const s=resolveSelection(db,{checkIds:[c.id]},accepted);validateRecipe(selectedRecipe(s),accepted);if(c.target!=='packaged')assert.ok(bound.has(c.id),'Unbound check '+c.id);}
-  assert.deepEqual(accepted.checks.filter(c=>!current.some(r=>r.id===c.id)).map(c=>c.id),['D-EDIT-TRIM','D-BIN-MGFX']);
+  assert.deepEqual(accepted.checks.filter(c=>!current.some(r=>r.id===c.id)).map(c=>c.id),['D-EDIT-TRIM','D-BIN-DUPLICATE','D-BIN-MGFX','S-MGFX-UNDO-PUBLISH']);
   assert.throws(()=>resolveSelection(db,{checkIds:['D-BIN-MGFX']},accepted),/not accepted/,'A changed definition needs lead review; its earlier acceptance is retained');
-  const all=resolveSelection(db,{checkIds:current.map(c=>c.id)},accepted);assert.equal(all.effectiveIds.length,135);assert.equal(all.notSelected.length,64);
+  const all=resolveSelection(db,{checkIds:current.map(c=>c.id)},accepted);assert.equal(all.effectiveIds.length,133);assert.equal(all.notSelected.length,66);
   const maintained=resolveSelection(db,{courseIds:['automated-full']},accepted);
   assert.deepEqual(new Set(maintained.effectiveIds),new Set(all.effectiveIds));
   assert.equal(maintained.checkpoint,undefined);assert.equal(maintained.requirements.foreground,true);
@@ -108,7 +108,7 @@ test('every accepted definition resolves and every desktop/service check has an 
  test('maintained full course qualifies only its explicit candidates; custom courses cannot promote them',()=>{
  const db=new DatabaseSync(':memory:');initializeCourses(db);
  try{
-  const s=resolveSelection(db,{courseIds:['smoke-full']});assert.equal(s.effectiveIds.length,180);assert.equal(s.qualificationIds.length,45);assert.equal(s.courseRevisions[0].revision,12);assert.ok(s.qualificationIds.includes('D-BIN-MGFX'));
+  const s=resolveSelection(db,{courseIds:['smoke-full']});assert.equal(s.effectiveIds.length,180);assert.equal(s.qualificationIds.length,47);assert.equal(s.courseRevisions[0].revision,13);assert.ok(s.qualificationIds.includes('D-BIN-MGFX'));
   assert.equal(s.effectiveIds.filter(id=>id.startsWith('P-')).length,13);assert.ok(s.effectiveIds.includes('D-EXTERNAL-RELOAD'));assert.ok(!s.effectiveIds.includes('S-PF-IDLE'));assert.ok(checkRegistry().some(c=>c.id==='S-PF-IDLE'),'Idle candidate remains available for its separate probe');
   validateRecipe(selectedRecipe(s));assert.throws(()=>resolveSelection(db,{checkIds:['P-RG-WIRE']}),/not accepted/);
   assert.throws(()=>saveCourse(db,{...draft,id:'candidate',groups:[{id:'g',title:'g',checks:['P-RG-WIRE']}]}),/not accepted/);
@@ -131,7 +131,7 @@ test('selection and bin checks do not require neighboring product assertions',()
  const db=new DatabaseSync(':memory:');initializeCourses(db);
  try{
   for(const id of ['D-LINKED-SELECTION','D-TRACK-LOCK-UI','D-TRACK-TARGETING','D-RIPPLE-GAP','D-BIN-RENAME','D-BIN-DUPLICATE','D-BIN-DELETE','D-BIN-MGFX']){
-   const s=resolveSelection(db,id==='D-BIN-MGFX'?{courseIds:['smoke-full'],subsetIds:[id]}:{checkIds:[id]});
+   const s=resolveSelection(db,['D-BIN-MGFX','D-BIN-DUPLICATE'].includes(id)?{courseIds:['smoke-full'],subsetIds:[id]}:{checkIds:[id]});
    assert.deepEqual(new Set(s.effectiveIds),new Set(['A-CLI-01','D-CLI-01',id]));validateRecipe(selectedRecipe(s));
   }
   const s=resolveSelection(db,{courseIds:['smoke-full'],subsetIds:['D-BIN-DUPLICATE'],diagnostics:'investigation'});

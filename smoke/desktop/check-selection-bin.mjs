@@ -7,7 +7,7 @@ import {readJSON,writeJSON,sha} from '../runner/files.mjs';
 import {assert,same,near,clips,snapshotState,pause,OutcomeError} from '../runner/engine.mjs';
 import {readPPM,pixelDifference,visibleImage} from '../runner/pixels.mjs';
 const verify=process.argv[3]==='verify';
-const {s,n,c,ui,until,check,step,assertion,activate,mediaItem,mediaMenu,openTimeline,finish}=await checks(process.argv[2],verify?'desktop-bin-reopen-report.json':'desktop-selection-bin-report.json');
+const {s,n,c,ui,until,check,step,assertion,verification,activate,mediaItem,mediaMenu,openTimeline,finish}=await checks(process.argv[2],verify?'desktop-bin-reopen-report.json':'desktop-selection-bin-report.json');
 const inspect=timeline_id=>c('timeline.inspect',{timeline_id});
 const assets=async()=>(await c('media.list_assets')).assets;
 const byId=async id=>(await assets()).find(a=>a.asset_id===id);
@@ -43,7 +43,7 @@ if(verify){
     if(e.graphic){for(const g of e.graphic.generations)same((await c('generate.inspect',{target:{kind:'generation',generation_id:g.id}})).parameters,g.parameters,'Reopened generated parameters');const actual=await frame(e.graphic.timeline,'reopened');assert(pixelDifference(await readPPM(e.graphic.reference),actual.image)<=1,'Reopened copied graphic pixels changed');}
     return {freshPid:s.pid,generation:s.generation,restored:true};
     };
-    return id==='D-BIN-MGFX'?step({id:'reopen',title:'Reopen in a fresh process and verify generated state and pixels',phase:'verify'},verifySaved):verifySaved();
+    return ['D-BIN-MGFX','D-BIN-DUPLICATE'].includes(id)?step({id:'reopen',title:'Reopen in a fresh process and verify retained identities and content',phase:'verify'},verifySaved):verifySaved();
   });finish();
 }else{
   await check('D-LINKED-SELECTION',async()=>{
@@ -82,7 +82,24 @@ if(verify){
     same(await byId(original.asset_id),original,'Rename restoration');assert(await sha(original.local_path)===sourceHash,'Rename changed source bytes');retained.cases['D-BIN-RENAME']={assets:[original],sourceHash};return {assetId:original.asset_id,sourceHash,renamedAndRestored:true,renderUnchanged:true};
   });
   await check('D-BIN-DUPLICATE',async()=>{
-    const before=await assets(),source=await byId(s.assets.motion),sourceHash=await sha(source.local_path);await mediaMenu(source.display_name||path.basename(source.local_path),'Duplicate');const after=await until(async()=>{const a=await assets();return a.length===before.length+1?a:null;});const added=after.filter(a=>!before.some(b=>b.asset_id===a.asset_id));assert(added.length===1,'Duplicate did not mint one independent asset');duplicate=added[0];assert(await sha(duplicate.local_path)===sourceHash,'Duplicate refers to different source bytes');await rename(duplicate.display_name||path.basename(duplicate.local_path),'Bin duplicate renamed');duplicate=await byId(duplicate.asset_id);assert(duplicate.display_name==='Bin duplicate renamed','Copy rename absent');same(await byId(source.asset_id),source,'Copy rename preserves original');retained.cases['D-BIN-DUPLICATE']={assets:[source,duplicate],sourceHash};return {original:source.asset_id,copy:duplicate.asset_id,sourceHash,independentName:true};
+    const {before,source,sourceHash}=await step({id:'source',title:'Read the original asset identity and source hash',phase:'prepare'},async()=>{
+      const before=await assets(),source=await byId(s.assets.motion);assert(source,'Original motion asset is absent');return {before,source,sourceHash:await sha(source.local_path)};
+    });
+    await step({id:'duplicate',title:'Duplicate the observed media through its bin menu',phase:'execute'},()=>mediaMenu(source.display_name||path.basename(source.local_path),'Duplicate'));
+    const after=await step({id:'read-copy',title:'Read the newly created asset',phase:'verify'},()=>until(async()=>{const a=await assets();return a.length===before.length+1?a:null;},{description:'Exactly one new duplicate asset'}));
+    const added=after.filter(a=>!before.some(b=>b.asset_id===a.asset_id));
+    await assertion({id:'copy-identity',title:'Verify one independent asset for the same source bytes',phase:'verify'},
+      {expected:{addedAssets:1,originalAssetId:source.asset_id,sourceHash},actual:{addedAssets:added.length,assets:added,sourceHash:added.length===1?await sha(added[0].local_path):null}},
+      added.length===1&&await sha(added[0].local_path)===sourceHash);
+    duplicate=added[0];
+    await step({id:'rename-copy',title:'Rename only the copied media',phase:'execute'},()=>rename(duplicate.display_name||path.basename(duplicate.local_path),'Bin duplicate renamed'));
+    duplicate=await byId(duplicate.asset_id);const original=await byId(source.asset_id),view=await mediaItem('Bin duplicate renamed');
+    await verification({id:'independent-name',title:'Verify original and copy identities and visible names',phase:'verify'},
+      {expected:{original:source,copyId:duplicate.asset_id,copyName:'Bin duplicate renamed'},actual:{original,copy:duplicate,visibleNames:view.model.map(r=>r[0])}},()=>{
+        assert(duplicate.display_name==='Bin duplicate renamed','Copy rename absent');same(original,source,'Copy rename preserves original');
+        for(const name of [source.display_name||path.basename(source.local_path),'Bin duplicate renamed'])assert(view.model.filter(r=>r[0]===name).length===1,'Bin names are absent or ambiguous: '+name);
+      });
+    retained.cases['D-BIN-DUPLICATE']={assets:[source,duplicate],sourceHash};return {original:source.asset_id,copy:duplicate.asset_id,sourceHash,independentName:true};
   });
   await check('D-BIN-DELETE',async()=>{
     const original=await byId(s.assets.plate),name=original.display_name||path.basename(original.local_path),sourceHash=await sha(original.local_path),before=await inspect(binTimeline),reference=await frame(binTimeline,'delete-before');visibleImage(reference.image);await mediaMenu(name,'Delete from Bin');

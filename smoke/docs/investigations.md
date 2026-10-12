@@ -170,7 +170,7 @@ separate run.
 | First read | Portable tasks include `tasks/TASK-first-read.json`. Managed job handoffs link `first-read.json` and its evidence package. These retain the assertion, decisive values, proof reference, stopped/unreached phases and unanswered question. Full source excerpts stay in the immutable proof and report. |
 | Cost and overhead | `scripts/review-cost.mjs` compares packet bytes, approximate tokens, proof availability, reviewer receipts and execution intervals. Fresh desktop reports record runner-owned preparation, launch, reopen, close and cleanup durations; diagnostic events record collection duration. Historical missing timers remain gaps. |
 
-The maintained full course is revision 12. D-EDIT-TRIM remains runnable as an
+The maintained full course is revision 13. D-EDIT-TRIM remains runnable as an
 explicit qualification candidate; its historical acceptance is preserved. The
 legacy TIME-01 and SCOPES-01 support mappings correctly require review after
 these definition changes. Do not refresh their pins or promote acceptance just

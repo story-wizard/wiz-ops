@@ -55,7 +55,10 @@ export function usableGeometry(ui,target){
 export function requireExactTimingFixture(snapshot){
  const timed=clips(snapshot).filter(c=>c.source?.timing==='timed');
  const rejected=timed.filter(c=>c.source.projection_status!=='exact');
- if(!timed.length||rejected.length)throw new OutcomeError('Source timing fixture is not exact: '+JSON.stringify(rejected.map(c=>({clip:c.clip_id,status:c.source.projection_status,diagnostics:c.source.projection_diagnostics}))),'Blocked');
+ if(!timed.length||rejected.length){
+  const timing=clips(snapshot).slice(0,8).map(c=>({clip:c.clip_id,asset:c.source?.asset_id,timing:c.source?.timing,status:c.source?.projection_status,fps:c.source?.fps,range:c.source?.source_range,diagnostics:c.source?.projection_diagnostics}));
+  throw Object.assign(new OutcomeError('Source timing fixture is not exact: '+JSON.stringify(timing),'Blocked'),{diagnostics:{expected:'Exact timed source projection before the gesture',timing}});
+ }
 }
 export function requireValidSourceTiming(source){
  const range=source?.source_range;
@@ -239,7 +242,7 @@ export async function recordStep(file,definition,fn){
  const journal=path.join(session.root,'steps.jsonl'),entry={caseId:session.currentCheck,stepId:definition.id,title:definition.title,phase:definition.phase||'execute',...(definition.assertion?{assertion:definition.assertion}:{})};
  session.currentStep=definition.id;await writeJSON(file,session);await appendFile(journal,JSON.stringify({...entry,status:'Running',at:new Date().toISOString()})+'\n');
  try{const value=await fn();await appendFile(journal,JSON.stringify({...entry,status:'Completed',at:new Date().toISOString()})+'\n');return value;}
- catch(e){await appendFile(journal,JSON.stringify({...entry,status:failureStatus(e),observation:e.message,evidence:e.evidence||null,at:new Date().toISOString()})+'\n');throw e;}
+ catch(e){await appendFile(journal,JSON.stringify({...entry,status:failureStatus(e),observation:e.message,code:e.code||null,diagnostics:e.diagnostics||null,evidence:e.evidence||null,at:new Date().toISOString()})+'\n');throw e;}
  finally{const latest=await readJSON(file);latest.currentStep=null;await writeJSON(file,latest);}
 }
 export async function recordAssertion(file,definition,comparison,condition){
@@ -294,12 +297,14 @@ export async function checks(file,name){
   async function action(text){const matches=(await ui()).actions.filter(a=>a.text===text&&a.enabled);assert(matches.length===1,`Expected one enabled action: ${text}`);await n('action',{target:matches[0].id});}
   async function mediaItem(name){return until(async()=>(await ui()).widgets.find(w=>w.class==='QTreeView'&&w.model?.some(r=>r[0]===name)),{description:'Media item '+name});}
   async function mediaMenu(name,label){
-    const view=await mediaItem(name);await activate(view);await n('item-click',{target:view.id,text:name,context:true});
+    const view=await mediaItem(name),matches=view.model.filter(row=>row[0]===name);
+    if(matches.length!==1)throw Object.assign(new OutcomeError('Media menu target is ambiguous: '+name,'Blocked'),{diagnostics:{expected:'One visible media row',matches:matches.length}});
+    await activate(view);await n('item-click',{target:view.id,text:name,context:true});
     const menu=await until(async()=>(await ui()).widgets.find(w=>w.class==='QMenu'&&w.menuItems?.some(a=>a.text===label&&a.enabled)));
     const actions=menu.menuItems.filter(a=>a.text===label&&a.enabled);assert(actions.length===1,'Menu action is ambiguous');const a=actions[0];
     await n('click',{target:menu.id,x:a.x+Math.floor(a.width/2),y:a.y+Math.floor(a.height/2)});await until(async()=>!(await ui()).widgets.some(w=>w.id===menu.id));
   }
   async function openTimeline(name,trackId){const tab=timelineDockToOpen(await ui());if(tab){await n('click',{target:tab.id});await until(async()=>(await ui()).widgets.some(w=>w.class==='TimelineWidget'),{description:'Timeline dock is visible'});}const view=await mediaItem(name);await activate(view);await n('item-click',{target:view.id,text:name,double:true});await until(async()=>(await ui()).widgets.some(w=>w.name==='panelSubtabSelector'&&selectorNamesTimeline(w.text,name)),{description:'Timeline '+name+' is open'});const v=timelineCanvas(await ui(),trackId);await activate(v);return v;}
   function finish(){report.completed=true;writeFileSync(output,JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(report.results.some(r=>r.status!=='Pass'))process.exitCode=1;}
-  return {s,report,n,c,ui,until,check,step:(definition,fn)=>recordStep(file,definition,fn),assertion:(definition,comparison,condition)=>recordAssertion(file,definition,comparison,condition),activate,action,mediaItem,mediaMenu,openTimeline,finish};
+  return {s,report,n,c,ui,until,check,step:(definition,fn)=>recordStep(file,definition,fn),assertion:(definition,comparison,condition)=>recordAssertion(file,definition,comparison,condition),verification:(definition,comparison,verify)=>recordVerification(file,definition,comparison,verify),activate,action,mediaItem,mediaMenu,openTimeline,finish};
 }
