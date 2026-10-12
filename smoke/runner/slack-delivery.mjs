@@ -1,3 +1,4 @@
+import {scheduledJob} from './jobs.mjs';
 import {verifyReportRoute,inspectDelivery,recordDelivery} from './delivery.mjs';
 
 // The token belongs to the supervised sender environment, never a profile, prompt or receipt.
@@ -9,6 +10,7 @@ export function slackSender(input,{token=process.env.ATHANOR_SLACK_BOT_TOKEN,fet
  const send=async (directory,{perDestination=false}={})=>{
   const delivery=await inspectDelivery(directory,perDestination?route:null);if(delivery.intent.format!=='athanor-delivery-intent/v2')throw Error('Historical intent is read-only; retain it and review a new delivery.');if(delivery.state!=='DELIVERY_PENDING')throw Error('Inspect the existing delivery receipt; do not resend.');
   if(JSON.stringify(delivery.intent.destination)!==JSON.stringify(route))throw Error('Retained delivery route differs from sender.');
+  if(!scheduledJob({id:delivery.intent.identity,origin:delivery.intent.origin}))throw Error('Only a retained daily-scheduler job can send Slack. Manual and pilot reports are silent.');
   await verify();
   // An Unknown receipt precedes the write: a process crash cannot make this appear unsent.
   await recordDelivery(directory,{intentId:delivery.intent.id,state:'DELIVERY_UNKNOWN',observation:'Single Slack dispatch authorized; response not yet retained.'},perDestination?route:null);

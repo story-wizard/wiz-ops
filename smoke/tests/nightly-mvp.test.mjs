@@ -124,7 +124,7 @@ function fakeSlack({loseChannel=false}={}){const posted=[];return {posted,fetche
  else if(url.endsWith('chat.postMessage')){posted.push(body);if(loseChannel&&body.channel===smokeChannel.channelId)throw Error('Response lost');Object.assign(value,{channel:body.channel,ts:'123.456'});}
  else if(url.endsWith('chat.getPermalink'))value.permalink='https://story-company.slack.com/archives/'+body.conversation_id+'/p'+body.message_ts.replace('.','');else throw Error('Unexpected Slack request');return {ok:true,json:async()=>value};}};}
 test('two destinations retain independent confirmed/unknown states, do not leak local paths or resend after restart',async()=>fixture(async(store,root)=>{
- const f=await publicationFixture(root),job=store.submit(request,selection,digest(profile));store.update(job.id,{state:'Delivery',outcome:'Failed',report:f.job.report,publication:{state:'Failed',error:'Host unavailable'}});const slack=fakeSlack({loseChannel:true}),senders=new Map(routes.map(r=>[r.channelId,slackSender(r,{token:'xoxb-test',fetcher:slack.fetcher})]));
+ const f=await publicationFixture(root),start=Date.parse('2026-10-10T18:00:00Z');store.saveSchedule({timeZone:'America/Los_Angeles',hour:3,minute:0,request,selection,profileHash:digest(profile)},start);store.enable(true,start);const job=store.due(start+86400000);const record=JSON.parse(await readFile(path.join(f.job.report.path,'report.json')));record.jobId=job.id;record.origin=job.origin;await writeFile(path.join(f.job.report.path,'report.json'),JSON.stringify(record));store.update(job.id,{state:'Delivery',outcome:'Failed',report:f.job.report,publication:{state:'Failed',error:'Host unavailable'}});const slack=fakeSlack({loseChannel:true}),senders=new Map(routes.map(r=>[r.channelId,slackSender(r,{token:'xoxb-test',fetcher:slack.fetcher})]));
  const options={profile,call:async()=>idle,routes,send:(directory,r)=>senders.get(r.channelId).send(directory,{perDestination:true})};await new JobController(store,options).tick();const final=store.get(job.id);assert.equal(final.delivery,'DELIVERY_UNKNOWN');assert.equal(final.deliveries[dm.channelId].state,'DELIVERY_CONFIRMED');assert.equal(final.deliveries[smokeChannel.channelId].state,'DELIVERY_UNKNOWN');assert.equal(slack.posted.length,2);assert.ok(slack.posted.every(p=>p.text.includes('Shared report unavailable')&&!p.text.includes(root)));
  store.update(job.id,{state:'Delivery'});await new JobController(store,options).tick();assert.equal(slack.posted.length,2);
  const routeFile=path.join(root,'route.json');await writeFile(routeFile,JSON.stringify(dm));const {main}=await import('../scripts/report-delivery.mjs');assert.equal((await main(['inspect','--report',f.job.report.path,'--route',routeFile])).state,'DELIVERY_CONFIRMED');
@@ -206,4 +206,30 @@ test('the first-read brief summarizes change execution and links large planning 
 
 test('changed source HTML is rejected before publication despite intact report JSON',async()=>fixture(async(_store,root)=>{
  const f=await publicationFixture(root);await writeFile(path.join(f.job.report.path,'index.html'),'<script>changed renderer</script>');await assert.rejects(()=>publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),/Report HTML changed/);
+}));
+
+
+test('manual nightly jobs stay silent with Slack routes configured, including scheduled-looking IDs and old intents',async()=>fixture(async(store,root)=>{
+ const f=await publicationFixture(root);let sends=0;
+ for(const id of ['pilot-nightly','nightly-20261011100000000','historical-job']){
+  const job=store.submit({...request,requestId:id},selection,digest(profile));
+  assert.equal(job.origin.kind,'manual');
+  store.update(id,{state:'Delivery',report:f.job.report,...(id==='historical-job'?{origin:undefined}:{} )});
+  await new JobController(store,{profile,call:async()=>idle,routes,send:async()=>{sends++;}}).tick();
+  const final=store.get(id);assert.equal(final.state,'Complete');assert.equal(final.delivery,'LOCAL_ONLY');assert.equal(final.notification.state,'Suppressed');
+ }
+ assert.equal(sends,0);await assert.rejects(()=>inspectDelivery(f.job.report.path,dm),{code:'ENOENT'});
+ assert.throws(()=>store.submit({...request,requestId:'forged',origin:{kind:'scheduled'}},selection,digest(profile)),/retained request/);
+}));
+
+test('manual reports are rejected by the sender before any Slack API call',async()=>fixture(async(_store,root)=>{
+ const f=await publicationFixture(root);await prepareDelivery(f.job.report.path,dm,{perDestination:true});let calls=0;
+ const sender=slackSender(dm,{token:'xoxb-test',fetcher:async()=>{calls++;throw Error('Must stay offline');}});
+ await assert.rejects(()=>sender.send(f.job.report.path,{perDestination:true}),/daily-scheduler/);assert.equal(calls,0);assert.equal((await inspectDelivery(f.job.report.path,dm)).state,'DELIVERY_PENDING');
+}));
+
+test('a manual request cannot preempt a scheduled admission and acquire its notification origin',async()=>fixture(async store=>{
+ const start=Date.parse('2026-10-10T18:00:00Z');store.saveSchedule({timeZone:'America/Los_Angeles',hour:3,minute:0,request,selection,profileHash:digest(profile)},start);store.enable(true,start);
+ const id='nightly-'+store.schedule().nextDue.replace(/[^0-9]/g,'');store.submit({...request,requestId:id},selection,digest(profile));
+ assert.throws(()=>store.due(start+86400000),/different inputs/);assert.equal(store.get(id).origin.kind,'manual');
 }));

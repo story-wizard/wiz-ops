@@ -31,7 +31,7 @@ node scripts/controller.mjs status --config CONFIG --id REQUEST_ID
 node scripts/controller.mjs brief --config CONFIG --id REQUEST_ID
 ```
 
-`init` writes configuration only. `submit` admits a durable job. A supervised controller progresses admitted jobs; `tick` progresses one step. These commands do not create another scheduler. A daily schedule remains disabled after creation. Schedule enablement requires the planner, publication and both verified Slack destinations for Nightly MVP jobs.
+`init` writes configuration only. `submit` admits a durable job. A supervised controller progresses admitted jobs; `tick` progresses one step. These commands do not create another scheduler. A daily schedule remains disabled after creation. Schedule enablement requires the planner, publication and both verified Slack destinations for Nightly MVP jobs. Manual submissions run the same courses and retain the same reports without Slack notifications, even with these destinations configured. Only the durable daily scheduler records a scheduled origin. A nightly flag, request name or build tag cannot grant notification permission.
 
 Planner, publication and route configuration are pinned at admission. Changing them cannot adopt old queued jobs. Retain the old configuration to inspect those jobs; create a reviewed new configuration for later jobs.
 
@@ -85,6 +85,8 @@ The publisher includes owned test evidence. It does not include the supplied med
 
 ## Slack reporting
 
+Only runs admitted by the daily scheduler may emit Slack messages. Manual runs, qualification pilots, on-demand jobs and historical jobs without scheduler provenance are silent. Their report publication and evidence collection still work. The controller records `notification.state: Suppressed` and creates no new Slack intent; the sender independently checks the retained scheduled origin. Existing delivery evidence remains intact. Manual runs need no sender token.
+
 Nightly MVP permits only these two destinations in Story Company:
 
 - Charles Harris's one-to-one DM, user `U0BDBFNU0G1`. Resolve and verify the bot's DM; do not copy another connector's DM ID.
@@ -104,7 +106,7 @@ A report-ready summary contains the verified shared URL and separate course resu
 4. Inspect the MBP's current job and scheduler. Keep the old configuration and evidence for rollback. Do not run two nightly dispatchers.
 5. Select the report access method and qualify the configured agent and dedicated Slack bot.
 6. Publish a retained non-pass report. Verify its details, image/video evidence and draft access from another machine.
-7. Run one authorized newest-build pilot. Verify both course IDs, an existing failure and a later fix reference, process cleanup and both Slack receipts.
+7. Run one authorized newest-build pilot. Verify both course IDs, an existing failure and a later fix reference, process cleanup and notification suppression. This manually submitted pilot must record no Slack dispatch or message. Qualify sender identity through read-only checks; retain real delivery receipts from the later scheduled run.
 8. Enable the one reviewed daily schedule. Confirm the next admission without an open agent chat.
 
 Local implementation does not perform these deployment or delivery actions. Mini enrollment, Wiz requests, email, Tower monitoring and automatic Jira writes are separate work.

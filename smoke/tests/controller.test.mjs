@@ -88,7 +88,7 @@ test('early blocker report retains job identity and original not-run checks with
  await prepareDelivery(report.path,route);assert.equal((await inspectDelivery(report.path)).intent.identity,job.id);
 }));
 test('Slack sender validates the exact owner before a single dispatch and retains uncertainty after a lost reply',async()=>fixture(async(store,root)=>{
- await writeFile(path.join(root,'report.json'),JSON.stringify({format:'athanor-job-report/v1',jobId:'job',identity:{build:'Synthetic'},catalog:{state:'Blocked',counts:{Blocked:1}}}));await prepareDelivery(root,route);let writes=0;
+ await writeFile(path.join(root,'report.json'),JSON.stringify({format:'athanor-job-report/v1',jobId:'nightly-20261011100000000',origin:{kind:'scheduled',slot:'2026-10-11T10:00:00.000Z'},identity:{build:'Synthetic'},catalog:{state:'Blocked',counts:{Blocked:1}}}));await prepareDelivery(root,route);let writes=0;
  const sender=slackSender(route,{token:'xoxb-synthetic',fetcher:async(url)=>{if(url.endsWith('auth.test'))return {ok:true,json:async()=>({ok:true,team_id:'T07BPEAE014',url:'https://story-company.slack.com/',bot_id:'BTEST'})};if(url.endsWith('conversations.info'))return {ok:true,json:async()=>({ok:true,channel:{id:route.channelId,is_im:true,user:route.user}})};writes++;throw Error('lost reply');}});
  await assert.rejects(()=>sender.send(root),/response unavailable/);assert.equal(writes,1);assert.equal((await inspectDelivery(root)).state,'DELIVERY_UNKNOWN');await assert.rejects(()=>sender.send(root),/do not resend/);assert.equal(writes,1);
  const foreign=slackSender(route,{token:'xoxb-synthetic',fetcher:async()=>({ok:true,json:async()=>({ok:true,team_id:'TOTHER'})})});await assert.rejects(()=>foreign.verify(),/not a Story/);assert.equal(writes,1);
@@ -111,8 +111,8 @@ test('newest nightly without a package never silently falls back to an older bui
  await assert.rejects(()=>resolveJobBuild({kind:'latest-nightly'},async()=>releases),/older build was not substituted/);
 });
 test('a restarted delivery intent is Unknown, never a second Slack send',async()=>fixture(async(store,root)=>{
- const job=store.submit(request,selection,digest(profile));await writeFile(path.join(root,'report.json'),JSON.stringify({format:'athanor-job-report/v1',jobId:job.id,identity:{build:'Synthetic'},catalog:{state:'Failed',counts:{Fail:1}}}));await prepareDelivery(root,route);store.update(job.id,{state:'Delivery',outcome:'Failed',report:{path:root},deliveryDispatched:true});let sends=0;
- const controller=new JobController(store,{profile,call:async()=>idle,route,send:async()=>{sends++;}});await controller.tick();assert.equal(sends,0);assert.equal(store.get(job.id).delivery,'DELIVERY_UNKNOWN');assert.equal((await inspectDelivery(root)).state,'DELIVERY_UNKNOWN');assert.equal(store.get(job.id).outcome,'Failed');
+ const job=store.submit(request,selection,digest(profile));await writeFile(path.join(root,'report.json'),JSON.stringify({format:'athanor-job-report/v1',jobId:job.id,identity:{build:'Synthetic'},catalog:{state:'Failed',counts:{Fail:1}}}));await prepareDelivery(root,route);store.update(job.id,{state:'Delivery',outcome:'Failed',report:{path:root},deliveryDispatched:true,delivery:'DELIVERY_UNKNOWN'});let sends=0;
+ const controller=new JobController(store,{profile,call:async()=>idle,route,send:async()=>{sends++;}});await controller.tick();assert.equal(sends,0);assert.equal(store.get(job.id).delivery,'DELIVERY_UNKNOWN');assert.equal((await inspectDelivery(root)).state,'DELIVERY_PENDING');assert.equal(store.get(job.id).outcome,'Failed');assert.equal(store.get(job.id).notification.state,'Suppressed');
 }));
 test('a listener rebound to another source or workspace cannot import, prepare or Start',async()=>fixture(async store=>{
  const job=store.submit(request,selection,digest(profile));let writes=0;

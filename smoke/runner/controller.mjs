@@ -8,6 +8,7 @@ import {releaseBuilds,buildChannel} from '../builds.mjs';
 import {resultSummary} from '../scripts/smoke.mjs';
 import {createNightlyPlan,consolidateNightly,blockedPreparationReport,nightlyHTML,nightlyCases} from './nightly.mjs';
 import {prepareDelivery,inspectDelivery,recordDelivery,verifyReportRoutes} from './delivery.mjs';
+import {scheduledJob} from './jobs.mjs';
 import {verifyChangePlan} from './change-course.mjs';
 import {verifyWorkerState} from './worker.mjs';
 import {retainInvestigationHandoff,jobResultBrief,readJobReport} from './job-handoff.mjs';
@@ -54,7 +55,7 @@ async function retainCombinedReport(store,job,call,context){
   stages.push({name,state:record.catalog.state,runId:stage.runId||null,counts:record.catalog.counts,report:exported,record});
  }
  const evergreen=stages.find(s=>s.name==='evergreen'),primary=stages.find(s=>s.runId===job.runId)||evergreen;
- const report={format:'athanor-job-report/v1',jobId:job.id,runId:job.runId||null,cadence:'nightly',identity:primary?.record?.identity||{build:job.preparation?.version||job.resolved?.tag||'Requested latest nightly',packageHash:job.preparation?.packageHash||null,runnerHash:job.workerRunnerHash},cases:evergreen?.record?.cases||[],caseCounts:evergreen?.record?.caseCounts||{},assertionCounts:evergreen?.record?.assertionCounts||{},
+ const report={format:'athanor-job-report/v1',jobId:job.id,origin:job.origin||{kind:'legacy'},runId:job.runId||null,cadence:'nightly',identity:primary?.record?.identity||{build:job.preparation?.version||job.resolved?.tag||'Requested latest nightly',packageHash:job.preparation?.packageHash||null,runnerHash:job.workerRunnerHash},cases:evergreen?.record?.cases||[],caseCounts:evergreen?.record?.caseCounts||{},assertionCounts:evergreen?.record?.assertionCounts||{},
   courseStages:stages.map(({record,...stage})=>stage),changePlan:job.changePlan||{state:'Blocked',reason:'Change planning was not reached.'},catalog:{state:job.outcome||'Blocked',counts:{},checks:stages.flatMap(s=>(s.record?.catalog.checks||[]).map(c=>({...c,course:s.name,detailsUrl:s.record.catalogReport?.url? s.record.catalogReport.url+'#check='+encodeURIComponent(c.id):null})))},executionStarted:stages.some(s=>s.runId),fixVerification:(job.changePlan?.regressions||[]).map(ref=>{const later=stages.find(s=>s.name==='changes'),actual=ref.available&&!job.changePlan?.pendingRegressions?.some(r=>r.id===ref.id)?later?.record?.catalog.checks.find(c=>c.id===ref.caseId):null;return {...ref,newBuild:job.preparation?.version||primary?.record?.identity.build,newRunId:later?.runId||null,newStatus:actual?.status||'Not run',observation:actual?.observation||ref.reason,reviewState:actual?.status==='Pass'?'Ready for human review':'Needs review'};})};
  for(const c of report.catalog.checks)report.catalog.counts[c.status]=(report.catalog.counts[c.status]||0)+1;
  const html=nightlyHTML(report);await retain(path.join(root,'report.json'),report);await retain(path.join(root,'index.html'),html);
@@ -79,6 +80,7 @@ export async function retainJobReport(store,job,call,context={}){
   const cases=nightlyCases(suite).map(c=>({...c,status:'NOT_RUN',assertions:c.expected.map((expected,i)=>({id:c.id+':'+(i+1),expected,status:'NOT_RUN',observation:'No course execution established.'}))}));
   report={format:'athanor-job-report/v1',jobId:job.id,runId:null,cadence:'nightly',identity,executionStarted:false,failedStage:job.failedStage||job.state,error:job.error||null,cases,caseCounts:{NOT_RUN:cases.length},assertionCounts:{NOT_RUN:cases.reduce((n,c)=>n+c.assertions.length,0)},catalog:{state:job.outcome||'Blocked',counts:{'Not run':checks.length},checks},jobRequest:job.request};
  }
+ report.origin=job.origin||{kind:'legacy'};
  const handoff=await retainInvestigationHandoff(store,job,report,call,context);
  report.jobHandoff={url:'handoff.html',state:handoff.state};
  const brief=jobResultBrief({...job,lastError:null,handoff,report:{path:root,url:'/exports/athanor-job-'+job.id+'/index.html'}},report,context);
@@ -192,6 +194,7 @@ export class JobController{
    return this.change(job,{state:'Delivery',publication},'Report publication '+publication.state+'; local evidence retained.');
   }
   if(job.state==='Delivery'){
+   if(!scheduledJob(job))return this.change(job,{state:'Complete',delivery:job.delivery||((job.deliveryDispatched||Object.values(job.deliveries||{}).some(d=>d.dispatched))?'DELIVERY_UNKNOWN':'LOCAL_ONLY'),notification:{state:'Suppressed',reason:'Only daily-scheduler admissions send Slack. Manual, pilot and historical jobs retain reports without notifications.'}},'Slack suppressed; existing delivery evidence preserved.');
    if(this.routes){
     const routes=verifyReportRoutes(this.routes);let deliveries={...job.deliveries};
     for(const route of routes){
