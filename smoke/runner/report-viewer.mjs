@@ -21,24 +21,25 @@ export async function publishJob(dataDir,job,config,{probe=verifyPublishedURL}={
  if(directory===exportsRoot||inside(exportsRoot,directory)||inside(directory,exportsRoot))throw Error('Publish to a separate report directory, outside the private worker workspace.');
  const report=await readJSON(path.join(job.report.path,'report.json'));if(digest(report)!==job.report.reportHash)throw Error('Job report changed before publication.');
  if(await realpath(job.report.path)!==await realpath(path.join(exportsRoot,job.report.url.split('/')[2])))throw Error('Job report path does not match its export identity.');
- const selected=new Map();
- async function add(url){
+ const selected=new Map(),htmlProofs=new Map();
+ async function add(url,htmlHash){
   const parts=(url||'').split('/');if(parts.length!==4||parts[1]!=='exports'||!packageName.test(parts[2])||parts[3]!=='index.html')throw Error('Publication needs a retained export URL.');
   const name=parts[2];if(selected.has(name))return;
   const root=await realpath(path.join(exportsRoot,name));if(path.dirname(root)!==exportsRoot)throw Error('Export directory escaped its workspace.');
-  selected.set(name,root);const record=await readJSON(path.join(root,'report.json')).catch(e=>{if(e.code!=='ENOENT')throw e;return null;});
+  selected.set(name,root);if(name.startsWith('athanor-job-')){if(!/^[a-f0-9]{64}$/.test(htmlHash||''))throw Error('Job HTML needs its retained byte hash before shared publication.');htmlProofs.set(name,htmlHash);}const record=await readJSON(path.join(root,'report.json')).catch(e=>{if(e.code!=='ENOENT')throw e;return null;});
   if(record?.catalogReport)await add(record.catalogReport.url);
-  for(const stage of record?.courseStages||[])if(stage.report)await add(stage.report.url);
+  for(const stage of record?.courseStages||[])if(stage.report)await add(stage.report.url,stage.report.htmlHash);
   // Only exported investigations are shared. Live dashboards and APIs stay private.
   const brief=await readJSON(path.join(root,'agent-brief.json')).catch(e=>{if(e.code!=='ENOENT')throw e;return null;});
   if(brief?.reports?.investigation?.package)await add(brief.reports.investigation.package.url);
  }
- await add(job.report.url);await mkdir(directory,{recursive:true,mode:0o700});
+ await add(job.report.url,job.report.htmlHash);await mkdir(directory,{recursive:true,mode:0o700});
  const staging=await mkdtemp(path.join(directory,'.publish-'));
  try{
   for(const [name,root] of selected){
    const inventory=await fingerprint(root);
    const record=await readJSON(path.join(root,'report.json')).catch(e=>{if(e.code!=='ENOENT')throw e;return null;});
+   const html=await readFile(path.join(root,'index.html'),'utf8');if(name.startsWith('smoke-report-')&&!name.endsWith(digest({report:record,html}).slice(0,12))||htmlProofs.has(name)&&htmlProofs.get(name)!==digest(html))throw Error('Report HTML changed before publication.');
    for(const proof of record?.artifacts||[]){const file=path.join(root,'evidence',proof.file);if(path.basename(proof.file)!==proof.file||!inside(root,await realpath(file))||(await lstat(file)).size!==proof.bytes||await sha(file)!==proof.sha256)throw Error('Evidence changed before publication.');}
    const manifest=await readJSON(path.join(root,'manifest.json')).catch(e=>{if(e.code!=='ENOENT')throw e;return null;});
    if(manifest&&(digest(manifest.inventory)!==manifest.inventoryHash||!name.endsWith(digest(manifest).slice(0,12))))throw Error('Investigation export manifest changed.');
@@ -51,7 +52,7 @@ export async function publishJob(dataDir,job,config,{probe=verifyPublishedURL}={
     if(!manifest){const allowed=record?.artifacts?['index.html','report.json',...record.artifacts.map(a=>'evidence/'+a.file)]:['index.html','report.json','handoff.html'];if(!allowed.includes(relative))throw Error('Undeclared file in shared report: '+relative);}
     const source=await realpath(path.join(root,relative));if(!inside(root,source))throw Error('Publication source escaped its export.');
     const dest=path.join(staging,'exports',name,relative);await mkdir(path.dirname(dest),{recursive:true});await copyFile(source,dest);if(await sha(dest)!==hash||(await lstat(dest)).size!==size)throw Error('Source bytes changed during publication.');
-    if(/\.(html|json|jsonl|txt)$/.test(relative)&&/(?:xox[baprs]-[A-Za-z0-9-]{10,}|sk-(?:proj-)?[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9_.-]{20,})/.test(await readFile(dest,'utf8')))throw Error('Potential credential in retained text; redact at collection and make a new reviewed export.');
+    if(/\.(html|json|jsonl|txt)$/.test(relative)&&/(?<![A-Za-z0-9_-])(?:xox[baprs]-[A-Za-z0-9-]{10,}|sk-(?:proj-)?[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9_.-]{20,})/.test(await readFile(dest,'utf8')))throw Error('Potential credential in retained text; redact at collection and make a new reviewed export.');
     if(relative.endsWith('.html')){
      let html=await readFile(dest,'utf8');const packageURL=(await readJSON(path.join(root,'agent-brief.json')).catch(()=>null))?.reports?.investigation?.package?.url;
      if(relative==='handoff.html')html='<!doctype html><meta charset="utf-8"><title>Athanor investigation</title><style>body{background:#14191f;color:#d6e1eb;font:16px system-ui;margin:40px}a{color:#9bc6e5}</style><h1>Athanor investigation</h1><p><a href="index.html">Course report</a></p>'+(packageURL?'<p><a href="'+escape(packageURL)+'">Evidence and bug drafts</a></p>':'<p>Investigation package needs review on the worker.</p>');

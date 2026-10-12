@@ -106,7 +106,7 @@ test('planner uses stdin JSON without a shell and bounds malformed output and ex
 async function publicationFixture(root){
  const privateRoot=path.join(root,'private'),reportRoot=path.join(privateRoot,'exports','athanor-job-test');await mkdir(reportRoot,{recursive:true});const report={format:'athanor-job-report/v1',jobId:'test',runId:null,identity:{build:'Synthetic build'},cases:[],catalog:{state:'Failed',counts:{Fail:1},checks:[]}};
  await writeFile(path.join(reportRoot,'report.json'),JSON.stringify(report));await writeFile(path.join(reportRoot,'index.html'),'<h1>Report</h1><a href="/exports/athanor-job-test/report.json">Details</a>');await mkdir(path.join(reportRoot,'delivery'));await writeFile(path.join(reportRoot,'delivery','private.json'),'PRIVATE DESTINATION');
- return {privateRoot,job:{id:'test',report:{path:reportRoot,url:'/exports/athanor-job-test/index.html',reportHash:digest(report)}},config:{directory:path.join(root,'published'),baseUrl:'http://127.0.0.1:1/'}};
+ return {privateRoot,job:{id:'test',report:{path:reportRoot,url:'/exports/athanor-job-test/index.html',reportHash:digest(report),htmlHash:digest('<h1>Report</h1><a href="/exports/athanor-job-test/report.json">Details</a>')}},config:{directory:path.join(root,'published'),baseUrl:'http://127.0.0.1:1/'}};
 }
 test('immutable publication excludes private delivery, serves report links, blocks mutations, escapes and changed bytes',async()=>fixture(async(_store,root)=>{
  const f=await publicationFixture(root),published=await publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),relative=new URL(published.url).pathname.slice(1);assert.match((await readPublishedFile(f.config.directory,relative)).toString(),/Report/);
@@ -157,8 +157,8 @@ test('lost change Start reconciles the second stage ID without repeating either 
  const final=await drive(store,{profile,call,planChanges:async()=>changePlan,report:async()=>({path:'/retained/report'})});assert.equal(final.courseStages.changes.runId,'run-changes');assert.equal(stub.writes.filter(w=>w.url==='/api/runner/start').length,2);
 }));
 test('publisher carries declared screenshot/video bytes and rejects corrupt source evidence before announcing Ready',async()=>fixture(async(_store,root)=>{
- const f=await publicationFixture(root),name='smoke-report-11111111-1111-4111-8111-111111111111-abcdefabcdef',directory=path.join(f.privateRoot,'exports',name);await mkdir(path.join(directory,'evidence'),{recursive:true});const bytes=Buffer.from('synthetic media bytes'),proof={file:'capture.mp4',bytes:bytes.length,sha256:digest(bytes.toString())};
- await writeFile(path.join(directory,'evidence',proof.file),bytes);await writeFile(path.join(directory,'report.json'),JSON.stringify({artifacts:[proof]}));await writeFile(path.join(directory,'index.html'),'<video controls src="evidence/capture.mp4"></video>');
+ const f=await publicationFixture(root),bytes=Buffer.from('synthetic media bytes'),proof={file:'capture.mp4',bytes:bytes.length,sha256:digest(bytes.toString())},detail={artifacts:[proof]},html='<video controls src="evidence/capture.mp4"></video>',name='smoke-report-11111111-1111-4111-8111-111111111111-'+digest({report:detail,html}).slice(0,12),directory=path.join(f.privateRoot,'exports',name);await mkdir(path.join(directory,'evidence'),{recursive:true});
+ await writeFile(path.join(directory,'evidence',proof.file),bytes);await writeFile(path.join(directory,'report.json'),JSON.stringify(detail));await writeFile(path.join(directory,'index.html'),html);
  const report=JSON.parse(await readFile(path.join(f.job.report.path,'report.json')));report.catalogReport={url:'/exports/'+name+'/index.html'};await writeFile(path.join(f.job.report.path,'report.json'),JSON.stringify(report));f.job.report.reportHash=digest(report);
  const published=await publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),relative=new URL(published.url).pathname.split('/')[1]+'/exports/'+name+'/evidence/capture.mp4';assert.deepEqual(await readPublishedFile(f.config.directory,relative),bytes);
  await writeFile(path.join(directory,'evidence',proof.file),'corrupted');await assert.rejects(()=>publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),/Evidence changed/);
@@ -176,7 +176,7 @@ test('publication readiness checks the exact viewer response; unreachable hostin
  f.config.baseUrl='http://127.0.0.1:1/';await assert.rejects(()=>publishJob(f.privateRoot,f.job,f.config));assert.equal(JSON.parse(await readFile(path.join(f.job.report.path,'report.json'))).catalog.state,'Failed');
 }));
 test('obvious credentials cannot enter a shared export and source proof remains unchanged',async()=>fixture(async(_store,root)=>{
- const f=await publicationFixture(root);await writeFile(path.join(f.job.report.path,'index.html'),'<p>xoxb-'+ 'secret'.repeat(8)+'</p>');await assert.rejects(()=>publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),/credential/);assert.match(await readFile(path.join(f.job.report.path,'index.html'),'utf8'),/xoxb/);
+ const f=await publicationFixture(root);const ordinary='<p>mask-11111111-1111-4111-8111-111111111111</p>';await writeFile(path.join(f.job.report.path,'index.html'),ordinary);f.job.report.htmlHash=digest(ordinary);assert.equal((await publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}})).state,'Published');const html='<p>xoxb-'+ 'secret'.repeat(8)+'</p>';await writeFile(path.join(f.job.report.path,'index.html'),html);f.job.report.htmlHash=digest(html);await assert.rejects(()=>publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),/credential/);assert.match(await readFile(path.join(f.job.report.path,'index.html'),'utf8'),/xoxb/);
 }));
 
 test('edited delivery text is rejected before Slack dispatch',async()=>fixture(async(_store,root)=>{
@@ -203,3 +203,7 @@ test('the first-read brief summarizes change execution and links large planning 
  const {jobResultBrief}=await import('../runner/job-handoff.mjs'),plan={state:'Ready',scenarios:[{id:'scenario'}],uncovered:[],comparison:{...comparison(),files:[{patch:'large patch '.repeat(10000)}]}},courseStages=[{name:'evergreen',state:'Passed',runId:'old',counts:{Pass:192}},{name:'changes',state:'Passed',runId:'new',counts:{Pass:1}}],job={id:'nightly',state:'Complete',request,selection,report:{url:'/exports/athanor-job-nightly/index.html'}};
  const brief=jobResultBrief(job,{identity:{build:version,releaseChanges:[{tag:version,notes:'notes'}]},catalog:{state:'Passed',counts:{Pass:193},checks:[]},changePlan:plan,courseStages});assert.equal(brief.releasePlanning.executed,true);assert.equal(brief.releasePlanning.state,'Ready');assert.equal(brief.changePlan.comparison.files,undefined);assert.equal(brief.changePlan.scenarioCount,1);assert.match(brief.changePlan.detailsUrl,/report.json$/);assert.ok(JSON.stringify(brief).length<6000);
 });
+
+test('changed source HTML is rejected before publication despite intact report JSON',async()=>fixture(async(_store,root)=>{
+ const f=await publicationFixture(root);await writeFile(path.join(f.job.report.path,'index.html'),'<script>changed renderer</script>');await assert.rejects(()=>publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),/Report HTML changed/);
+}));
