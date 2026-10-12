@@ -25,6 +25,7 @@ test('script completion separates assertion verdicts from crashes after Pass or 
    export async function prepareDesktop(a,b,c,p){const root=path.join(p.directory,'owned'),app=path.join(root,'Fixture.app');await mkdir(path.join(app,'Contents/MacOS'),{recursive:true});await writeFile(path.join(app,'Contents/MacOS/wizard-export-worker'),'fixture');return {root,app,scope:'isolated fixture'};}
    export async function launchDesktop(s){await writeFile(path.join(s.root,'session.json'),JSON.stringify({...s,bridgeHash:'fixture'}));return live={child:{exitCode:null,signalCode:null},closed:Promise.resolve()};}
    export async function stopDesktop(){live.child.exitCode=0;}
+   export async function terminateOwnedDesktop(){throw Error('Unexpected forced cleanup');}
    export function retainChild(){}
    export async function nativeCall(){throw Error('cannot dispatch UI input');}
   `);
@@ -117,6 +118,7 @@ test('animated-tail service finalizes only after fresh-process verification and 
     export async function prepareDesktop(a,b,c,p){const root=path.join(p.directory,'owned'),app=path.join(root,'Fixture.app');await mkdir(path.join(app,'Contents/MacOS'),{recursive:true});await writeFile(path.join(app,'Contents/MacOS/wizard-export-worker'),'fixture');return {root,app,pid:0,generation:0,scope:'component-only'};}
     export async function launchDesktop(s){if(s.generation===1&&${JSON.stringify(mode)}==='launch-blocked')throw Object.assign(Error('fresh process blocked'),{status:'Blocked'});const state={...s,pid:100+s.generation+1,generation:s.generation+1,bridgeHash:'fixture'};await writeFile(path.join(s.root,'session.json'),JSON.stringify(state));return live={child:{exitCode:null,signalCode:null},closed:Promise.resolve()};}
     export async function stopDesktop(){live.child.exitCode=0;}
+    export async function terminateOwnedDesktop(){throw Error('Unexpected forced cleanup');}
     export function retainChild(){} export async function nativeCall(){throw Error('cannot dispatch UI input');}
    `);
    await writeFile(path.join(root,'check-generated-tail.mjs'),`
