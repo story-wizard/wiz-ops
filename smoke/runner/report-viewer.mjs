@@ -99,3 +99,24 @@ export function createReportViewer(directory,{host='127.0.0.1'}={}){
   }catch{fail(404);}
  });
 }
+
+// Tailscale encrypts transport; bind only its exact IPv4, never the LAN or all interfaces.
+export function createReportProxy({host,viewerPort}){
+ const parts=String(host).split('.');
+ if(parts.length!==4||parts.some(p=>!/^\d{1,3}$/.test(p)||Number(p)>255||String(Number(p))!==p)||parts[0]!=='100'||Number(parts[1])<64||Number(parts[1])>127||!Number.isInteger(viewerPort)||viewerPort<1||viewerPort>65535)throw Error('Use an exact Tailscale IPv4 and loopback viewer port.');
+ return http.createServer((req,res)=>{
+  const authority=host+':'+res.socket.localPort,fail=code=>{res.writeHead(code,{'Content-Type':'text/plain','Cache-Control':'no-store'});res.end('Report not available');};
+  if(req.headers.host!==authority)return fail(403);
+  if(!['GET','HEAD'].includes(req.method))return fail(405);
+  if(!req.url.startsWith('/')||req.url.startsWith('//'))return fail(400);
+  const headers={Host:'127.0.0.1:'+viewerPort};
+  if(req.headers.range)headers.Range=req.headers.range;
+  if(req.headers.referer){
+   try{const ref=new URL(req.headers.referer);if(ref.origin!=='http://'+authority||ref.username||ref.password)return fail(403);headers.Referer='http://127.0.0.1:'+viewerPort+ref.pathname+ref.search;}catch{return fail(403);}
+  }
+  const upstream=http.request({host:'127.0.0.1',port:viewerPort,path:req.url,method:req.method,headers},response=>{res.writeHead(response.statusCode,response.headers);response.on('error',()=>res.destroy());response.pipe(res);});
+  upstream.setTimeout(15000,()=>upstream.destroy(Error('Viewer timed out')));
+  upstream.on('error',()=>{if(!res.headersSent)fail(502);else res.destroy();});
+  res.on('close',()=>upstream.destroy());upstream.end();
+ });
+}

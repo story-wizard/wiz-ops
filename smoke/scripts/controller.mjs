@@ -54,9 +54,10 @@ export async function main(args){
   if(command==='schedule'){const input=await readJSON(required('--file'));if(Object.keys(input).some(k=>!['timeZone','hour','minute','request'].includes(k)))throw Error('Unknown schedule field.');return store.saveSchedule({...input,selection:resolve(input.request.selection),profileHash:digest(profile),policyHash});}
   if(command==='pause')return store.enable(false);
   if(command==='cancel')return store.cancel(required('--id'));
+  if(command==='enable'){if(store.schedule()?.request.nightly&&(!config.nightly||!config.publication||config.delivery==='slack'&&!config.routes))throw Error('Nightly needs planner and report publication; Slack delivery also needs both verified destinations.');if(store.schedule()?.profileHash!==digest(profile))throw Error('Save and review a schedule for this pinned worker before enabling.');}
   let send=null;
   if(config.delivery==='slack'){if(config.routes){send=(directory,route)=>slackSender(route).send(directory,{perDestination:true});if(command==='enable')for(const route of config.routes)await slackSender(route).verify();}else{send=directory=>slackSender(config.route).send(directory);if(command==='enable')await slackSender(config.route).verify();}}
-  if(command==='enable'){if(store.schedule()?.request.nightly&&(!config.nightly||!config.publication||!config.routes))throw Error('Nightly MVP needs planner, report publication and both Slack destinations before schedule enablement.');if(store.schedule()?.profileHash!==digest(profile))throw Error('Save and review a schedule for this pinned worker before enabling.');return store.enable(true);}
+  if(command==='enable')return store.enable(true);
   const {call}=await workerClient(config.profileFile),controller=new JobController(store,{profile,call,route:config.route,routes:config.routes,send,context,planChanges:async job=>{const db=connect(profile.dataDir);try{return await planChanges(store,job,call,config.nightly,db);}finally{db.close();}},publish:config.publication?job=>publishJob(profile.dataDir,job,config.publication):null});
   if(command==='tick')try{return await controller.tick();}catch(e){
    const directory=path.join(profile.dataDir,'controller-errors'),receipt=path.join(directory,randomUUID()+'.json');
