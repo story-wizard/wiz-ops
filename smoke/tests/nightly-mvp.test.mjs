@@ -7,7 +7,7 @@ import {DatabaseSync} from 'node:sqlite';
 import {JobStore} from '../runner/jobs.mjs';
 import {JobController,retainJobReport,reconcileJobHandoff} from '../runner/controller.mjs';
 import {checkRegistry,resolveSelection} from '../runner/catalog.mjs';
-import {digest} from '../runner/files.mjs';
+import {digest,fingerprint} from '../runner/files.mjs';
 import {compareNightly,compileChangeCourse,regressionReferences,runPlanner} from '../runner/change-course.mjs';
 import {recordFixReference,initializeInvestigations,investigation} from '../investigations.mjs';
 import {publishJob,createReportViewer,readPublishedFile} from '../runner/report-viewer.mjs';
@@ -118,6 +118,21 @@ test('immutable publication excludes private delivery, serves report links, bloc
 }));
 test('publication rejects undeclared files and symlink evidence without changing the local report',async()=>fixture(async(_store,root)=>{
  const f=await publicationFixture(root),before=await readFile(path.join(f.job.report.path,'report.json'));await writeFile(path.join(f.job.report.path,'secret.json'),'private');await assert.rejects(()=>publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),/Undeclared/);assert.deepEqual(await readFile(path.join(f.job.report.path,'report.json')),before);await rm(path.join(f.job.report.path,'secret.json'));await symlink('/etc/hosts',path.join(f.job.report.path,'secret.txt'));await assert.rejects(()=>publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),/linked/);
+}));
+test('publication serves sealed investigation Markdown and preserves inventory, link and credential guards',async()=>fixture(async(_store,root)=>{
+ const f=await publicationFixture(root),stage=path.join(root,'investigation-source');await mkdir(path.join(stage,'reference'),{recursive:true});
+ await writeFile(path.join(stage,'index.html'),'<h1>Investigation</h1>');
+ async function seal(text){
+  await writeFile(path.join(stage,'START-HERE.md'),text);await writeFile(path.join(stage,'reference','guide.md'),'Read the retained evidence.');
+  const inventory=(await fingerprint(stage)).entries,manifest={format:'athanor-investigation-package/v1',inventory,inventoryHash:digest(inventory)},name='investigation-11111111-1111-4111-8111-111111111111-'+digest(manifest).slice(0,12),directory=path.join(f.privateRoot,'exports',name);
+  const {cp}=await import('node:fs/promises');await cp(stage,directory,{recursive:true});await writeFile(path.join(directory,'manifest.json'),JSON.stringify(manifest));
+  await writeFile(path.join(f.job.report.path,'agent-brief.json'),JSON.stringify({reports:{investigation:{package:{url:'/exports/'+name+'/index.html'}}}}));return {name,directory};
+ }
+ const clean=await seal('# Start here\nOpen index.html.');const published=await publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),prefix=new URL(published.url).pathname.split('/')[1]+'/exports/'+clean.name+'/';
+ assert.equal((await readPublishedFile(f.config.directory,prefix+'START-HERE.md')).toString(),'# Start here\nOpen index.html.');assert.match((await readPublishedFile(f.config.directory,prefix+'reference/guide.md')).toString(),/retained evidence/);
+ await writeFile(path.join(clean.directory,'undeclared.md'),'Extra file');await assert.rejects(()=>publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),/inventory does not declare/);await rm(path.join(clean.directory,'undeclared.md'));
+ await rm(path.join(clean.directory,'START-HERE.md'));await symlink(path.join(stage,'START-HERE.md'),path.join(clean.directory,'START-HERE.md'));await assert.rejects(()=>publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),/linked/);
+ await seal('xoxb-'+ 'secret'.repeat(8));await assert.rejects(()=>publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),/credential/);
 }));
 function fakeSlack({loseChannel=false}={}){const posted=[];return {posted,fetcher:async(url,options)=>{const body=JSON.parse(options.body);let value={ok:true};if(url.endsWith('auth.test'))Object.assign(value,{team_id:'T07BPEAE014',url:'https://story-company.slack.com/',bot_id:'BTEST'});
  else if(url.endsWith('conversations.info'))value.channel=body.channel===dm.channelId?{id:dm.channelId,is_im:true,user:dm.userId}:{id:smokeChannel.channelId,is_channel:true,is_member:true,is_private:false,name:smokeChannel.name};
