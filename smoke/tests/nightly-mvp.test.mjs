@@ -10,7 +10,7 @@ import {checkRegistry,resolveSelection} from '../runner/catalog.mjs';
 import {digest,fingerprint} from '../runner/files.mjs';
 import {compareNightly,compileChangeCourse,regressionReferences,runPlanner} from '../runner/change-course.mjs';
 import {recordFixReference,initializeInvestigations,investigation} from '../investigations.mjs';
-import {publishJob,createReportViewer,readPublishedFile} from '../runner/report-viewer.mjs';
+import {publishJob,createReportViewer,createReportProxy,readPublishedFile} from '../runner/report-viewer.mjs';
 import {verifyReportRoutes,smokeChannel,prepareDelivery,inspectDelivery} from '../runner/delivery.mjs';
 import {slackSender} from '../runner/slack-delivery.mjs';
 
@@ -108,6 +108,20 @@ async function publicationFixture(root){
  await writeFile(path.join(reportRoot,'report.json'),JSON.stringify(report));await writeFile(path.join(reportRoot,'index.html'),'<h1>Report</h1><a href="/exports/athanor-job-test/report.json">Details</a>');await mkdir(path.join(reportRoot,'delivery'));await writeFile(path.join(reportRoot,'delivery','private.json'),'PRIVATE DESTINATION');
  return {privateRoot,job:{id:'test',report:{path:reportRoot,url:'/exports/athanor-job-test/index.html',reportHash:digest(report),htmlHash:digest('<h1>Report</h1><a href="/exports/athanor-job-test/report.json">Details</a>')}},config:{directory:path.join(root,'published'),baseUrl:'http://127.0.0.1:1/'}};
 }
+test('private proxy preserves report identity, detail links and byte ranges without opening dashboard routes',async()=>fixture(async(_store,root)=>{
+ const f=await publicationFixture(root),published=await publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),relative=new URL(published.url).pathname,viewer=createReportViewer(f.config.directory);await new Promise(resolve=>viewer.listen(0,'127.0.0.1',resolve));
+ const proxy=createReportProxy({host:'100.66.105.119',viewerPort:viewer.address().port});await new Promise(resolve=>proxy.listen(0,'127.0.0.1',resolve));const authority='100.66.105.119:'+proxy.address().port;
+ const read=(url,headers={},method='GET')=>new Promise((resolve,reject)=>{const request=http.request({host:'127.0.0.1',port:proxy.address().port,path:url,method,headers:{Host:authority,...headers}},response=>{const bytes=[];response.on('data',x=>bytes.push(x));response.on('end',()=>resolve({status:response.statusCode,headers:response.headers,body:Buffer.concat(bytes).toString()}));});request.on('error',reject);request.end();});
+ try{
+  const report=await read(relative);assert.equal(report.status,200);assert.equal(report.headers['x-athanor-publication'],published.id);assert.match(report.headers['content-security-policy'],/sandbox/);
+  assert.equal((await read('/exports/athanor-job-test/report.json',{Referer:'http://'+authority+relative})).status,200);
+  const range=await read(relative,{Range:'bytes=0-3'});assert.equal(range.status,206);assert.equal(range.body,'<h1>');assert.equal((await read(relative,{},'HEAD')).body,'');
+  assert.equal((await read('/api/runner/start',{},'POST')).status,405);assert.equal((await read('/api/checks')).status,404);
+  assert.equal((await read(relative,{Host:'foreign.example'})).status,403);assert.equal((await read(relative,{Referer:'http://foreign.example/'})).status,403);assert.equal((await read('//foreign.example/')).status,400);
+  assert.equal((await read(relative.replace('index.html','delivery/private.json'))).status,404);
+ }finally{await new Promise(resolve=>proxy.close(resolve));await new Promise(resolve=>viewer.close(resolve));}
+ for(const host of ['0.0.0.0','127.0.0.1','192.168.1.1','100.128.1.1','100.066.1.1'])assert.throws(()=>createReportProxy({host,viewerPort:4318}),/Tailscale/);
+}));
 test('immutable publication excludes private delivery, serves report links, blocks mutations, escapes and changed bytes',async()=>fixture(async(_store,root)=>{
  const f=await publicationFixture(root),published=await publishJob(f.privateRoot,f.job,f.config,{probe:async()=>{}}),relative=new URL(published.url).pathname.slice(1);assert.match((await readPublishedFile(f.config.directory,relative)).toString(),/Report/);
  const server=createReportViewer(f.config.directory);await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const url='http://127.0.0.1:'+server.address().port;

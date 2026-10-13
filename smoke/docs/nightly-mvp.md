@@ -31,7 +31,7 @@ node scripts/controller.mjs status --config CONFIG --id REQUEST_ID
 node scripts/controller.mjs brief --config CONFIG --id REQUEST_ID
 ```
 
-`init` writes configuration only. `submit` admits a durable job. A supervised controller progresses admitted jobs; `tick` progresses one step. These commands do not create another scheduler. A daily schedule remains disabled after creation. Schedule enablement requires the planner, publication and both verified Slack destinations for Nightly MVP jobs. Manual submissions run the same courses and retain the same reports without Slack notifications, even with these destinations configured. Only the durable daily scheduler records a scheduled origin. A nightly flag, request name or build tag cannot grant notification permission.
+`init` writes configuration only. `submit` admits a durable job. A supervised controller progresses admitted jobs; `tick` progresses one step. These commands do not create another scheduler. A daily schedule remains disabled after creation. Schedule enablement requires the planner and publication. Omit `--routes` for an approved local-only nightly; it retains and publishes reports without sending Slack. Slack mode also requires both verified destinations. Manual submissions run the same courses and retain the same reports without Slack notifications, even with these destinations configured. Only the durable daily scheduler records a scheduled origin. A nightly flag, request name or build tag cannot grant notification permission.
 
 Planner, publication and route configuration are pinned at admission. Changing them cannot adopt old queued jobs. Retain the old configuration to inspect those jobs; create a reviewed new configuration for later jobs.
 
@@ -82,6 +82,16 @@ Publication copies the job report, both course reports, declared evidence and ex
 Choose a private access layer that the channel audience can use. An HTTPS string alone does not provide hosting or authentication. Keep the mutable dashboard private. The access proxy must authenticate viewers, preserve the publication header and referer, and pass the verified loopback Host to this read-only service. Confirm report and media access from another person's machine before rollout. Authenticated front ends may need a separate trusted availability probe; do not add broad access to make a readiness check pass.
 
 The publisher includes owned test evidence. It does not include the supplied media library, build, private delivery configuration or user projects. Review fixture rights and any captured sensitive content before wider publication. It retains local reports if shared publication fails.
+
+## Private Tailscale access
+
+When HTTPS Serve is unavailable, keep the viewer on loopback and start the report-only proxy:
+
+```sh
+node scripts/report-proxy.mjs --tailscale-ip WORKER_TAILSCALE_IP --port PRIVATE_PORT --viewer-port VIEWER_PORT
+```
+
+The proxy binds only the supplied Tailscale IPv4, and accepts its exact Host and same-origin referer. Tailscale encrypts this private HTTP connection. Tailnet access rules determine who can read reports; verify the intended audience before wider use. Only GET/HEAD reach the viewer; dashboard routes remain unavailable. Keep the publisher's loopback probe and verify the portal and evidence links from the reader's machine. A scheduled Slack reminder can link to this portal while a dedicated sender is pending; it is not a completion-triggered result message. The MBP retains all reports if the reader's Mac is offline.
 
 ## Slack reporting
 

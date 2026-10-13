@@ -15,6 +15,20 @@ const profile={runnerHash:'a'.repeat(64)},selection=resolveSelection({},{checkId
 const idle={sourceMatches:true,sourceHash:profile.runnerHash,ownedSessions:[],activeDesktopJobs:[],preparing:false,active:null},route={workspace:'story-company',userId:'U0BDBFNU0G1',user:'U0BDBFNU0G1',type:'im',channelId:'DTEST123'};
 async function fixture(fn){const root=await mkdtemp('/private/tmp/athanor-controller-'),store=new JobStore(root);try{await fn(store,root);}finally{store.close();await rm(root,{recursive:true,force:true});}}
 
+test('local-only nightly can enable with planner and publication, while incomplete configurations remain disabled',async()=>fixture(async(store,root)=>{
+ const pinned={format:'athanor-worker/v1',name:'Synthetic worker',dataDir:root,port:4317,sourceHash:(await fingerprint(ROOT)).sha256,runnerHash:profile.runnerHash},profileFile=path.join(root,'worker.json'),configFile=path.join(root,'controller.json'),scheduleFile=path.join(root,'schedule.json');
+ const nightly={command:[process.execPath,'/synthetic/planner.mjs'],timeoutSeconds:30,baseRevision:'a'.repeat(40)},publication={directory:path.join(root,'published'),baseUrl:'http://127.0.0.1:4318/'};
+ await writeFile(profileFile,JSON.stringify(pinned));await writeFile(configFile,JSON.stringify({format:'athanor-controller/v1',profileFile,profileHash:digest({...pinned,server:'http://127.0.0.1:4317'}),delivery:'local',route:null,nightly,publication}));
+ await writeFile(scheduleFile,JSON.stringify({timeZone:'America/Los_Angeles',hour:3,minute:0,request:{...request,nightly:true}}));
+ const config=JSON.parse(await readFile(configFile)),fetcher=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;throw Error('No dispatch during schedule enablement');};
+ try{
+  await controllerCLI(['schedule','--config',configFile,'--file',scheduleFile]);assert.equal((await controllerCLI(['enable','--config',configFile])).enabled,true);assert.equal(store.list().length,0);
+  await controllerCLI(['pause','--config',configFile]);
+  for(const field of ['nightly','publication']){const missing={...config};delete missing[field];await writeFile(configFile,JSON.stringify(missing));await assert.rejects(()=>controllerCLI(['enable','--config',configFile]),/planner and report publication/);assert.equal(store.schedule().enabled,false);}
+  await writeFile(configFile,JSON.stringify({...config,delivery:'slack',route}));await assert.rejects(()=>controllerCLI(['enable','--config',configFile]),/both verified destinations/);assert.equal(store.schedule().enabled,false);assert.equal(calls,0);
+ }finally{globalThis.fetch=fetcher;}
+}));
+
 test('one-shot CLI awaits progression and releases its lease before closing the database',async()=>fixture(async(store,root)=>{
  let mutations=0;const server=http.createServer((req,res)=>{if(req.method!=='GET')mutations++;res.setHeader('Content-Type','application/json');res.end(JSON.stringify(state));});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
