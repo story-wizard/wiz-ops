@@ -5,7 +5,7 @@ import {createHash} from 'node:crypto';
 import {externalPath,inside,digest,sha,readJSON,fingerprint} from './files.mjs';
 
 const packageName=/^(athanor-job-[A-Za-z0-9-]{1,120}|smoke-report-[a-f0-9-]{36}-[a-f0-9]{12}|investigation-[a-f0-9-]{36}-[a-f0-9]{12})$/;
-const safeFile=/\.(html|json|jsonl|txt|png|jpg|jpeg|gif|mp4|mov|webm|wav|mp3|m4a)$/;
+const safeFile=/\.(html|json|jsonl|txt|md|png|jpg|jpeg|gif|mp4|mov|webm|wav|mp3|m4a)$/;
 export function publicationConfig(config){
  if(!config||Object.keys(config).some(k=>!['directory','baseUrl'].includes(k)))throw Error('Use a reviewed report directory and exact viewer base URL.');
  const directory=externalPath(config.directory),url=new URL(config.baseUrl);
@@ -52,7 +52,7 @@ export async function publishJob(dataDir,job,config,{probe=verifyPublishedURL}={
     if(!manifest){const allowed=record?.artifacts?['index.html','report.json',...record.artifacts.map(a=>'evidence/'+a.file)]:['index.html','report.json','handoff.html'];if(!allowed.includes(relative))throw Error('Undeclared file in shared report: '+relative);}
     const source=await realpath(path.join(root,relative));if(!inside(root,source))throw Error('Publication source escaped its export.');
     const dest=path.join(staging,'exports',name,relative);await mkdir(path.dirname(dest),{recursive:true});await copyFile(source,dest);if(await sha(dest)!==hash||(await lstat(dest)).size!==size)throw Error('Source bytes changed during publication.');
-    if(/\.(html|json|jsonl|txt)$/.test(relative)&&/(?<![A-Za-z0-9_-])(?:xox[baprs]-[A-Za-z0-9-]{10,}|sk-(?:proj-)?[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9_.-]{20,})/.test(await readFile(dest,'utf8')))throw Error('Potential credential in retained text; redact at collection and make a new reviewed export.');
+    if(/\.(html|json|jsonl|txt|md)$/.test(relative)&&/(?<![A-Za-z0-9_-])(?:xox[baprs]-[A-Za-z0-9-]{10,}|sk-(?:proj-)?[A-Za-z0-9_-]{20,}|Bearer [A-Za-z0-9_.-]{20,})/.test(await readFile(dest,'utf8')))throw Error('Potential credential in retained text; redact at collection and make a new reviewed export.');
     if(relative.endsWith('.html')){
      let html=await readFile(dest,'utf8');const packageURL=(await readJSON(path.join(root,'agent-brief.json')).catch(()=>null))?.reports?.investigation?.package?.url;
      if(relative==='handoff.html')html='<!doctype html><meta charset="utf-8"><title>Athanor investigation</title><style>body{background:#14191f;color:#d6e1eb;font:16px system-ui;margin:40px}a{color:#9bc6e5}</style><h1>Athanor investigation</h1><p><a href="index.html">Course report</a></p>'+(packageURL?'<p><a href="'+escape(packageURL)+'">Evidence and bug drafts</a></p>':'<p>Investigation package needs review on the worker.</p>');
