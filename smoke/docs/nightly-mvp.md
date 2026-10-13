@@ -85,6 +85,8 @@ The publisher includes owned test evidence. It does not include the supplied med
 
 ## Private Tailscale access
 
+Published export links are relative to their package. They stay within the publication even when a sandboxed browser omits its referrer. The original local report and its identities remain unchanged.
+
 When HTTPS Serve is unavailable, keep the viewer on loopback and start the report-only proxy:
 
 ```sh

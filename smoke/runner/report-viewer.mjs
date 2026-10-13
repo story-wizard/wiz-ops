@@ -57,6 +57,8 @@ export async function publishJob(dataDir,job,config,{probe=verifyPublishedURL}={
      let html=await readFile(dest,'utf8');const packageURL=(await readJSON(path.join(root,'agent-brief.json')).catch(()=>null))?.reports?.investigation?.package?.url;
      if(relative==='handoff.html')html='<!doctype html><meta charset="utf-8"><title>Athanor investigation</title><style>body{background:#14191f;color:#d6e1eb;font:16px system-ui;margin:40px}a{color:#9bc6e5}</style><h1>Athanor investigation</h1><p><a href="index.html">Course report</a></p>'+(packageURL?'<p><a href="'+escape(packageURL)+'">Evidence and bug drafts</a></p>':'<p>Investigation package needs review on the worker.</p>');
      html=html.replace(/href="\/investigation\?[^\"]*"/g,packageURL?'href="'+escape(packageURL)+'"':'href="index.html"');
+     // Sandboxed readers can omit Referer. Keep every export link inside its publication.
+     html=html.replace(/(href|src)="(\/exports\/[^\"]+)"/g,(_match,attribute,url)=>attribute+'="'+path.posix.relative(path.posix.dirname('exports/'+name+'/'+relative),url.slice(1))+'"');
      await writeFile(dest,html);
     }
    }

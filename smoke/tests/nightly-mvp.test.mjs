@@ -114,6 +114,7 @@ test('private proxy preserves report identity, detail links and byte ranges with
  const read=(url,headers={},method='GET')=>new Promise((resolve,reject)=>{const request=http.request({host:'127.0.0.1',port:proxy.address().port,path:url,method,headers:{Host:authority,...headers}},response=>{const bytes=[];response.on('data',x=>bytes.push(x));response.on('end',()=>resolve({status:response.statusCode,headers:response.headers,body:Buffer.concat(bytes).toString()}));});request.on('error',reject);request.end();});
  try{
   const report=await read(relative);assert.equal(report.status,200);assert.equal(report.headers['x-athanor-publication'],published.id);assert.match(report.headers['content-security-policy'],/sandbox/);
+  assert.match(report.body,/href="report.json"/);assert.equal((await read(relative.replace('index.html','report.json'))).status,200);
   assert.equal((await read('/exports/athanor-job-test/report.json',{Referer:'http://'+authority+relative})).status,200);
   const range=await read(relative,{Range:'bytes=0-3'});assert.equal(range.status,206);assert.equal(range.body,'<h1>');assert.equal((await read(relative,{},'HEAD')).body,'');
   assert.equal((await read('/api/runner/start',{},'POST')).status,405);assert.equal((await read('/api/checks')).status,404);
