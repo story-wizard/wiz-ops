@@ -35,12 +35,12 @@ The synchronous `plan` command remains available. It also sets up and qualifies 
 
 A matching adapter bundled beside the source is copied into the external cache automatically, without compilation. The source checkout also includes the Qt adapter and its build script. For desktop selections, Athanor reads the package's Qt version, finds a matching local SDK, compiles the adapter, retains QtTest, and points the external test libraries at the package's own Qt frameworks. It caches the tools by source hash, Qt version and CPU architecture. Changed or missing cached files are rejected.
 
-The current source bootstrap needs macOS Command Line Tools, `pkg-config`, and a matching Homebrew Qt SDK at `/opt/homebrew/opt/qtbase`. Agents should inspect these before diagnosing setup:
+The current source bootstrap needs macOS Command Line Tools, CMake 3.24 or newer, and a matching Qt SDK. Set `SMOKE_QT_PREFIX` to its installation prefix; the default is `/opt/homebrew/opt/qtbase`. Agents should inspect these before diagnosing setup:
 
 ```sh
 xcode-select -p
-command -v clang++ pkg-config
-/opt/homebrew/opt/qtbase/bin/qtpaths --qt-version
+command -v clang++ cmake
+"${SMOKE_QT_PREFIX:-/opt/homebrew/opt/qtbase}/bin/qtpaths" --qt-version
 /usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' /path/to/Wizard.app/Contents/Frameworks/QtCore.framework/Versions/A/Resources/Info.plist
 ```
 

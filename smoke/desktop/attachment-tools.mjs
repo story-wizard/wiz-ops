@@ -7,7 +7,7 @@ import {assert} from '../runner/engine.mjs';
 
 const run=(cmd,args,options={})=>execFileSync(cmd,args,{encoding:'utf8',timeout:120000,...options});
 export async function setupAttachmentTools(app,configuredDataDir){
- const data=dataDirectory(configuredDataDir),sdk='/opt/homebrew/opt/qtbase';
+ const data=dataDirectory(configuredDataDir),sdk=process.env.SMOKE_QT_PREFIX||'/opt/homebrew/opt/qtbase';
  const qtVersion=run('/usr/libexec/PlistBuddy',['-c','Print :CFBundleVersion',path.join(app,'Contents/Frameworks/QtCore.framework/Versions/A/Resources/Info.plist')]).trim();
  const sourceHash=digest(await Promise.all([...['bridge.cpp','bug-report-prefill.h','workspace-probe.h','build.sh','smoke-style.json'].map(file=>sha(path.join(ROOT,'desktop/native',file))),sha(new URL(import.meta.url))]));
  const parent=path.join(data,'attachment-tools'),key=digest({qtVersion,sourceHash,arch:process.arch}),destination=path.join(parent,key);
@@ -26,7 +26,7 @@ export async function setupAttachmentTools(app,configuredDataDir){
   try{await cp(path.join(bundled,'tools'),path.join(temp,'tools'),{recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE});await writeJSON(path.join(temp,'tools.json'),{...tools,directory:path.join(destination,'tools')});await rename(temp,destination);}finally{await rm(temp,{recursive:true,force:true});}
   return verifyAttachmentTools({...tools,directory:path.join(destination,'tools')});
  }
- assert(existsSync(path.join(sdk,'bin/qtpaths')),'Desktop attachment needs the matching Qt SDK and pkg-config. Agent setup: docs/desktop-tools-setup.md.');
+ assert(existsSync(path.join(sdk,'bin/qtpaths')),'Desktop attachment needs the matching Qt SDK and CMake. Agent setup: docs/desktop-tools-setup.md.');
  assert(run(path.join(sdk,'bin/qtpaths'),['--qt-version']).trim()===qtVersion,'The selected build needs a Qt '+qtVersion+' attachment plugin; the local Qt SDK differs. See docs/desktop-tools-setup.md.');
  await mkdir(parent,{recursive:true});const temp=await mkdtemp(path.join(parent,'.tools-'));
  try{
