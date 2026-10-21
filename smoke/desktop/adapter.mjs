@@ -140,10 +140,7 @@ export async function launchDesktop(session,{foreground=true,missingMediaFixture
       await openAttachedProject(file,session.bundle,{missingMediaFixture});
       const opened=await desktopCall(file,'project.get_name');assert(typeof opened.name==='string'&&opened.name.length>0,'Opened project has no observed name');
       const timeline=await desktopCall(file,'timeline.inspect',{timeline_id:session.main.id});assert(timeline.timeline?.timeline_id===session.main.id,'Opened project did not restore the prepared timeline identity');
-      if(foreground){
-        verifyDesktopOwner(session);execFileSync('/usr/bin/open',['-a',session.app],{timeout:5000});
-        const ui=await nativeCall(file,'inspect'),main=ui.widgets.filter(w=>w.class==='MainWindow');assert(main.length===1,'Selected build has no unique main window.');await nativeCall(file,'activate',{target:main[0].id});
-      }
+      if(foreground){const ui=await nativeCall(file,'inspect'),main=ui.widgets.filter(w=>w.class==='MainWindow');assert(main.length===1,'Selected build has no unique main window.');await nativeCall(file,'activate',{target:main[0].id});}
       session.inputMode=foreground?'desktop':'service';session.state='Running';await writeJSON(file,session);return live;
     }catch(e){e.evidence=await captureDesktopFailure(file,e,'startup');live.child.kill('SIGTERM');const force=setTimeout(()=>live.child.kill('SIGKILL'),3000);await live.closed;clearTimeout(force);throw e;}
   }
