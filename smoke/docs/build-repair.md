@@ -34,6 +34,48 @@ Run affected checks within the user's authorized scope before relying on a chang
 
 Keep changes in the source checkout. Preserve old plans, reports and installed versions. Follow `docs/maintaining-harness.md` to build a new versioned bundle after committing. Return the cause, schema differences, source changes, checks executed, evidence and remaining work. Jira writes, merging, publication and messages require their own user request.
 
+## Retain and export a repair
+
+Use `scripts/repair.mjs` from `smoke/` to keep one external record for a blocker family and prepare a local PR preview. The family is the repository plus a behavior contract ID and version, such as `embedded-editor-focus` version `1`. Check names, dates and error wording are occurrences, not family identities.
+
+```sh
+node scripts/repair.mjs record --data-dir /external/repair-workspace --input /external/reviewed-input.json
+node scripts/repair.mjs list --data-dir /external/repair-workspace --investigation INVESTIGATION_ID
+node scripts/repair.mjs export --data-dir /external/repair-workspace --id REPAIR_ID --repo /absolute/source-checkout --out /external/new-preview
+```
+
+Investigation repair tasks and their first-read packets include these entry points. Use the existing task file and original case/report; the record verifies its retained report hash and keeps the original verdict. For a campaign that never entered an investigation, use `campaignReport` instead of `taskFile`. This accepts the campaign summary's `jobId` and `checks` without inventing an investigation admission. Label demonstration occurrences with `syntheticControl: true`; a later passing qualification is a follow-up, not another blocked run.
+
+The reviewed input has these fields:
+
+| Field | Meaning |
+| --- | --- |
+| `requestId`, `revision` | Stable ingestion request and current record revision; new families start at zero. Repeating the same request is idempotent; conflicting contents are rejected. |
+| `repository`, `contract` | Repository name and `{id, version}` for the behavior family. |
+| `classification` | `{kind, reason, evidence}`. Kind stays Harness, App, Environment or Unresolved and must agree with an investigation task when supplied. Evidence links remain private. |
+| `taskFile` or `campaignReport`, `caseId`, `reportSha256` | Exact original occurrence and the SHA-256 of its report bytes. |
+| `source` | Reviewed `base`, `head`, `canonicalMain`, `branch`, `reviewedPaths`, `patchSha256`, `reviewedPatch` and `reviewer`. Only Harness repairs in `story-wizard/wiz-ops` can export source. |
+| `public` | Explicitly authored plain text: `title`, `problem`, `change`, `validation`, `remaining`. No evidence paths, credentials, raw commands or automatic observation excerpts. |
+| `dependencies` | Repository, optional head, patch SHA-256 and PR number; optional private `evidence` is omitted from export. |
+| `proofs` | Kind, exact head/patch SHA-256, status and private evidence reference. Native Pass requires positive executed tests and zero failures/skips. Packaged Pass also requires the exact `packageHash`. |
+| `legacyRecord` | Optional path to the earlier local v1 dry-run receipt. Its source must match; any uncertain publication remains uncertain. |
+
+For an occurrence-only update, omitted source, public copy and dependencies retain their reviewed values. Explicit null clears source/public copy. Report hashes bind the original run/check identity; different bytes under that identity require projection reconciliation, not another counted occurrence. A new head keeps earlier proof as history; qualification for the new head is pending until new evidence arrives. Moving the same reviewed patch file or correcting its reviewer note preserves the PR identity. Proof for a native fixture that skipped does not satisfy required native qualification.
+
+The preview directory contains exactly `repair.patch`, `PR-PREVIEW.md` and `manifest.json`. The manifest binds the exact base/head/tree, reviewed source paths, patch and preview byte hashes, dependency identity, recorded qualification gates and publication state. The command requires a clean reviewed checkout with the approved Ops remote and exact reviewed patch bytes. It rejects App paths, unapproved changes, symlinks, path escapes and changed existing export contents. Repeating an identical export reuses it. Records and outputs belong outside Git; no complete investigation, attachment directory or raw report is copied.
+
+This command only records and exports locally. Publication Unknown or Conflict remains a reconciliation gate. A later `prReceipt` may link a retained read-only GitHub PR response only when its repository, branch and head agree exactly; a matching identity still grants no write or retry. Record and export never publish. Review the public preview and source patch before authorizing the separate publisher described below.
+
+## Create an approved draft PR
+
+Use the requesting developer's own GitHub identity. The manual local broker validates an actor-bound reviewed request before retrieving that developer's explicitly selected credential. It keeps credentials on the developer's Mac and passes them privately to the fixed Ops publisher. The shared MBP worker receives no personal credential.
+
+Read [manual publication setup and qualification](repair-publication.md) for the installed files, policy, approval envelope, proof receipts, one-shot command and recovery behavior. CI and packaged checks may remain Pending in a draft. Executed framework and scope proof are required; desktop changes also need native proof with no skips. Source must be one reviewed publication commit directly on the approved remote base.
+
+Record/export remains preview-only. The separate publisher checks exact source/PR bytes, serializes each repair family and retains intent before push/create. It rechecks current PR state and the approved developer's author ID/login on creation and reuse. An uncertain outcome never authorizes repeating a mutation. Later-head PR updates, automatic merge and worker adoption are outside this slice.
+
+Existing GitHub App grants remain supported for their separately qualified path. The per-developer broker does not require an App, mint an installation token, or claim the developer's existing credential is restricted to Ops. Ops write enforcement comes from the fixed transport and reviewed request. The current manual host separation does not sandbox an unrestricted agent running as that same local developer.
+
 ## Reviewed nightly: 2026.10.06-2a8b246
 
 This nightly is qualified by structured schema hash

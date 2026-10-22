@@ -6,6 +6,7 @@ import {ROOT,digest,dataDirectory,fingerprint,inside,sha} from './runner/files.m
 import {localReport,exportLocalReport,renderInvestigationReview} from './reports.mjs';
 import {writeBugReporterParcels,bugReporterFields,reporterLimits,qualifiedDiagnosticAfter} from './bug-reporter.mjs';
 import {activeStates} from './runner/store.mjs';
+import {repairTaskLink} from './runner/repair-record.mjs';
 
 export const classifications=['Unresolved','Harness','Environment','App'];
 export const dispositions=['Investigate','Reproduce','Resolved'];
@@ -217,6 +218,11 @@ export function investigationTask(record,{task='triage',caseId}={}){
   cases:packet.cases.map(c=>({id:c.id,title:c.title,status:c.status,conclusionRunId:c.conclusionRunId,conclusionRole:c.conclusionRole,...(c.conclusion?{conclusion:c.conclusion}:{expected:c.expected,observed:c.observed}),evidenceBase:c.conclusionRole==='First run'?'report/evidence/':'reproductions/'+c.conclusionRunId+'/evidence/',nextAction:c.nextAction})),details:'tasks/'+task+'.json',evidencePaths:'Relative to the enclosing investigation package; append the assertion artifact to evidenceBase.'};
  packet.prompt=`Athanor ${task} task for investigation ${record.id}, revision ${record.revision}.\n${brief}\n\nCases: ${packet.caseIds.join(', ')}\nBuild: ${record.baseline.identities.version}\nPackage: ${record.baseline.identities.packageHash}\nRead tasks/${task}-first-read.json in the portable package, or firstRead in this task response. Start with each case conclusion: authored invariant, failed assertion, decisive expected/actual values, last completed phase, reasons for unreached phases and unansweredQuestion. Source excerpts remain behind the assertion proof link. These are recorded facts, not a root-cause diagnosis. Return the likely cause with evidence citations, what remains untested and the next useful inspection. Read the immutable report and declared evidence when the conclusion is absent or insufficient. Use investigation evidence --id ${record.id} --case CHECK_ID --server URL for case-owned evidence links; exported tasks are relative to the enclosing investigation package. Cite run/check IDs and evidence files. Preserve Fail, Blocked, Unknown and the first run; incomplete or unreached checks are not app defects.\nUse the current source checkout and docs/investigations.md. Return JSON matching proposalTemplate when proposing triage changes. Its revision must match the current investigation; suggestions are reviewed before application. For repairs return source changes and execution evidence separately.\nNo app launch, rerun, upload, external message, bug submission or Jira publication is authorized by this packet. Unknown mutations require inspection and must not be replayed. A person records final review.\n`;
  if(task==='triage'){packet.triageHints=investigationTriageHints(record,cases);packet.prompt+='Review triageHints as hypotheses, including their original observations and case-owned report links. Shared blockers do not prove identical app defects. Use triageHints.proposal only after evidence review, preview it, and apply it only when authorized. Preserve earlier triage and do not infer a cause for unmatched Unresolved cases.\n';}
+ if(task==='repair'){
+  packet.baselineReport.hash=record.baseline.reportHash;
+  packet.repairRecord=repairTaskLink(record.id);packet.firstRead.repairRecord=packet.repairRecord;
+  packet.prompt+='Retain source repairs through scripts/repair.mjs using the linked repair task and docs/build-repair.md. Records and exports are local previews; preserve original observations and publication boundaries.\n';
+ }
  return packet;
 }
 
