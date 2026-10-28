@@ -1,0 +1,12 @@
+{
+  "format": "athanor-storage/v1",
+  "cacheBytes": 42949672960,
+  "scratchBytes": 64424509440,
+  "minFreeBytes": 53687091200,
+  "reserveFraction": 0.15,
+  "keepBuilds": 2,
+  "backupDirectory": null,
+  "backupKeep": 3,
+  "backupMaxBytes": 2147483648,
+  "backupIntervalHours": 24
+}

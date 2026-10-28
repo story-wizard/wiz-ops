@@ -1,3 +1,4 @@
+import {storageStatus,maintainStorage,requireStorageCapacity} from './runner/worker-storage.mjs';
 import {initializeInvestigations,investigation,investigationList,createInvestigation,triageInvestigation,linkReproduction,reproSelection,bugDraft,reviewDraft,exportInvestigation,agentInvestigationPrompt,readInvestigationFile,reporterHandoff,previewTriage,editBugDraft,investigationTask,investigationEvidence,caseNextAction,recordRepro,updateRepro,reconcileRepros,closeRepro,readInvestigationArtifact,verifyReviewEvidence,recordFixReference} from './investigations.mjs';
 import {buildCatalogPage} from './build-catalog.mjs';
 import {findBuilds,localBuilds,importBuild,buildStage,receiveArchive} from './builds.mjs';
@@ -55,7 +56,7 @@ recoverInterrupted(db);
 const checkpoint=JSON.parse(readFileSync(path.join(root,'catalog/checkpoints/logan-2026-09-25-2.json')));
 const enums={execution:['Automated','Human','Unassigned'],course:['First automated','Local desktop','Local services','Human','Later','Backlog'],readiness:['Needs mapping','Needs capability','In development','Ready for pilot','Ready','Human checklist','Draft'],priority:['P0','P1','P2'],environment:['Local','NAS'],gpScope:['GP v0','Extension','Review']};
 const statuses=['Not run','Running','Pass','Fail','Blocked','N/A','Unknown'];
-let preparing=false,importingBuild=false;
+let preparing=false,importingBuild=false,maintainingStorage=false;
 const buildProgress=new Map();
 function buildReporter(id){
  if(id===undefined||id===null)return ()=>{};
@@ -127,6 +128,22 @@ function validateTest(input,previous){
   if(input.fixtureIds!==undefined){if(!Array.isArray(input.fixtureIds)||!input.fixtureIds.every(id=>seed.gp.components.some(c=>c.id===id)))fail(400,'Unknown GP component.');t.fixtureIds=[...new Set(input.fixtureIds)];}
   return t;
 }
+async function storageIdle(){
+ return !preparing&&!importingBuild&&!(await runnerStatus()).active&&!ownedDesktopSessions(dataDir).length&&!desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state));
+}
+async function storageMaintenance(){
+ if(maintainingStorage||!await storageIdle())return {state:'Busy'};
+ // Set synchronously before the first destructive await; new mutations must wait.
+ if(maintainingStorage||preparing||importingBuild)return {state:'Busy'};
+ maintainingStorage=true;try{return await maintainStorage(dataDir,{idle:storageIdle});}finally{maintainingStorage=false;}
+}
+async function storageAdmission(){
+ if(maintainingStorage)fail(409,'Storage maintenance is active.');
+ const status=await storageStatus(dataDir);
+ if(status.enabled&&(!status.capacityReady||!status.cacheWithinBudget||!status.scratchWithinBudget))await storageMaintenance();
+ try{await requireStorageCapacity(dataDir);}catch(e){fail(409,e.message);}
+ if(maintainingStorage)fail(409,'Storage maintenance became active.');
+}
 async function admitRun(body){
         const operator=str(body.operator||'Local runner','operator',120),requestId=body.requestId;
         if(!operator)fail(400,'An operator is required.');
@@ -135,6 +152,7 @@ async function admitRun(body){
           const previous=db.prepare('SELECT * FROM execution_requests WHERE request_id=?').get(requestId);
           if(previous){if(previous.plan_hash!==body.planHash||previous.operator!==operator)fail(409,'Request ID was already used with different inputs.');return {status:200,result:{runId:previous.run_id,requestId,reused:true}};}
         }
+        await storageAdmission();
         if(preparing)fail(409,'A plan is being prepared.');
         if(ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'A desktop course or human setup is active.');
         recoverInterrupted(db);let plan;
@@ -142,7 +160,7 @@ async function admitRun(body){
         if(plan){const {planHash,...content}=plan;if(planHash!==body.planHash||digest(content)!==planHash||await sourceIdentity()!==plan.runnerHash)fail(409,'Plan or runner changed. Prepare the selected course again.');}
         else{const status=await runnerStatus();if(!status.prepared)fail(409,'Prepare the fixture pack and current runner before starting.');if(body.planHash!==status.plan.planHash)fail(409,'Prepared plan changed. Review the run setup again.');plan=status.plan;}
         // Recheck after asynchronous identity reads, before synchronous admission/spawn.
-        if(preparing||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'Another preparation or desktop setup became active.');
+        if(maintainingStorage||preparing||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'Another preparation, maintenance or desktop setup became active.');
         if(requestId){const previous=db.prepare('SELECT * FROM execution_requests WHERE request_id=?').get(requestId);if(previous){if(previous.plan_hash!==body.planHash||previous.operator!==operator)fail(409,'Request ID was already used with different inputs.');return {status:200,result:{runId:previous.run_id,requestId,reused:true}};}}
         let id;try{id=createExecution(db,plan,dataDir,operator,requestId);}catch(error){fail(409,error.message);}
         const blocked=error=>{for(const r of db.prepare('SELECT test_id FROM results WHERE run_id=?').all(id))record(db,id,r.test_id,'Blocked',error.message,'');updateExecution(db,id,'Blocked',error.message);};
@@ -152,18 +170,19 @@ async function admitRun(body){
           const job=execution(db,id);mkdirSync(job.artifact_root,{recursive:true,mode:0o700});log=openSync(path.join(job.artifact_root,'runner.log'),'a');
           const worker=spawn(process.execPath,[path.join(root,'runner/run.mjs'),'--execute','--data-dir',dataDir,'--run-id',id],{cwd:root,env:{...process.env,SMOKE_DATA_DIR:dataDir},detached:true,stdio:['ignore',log,log]});
           if(worker.pid)db.prepare('UPDATE executions SET pid=? WHERE run_id=?').run(worker.pid,id);
-          worker.on('error',blocked);worker.unref();
+          worker.on('error',blocked);worker.once('exit',()=>{void storageMaintenance().catch(e=>console.error('Storage maintenance: '+e.message));});worker.unref();
         }catch(error){blocked(error);throw error;}finally{if(log!==undefined)closeSync(log);}
         return {status:202,result:{runId:id,requestId,reused:false}};
 }
 
 async function beginPreparation(body,preparationId){
+ await storageAdmission();
  if(body.preparationId!==undefined){if(preparationId!==undefined&&preparationId!==body.preparationId)fail(400,'Preparation identities differ.');preparationId=body.preparationId;}
  if(preparationId!==undefined&&!/^[a-f0-9-]{36}$/.test(preparationId))fail(400,'Invalid preparation ID.');
- if(preparing||(await runnerStatus()).active||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'A course, desktop setup or preparation is active.');
+ if(maintainingStorage||preparing||(await runnerStatus()).active||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'A course, desktop setup, maintenance or preparation is active.');
  if(typeof body.app!=='string'||!path.isAbsolute(body.app))fail(400,'Choose an explicit absolute app path.');
  let selection;try{selection=resolveSelection(db,body.selection);}catch(e){fail(409,e.message);}
- if(preparing)fail(409,'Another preparation became active.');preparing=true;
+ if(maintainingStorage||preparing)fail(409,'Another preparation or maintenance became active.');preparing=true;
  try{const {job}=await startPreparation({app:body.app,dataDir,selection,preparationId},{onFinished:()=>{preparing=false;}});return job;}catch(e){preparing=false;throw e;}
 }
 const reproServices={preparation:id=>readPreparation(dataDir,id),request:id=>db.prepare('SELECT * FROM execution_requests WHERE request_id=?').get(id),getRun};
@@ -184,7 +203,7 @@ const server=http.createServer(async(req,res)=>{
       if(url.pathname==='/api/builds/archive'&&req.method==='POST'){
         if(req.headers.origin&&req.headers.origin!==`http://${host}`)return send(403,{error:'Cross-origin writes are not accepted.'});
         if(req.headers['content-type']!=='application/zip')return send(415,{error:'ZIP is required.'});
-        if(importingBuild)fail(409,'Another build import is active.');const progress=buildReporter(url.searchParams.get('progressId'));importingBuild=true;let stage;
+        await storageAdmission();if(maintainingStorage||importingBuild)fail(409,'Another build import or maintenance is active.');const progress=buildReporter(url.searchParams.get('progressId'));importingBuild=true;let stage;
         try{stage=await buildStage(dataDir);const total=Number(req.headers['content-length']);await receiveArchive(req,path.join(stage,'package.zip'),{onProgress:progress,totalBytes:Number.isSafeInteger(total)&&total>0?total:null,stage:'Receiving ZIP'});const build=await importBuild(dataDir,{path:path.join(stage,'package.zip')},{stage,onProgress:progress});progress({stage:'Ready',complete:true});return send(201,build);}
         catch(e){progress({stage:'Failed',complete:true,error:e.message});fail(400,e.message);}finally{if(stage)await rm(stage,{recursive:true,force:true});importingBuild=false;}
       }
@@ -196,6 +215,7 @@ const server=http.createServer(async(req,res)=>{
         try{body=JSON.parse(text);}catch{fail(400,'Invalid JSON.');}
         if(!body||typeof body!=='object'||Array.isArray(body))fail(400,'An object is required.');
       }
+      if(maintainingStorage&&['POST','PATCH','DELETE'].includes(req.method))fail(409,'Storage maintenance is active.');
       if(process.env.ATHANOR_WORKER_NAME&&req.method==='POST'&&(['/api/preparations','/api/plans','/api/runner/start','/api/desktop/start'].includes(url.pathname)||parts[1]==='investigations'&&['prepare','start'].includes(parts[3]))&&(await fingerprint(root)).sha256!==startedSourceHash)fail(409,'Managed worker source changed. Qualify and restart its pinned version before new execution.');
       if(url.pathname==='/api/tower/live'&&req.method==='GET')return send(200,towerLive({db,dataDir,selected:url.searchParams.get('run'),definitions:[...desktopCourse.cases,...serviceCourse.cases]}));
       if(url.pathname==='/api/tower'&&req.method==='GET')return send(200,{...towerSnapshot({runner:await runnerStatus(),desktop:desktopState(dataDir),runs:db.prepare('SELECT id FROM runs ORDER BY created_at DESC').all().map(r=>getRun(r.id)),guide:explainer.build(),details:id=>jobDetails(dataDir,id)}),historyUrl:historyUrl()});
@@ -216,8 +236,10 @@ const server=http.createServer(async(req,res)=>{
       }
       if(url.pathname==='/api/desktop'&&req.method==='GET')return send(200,desktopState(dataDir));
       if(url.pathname==='/api/desktop/start'&&req.method==='POST'){
+        await storageAdmission();
         if(preparing)fail(409,'A plan is being prepared.');
         if((await runnerStatus()).active)fail(409,'A packaged headless course is already active.');
+        if(maintainingStorage)fail(409,'Storage maintenance became active.');
         try{return send(202,startDesktopJob(dataDir,body));}catch(e){fail(409,e.message);}
       }
       if(parts[1]==='desktop'&&parts[2]==='jobs'&&parts.length===4&&req.method==='GET'){
@@ -263,7 +285,7 @@ const server=http.createServer(async(req,res)=>{
         try{return send(200,buildCatalogPage(builds,url.searchParams));}catch(e){fail(400,e.message);}
       }
       if(req.method==='POST'&&url.pathname==='/api/builds/import'){
-        if(importingBuild)fail(409,'Another build import is active.');const progress=buildReporter(body.progressId);importingBuild=true;
+        await storageAdmission();if(maintainingStorage||importingBuild)fail(409,'Another build import or maintenance is active.');const progress=buildReporter(body.progressId);importingBuild=true;
         try{const build=await importBuild(dataDir,body,{onProgress:progress});progress({stage:'Ready',complete:true});return send(201,build);}catch(e){progress({stage:'Failed',complete:true,error:e.message});fail(400,e.message);}finally{importingBuild=false;}
       }
       if(req.method==='GET'&&parts[1]==='builds'&&parts[2]==='progress'&&parts.length===4){const progress=buildProgress.get(parts[3]);if(!progress)fail(404,'Build progress unavailable.');return send(200,progress);}
@@ -274,11 +296,14 @@ const server=http.createServer(async(req,res)=>{
       if(req.method==='GET'&&url.pathname==='/api/courses')return send(200,courseList(db));
       if(req.method==='GET'&&parts[1]==='courses'&&parts.length===3){try{return send(200,getCourse(db,parts[2],url.searchParams.has('revision')?Number(url.searchParams.get('revision')):undefined));}catch(e){fail(404,e.message);}}
       if(req.method==='POST'&&url.pathname==='/api/courses'){try{return send(201,saveCourse(db,body));}catch(e){fail(409,e.message);}}
+      if(req.method==='GET'&&url.pathname==='/api/storage')return send(200,await storageStatus(dataDir));
+      if(req.method==='POST'&&url.pathname==='/api/storage/maintain')return send(200,await storageMaintenance());
       if(req.method==='POST'&&url.pathname==='/api/plans'){
+        await storageAdmission();
         if(preparing||(await runnerStatus()).active||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'A course, desktop setup or preparation is active.');
         if(typeof body.app!=='string'||!path.isAbsolute(body.app))fail(400,'Choose an explicit absolute app path.');
         let selection;try{selection=resolveSelection(db,body.selection);}catch(e){fail(409,e.message);}
-        if(preparing)fail(409,'Another plan preparation became active.');
+        if(maintainingStorage||preparing)fail(409,'Another plan preparation or maintenance became active.');
         preparing=true;try{return send(201,await prepare({app:body.app,dataDir,selection,runtime:body.runtime}));}catch(e){fail(409,e.message);}finally{preparing=false;}
       }
       if(req.method==='GET'&&parts[1]==='requests'&&parts.length===3){
@@ -427,6 +452,7 @@ const server=http.createServer(async(req,res)=>{
     res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'self'"});res.end(req.method==='HEAD'?undefined:content);
   }catch(error){send(error.status||500,{error:error.status?error.message:'Unable to save or load workspace data. Check the local server.'});if(!error.status)console.error(error);}
 });
+const storageTimer=setInterval(()=>{void storageMaintenance().catch(e=>console.error(JSON.stringify({format:'athanor-storage-error/v1',error:e.message})));},900000);storageTimer.unref();server.once('close',()=>clearInterval(storageTimer));
 server.listen(Number(process.env.PORT||4317),'127.0.0.1',()=>{
  const url=`http://127.0.0.1:${server.address().port}/`;console.log('Athanor: '+url);
  if(process.send)process.send({type:'listening',url});

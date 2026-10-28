@@ -1,3 +1,4 @@
+import {registerDisposableApp} from './disposable-app.mjs';
 import path from 'node:path';
 import {spawn,execFileSync} from 'node:child_process';
 import {constants,existsSync} from 'node:fs';
@@ -31,7 +32,7 @@ export async function attachSelectedBuild({app,dataDir=dataDirectory(),preparedS
  const bridge=path.join(plugins,'styles/libwizard_smoke.dylib');
  const session={...preparedSession,format:'wizard-smoke-attachment/v1',dataDir,root,bundle:preparedSession?.bundle||path.join(root,'projects'),app:copy,sourceApp:app,executableName,executable:path.join(copy,'Contents/MacOS',executableName),guiHash:source.sha256,sourcePackageHash:source.sha256,native,harnessId:path.basename(root),generation,inputMode:'desktop',state:'Preparing',scope:'Selected packaged build with an external Qt test plugin; original app and bundled Qt unchanged',toolHash:await sha(bridge),qtVersion:version};
  if(session.agentProof)session.agentProof={...session.agentProof,tainted:true};
- const file=path.join(root,'session.json');await writeJSON(file,session);
+ const file=path.join(root,'session.json');await registerDisposableApp(session);await writeJSON(file,session);
  stdout=await open(path.join(root,'stdout.log'),'a');stderr=await open(path.join(root,'stderr.log'),'a');
  session.desktopLease=lease.receipt;
  const env={PATH:path.join(copy,'Contents/MacOS')+':/usr/bin:/bin',HOME:home,LANG:'en_US.UTF-8',TMPDIR:temp,WIZARD_SETTINGS:settings,XDG_CONFIG_HOME:settings,QT_PLUGIN_PATH:plugins,WIZ_SMOKE_CONTROL_DIR:native,WIZ_SMOKE_SETTINGS_DIR:settings,WIZ_HARNESS_RUN_ID:session.harnessId,WIZSERVER_RUNTIME_DIR:path.join(root,'gui-runtime-'+generation),WIZSERVER_SANDBOX_ROOT:root,HF_HUB_OFFLINE:'1',TRANSFORMERS_OFFLINE:'1'};

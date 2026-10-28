@@ -1,3 +1,4 @@
+import {registerDisposableApp} from './disposable-app.mjs';
 import path from 'node:path';
 import {performance} from 'node:perf_hooks';
 import {spawn,execFileSync} from 'node:child_process';
@@ -71,7 +72,7 @@ export async function prepareDesktop(sourceApp,qtCocoaPlugin,pairedCli,prepared)
   const dataDir=dataDirectory(prepared?.dataDir);assert(dataDir===dataDirectory(),'Configure SMOKE_DATA_DIR to match desktop preparation.');
   const directory=externalPath(prepared?.directory||path.join(dataDir,'desktop-runs'));assert(inside(dataDir,directory),'Desktop destination must be inside the configured workspace.');await mkdir(directory,{recursive:true});const root=await mkdtemp(path.join(directory,'desktop-'));
   const app=path.join(root,'Wizard Smoke.app');await cp(sourceApp,app,{recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE});
-  const identity=await fingerprint(app,{packageTree:true});await cp(plan.fixtureRoot,path.join(root,'media'),{recursive:true});
+  const identity=await fingerprint(app,{packageTree:true});await registerDisposableApp({dataDir,root,app,sourceApp,guiHash:identity.sha256});await cp(plan.fixtureRoot,path.join(root,'media'),{recursive:true,mode:constants.COPYFILE_FICLONE});
   const engine=new PackagedEngine(plan,root,path.basename(root),schema),c=new ProjectSession(engine,path.basename(root),fixtures);
   try{await engine.start();await c.setup();await c.call('project.checkpoint');}finally{await engine.stop();}
   const fixtureVersion=await recordFixtureVersion({root,bundle:c.bundle,app,packageHash:identity.sha256});

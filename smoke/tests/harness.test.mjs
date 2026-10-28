@@ -10,9 +10,13 @@ import {installedRuntime,runtimeIdentity,runtimeEnvironment} from '../runner/run
 import {ROOT,fingerprint,digest,writeJSON,readJSON,inside} from '../runner/files.mjs';
 import {snapshotSource} from '../kits.mjs';
 import {openDashboard} from '../runner/browser.mjs';
+import {main as storageCLI} from '../scripts/storage.mjs';
 
 test('source launcher starts a clean workspace without a bundle or browser and shuts down its service',async()=>{
  const data=await realpath(await mkdtemp(path.join(tmpdir(),'Athanor first checkout ')));
+ const policy=path.join(data,'setup-policy.json');await writeJSON(policy,{minFreeBytes:0,reserveFraction:0});
+ await storageCLI(['configure','--data-dir',data,'--policy',policy]);
+ await assert.rejects(storageCLI(['configure','--data-dir',data]),e=>e.code==='EEXIST');
  const child=spawn(process.execPath,[path.join(ROOT,'scripts/harness.mjs'),'serve','--data-dir',data,'--port','0','--no-open'],{stdio:['ignore','pipe','pipe']});
  let output='';child.stderr.on('data',bytes=>output+=bytes);const exited=new Promise(resolve=>child.once('exit',resolve));
  try{
@@ -22,6 +26,9 @@ test('source launcher starts a clean workspace without a bundle or browser and s
    child.once('exit',code=>{clearTimeout(timer);reject(Error('Source launch exited '+code+': '+output));});
   });
   const runs=await (await fetch(url+'api/runs')).json();assert.deepEqual(runs,[]);
+  const storage=await (await fetch(url+'api/storage')).json();assert.equal(storage.enabled,true);assert.equal(storage.policy.backupDirectory,null);
+  const worker=await (await fetch(url+'api/worker')).json();assert.equal(worker.active,null);assert.deepEqual(worker.ownedSessions,[]);
+  for(const file of ['controller.sqlite','controller.json','worker-profile.json'])await assert.rejects(readJSON(path.join(data,file)),e=>e.code==='ENOENT');
   const catalog=await (await fetch(url+'api/catalog')).json();assert.ok(catalog.tests.length>0);
   for(const file of ['filters.js','build-finder.js'])assert.equal((await fetch(url+file)).status,200);
   const bad=await fetch(url+'api/builds/archive',{method:'POST',headers:{'Content-Type':'application/zip'},body:'invalid ZIP'});assert.equal(bad.status,400);assert.match((await bad.json()).error,/zip/i);

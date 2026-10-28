@@ -1,3 +1,5 @@
+import {requireStorageCapacity} from './worker-storage.mjs';
+import {retireDisposableApp} from '../desktop/disposable-app.mjs';
 import {fileURLToPath} from 'node:url';
 import {execFileSync} from 'node:child_process';
 import {mkdir,realpath,access} from 'node:fs/promises';
@@ -49,7 +51,7 @@ export async function checkPrepared(dataDir=dataDirectory(),frozenPlan){
 }
 export async function prepare({app='/Applications/Wizard.app',dataDir=dataDirectory(),ffmpeg,ffprobe,selection,runtime,fixtureRoot:providedFixtures,speechDirectory,onProgress=async()=>{}}={}){
   dataDir=dataDirectory(dataDir);
-  await mkdir(dataDir,{recursive:true});app=await realpath(app);
+  await mkdir(dataDir,{recursive:true});await requireStorageCapacity(dataDir);app=await realpath(app);
   const course=selection?selectedRecipe(selection):await readJSON(path.join(ROOT,'runner/course.json'));
   validateRecipe(course);
   const requirements=requirementsFor(course.cases.map(c=>c.id),course.checkpoint);
@@ -77,7 +79,7 @@ export async function prepare({app='/Applications/Wizard.app',dataDir=dataDirect
   if(desktopRuntime){
     const {attachSelectedBuild}=await import('../desktop/attach.mjs');const attached=await attachSelectedBuild({app,dataDir});
     try{const receipt=path.join(attached.session.root,'attachment-evidence.json');attachmentQualification={packageHash:attached.session.sourcePackageHash,toolHash:attached.session.toolHash,receipt,receiptHash:await sha(receipt)};}
-    finally{attached.child.kill('SIGTERM');const force=setTimeout(()=>attached.child.kill('SIGKILL'),3000);await attached.closed;clearTimeout(force);}
+    finally{attached.child.kill('SIGTERM');const force=setTimeout(()=>attached.child.kill('SIGKILL'),3000);await attached.closed;clearTimeout(force);const file=path.join(attached.session.root,'session.json'),stopped=await readJSON(file);stopped.state='Stopped';await writeJSON(file,stopped);const storage=await retireDisposableApp(file,{status:attachmentQualification?'Pass':'Blocked',known:true,phase:'terminal-attachment-qualification'});if(attachmentQualification)attachmentQualification.storage=storage;}
   }
   await onProgress('ready');
   const content={imageRetention,kitVersion:2,runtime:desktopRuntime,attachmentQualification,...(selection?{recipe:course}:{}),speechModel,format:'wizard-smoke-prepared/v1',preparedAt:new Date().toISOString(),app,version,packageHash:pkg.sha256,packageFiles:pkg.files,schemaHash:digest(schema),fixtureRoot,fixtureHash:fixtures.sha256,courseHash:digest(course),runnerHash:await sourceIdentity(),runnerProvenance:await sourceProvenance(ROOT),courseId:course.id,cases:course.cases.map(c=>c.id),deferred:Object.keys(course.deferred),target:course.target,excludedPackagePaths:['Contents/MacOS/logs','**/__pycache__','**/*.pyc','**/.DS_Store']};

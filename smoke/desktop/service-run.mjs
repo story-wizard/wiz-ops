@@ -1,3 +1,4 @@
+import {retireDisposableApp} from './disposable-app.mjs';
 import {requireScriptCompletion,requireScriptReceipt,endCheck,mergeReopenResult} from './check-support.mjs';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -38,7 +39,7 @@ finally{
   const tail=report.results.find(r=>r.id==='S-MGFX-TAIL-TIMING');if(tail&&!report.cleanupError)await endCheck(file,{...tail,final:true});
   for(const c of course.cases)if(!report.results.some(r=>r.id===c.id))report.results.push({id:c.id,status:'Blocked',error:'Not executed after an unmet prerequisite. '+(report.error||'')});
   report.finishedAt=new Date().toISOString();report.status=!report.error&&!report.cleanupError&&report.results.length===course.cases.length&&report.results.every(r=>r.status==='Pass')?'Pass':'Fail';
-  await writeJSON(path.join(session.root,'desktop-course-report.json'),report);console.log(JSON.stringify({report:path.join(session.root,'desktop-course-report.json'),status:report.status,passed:report.results.filter(r=>r.status==='Pass').length,total:course.cases.length}));
+  await writeJSON(path.join(session.root,'desktop-course-report.json'),report);report.storage=await retireDisposableApp(file,{status:report.results.some(r=>r.status==='Unknown')||report.errorStatus==='Unknown'?'Unknown':report.status,known:!report.cleanupError,phase:'terminal-course'});await writeJSON(path.join(session.root,'desktop-course-report.json'),report);console.log(JSON.stringify({report:path.join(session.root,'desktop-course-report.json'),status:report.status,passed:report.results.filter(r=>r.status==='Pass').length,total:course.cases.length}));
 }
 
 return {report,sessionFile:file,root:session.root};

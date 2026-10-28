@@ -6,7 +6,7 @@ import {readJSON,writeJSON} from '../runner/files.mjs';
 import {pause} from '../runner/engine.mjs';
 const file=process.argv[2],s=await readJSON(file);
 verifyDesktopOwner(s);
-assert.throws(()=>verifyDesktopPaths({...s,bundle:'/Applications/Wizard.app'}),/outside/);
+assert.throws(()=>verifyDesktopPaths({...s,bundle:path.dirname(s.root)}),/outside/);
 assert.throws(()=>verifyDesktopOwner({...s,executable:'/bin/sh'}),/Unexpected/);
 assert.throws(()=>verifyDesktopOwner({...s,pid:process.pid}),/no longer belongs/);
 await assert.rejects(()=>launchDesktop({...s}),/still alive/);
