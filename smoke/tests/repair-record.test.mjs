@@ -66,8 +66,8 @@ test('new heads retain historical proof but cannot inherit qualification; requir
 test('scope, path escapes, symlinks, altered patch bytes and unsafe public copy are rejected before export',async()=>{
  const f=await fixture();try{
   const a=await f.input();for(const file of ['smoke/desktop/../secret.mjs','src/app.cpp','.env','smoke/config.json','smoke/credentials.json','smoke/credentials.mjs','smoke/private-config.mjs','smoke/.hidden.mjs','smoke/../outside.mjs'])await assert.rejects(recordRepair(f.data,{...a,source:{...a.source,reviewedPaths:[file]}}),/allowed harness source scope/);
-  for(const title of ['token=ghp_SYNTHETIC_SECRET','See /Users/private/log','Run curl private.example'])await assert.rejects(recordRepair(f.data,{...a,public:{...a.public,title}}),/Public summary/);
-  const r=await recordRepair(f.data,a);await symlink(f.root,path.join(f.root,'link'));await assert.rejects(exportRepair(f.data,r.id,{repo:f.repo,out:path.join(f.root,'link/export')}),/Symlink/);
+  for(const title of ['token=ghp_SYNTHETIC_SECRET','sk-SYNTHETIC_SECRET','See /Users/private/log','Run curl private.example'])await assert.rejects(recordRepair(f.data,{...a,public:{...a.public,title}}),/Public summary/);
+  a.public.title='Keep disk-space checks task-local';const r=await recordRepair(f.data,a);assert.equal(r.public.title,a.public.title);await symlink(f.root,path.join(f.root,'link'));await assert.rejects(exportRepair(f.data,r.id,{repo:f.repo,out:path.join(f.root,'link/export')}),/Symlink/);
   await writeFile(f.source.reviewedPatch,'changed');await assert.rejects(exportRepair(f.data,r.id,{repo:f.repo,out:path.join(f.root,'bad')}),/exact reviewed bytes/);
   await assert.rejects(exportRepair(f.data,r.id,{repo:f.repo,out:path.join(f.root,'bad'),mode:'publish'}),/preview only/);
  }finally{await f.close();}

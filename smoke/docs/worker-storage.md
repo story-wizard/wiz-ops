@@ -1,6 +1,6 @@
 # Worker storage
 
-The same storage controls run on a personal developer Mac or a dedicated worker. Start with [personal Mini setup](personal-mini.md) for on-demand use. Controls are off until configured in that workspace's external data directory. They never change the test selection, schedule, delivery or results. Keep Charles's MBP nightly suspended until he confirms resumption, including after restoring a backup.
+The same storage controls run on a personal developer Mac or a dedicated worker. Start with [personal Mini setup](personal-mini.md) for on-demand use. Controls are off until configured in that workspace's external data directory. They never change the test selection, schedule, delivery or results. Preserve an existing machine hold after restoring a backup; only its owner can release it.
 
 ## Configure a worker
 
@@ -47,7 +47,7 @@ node scripts/storage.mjs restore --backup /absolute/backups/new-snapshot --out /
 
 The optional config file list is a JSON array of paths relative to worker data, for example `["worker-profile.json","controller.json","storage-policy.json"]`. Explicit backup checks active executions and desktop ownership. It never uploads a backup.
 
-Restore requires a new directory, verifies every copied file and database, and disables the restored controller schedule. Original results and the 176-check/03:00 selection are retained; no service starts and no historical slot is replayed. Worker profiles and embedded paths must be reviewed/rebased for the new host and exact source before explicit re-enablement. A restore is not permission to resume the held MBP nightly.
+Restore requires a new directory, verifies every copied file and database, and disables the restored controller schedule. Original results, configured test selection and cadence are retained; no service starts and no historical slot is replayed. Worker profiles and embedded paths must be reviewed/rebased for the new host and exact source before explicit re-enablement. A restore is not permission to resume a held worker.
 
 ## Qualification boundary
 

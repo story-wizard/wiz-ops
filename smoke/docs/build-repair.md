@@ -2,6 +2,8 @@
 
 Start with the error, the selected build and the intended checks. A preparation failure means no tests have started. A failure inside a run is an observed test result; preserve that run and its evidence.
 
+Within an authorized test task, diagnose and repair harness setup locally, qualify the shared fix, then rerun affected checks after known cleanup. Choose routine workspace and tool settings yourself. Keep the selected package and test expectations fixed; source adoption on a managed worker, system changes, new paid calls and external publication stay within their separately authorized scope.
+
 ## Inspect the build
 
 Use the existing service URL with `smoke.mjs setup`, `builds` and `context`. Identify the exact local app, tag or asset and package hash. Read the packaged CLI schema without starting Wizard:

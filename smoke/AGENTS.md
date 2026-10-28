@@ -7,6 +7,8 @@ Use Athanor in outward-facing messages, status replies, report/course titles and
 Developer clones use the harness locally with their agent; worker scheduling and delivery are optional. Start with [personal Mini setup](docs/personal-mini.md). Return the local HTML report to the requesting user. Manual, pilot and on-demand jobs do not send Slack even when routes are configured. For managed workers, review [administration](docs/poddy-qa-reporting.md) and [Nightly MVP](docs/nightly-mvp.md); historical route examples are not authority to send. Use only separately authorized recipients and delivery policy. Keep Jira read-only and automatic email disabled. Preserve existing delivery history. Other Wiz automation has its own reporting policy.
 
 
+Athanor is a tool for the agent's task. Within an authorized test, handle routine local setup: inspect prerequisites, choose an external workspace and storage limits, start the foreground service, prepare matching tools and fixtures, and repair harness setup in isolation. Qualify repairs and rerun affected checks while preserving original outcomes. Reuse existing authorization; ask only for missing decisions or effects beyond it, such as spending, privacy changes, shared services, persistent scheduling or external delivery. Preserve explicit machine holds and desktop ownership.
+
 The October 3 local slice adds fourteen further UI/playback candidates, scoped model observations, native gestures and timed evidence recording. Read [harness control](docs/harness-control.md) for how these layers work and the retained qualification state. Candidate availability is not lead acceptance.
 
 ## Choose your task

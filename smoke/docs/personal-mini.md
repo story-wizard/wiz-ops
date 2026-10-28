@@ -23,7 +23,13 @@ Choose the build explicitly. A global `/Applications/Wizard.app` is optional. Re
 
 ## Run with your agent
 
-Give the agent the question, selected build and authorized testing scope. Discover existing checks and select the smallest useful course or subset. A dedicated worker's 176-check / 03:00 schedule is not a requirement for a developer run.
+Give the agent the question, selected build and authorized testing scope. Routine local setup is part of that task: the agent can choose safe workspace paths and initial limits, discover installed tools, prepare task-local dependencies and matching adapters, start the foreground service, and repair isolated harness setup without asking about each reversible step. Reuse installed SDKs first; system-wide installation, privacy changes and shared or persistent services need task authorization.
+
+Discover existing checks and select the smallest useful course or subset. A managed worker's selection and schedule are not a requirement for a developer run.
+
+A starting prompt can be as short as:
+
+> Use Athanor to test [behavior] on [build]. Set it up locally if needed, choose the smallest useful checks, repair and qualify harness setup where necessary, and run the checks. Preserve original failures and uncertain input. Return the private HTML report, what ran and what still needs attention.
 
 Arrange an available, unlocked desktop before GUI work. Check for other owners, dialogs and notifications. The existing cross-workspace lease and input guards protect harness ownership; they do not establish that the developer has stopped using the desktop. Do not dismiss unrelated work, change Focus settings or take over another owner without authorization. Use Athanor's Qt adapter, screenshots and guarded physical input. Do not inspect Wizard through the macOS accessibility bridge.
 
@@ -43,4 +49,4 @@ On another Mac, use the reviewed revision, choose new host paths and configure s
 
 To migrate history, create and verify a private storage backup, then restore into a new directory. Restore preserves results and selection but disables the controller schedule and starts no service. Review paths and qualify the target before activation. A same-disk backup does not protect against disk loss.
 
-For a dedicated worker, follow [worker setup](workers.md) and [job control](job-controller.md) after target qualification. Scheduling and services require a separate rollout. Charles's MBP stays suspended until he confirms resumption.
+For a dedicated worker, follow [worker setup](workers.md) and [job control](job-controller.md) after target qualification. Scheduling and services require a separate rollout. Preserve existing machine holds until their owner releases them.

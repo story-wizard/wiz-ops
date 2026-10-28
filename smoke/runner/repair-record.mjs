@@ -55,7 +55,7 @@ function publicCopy(p){
  fields(p,['title','problem','change','validation','remaining']);const out={};
  for(const key of ['title','problem','change','validation','remaining']){
   const value=text(p[key],key==='title'?180:2000);
-  requireValue(!/[\u0000-\u001f\u007f`<>]|https?:\/\/|file:|\/Users\/|\/private\/|\/tmp\/|\/home\/|[A-Za-z]:\\|Bearer\s|gh[pousr]_|github_pat_|sk-[A-Za-z0-9]|(?:secret|token|password)\s*[:=]|\$\(|(?:^|\s)(?:curl|bash|sudo|ssh)\s/i.test(value),'Public summary contains a private path, credential, command or markup.');
+  requireValue(!/[\u0000-\u001f\u007f`<>]|https?:\/\/|file:|\/Users\/|\/private\/|\/tmp\/|\/home\/|[A-Za-z]:\\|Bearer\s|gh[pousr]_|github_pat_|\bsk-[A-Za-z0-9]|(?:secret|token|password)\s*[:=]|\$\(|(?:^|\s)(?:curl|bash|sudo|ssh)\s/i.test(value),'Public summary contains a private path, credential, command or markup.');
   out[key]=value;
  }
  return out;

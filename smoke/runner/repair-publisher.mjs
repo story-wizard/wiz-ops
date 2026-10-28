@@ -94,7 +94,7 @@ function prReceipt(pr,a){
  return {number:pr.number,html_url:pr.html_url,state:pr.state,draft:pr.draft,...(a.actor?{actor:{id:pr.user?.id,login:pr.user?.login}}:{}),head:{ref:pr.head?.ref,sha:pr.head?.sha,repo:{full_name:pr.head?.repo?.full_name}},base:{ref:pr.base?.ref,sha:pr.base?.sha,repo:{full_name:pr.base?.repo?.full_name}}};
 }
 function exactPR(pr,plan){
- const a=plan.approval;return Number.isSafeInteger(pr.number)&&pr.number>0&&pr.html_url===`https://github.com/${repairRepository}/pull/${pr.number}`&&pr.head?.repo?.full_name===repairRepository&&pr.base?.repo?.full_name===repairRepository&&pr.head?.ref===a.head.branch&&pr.head?.sha===a.head.sha&&pr.base?.ref===a.base.branch&&pr.base?.sha===a.base.sha&&pr.state==='open'&&pr.draft===true&&(!a.actor||pr.user?.id===a.actor.id&&pr.user?.login===a.actor.login);
+ const a=plan.approval;return Number.isSafeInteger(pr.number)&&pr.number>0&&pr.html_url===`https://github.com/${repairRepository}/pull/${pr.number}`&&pr.head?.repo?.full_name===repairRepository&&pr.base?.repo?.full_name===repairRepository&&pr.head?.ref===a.head.branch&&pr.head?.sha===a.head.sha&&pr.base?.ref===a.base.branch&&pr.state==='open'&&pr.draft===true&&(!a.actor||pr.user?.id===a.actor.id&&pr.user?.login===a.actor.login);
 }
 export async function publishRepair({artifactDirectory,approvalFile,journalDirectory,sourceBundle,grant,transport,now=Date.now}){
  const plan=await inspectPublication({artifactDirectory,approvalFile}),a=plan.approval;lease(grant,plan,now);
@@ -111,7 +111,7 @@ export async function publishRepair({artifactDirectory,approvalFile,journalDirec
   if(state.state==='Conflict')return {state:'Conflict',reason:'Retained conflict requires review.'};
   let base,head,prs;try{[base,head,prs]=await Promise.all([transport.readRef(a.base.branch),transport.readRef(a.head.branch),transport.listPRs()]);}catch(error){return {state:state.history.length?'Unknown':'Held',reason:'Remote identity lookup is incomplete; no write dispatched.',diagnostic:publisherDiagnostic(error)};}
   const marker=`<!-- athanor-repair:${a.repairId};`,candidates=prs.filter(p=>p.head?.ref===a.head.branch||typeof p.body==='string'&&p.body.includes(marker));
-  if(candidates.length){if(candidates.length===1&&head===a.head.sha&&base===a.base.sha&&exactPR(candidates[0],plan)){await append('Confirmed',prReceipt(candidates[0],a));return {state:'Confirmed',receipt:state.history.at(-1).receipt,reused:true};}await append('Conflict');return {state:'Conflict',reason:'Existing PR identity or state differs.'};}
+  if(candidates.length){if(candidates.length===1&&head===a.head.sha&&exactPR(candidates[0],plan)){await append('Confirmed',prReceipt(candidates[0],a));return {state:'Confirmed',receipt:state.history.at(-1).receipt,reused:true};}await append('Conflict');return {state:'Conflict',reason:'Existing PR identity or state differs.'};}
   if(base!==a.base.sha||head&&head!==a.head.sha){await append('Conflict');return {state:'Conflict',reason:'Approved base or branch identity changed.'};}
   if(state.history.some(e=>['CreateIntent','CreateUnknown','Confirmed'].includes(e.state))||['Unknown','Conflict','VerifiedIdentity'].includes(plan.manifest.publication.state)){if(!state.history.length)await append('CreateUnknown');return {state:'Unknown',reason:'Absent PR readback does not authorize another create.'};}
   if(['PushIntent','PushUnknown'].includes(state.state)&&head!==a.head.sha)return {state:'Unknown',reason:'Uncertain push has no confirmed exact ref; do not push again.'};

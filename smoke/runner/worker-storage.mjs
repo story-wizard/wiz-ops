@@ -85,6 +85,13 @@ async function retainCacheLogs(dataDir,row,logs){
  try{await directory(target);if((await fingerprint(target)).sha256!==hash)throw Error('Retained logs changed');return;}catch(e){if(e.code!=='ENOENT')throw e;}
  const temporary=target+'.copy-'+randomUUID();try{await cp(logs,temporary,{recursive:true,verbatimSymlinks:true});if((await fingerprint(temporary)).sha256!==hash||(await fingerprint(logs)).sha256!==hash)throw Error('App logs changed during retention');await rename(temporary,target);}finally{await rm(temporary,{recursive:true,force:true});}
 }
+async function verifiedCacheApp(dataDir,row,root,metadata){
+ const original=cachePath(dataDir,row.name,row.kind),selected=row.kind==='tool'?metadata.directory:metadata.app;
+ if(typeof selected!=='string'||!path.isAbsolute(selected)||!inside(original,selected))throw Error('Cached package path changed');
+ const app=path.join(root,path.relative(original,selected));await directory(app);
+ if((await fingerprint(app,{packageTree:row.kind!=='tool'})).sha256!==(row.kind==='tool'?metadata.sha256:metadata.packageHash))throw Error('Cached package content changed');
+ return app;
+}
 export async function maintainStorage(dataDir,{idle=async()=>false,filesystem=statfs,processes=inspectProcesses}={}){
  dataDir=dataDirectory(dataDir);if(!await readStoragePolicy(dataDir))return {enabled:false};
  return locked(dataDir,async()=>{
@@ -95,8 +102,10 @@ export async function maintainStorage(dataDir,{idle=async()=>false,filesystem=st
    if(!/^retire-(build|tool)-(gh-[0-9]+|[a-f0-9]{64})\.json$/.test(name))continue;
    try{const file=path.join(control(dataDir),name);await regular(file);const intent=await readJSON(file),row=rows.find(r=>cacheKey(r)===cacheKey(intent)),target=cachePath(dataDir,intent.name,intent.kind),tombstone=path.join(cacheRoot(dataDir,intent.kind),'.retired-'+intent.name);
     if(!row||intent.target!==target||intent.tombstone!==tombstone||intent.ino!==row.ino||intent.dev!==row.dev||intent.logsRetained!==true||pins.some(p=>pathReferences(p,target)))throw Error('Retirement intent needs review');
+    if(newest.has(cacheKey(row)))throw Error('Current or rollback cache retained after interruption');
     await directory(cacheRoot(dataDir,intent.kind));const st=await directory(tombstone),metadata=path.join(tombstone,intent.kind==='tool'?'tools.json':'build.json');await regular(metadata);if(await sha(metadata)!==row.metadataHash)throw Error('Retired metadata changed');if(st.dev!==row.dev||st.ino!==row.ino)throw Error('Retired cache changed');
     try{await lstat(target);throw Error('Cache path was recreated');}catch(e){if(e.code!=='ENOENT')throw e;}
+    const app=await verifiedCacheApp(dataDir,row,tombstone,await readJSON(metadata));await retainCacheLogs(dataDir,row,path.join(app,'Contents/MacOS/logs'));
     if(!await idle()||processes([target,tombstone]).length)throw Error('Retired cache is in use');
     await rm(tombstone,{recursive:true});await rm(file);await json(path.join(control(dataDir),'caches.json'),(await registry(dataDir)).filter(r=>cacheKey(r)!==cacheKey(row)));receipt.removed.push({name:row.name,resumed:true});
    }catch(e){receipt.retained.push({name,reason:e.message});}
@@ -109,7 +118,7 @@ export async function maintainStorage(dataDir,{idle=async()=>false,filesystem=st
    try{
     await directory(cacheRoot(dataDir,row.kind));const st=await directory(target),meta=path.join(target,row.kind==='tool'?'tools.json':'build.json');await regular(meta);
     if(st.dev!==row.dev||st.ino!==row.ino||await sha(meta)!==row.metadataHash)throw Error('Registered cache changed');
-    const metadata=await readJSON(meta),actualApp=await realpath(row.kind==='tool'?metadata.directory:metadata.app);await directory(actualApp);if(!inside(target,actualApp)||(await fingerprint(actualApp,{packageTree:row.kind!=='tool'})).sha256!==(row.kind==='tool'?metadata.sha256:metadata.packageHash))throw Error('Cached package content changed');
+    const actualApp=await verifiedCacheApp(dataDir,row,target,await readJSON(meta));
     if(!await idle()||processes([target]).length)throw Error('Cache is in use');
     await retainCacheLogs(dataDir,row,path.join(actualApp,'Contents/MacOS/logs'));
     const bytes=await storageSize(target),tombstone=path.join(cacheRoot(dataDir,row.kind),'.retired-'+row.name);

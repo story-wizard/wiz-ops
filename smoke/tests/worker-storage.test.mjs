@@ -35,6 +35,20 @@ test('registered interrupted retirement resumes once, without touching durable r
  const result=await maintainStorage(data,{idle,filesystem:room,processes});assert.ok(result.removed.some(r=>r.resumed));await assert.rejects(access(tombstone));assert.equal(await readFile(path.join(data,'run.log'),'utf8'),'diagnostics');assert.equal((await maintainStorage(data,{idle,filesystem:room,processes})).removed.length,0);
 });
 
+test('interrupted cache retirement rechecks changed content, rollback protection and retained logs',async t=>{
+ for(const mode of ['changed','rollback','logs']){
+  const {data}=await workspace(t);await configureStorage(data,{...storageDefaults,cacheBytes:1,minFreeBytes:0,reserveFraction:0,keepBuilds:1});const old=await build(data,1);await build(data,2);
+  const row=(await readJSON(path.join(data,'storage-control/caches.json'))).find(r=>r.name==='gh-1'),tombstone=path.join(data,'builds/.retired-gh-1');await rename(old.folder,tombstone);await writeJSON(path.join(data,'storage-control/retire-build-gh-1.json'),{...row,target:old.folder,tombstone,logsRetained:true});
+  const app=path.join(tombstone,path.relative(old.folder,old.app));
+  if(mode==='changed')await writeFile(path.join(app,'Contents/MacOS/wizard'),'changed after interruption');
+  if(mode==='rollback')await writeJSON(path.join(data,'storage-policy.json'),{...storageDefaults,cacheBytes:1,minFreeBytes:0,reserveFraction:0,keepBuilds:2});
+  if(mode==='logs'){await mkdir(path.join(app,'Contents/MacOS/logs'));await writeFile(path.join(app,'Contents/MacOS/logs/recovery.log'),'late diagnostics');}
+  const result=await maintainStorage(data,{idle,filesystem:room,processes});
+  if(mode!=='logs'){await access(tombstone);assert.equal(result.removed.length,0,mode);assert.ok(result.retained.some(r=>mode==='changed'?/content changed/.test(r.reason):/rollback/.test(r.reason)),JSON.stringify(result));}
+  else{assert.ok(result.removed.some(r=>r.resumed));const logs=(await readdir(path.join(data,'retained-cache-logs'))).find(n=>n.startsWith('build-gh-1-'));assert.equal(await readFile(path.join(data,'retained-cache-logs',logs,'recovery.log'),'utf8'),'late diagnostics');}
+ }
+});
+
 test('volume reserve and scratch budget reject new work without mutating retained files, on either worker layout',async t=>{
  const {base,data}=await workspace(t);for(const root of [data,path.join(base,'dedicated-mini')]){await mkdir(root,{recursive:true});await configureStorage(root,{...storageDefaults,minFreeBytes:100,reserveFraction:0.15,scratchBytes:10});await mkdir(path.join(root,'runs'));await writeFile(path.join(root,'runs/project.wiz'),'retained project');const before=await sha(path.join(root,'runs/project.wiz'));const filesystem=async()=>({bsize:1,bavail:100,blocks:1000});const s=await storageStatus(root,{filesystem});assert.equal(s.reserveBytes,150);assert.equal(s.capacityReady,false);await assert.rejects(requireStorageCapacity(root,{filesystem}),/Storage needs cleanup/);assert.equal(await sha(path.join(root,'runs/project.wiz')),before);assert.equal((await storageSize(path.join(root,'runs'))).logicalBytes,16);}
  assert.throws(()=>storagePolicy({...storageDefaults,cacheBytes:-1}),/Invalid/);assert.throws(()=>storagePolicy({...storageDefaults,deleteEverything:true}),/Unknown/);

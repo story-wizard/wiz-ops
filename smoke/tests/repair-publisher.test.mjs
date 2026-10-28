@@ -27,6 +27,12 @@ test('real local Git and HTTP publish only the reviewed bytes once; current PR s
  const other=await fixture();try{assert.equal((await other.publish()).state,'Confirmed');other.state.prs[0].head.repo.full_name='story-wizard/other';assert.equal((await other.publish()).state,'Conflict');assert.equal(other.state.posts,1);}finally{await other.close();}
 });
 
+test('published repair reuse tolerates main advancing while new publication stays pinned',async()=>{
+ const advance=f=>{const next=git(f.repo,'-c','user.name=Synthetic qualification','-c','user.email=fixture@localhost','commit-tree',git(f.repo,'rev-parse',f.base+'^{tree}'),'-p',f.base,'-m','Unrelated main change');git(f.repo,'push',f.remote,next+':refs/heads/main');for(const pr of f.state.prs)pr.base.sha=next;return next;};
+ const f=await fixture();try{assert.equal((await f.publish()).state,'Confirmed');const next=advance(f);const result=await f.publish();assert.equal(result.state,'Confirmed');assert.equal(result.reused,true);assert.equal(result.receipt.base.sha,next);assert.equal(f.ref(f.approval.head.branch),f.head);assert.equal(f.state.posts,1);}finally{await f.close();}
+ const g=await fixture();try{advance(g);assert.equal((await g.publish()).state,'Conflict');assert.equal(g.ref(g.approval.head.branch),null);assert.equal(g.state.posts,0);}finally{await g.close();}
+});
+
 test('lost push and create responses reconcile actual remote effects without duplicate writes or repair-record reset',async()=>{
  const f=await fixture();try{
   const t=await f.transport();let pushes=0;const transport={...t,push:async args=>{pushes++;await t.push(args);throw Error('SYNTHETIC_LOST_PUSH');}};
