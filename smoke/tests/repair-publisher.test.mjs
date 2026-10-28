@@ -21,8 +21,10 @@ test('real local Git and HTTP publish only the reviewed bytes once; current PR s
   const reads=f.state.reads;assert.equal((await f.publish({transport})).state,'Confirmed');assert(f.state.reads>reads);assert.equal(f.state.posts,1);assert.equal(pushes,1);
   const patch=await readFile(path.join(f.artifacts,'repair.patch'));assert.equal(hash(patch),f.approval.proofs[0].patchSHA256);assert.equal(f.state.prs[0].body,(await inspectPublication(f.options)).body);assert.equal(f.state.prs[0].draft,true);
   assert.deepEqual(await readFile(f.input.campaignReport),report);const publicText=f.state.prs[0].body+patch.toString();for(const secret of [f.grant.token,'PRIVATE_REPORT_CANARY','ghp_FAKE_AMBIENT_CANARY',f.root])assert(!publicText.includes(secret));assert(!(await journalBytes(f)).includes(f.grant.token));
+  f.state.prs[0].title='Human-edited repair title';f.state.prs[0].body+='\nCodesmith footer';assert.equal((await f.publish()).state,'Confirmed');f.state.prs[0].body='Rewritten human description';assert.equal((await f.publish()).state,'Confirmed');assert.equal(f.state.posts,1);assert.equal(pushes,1);
   f.state.prs[0].draft=false;assert.equal((await f.publish()).state,'Conflict');assert.equal(f.state.posts,1);
  }finally{await f.close();}
+ const other=await fixture();try{assert.equal((await other.publish()).state,'Confirmed');other.state.prs[0].head.repo.full_name='story-wizard/other';assert.equal((await other.publish()).state,'Conflict');assert.equal(other.state.posts,1);}finally{await other.close();}
 });
 
 test('lost push and create responses reconcile actual remote effects without duplicate writes or repair-record reset',async()=>{

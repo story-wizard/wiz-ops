@@ -65,7 +65,7 @@ The credential must authenticate `/user` as the approved immutable ID and login.
 
 The credential goes to the pinned publisher through inherited descriptor 3, never an argument, environment variable, file or worker connection. The publisher verifies the approved actor against the created or reconciled PR's user ID/login. Returned diagnostics contain fixed codes/status only. The broker discards its transient credential reference and does not revoke or modify the developer's existing authentication.
 
-The authoritative journal is STATE/journal. It retains intent before remote writes. A publisher exit, lost reply or malformed output after possible dispatch is Unknown; pre-dispatch validation failures are Held. Read/reconcile the journal and current remote identity before another action. Repeating the same reviewed request may reconcile the existing PR; it must never repeat an uncertain create. Do not reset the journal or change roots to retry.
+The authoritative journal is STATE/journal. It retains intent before remote writes. A publisher exit, lost reply or malformed output after possible dispatch is Unknown; pre-dispatch validation failures are Held. Read/reconcile the journal and current remote identity before another action. Human edits to the PR title or description, including bot footers, do not block reuse. Repository, branch, commit, approved author, open state and draft status must still match. Exact title/body approval remains required before publication. Repeating the same reviewed request may reconcile the existing PR; it must never repeat an uncertain create. Do not reset the journal or change roots to retry.
 
 ## Qualify and keep the claims separate
 
