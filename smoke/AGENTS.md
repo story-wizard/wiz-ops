@@ -4,7 +4,7 @@ Athanor is the app name. Preserve the existing CLI names, formats and WizardSmok
 
 Use Athanor in outward-facing messages, status replies, report/course titles and generated agent prompts. Poddy is the internal execution platform name; preserve host names, paths, repositories, branches, identifiers and historical evidence.
 
-Developer clones use the harness locally with their agent; worker scheduling and delivery are optional. For QA on the managed MBP or Mini workers, read [interim reporting and administration](docs/poddy-qa-reporting.md). Legacy worker delivery keeps Charles's verified Slack DM. For the approved Nightly MVP, use exactly that DM and #wiz-smoketest-reports (C0C5F7K6DNV), with independent verified intents. Read [Nightly MVP](docs/nightly-mvp.md) before configuration or rollout. Keep Jira read-only and automatic email disabled. Only jobs admitted by the durable daily scheduler may send Slack. Manual, pilot and on-demand jobs are silent even when routes are configured; retain reports and existing delivery history. Developer runs report locally to the requesting user. Other Wiz automation has its own reporting policy.
+Developer clones use the harness locally with their agent; worker scheduling and delivery are optional. Start with [personal Mini setup](docs/personal-mini.md). Return the local HTML report to the requesting user. Manual, pilot and on-demand jobs do not send Slack even when routes are configured. For managed workers, review [administration](docs/poddy-qa-reporting.md) and [Nightly MVP](docs/nightly-mvp.md); historical route examples are not authority to send. Use only separately authorized recipients and delivery policy. Keep Jira read-only and automatic email disabled. Preserve existing delivery history. Other Wiz automation has its own reporting policy.
 
 
 The October 3 local slice adds fourteen further UI/playback candidates, scoped model observations, native gestures and timed evidence recording. Read [harness control](docs/harness-control.md) for how these layers work and the retained qualification state. Candidate availability is not lead acceptance.
@@ -15,6 +15,7 @@ Work from the command root: `smoke/` in a checkout or `workspace/` in a bundle. 
 
 | Task | Start here |
 | --- | --- |
+| Set up a personal developer Mini or manage its storage | [Personal Mini setup](docs/personal-mini.md), [storage controls](docs/worker-storage.md) |
 | Schedule or administer durable jobs | [Job controller](docs/job-controller.md) |
 | Collect nightly evidence or record private delivery | [Evidence and delivery](docs/evidence-baseline.md) |
 | Administer a managed MBP/Mini or consolidate nightly assertions | [Workers and nightly reports](docs/workers.md) |

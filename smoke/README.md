@@ -2,6 +2,8 @@
 
 **Athanor** takes its name from the alchemical furnace that maintains controlled heat for sustained transmutation. It runs repeatable Wizard tests and keeps their observations and evidence together.
 
+For on-demand testing on your own Mac, start with [personal Mini setup](docs/personal-mini.md). Use the ordinary foreground launcher with a private external workspace and explicit storage budgets. Scheduling and background services are optional worker configuration.
+
 The current UI keeps Wizard’s dark style. Existing CLI names, data formats and the `WizardSmoke` workspace path remain compatible.
 
 A local testing harness with an agent CLI and a dashboard/results viewer for repeatable Wizard smoke tests. It creates disposable projects, executes selected checks, verifies state and output independently, and retains evidence. The web dashboard uses the same local service as agents and optional native clients.

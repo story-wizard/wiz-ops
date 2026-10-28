@@ -1,3 +1,4 @@
+import {registerToolStorage} from './worker-storage.mjs';
 import path from 'node:path';
 import {readFile,realpath,access,mkdir,readdir} from 'node:fs/promises';
 import {constants,existsSync} from 'node:fs';
@@ -7,7 +8,7 @@ import {ROOT,dataDirectory,fingerprint,sha,digest,readJSON,writeJSON} from './fi
 import {setupAttachmentTools,verifyAttachmentTools} from '../desktop/attachment-tools.mjs';
 
 export async function selectedBuildRuntime(app,dataDir){
- const tools=await setupAttachmentTools(app,dataDir),cli=path.join(app,'Contents/MacOS/wiz-cli');
+ const tools=await setupAttachmentTools(app,dataDir),cli=path.join(app,'Contents/MacOS/wiz-cli');await registerToolStorage(dataDir,tools);
  return {kind:'selected-build-attachment',app,cli,tools,appHash:(await fingerprint(app,{packageTree:true})).sha256,cliHash:await sha(cli),bridge:path.join(tools.directory,'styles/libwizard_smoke.dylib'),bridgeHash:await sha(path.join(tools.directory,'styles/libwizard_smoke.dylib')),scope:'Selected packaged app and shipped CLI with an external test plugin'};
 }
 export function assertSelectedRuntime(runtime,app,packageHash){

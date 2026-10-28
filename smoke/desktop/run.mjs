@@ -1,3 +1,4 @@
+import {retireDisposableApp} from './disposable-app.mjs';
 import path from 'node:path';
 import {measurePhase} from '../runner/performance.mjs';
 import {fileURLToPath} from 'node:url';
@@ -99,7 +100,7 @@ try{
   pendingVerification=ids.filter(id=>['D-BIN-RENAME','D-BIN-DUPLICATE','D-BIN-DELETE','D-BIN-MGFX'].includes(id));
   if(pendingVerification.length){await timed('close',async()=>{await stopDesktop(file);await live.closed;});live=await timed('reopen',async()=>launchDesktop(await readJSON(file)));await script('check-selection-bin.mjs','desktop-bin-reopen-report.json',4,['verify'],true);pendingVerification=[];}
   if(ids.includes('S-EXPORT-UNSET-RATE')){await beginCheck(file,'S-EXPORT-UNSET-RATE');const holder={live};let value;try{value=await unsetRateExport(file,holder);}finally{live=holder.live;}report.results.push(value);await endCheck(file,value);await onResult(value,session.root);}
-}catch(e){report.error=e.message;report.failureEvidence=e.evidence||await captureDesktopFailure(file,e,currentCheck||'group');if(currentCheck){const value={id:currentCheck,status:failureStatus(e),error:e.message,evidence:report.failureEvidence};report.results.push(value);await endCheck(file,value);}
+}catch(e){report.error=e.message;report.errorStatus=e.status;report.failureEvidence=e.evidence||await captureDesktopFailure(file,e,currentCheck||'group');if(currentCheck){const value={id:currentCheck,status:failureStatus(e),error:e.message,evidence:report.failureEvidence};report.results.push(value);await endCheck(file,value);}
   for(const id of pendingVerification){const prior=report.results.find(r=>r.id===id);if(prior?.status==='Pass'){prior.initial={status:prior.status,evidence:prior.evidence};prior.status=e.status==='Unknown'?'Unknown':'Blocked';prior.error='Persistence verification did not complete: '+e.message;prior.evidence={...prior.evidence,...report.failureEvidence};await endCheck(file,prior);}}
 }
 finally{
@@ -109,7 +110,7 @@ finally{
   let events=[];try{events=(await readFile(path.join(session.root,'check-events.jsonl'),'utf8')).split('\n').filter(Boolean).map(JSON.parse);}catch(e){if(e.code!=='ENOENT')throw e;}
   report.results.push(...missingDesktopResults(course.cases,report.results,events,report.error,report.failureEvidence));
   report.qtCocoa=(await readJSON(file)).qtCocoa;report.finishedAt=new Date().toISOString();report.status=!report.error&&!report.cleanupError&&report.results.length===total&&report.results.every(r=>r.status==='Pass')?'Pass':'Fail';
-  await writeJSON(path.join(session.root,'desktop-course-report.json'),report);console.log(JSON.stringify({report:path.join(session.root,'desktop-course-report.json'),status:report.status,passed:report.results.filter(r=>r.status==='Pass').length,total},null,2));
+  await writeJSON(path.join(session.root,'desktop-course-report.json'),report);report.storage=await retireDisposableApp(file,{status:report.results.some(r=>r.status==='Unknown')||report.errorStatus==='Unknown'?'Unknown':report.status,known:!report.cleanupError,phase:'terminal-course'});await writeJSON(path.join(session.root,'desktop-course-report.json'),report);console.log(JSON.stringify({report:path.join(session.root,'desktop-course-report.json'),status:report.status,passed:report.results.filter(r=>r.status==='Pass').length,total},null,2));
 }
 
 return {report,sessionFile:file,root:session.root};
@@ -161,7 +162,7 @@ export async function executeDesktop(prepared={}, {onResult=async()=>{},isCancel
       await appendFile(path.join(root,'check-events.jsonl'),JSON.stringify({...final,final:true,at:new Date().toISOString()})+'\n');await onResult(final,root);}
       for(const filename of ['operations.jsonl','native-events.jsonl','native-input.jsonl','agent-tools.jsonl','agent-results.jsonl','steps.jsonl']){try{const lines=(await readFile(path.join(result.root,filename),'utf8')).split('\n').filter(Boolean);for(const line of lines){const receipt=JSON.parse(line);await appendFile(path.join(root,filename),JSON.stringify({...receipt,source:receipt.source||path.join(result.root,filename)})+'\n');}}catch(e){if(e.code!=='ENOENT')throw e;}}
       if(result.report.cleanupError)report.cleanupError=result.report.cleanupError;
-    }catch(e){report.error=e.message;break;}
+    }catch(e){report.error=e.message;report.errorStatus=e.status;break;}
     finally{clearInterval(timer);await pending.catch(()=>{});}
     await writeJSON(path.join(root,'desktop-course-report.json'),report);
   }
