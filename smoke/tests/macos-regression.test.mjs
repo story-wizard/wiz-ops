@@ -45,9 +45,13 @@ test('tail proof detects bounce, duplicate append and abandoned follow intent',(
 test('selector proof reads accessibility and hover state instead of inferring them from visible labels',()=>{
  const item={name:'AgentWorkspaceModelSelector',visible:true,enabled:true,hovered:true,accessibleDescription:'Select the model',tooltipVisible:false},read=observation([item]);assert.doesNotThrow(()=>selectorProof(read,item.name));for(const changed of [{accessibleDescription:''},{tooltipVisible:true},{hovered:false}])assert.throws(()=>selectorProof(observation([{...item,...changed}]),item.name));
 });
-test('narrow header proof rejects overlap, a hidden active control and absent wide events',()=>{
- const narrow=observation([{name:'AgentWorkspaceTitleSlot',width:62},{name:'AgentWorkspaceTitleText',width:40},{name:'AgentWorkspaceEventMenu',visible:false},{name:'AgentWorkspaceModelSelector',x:70,width:60,displayText:'Luna'},{name:'AgentWorkspaceEffortSelector',x:130,width:50,displayText:'Low'},{name:'AgentWorkspaceCancelButton',x:180,localX:180,width:50,parentWidth:280,visible:true}]),wide=observation([{name:'AgentWorkspaceEventMenu',visible:true}]);assert.doesNotThrow(()=>headerProof(narrow,wide));const shifted=structuredClone(narrow);for(const item of shifted.items)if(item.x!==undefined)item.x+=24;assert.doesNotThrow(()=>headerProof(shifted,wide),'Panel translation must not change parent-local bounds');
- for(const [index,change] of [[0,{width:0}],[4,{x:100}],[5,{visible:false}],[5,{localX:260}]]){const bad=structuredClone(narrow);Object.assign(bad.items[index],change);assert.throws(()=>headerProof(bad,wide));}assert.throws(()=>headerProof(narrow,narrow));
+test('narrow header keeps active controls separate from reasoning effort in the model popup',()=>{
+ const narrow=observation([{name:'AgentWorkspaceTitleSlot',width:62},{name:'AgentWorkspaceTitleText',width:40},{name:'AgentWorkspaceEventMenu',visible:false},{name:'AgentWorkspaceModelSelector',x:70,width:60,displayText:'Luna'},{name:'AgentWorkspaceCancelButton',x:180,localX:180,width:50,parentWidth:280,visible:true}]),wide=observation([{name:'AgentWorkspaceEventMenu',visible:true}]);
+ const popup={...observation([{name:'AgentWorkspaceModelSelector',open:true,popup:{visible:true}},{name:'AgentWorkspaceEffortSelector',x:10,y:120,width:200,height:24,visible:true,enabled:true,selectedText:'Low'},{name:'AgentWorkspaceEffortValue',text:'Low'}]),panelWidth:280,panelHeight:800};
+ assert.doesNotThrow(()=>headerProof(narrow,wide,popup));const shifted=structuredClone(narrow);for(const item of shifted.items)if(item.x!==undefined)item.x+=24;assert.doesNotThrow(()=>headerProof(shifted,wide,popup),'Panel translation must not change parent-local bounds');
+ for(const [index,change] of [[0,{width:0}],[4,{x:100}],[4,{visible:false}],[4,{localX:260}]]){const bad=structuredClone(narrow);Object.assign(bad.items[index],change);assert.throws(()=>headerProof(bad,wide,popup));}
+ for(const change of [{selectedText:'High'},{visible:false},{x:200},{y:800}]){const bad=structuredClone(popup);Object.assign(bad.items[1],change);assert.throws(()=>headerProof(narrow,wide,bad));}
+ assert.throws(()=>headerProof(narrow,narrow,popup));assert.throws(()=>headerProof(narrow,wide));
 });
 test('inline image proof rejects cumulative shrink, opaque corners and missing local resources',()=>{
  const reads=[200,120,200].map(size=>observation([{name:'AgentWorkspaceMessageBody',images:[{name:'oz-rounded-image:/fixture',width:size,height:size,resourceAvailable:true,cornerAlpha:0}]}]));assert.doesNotThrow(()=>inlineImageProof(reads));for(const change of [{width:120,height:120},{cornerAlpha:255},{resourceAvailable:false},{name:'unrounded'}]){const bad=structuredClone(reads);Object.assign(bad[2].items[0].images[0],change);assert.throws(()=>inlineImageProof(bad));}
@@ -83,7 +87,7 @@ test('detached transcript observation catches auto-follow, bounce and missing ap
 test('gesture observation catches replacing or moving the old row even when the list reports the tail',()=>{
  const list={name:'AgentWorkspaceMessageList',count:20,followTail:true,atYEnd:true,userScrollActive:true,anchor:{index:19,identity:'retained-row',offset:200}},before=observation([list]),after=observation([{...list,count:21}]),resumed=observation([{...list,count:21,userScrollActive:false}]);
  assert.doesNotThrow(()=>gestureAnchorProof(before,[after,after,after],resumed));
- for(const change of [{identity:'new-row'},{offset:210},{index:20}]){const bad=structuredClone(after);Object.assign(bad.items[0].anchor,change);assert.throws(()=>gestureAnchorProof(before,[after,bad,after],resumed));}
+ for(const change of [{identity:'new-row'},{offset:210}]){const bad=structuredClone(after);Object.assign(bad.items[0].anchor,change);assert.throws(()=>gestureAnchorProof(before,[after,bad,after],resumed));}
  assert.throws(()=>gestureAnchorProof(before,[after,after,after],after));
 });
 test('custom-model popup needs the actual untruncated option inside observed bounds',()=>{
@@ -103,4 +107,24 @@ test('selected model and effort are verified in the independent pipeline, not on
  for(const changes of [{model:'openai/gpt-6.1-sol'},{effort:1},{spawnSuppressed:false},{agentActive:true},{running:true},{identity:''},{available:false}])assert.throws(()=>pipelineSelectionProof(read,{...pipeline,...changes},expected));
  assert.throws(()=>pipelineSelectionProof({...read,controller:{...read.controller,currentEffortIndex:0}},pipeline,expected));
  assert.doesNotThrow(()=>validateNativeParams('workspace-pipeline-inspect',{target:'panel'}));assert.doesNotThrow(()=>validateNativeParams('workspace-request-selection',{target:'panel',kind:'model',index:5}));for(const index of [-1,32,NaN,1.1])assert.throws(()=>validateNativeParams('workspace-request-selection',{target:'panel',kind:'model',index}));
+});
+
+test('current effort slider needs pointer delivery and accessible semantics, not an absent hover property',()=>{
+ const item={name:'AgentWorkspaceEffortSelector',visible:true,enabled:true,accessibleDescription:'Main-agent reasoning effort',tooltipVisible:false},receipt={name:item.name,dispatched:true,localX:120,localY:80,inputMode:'Qt pointer'};
+ assert.doesNotThrow(()=>selectorProof(observation([item]),item.name,receipt));
+ for(const change of [{dispatched:false},{name:'foreign'},{localX:NaN}])assert.throws(()=>selectorProof(observation([item]),item.name,{...receipt,...change}));
+ for(const change of [{accessibleDescription:''},{tooltipVisible:true},{visible:false}])assert.throws(()=>selectorProof(observation([{...item,...change}]),item.name,receipt));
+});
+
+test('project-bound images are restricted to the one disposable local image fixture',()=>{
+ const p={target:'panel',text:'![Athanor local image](assets/context/images/athanor-square.png)',eventId:'athanor-fixture-inline-image',fixtureBundle:'/private/session/projects/Golden.wiz'};
+ assert.doesNotThrow(()=>validateNativeParams('workspace-append',p));
+ for(const change of [{fixtureBundle:'relative.wiz'},{text:'another message'},{eventId:'athanor-fixture-other'}])assert.throws(()=>validateNativeParams('workspace-append',{...p,...change}));
+});
+
+test('transcript anchors follow stable event identity across a reversed-model row insertion',()=>{
+ const list=(count,index,offset)=>observation([{name:'AgentWorkspaceMessageList',count,userScrollActive:true,followTail:true,anchor:{identity:'athanor-fixture-stable-event',index,offset}}]);
+ const before=list(18,10,40),samples=[list(19,11,40),list(19,11,40),list(19,11,40)],resumed=observation([{name:'AgentWorkspaceMessageList',count:19,userScrollActive:false,followTail:true,atYEnd:true}]);
+ assert.doesNotThrow(()=>gestureAnchorProof(before,samples,resumed));
+ const changed=structuredClone(samples);changed[1].items[0].anchor.offset=55;assert.throws(()=>gestureAnchorProof(before,changed,resumed));
 });

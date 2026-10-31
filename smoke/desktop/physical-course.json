@@ -1,6 +1,6 @@
 {
   "id": "physical-spellbook-candidate",
-  "revision": 2,
+  "revision": 6,
   "target": "Instrumented isolated desktop with native macOS input",
   "status": "Candidate",
   "cases": [
@@ -13,8 +13,8 @@
     {
       "id": "P-SB-SEARCH-DROP",
       "sourceId": "SB-02",
-      "title": "Both search shortcuts and physical glossary drag",
-      "expected": "Each shortcut opens Quick Node Search; dragging Text from results creates exactly one text node; Undo restores the empty graph."
+      "title": "Search and drag a node",
+      "expected": "Tab opens Add Node on the canvas; dragging Text from results creates exactly one text node; Undo restores the empty graph."
     },
     {
       "id": "P-SB-WIRE",
@@ -38,7 +38,7 @@
       "id": "P-SB-DOCK",
       "sourceId": "SB-09",
       "title": "Float and redock a populated Spellbook",
-      "expected": "A visible Float/Detach control floats the Spellbook panel; physical native title-bar redocking preserves the document, nodes, edges, parameters and layout."
+      "expected": "A visible Float/Detach control floats the Spellbook panel; physically dragging its application-owned dock tab back into the main window preserves the document, nodes, edges, parameters and layout."
     }
   ]
 }

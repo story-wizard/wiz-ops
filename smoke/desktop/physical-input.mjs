@@ -84,7 +84,11 @@ export function defaultClickPoint(widget){
   requireProof(Array.isArray(h)&&h.length===2&&h.every(Number.isFinite)&&h[0]>=v.x&&h[0]<v.x+v.width&&h[1]>=v.y&&h[1]<v.y+v.height,'clipped_slider_thumb','Reveal the current Inspector thumb before focusing it',['observe']);
   return {x:h[0],y:h[1]};
  }
- if(!widget.clickRect)return {x:widget.width/2,y:widget.height/2};
+ if(!widget.clickRect){
+  const v=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height};
+  requireProof(['x','y','width','height'].every(k=>Number.isFinite(v[k]))&&v.x>=0&&v.y>=0&&v.width>0&&v.height>0&&v.x+v.width<=widget.width&&v.y+v.height<=widget.height,'clipped_widget_target','Reveal a visible widget hit region before clicking',['observe']);
+  return {x:v.x+v.width/2,y:v.y+v.height/2};
+ }
  const r=widget.clickRect,v=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height};
  assert(['x','y','width','height'].every(k=>Number.isFinite(r[k]))&&r.x>=0&&r.y>=0&&r.width>0&&r.height>0&&r.x+r.width<=widget.width&&r.y+r.height<=widget.height,'Invalid styled click rectangle');
  const x=Math.max(r.x,v.x),y=Math.max(r.y,v.y),right=Math.min(r.x+r.width,v.x+v.width),bottom=Math.min(r.y+r.height,v.y+v.height);
@@ -156,4 +160,19 @@ async function physicalInputOwned(file,command,params={}){
  measured('postInputReadMs');
  receipt.physicalTiming={...timing,totalMs:performance.now()-began,activationRequested,scope:'Physical wrapper; nested native timings overlap. Admission and outer agent target lookup excluded.'};
  return receipt;
+}
+
+// Resolve a drop inside the observed canvas but outside the picker that owns
+// the drag. Window-server frames are used; no macOS accessibility inspection.
+export function uncoveredDropPoint(ui,native,widget,occluderIds){
+ requireProof(widget&&Array.isArray(occluderIds)&&occluderIds.length<=32,'invalid_drop_target','Observe the destination canvas and picker windows',['observe']);
+ const window=ui.widgets.find(w=>w.id===widget.window),frames=id=>native.windows.filter(w=>w.window===id);
+ const targets=frames(window?.nativeWindow);requireProof(targets.length===1,'ambiguous_drop_window','Destination window is unavailable or ambiguous',['observe']);const target=targets[0];
+ const v=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height},p=windowPoint(widget,window,target,v.x,v.y),origin={x:target.frame.x+p.x-v.x,y:target.frame.y+p.y-v.y};
+ let regions=[{x:origin.x+v.x,y:origin.y+v.y,width:v.width,height:v.height}];
+ for(const id of occluderIds){
+  const owner=ui.widgets.find(w=>w.id===id&&w.window===id),matches=frames(owner?.nativeWindow);requireProof(matches.length===1,'ambiguous_drop_overlay','Picker window is unavailable or ambiguous',['observe']);const b=matches[0].frame;
+  regions=regions.flatMap(a=>{const l=Math.max(a.x,b.x),t=Math.max(a.y,b.y),r=Math.min(a.x+a.width,b.x+b.width),bottom=Math.min(a.y+a.height,b.y+b.height);if(r<=l||bottom<=t)return [a];return [{x:a.x,y:a.y,width:a.width,height:t-a.y},{x:a.x,y:bottom,width:a.width,height:a.y+a.height-bottom},{x:a.x,y:t,width:l-a.x,height:bottom-t},{x:r,y:t,width:a.x+a.width-r,height:bottom-t}].filter(c=>c.width>0&&c.height>0);});
+ }
+ const region=regions.filter(r=>r.width>=8&&r.height>=8).sort((a,b)=>b.width*b.height-a.width*a.height)[0];requireProof(region,'occluded_drop_target','Reveal an uncovered canvas region before dropping',['reveal','observe']);return {x:region.x+region.width/2-origin.x,y:region.y+region.height/2-origin.y};
 }

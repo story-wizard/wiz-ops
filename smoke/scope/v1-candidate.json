@@ -222,9 +222,9 @@
     },
     {
       "file": "desktop/physical-course.json",
-      "sha256": "a74c1f1a3e18fc5c044be36c3e5381cb64b4682436e83a480491387ffa02cd98",
+      "sha256": "0ddf7d5f294fe47bb786aafefe2ddc757d5e1cfc1058f13cdb1981bbeafbef36",
       "id": "physical-spellbook-candidate",
-      "revision": 2,
+      "revision": 6,
       "target": "Instrumented isolated desktop with native macOS input",
       "requiredCheckIds": [
         "P-SB-CREATE",

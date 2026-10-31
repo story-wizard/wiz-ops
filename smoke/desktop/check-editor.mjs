@@ -1,3 +1,5 @@
+import {withinWidgets,inspectorRowBinding} from './ui-query.mjs';
+import {selectTimelineClip} from './timeline-controls.mjs';
 import {beginCheck,endCheck} from './check-support.mjs';
 import path from 'node:path';
 import {mkdir} from 'node:fs/promises';
@@ -13,13 +15,13 @@ const report={scope:s.scope,pid:s.pid,generation:s.generation,guiHash:s.guiHash,
 const call=(op,params)=>desktopCall(file,op,params),native=(op,params)=>nativeCall(file,op,params),ui=()=>native('inspect');
 async function until(fn){for(let i=0;i<100;i++){const v=await fn();if(v)return v;await pause(100);}throw new Error('Expected editor observation did not arrive within ten seconds.');}
 async function check(id,fn){if(!await beginCheck(file,id))return;try{report.results.push({id,status:'Pass',evidence:await fn()});}catch(e){report.results.push({id,status:e.status||'Fail',error:e.message});if(e.status==='Unknown'){await writeJSON(path.join(directory,'report.json'),report);await endCheck(file,report.results.at(-1));throw e;}}await writeJSON(path.join(directory,'report.json'),report);await endCheck(file,report.results.at(-1));}
-async function focusTimeline(){const u=await ui();await native('activate',{target:u.widgets.find(w=>w.class==='MainWindow').id});await until(async()=>(await ui()).widgets.some(w=>w.class==='MainWindow'&&w.active));return (await ui()).widgets.filter(w=>w.class==='TimelineWidget').sort((a,b)=>a.y-b.y)[0];}
+async function focusTimeline(){const u=await ui();await native('activate',{target:u.widgets.find(w=>w.class==='MainWindow').id});await until(async()=>(await ui()).widgets.some(w=>w.class==='MainWindow'&&w.active));return (await ui()).widgets.find(w=>w.class==='TimelineWidget'&&w.clipIds?.includes(s.clip));}
 async function frame(label,timeline=s.main.id){const output=path.join(directory,label+'.ppm');await call('render.export_still',{timeline_id:timeline,time:{value:24,rate:24},output});const image=await readPPM(output);assert(image.width===1920&&image.height===1080,'Wrong rendered raster');return image;}
 await call('render.bind_timeline',{timeline_id:s.main.id,playhead_frame:0});
 await check('D-EDIT-CLIPBOARD',async()=>{
   const before=await call('timeline.inspect',{timeline_id:s.main.id}),v=await focusTimeline();
   // ponytail: fixed hit point for this GP and default layout; replace with clip geometry hooks when layouts vary.
-  await native('click',{target:v.id,x:25,y:115});await native('clipboard-save');let restored;
+  await selectTimelineClip(native,v,s.clip);await native('clipboard-save');let restored;
   try{
     await native('key',{target:v.id,key:'Ctrl+C'});await pause(100);const clipboard=await native('clipboard-mark');
     assert(clipboard.formats.includes('application/x-wizard-timeline-clips'),'Copy did not publish Wizard clips');
@@ -32,15 +34,14 @@ await check('D-EDIT-CLIPBOARD',async()=>{
   }finally{restored=await native('clipboard-restore');await writeJSON(path.join(directory,'clipboard-restoration.json'),restored);assert(restored.restored,'Clipboard changed externally; original was not restored');}
 });
 await check('D-INSPECTOR-01',async()=>{
-  const v=await focusTimeline();await native('click',{target:v.id,x:25,y:115});let u=await ui();if(!u.widgets.some(w=>w.class==='ads::CFloatingDockContainer'&&w.title==='Inspector'))await native('action',{target:u.actions.find(a=>a.text==='Inspector').id});
-  u=await until(async()=>{const a=await ui();return a.widgets.some(w=>w.name==='InspectorSectionHeading'&&w.text==='Transform 2D')?a:null;});
-  if(!u.widgets.some(w=>w.name==='InspectorParamLabel'&&w.text==='Position X')){const h=u.widgets.find(w=>w.name==='InspectorSectionHeading'&&w.text==='Transform 2D');await native('click',{target:u.widgets.find(w=>w.name==='InspectorSectionDisclosure'&&w.window===h.window&&w.y===h.y).id});}
-  u=await ui();const label=u.widgets.find(w=>w.name==='InspectorParamLabel'&&w.text==='Position X'),slider=u.widgets.find(w=>w.name==='InspectorSliderControl'&&w.window===label.window&&Math.abs(w.y-label.y)<5);
-  await native('activate',{target:label.window});
-  const graph=()=>call('graph.get_clip_graph',{timeline_id:s.main.id,clip_id:s.clip});const before=await graph(),node=before.nodes.find(n=>n.params?.position_x!==undefined),original=await frame('inspector-before');
+  const v=await focusTimeline();await selectTimelineClip(native,v,s.clip);let u=await ui();if(!u.widgets.some(w=>w.class==='ads::CFloatingDockContainer'&&w.title==='Inspector'))await native('action',{target:u.actions.find(a=>a.text==='Inspector').id});
+  const graph=()=>call('graph.get_clip_graph',{timeline_id:s.main.id,clip_id:s.clip});const before=await graph(),nodes=before.nodes.filter(n=>n.type==='transform_2d'&&Number.isFinite(n.params?.position_x));assert(nodes.length===1,'Inspector fixture requires one transform');const node=nodes[0];
+  const panel=withinWidgets(await ui(),{class:'InspectorPanel'}),expand=panel.widgets.filter(w=>w.name==='InspectorExpandAllButton');assert(expand.length===1,'Inspector Expand all is unavailable or ambiguous');await native('click',{target:expand[0].id});
+  async function boundRow(){const a=withinWidgets(await ui(),{class:'InspectorPanel'}),rows=a.widgets.filter(w=>w.name==='InspectorParamControlRow'&&w.paramPath==='position_x').filter(w=>{const b=inspectorRowBinding(w);return b.ids.node_id===node.node_id&&b.ids.graph_id==='clip:'+s.main.id+':'+s.clip;});if(rows.length!==1)return null;return withinWidgets(a,{id:rows[0].id});}
+  const row=await until(boundRow),controls=row.widgets.filter(w=>w.name==='InspectorSliderControl'&&w.enabled);assert(controls.length===1,'Declared Inspector parameter has no unique control');const slider=controls[0];await native('activate',{target:slider.window});const original=await frame('inspector-before');
   await native('key',{target:slider.id,key:'Right'});const after=await until(async()=>{const g=await graph();return g.nodes.find(n=>n.node_id===node.node_id).params.position_x===node.params.position_x+1?g:null;});
   const delta=pixelDifference(original,await frame('inspector-after'));assert(delta>0.01,'Inspector edit did not change rendered pixels');
-  u=await ui();const l=u.widgets.find(w=>w.name==='InspectorParamLabel'&&w.text==='Position X');await native('click',{target:u.widgets.find(w=>w.name==='InspectorResetButton'&&w.window===l.window&&Math.abs(w.y-l.y)<5).id});await pause(100);
+  const resetRow=await boundRow(),resets=resetRow.widgets.filter(w=>w.name==='InspectorResetButton'&&w.enabled);assert(resets.length===1,'Declared Inspector parameter has no unique Reset');await native('click',{target:resets[0].id});await pause(100);
   same((await graph()).nodes.find(n=>n.node_id===node.node_id).params,node.params,'Reset parameters');const resetDelta=pixelDifference(original,await frame('inspector-reset'));assert(resetDelta===0,'Reset did not restore pixels');return {positionBefore:node.params.position_x,positionAfter:after.nodes.find(n=>n.node_id===node.node_id).params.position_x,delta,resetDelta};
 });
 await check('D-EXPORT-01',async()=>{await focusTimeline();return exportDialog({s,n:native,ui,until},path.join(directory,'export.mp4'));});

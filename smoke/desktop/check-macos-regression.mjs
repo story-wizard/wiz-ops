@@ -16,7 +16,7 @@ async function addPanel(kind){
  return until(async()=>{const u=await ui(),p=u.widgets.filter(w=>w.class===kind+'Panel'&&!ids.has(w.id));return p.length===1&&u.widgets.find(w=>w.id===p[0].window)?.class==='ads::CFloatingDockContainer'?p[0]:null;},{description:'New floating '+kind+' panel'});
 }
 async function workspace(){await h.activatePanel('Agent Workspace (Chat)','AgentWorkspacePanel');return h.floatPanel('Agent Workspace (Chat)','AgentWorkspacePanel',{width:600,height:600});}
-const workspaceRead=(p,anchorIndex)=>n('workspace-inspect',{target:p.id,...anchorIndex===undefined?{}:{anchorIndex}});
+const workspaceRead=(p,anchor)=>n('workspace-inspect',{target:p.id,...anchor===undefined?{}:typeof anchor==='number'?{anchorIndex:anchor}:anchor});
 const append=(p,text,eventId)=>n('workspace-append',{target:p.id,text,eventId:'athanor-fixture-'+eventId});
 
 await check('D-MAC-RESUME',async()=>{
@@ -59,9 +59,11 @@ await check('D-AGENT-TAIL',async()=>{
 await check('D-AGENT-SELECTORS',async()=>{
  const id='D-AGENT-SELECTORS',panel=await workspace(),results=[];
  for(const name of ['AgentWorkspaceModelSelector','AgentWorkspaceEffortSelector']){
-  await stage(name,'Hover '+(name.includes('Model')?'model':'effort')+' selector through Qt input','execute',()=>n('workspace-hover',{target:panel.id,name}));
-  await until(async()=>workspaceItem(await workspaceRead(panel),name).hovered,{description:'Selector hover observed'});await pause(500);const r=await workspaceRead(panel);await observe(id,name,r);results.push(selectorProof(r,name));
+  if(name.includes('Effort')){const model=workspaceItem(await workspaceRead(panel),'AgentWorkspaceModelSelector');await stage('open-effort','Open the model popup that owns reasoning effort','execute',()=>physical('click',{target:panel.id,x:model.x+model.width/2,y:model.y+model.height/2}));await until(async()=>workspaceItem(await workspaceRead(panel),'AgentWorkspaceModelSelector').popup?.visible);}
+  const hover=await stage(name,'Hover '+(name.includes('Model')?'model':'effort')+' selector through Qt input','execute',()=>n('workspace-hover',{target:panel.id,name}));
+  if(!name.includes('Effort'))await until(async()=>workspaceItem(await workspaceRead(panel),name).hovered,{description:'Selector hover observed'});await pause(500);const r=await workspaceRead(panel);await observe(id,name,{...r,hoverReceipt:hover});results.push(selectorProof(r,name,hover));
  }
+ await physical('key',{target:panel.id,key:'Escape'});
  await capture(id,'selectors',panel.window);return {selectors:results,inputMode:'Qt-injected hover, matching the source regression; no AX inspection or provider execution'};
 });
 await check('D-AGENT-HEADER',async()=>{
@@ -69,14 +71,16 @@ await check('D-AGENT-HEADER',async()=>{
  await stage('active-fixture','Set local model/effort options and a fake active event','prepare',()=>n('workspace-header',{target:panel.id,phase:'begin'}));
  try{
   await n('resize-window',{target:panel.window,width:280,height:800});await pause(300);const narrow=await workspaceRead(panel);await observe(id,'narrow',narrow);await capture(id,'narrow',panel.window);
+  const model=workspaceItem(narrow,'AgentWorkspaceModelSelector');await stage('open-effort','Open the narrow header model popup','execute',()=>physical('click',{target:panel.id,x:model.x+model.width/2,y:model.y+model.height/2}));
+  const popup=await until(async()=>{const r=await workspaceRead(panel);return r.items.some(w=>w.name==='AgentWorkspaceEffortSelector'&&w.visible)?r:null;});await observe(id,'effort-popup',popup);await capture(id,'effort-popup',panel.window);await physical('key',{target:panel.id,key:'Escape'});
   await stage('idle-controls','Hide Cancel before checking the wide events control','execute',()=>n('workspace-header',{target:panel.id,phase:'hide-cancel'}));
-  await n('resize-window',{target:panel.window,width:600,height:800});await pause(300);const wide=await workspaceRead(panel);await observe(id,'wide',wide);let proof;await verification({id:'header-layout',title:'Verify narrow and wide header controls',phase:'verify'},{expected:{minimumTitleWidth:62,model:'Luna',effort:'Low',narrowCancelVisible:true,wideEventsVisible:true},actual:{narrow:narrow.items.filter(w=>/Title|Selector|Cancel|EventMenu/.test(w.name)),wide:wide.items.filter(w=>/Title|Selector|Cancel|EventMenu/.test(w.name))}},()=>{proof=headerProof(narrow,wide);});await capture(id,'wide',panel.window);return {...proof,fixture:'Synthetic running event; no real agent execution',scope:'Title and active-control geometry at 280 points, events menu at 600. Custom-model popup sizing remains separate.'};
+  await n('resize-window',{target:panel.window,width:600,height:800});await pause(300);const wide=await workspaceRead(panel);await observe(id,'wide',wide);let proof;await verification({id:'header-layout',title:'Verify narrow and wide header controls',phase:'verify'},{expected:{minimumTitleWidth:62,model:'Luna',effort:'Low',narrowCancelVisible:true,wideEventsVisible:true},actual:{narrow:narrow.items.filter(w=>/Title|Selector|Cancel|EventMenu/.test(w.name)),wide:wide.items.filter(w=>/Title|Selector|Cancel|EventMenu/.test(w.name))}},()=>{proof=headerProof(narrow,wide,popup);});await capture(id,'wide',panel.window);return {...proof,fixture:'Synthetic running event; no real agent execution',scope:'Title and active-control geometry at 280 points, events menu at 600. Custom-model popup sizing remains separate.'};
  }catch(e){uncertain=e.status==='Unknown';throw e;}finally{if(!uncertain)await stage('restore','Restore the original controller options and Cancel state','cleanup',async()=>{await n('workspace-header',{target:panel.id,phase:'end'});const restored=(await workspaceRead(panel)).controller;for(const key of ['modelOptions','currentModelIndex','effortOptions','currentEffortIndex','cancelVisible'])same(restored[key],original[key],'Header fixture restores '+key);});}
 });
 await check('D-AGENT-IMAGE',async()=>{
  const id='D-AGENT-IMAGE',panel=await workspace(),directory=path.join(s.bundle,'assets/context/images'),source=path.join(s.root,'media','still.png');await mkdir(directory,{recursive:true});
  const image=path.join(directory,'athanor-square.png'),receipt=await command('ffmpeg',['-v','error','-y','-i',source,'-vf','scale=400:400',image],{timeout:10000});assert(receipt.code===0,'Square local image fixture could not be generated');
- await stage('inline-image','Append a local project-relative Markdown image','prepare',()=>append(panel,'![Athanor local image](assets/context/images/athanor-square.png)','inline-image'));
+ await stage('inline-image','Append a local project-relative Markdown image','prepare',()=>n('workspace-append',{target:panel.id,text:'![Athanor local image](assets/context/images/athanor-square.png)',eventId:'athanor-fixture-inline-image',fixtureBundle:s.bundle}));
  await stage('image-load','Wait for the packaged inline-image resource','verify',()=>until(async()=>{const r=await workspaceRead(panel);return r.items.some(w=>w.images?.length)?r:null;},{description:'Packaged document contains an inline image'}));
  const reads=[];for(const width of [400,120,400]){await stage('width-'+reads.length,'Apply packaged image sizing at '+width+' points','execute',()=>n('workspace-image-width',{target:panel.id,width}));await pause(100);reads.push(await workspaceRead(panel));}
  await observe(id,'sizes',reads);let proof;await verification({id:'image-sizing',title:'Verify cap, shrink and restored image resource',phase:'verify'},{expected:{sizes:[200,120,200],cornerAlpha:0,localResource:true},actual:reads.map(r=>({complete:r.complete,images:r.items.filter(w=>w.images?.length).flatMap(w=>w.images)}))},()=>{proof=inlineImageProof(reads);});await capture(id,'restored-image',panel.window);return {...proof,scope:'Real QTextDocument image formats/resources and packaged sizing method; controlled local square fixture, no download or provider call.'};
@@ -94,10 +98,10 @@ await check('D-AGENT-SCROLL-AWAY',async()=>{
  await stage('resume','Explicitly resume tail follow','execute',()=>n('workspace-scroll',{target:panel.id,phase:'resume'}));const resumed=await until(async()=>{const r=await workspaceRead(panel),w=workspaceItem(r,'AgentWorkspaceMessageList');return w.atYEnd&&w.followTail?r:null;});await observe(id,'resumed',resumed);return {...scrollAwayProof(before,samples,resumed),scope:'Source-matched Qt gesture lifecycle and relative content offset; physical wheel delivery remains separate.'};
 });
 await check('D-AGENT-GESTURE-ANCHOR',async()=>{
- const id='D-AGENT-GESTURE-ANCHOR',panel=await workspace(),initial=await stage('transcript','Prepare the scrolling transcript','prepare',()=>transcriptFixture(panel)),index=workspaceItem(initial,'AgentWorkspaceMessageList').count-1;
+ const id='D-AGENT-GESTURE-ANCHOR',panel=await workspace(),initial=await stage('transcript','Prepare the scrolling transcript','prepare',()=>transcriptFixture(panel));
  await stage('gesture','Begin the source regression tail gesture','execute',()=>n('workspace-scroll',{target:panel.id,phase:'begin'}));
- const before=await workspaceRead(panel,index);await observe(id,'before',before);await stage('append','Append a taller response during the active gesture','execute',()=>append(panel,'A response arriving during a downward gesture. '.repeat(16),'gesture-append'));
- const samples=[];for(let i=0;i<4;i++){samples.push(await workspaceRead(panel,index));await pause(50);}await observe(id,'samples',samples);await capture(id,'held-anchor',panel.window);
+ const before=await workspaceRead(panel,{anchorVisible:true}),anchorEventId=workspaceItem(before,'AgentWorkspaceMessageList').anchor.identity;await observe(id,'before',before);await stage('append','Append a taller response during the active gesture','execute',()=>append(panel,'A response arriving during a downward gesture. '.repeat(16),'gesture-append'));
+ const samples=[];for(let i=0;i<4;i++){samples.push(await workspaceRead(panel,{anchorEventId}));await pause(50);}await observe(id,'samples',samples);await capture(id,'held-anchor',panel.window);
  await stage('release','End the gesture and catch up to the tail','execute',()=>n('workspace-scroll',{target:panel.id,phase:'end'}));const resumed=await until(async()=>{const r=await workspaceRead(panel),w=workspaceItem(r,'AgentWorkspaceMessageList');return !w.userScrollActive&&w.atYEnd&&w.followTail?r:null;});await observe(id,'resumed',resumed);return {...gestureAnchorProof(before,samples,resumed),scope:'Qt-injected movement lifecycle; stable delegate identity and viewport offset independently observed, no physical drag claim.'};
 });
 await check('D-AGENT-CUSTOM-MODEL',async()=>{

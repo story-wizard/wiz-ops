@@ -36,13 +36,19 @@ export function tailFollowProof(before,samples){
  for(const read of samples){const w=workspaceItem(read,'AgentWorkspaceMessageList');assert(w.count===a.count+1,'Append did not add exactly one transcript row');assert(w.contentY>=a.contentY-.5&&Math.abs(w.contentY-tail(w))<=.5&&w.followTail===true,'Appended transcript bounced away from the tail');}
  return {beforeCount:a.count,afterCount:a.count+1,samples:samples.length,tolerance:.5};
 }
-export function selectorProof(observation,name){
- const w=workspaceItem(observation,name);assert(w.visible&&w.enabled&&w.hovered===true,'Selector was not hovered');assert(typeof w.accessibleDescription==='string'&&w.accessibleDescription.trim().length>0,'Selector accessible description missing');assert(w.tooltipVisible===false,'Selector displayed a hover tooltip');return {name,description:w.accessibleDescription,hovered:true,tooltipVisible:false};
+export function selectorProof(observation,name,receipt){
+ const w=workspaceItem(observation,name);assert(w.visible&&w.enabled,'Selector is unavailable');
+ if(Object.hasOwn(w,'hovered'))assert(w.hovered===true,'Selector was not hovered');
+ else assert(name==='AgentWorkspaceEffortSelector'&&receipt?.dispatched===true&&receipt.name===name&&Number.isFinite(receipt.localX)&&Number.isFinite(receipt.localY),'Effort slider needs a verified Qt pointer dispatch');assert(typeof w.accessibleDescription==='string'&&w.accessibleDescription.trim().length>0,'Selector accessible description missing');assert(w.tooltipVisible===false,'Selector displayed a hover tooltip');return {name,description:w.accessibleDescription,hovered:w.hovered??null,inputMode:receipt?.inputMode??'Qt hover state',tooltipVisible:false};
 }
-export function headerProof(narrow,wide){
- const item=(o,n)=>workspaceItem(o,'AgentWorkspace'+n),title=item(narrow,'TitleSlot'),text=item(narrow,'TitleText'),model=item(narrow,'ModelSelector'),effort=item(narrow,'EffortSelector'),cancel=item(narrow,'CancelButton');
- assert(title.width>=62&&text.width>0,'Minimum-width header lost its title');assert(!item(narrow,'EventMenu').visible&&cancel.visible,'Narrow header did not prioritize the active Cancel control');assert(model.displayText==='Luna'&&effort.displayText==='Low','Authored header controls did not load');
- assert(effort.x>=model.x+model.width-.5&&cancel.x>=effort.x+effort.width-.5,'Header controls overlap');assert(cancel.localX+cancel.width<=cancel.parentWidth+.5,'Active Cancel control exceeds its header');assert(item(wide,'EventMenu').visible,'Wide header did not restore its events menu');return {titleWidth:title.width,narrowEvents:false,cancel:true,wideEvents:true};
+export function headerProof(narrow,wide,popup){
+ const item=(o,n)=>workspaceItem(o,'AgentWorkspace'+n),title=item(narrow,'TitleSlot'),text=item(narrow,'TitleText'),model=item(narrow,'ModelSelector'),cancel=item(narrow,'CancelButton');
+ assert(title.width>=62&&text.width>0,'Minimum-width header lost its title');assert(!item(narrow,'EventMenu').visible&&cancel.visible,'Narrow header did not prioritize the active Cancel control');assert(model.displayText==='Luna','Authored model control did not load');
+ assert(cancel.x>=model.x+model.width-.5,'Header controls overlap');assert(cancel.localX+cancel.width<=cancel.parentWidth+.5,'Active Cancel control exceeds its header');assert(item(wide,'EventMenu').visible,'Wide header did not restore its events menu');
+ const effort=item(popup,'EffortSelector'),value=item(popup,'EffortValue'),selector=item(popup,'ModelSelector');
+ assert(selector.open&&selector.popup?.visible&&effort.visible&&effort.enabled&&effort.selectedText==='Low'&&value.text==='Low','Reasoning effort is absent from the open model popup');
+ assert(effort.x>=-.5&&effort.x+effort.width<=popup.panelWidth+.5&&effort.y>=0&&effort.y+effort.height<=popup.panelHeight+.5,'Effort control exceeds the owned panel');
+ return {titleWidth:title.width,narrowEvents:false,cancel:true,wideEvents:true,effortInModelPopup:true};
 }
 export function inlineImageProof(reads){
  assert(reads.length===3,'Inline image needs cap, shrink and widen observations');
@@ -61,7 +67,7 @@ export function scrollAwayProof(before,samples,resumed){
 export function gestureAnchorProof(before,samples,resumed){
  const a=workspaceItem(before,'AgentWorkspaceMessageList');assert(a.userScrollActive===true&&a.followTail===true&&a.anchor?.identity&&Number.isFinite(a.anchor.offset),'Owned tail gesture and materialized anchor required');
  assert(samples.length>=3,'Gesture anchor needs append and settled samples');
- for(const read of samples){const w=workspaceItem(read,'AgentWorkspaceMessageList');assert(w.count===a.count+1&&w.userScrollActive===true&&w.followTail===true&&w.anchor?.identity===a.anchor.identity&&w.anchor.index===a.anchor.index&&Math.abs(w.anchor.offset-a.anchor.offset)<=.5,'Append moved or replaced the held transcript anchor');}
+ for(const read of samples){const w=workspaceItem(read,'AgentWorkspaceMessageList');assert(w.count===a.count+1&&w.userScrollActive===true&&w.followTail===true&&w.anchor?.identity===a.anchor.identity&&Math.abs(w.anchor.offset-a.anchor.offset)<=.5,'Append moved or replaced the held transcript anchor');}
  const end=workspaceItem(resumed,'AgentWorkspaceMessageList');assert(end.count===a.count+1&&end.userScrollActive===false&&end.followTail===true&&end.atYEnd===true,'Gesture end did not catch up to the tail');
  return {anchorIndex:a.anchor.index,anchorOffset:a.anchor.offset,afterCount:a.count+1,caughtUp:true,tolerance:.5};
 }

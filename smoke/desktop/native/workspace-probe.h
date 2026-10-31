@@ -27,7 +27,7 @@ struct WorkspaceProbe {
         if(!view||!container||!container->isVisible()||!controller||view->status()!=QQuickView::Ready)throw QString("Owned workspace Quick surface is unavailable");
     }
     QList<QQuickItem*> items() const {
-        QList<QQuickItem*> all,pending{view->rootObject()};
+        QList<QQuickItem*> all,pending{view->contentItem()};
         while(!pending.isEmpty()){
             if(all.size()>=8192)throw QString("Workspace visual tree exceeds observation bounds");
             auto* item=pending.takeFirst();all.append(item);pending.append(item->childItems());
@@ -91,10 +91,10 @@ struct WorkspaceProbe {
     QJsonObject inspect(QWidget* panel,const QJsonObject& request) const {
         QJsonArray result;const auto offset=container->mapTo(panel,QPoint{});
         for(auto* item:items()){
-            if(!QStringList{"AgentWorkspaceMessageList","AgentWorkspaceModelSelector","AgentWorkspaceEffortSelector","AgentWorkspaceTitleSlot","AgentWorkspaceTitleText","AgentWorkspaceEventMenu","AgentWorkspaceCancelButton","AgentWorkspaceMessageBody"}.contains(item->objectName()))continue;
+            if(!QStringList{"AgentWorkspaceMessageList","AgentWorkspaceModelSelector","AgentWorkspaceEffortSelector","AgentWorkspaceEffortValue","AgentWorkspaceTitleSlot","AgentWorkspaceTitleText","AgentWorkspaceEventMenu","AgentWorkspaceCancelButton","AgentWorkspaceMessageBody"}.contains(item->objectName()))continue;
             const auto point=item->mapToScene(QPointF{});
             QJsonObject row{{"name",item->objectName()},{"visible",item->isVisible()},{"enabled",item->isEnabled()},{"x",point.x()+offset.x()},{"y",point.y()+offset.y()},{"localX",item->x()},{"localY",item->y()},{"width",item->width()},{"height",item->height()},{"parentWidth",item->parentItem()?item->parentItem()->width():0},{"focus",item->hasActiveFocus()}};
-            for(const char* key:{"text","displayText","contentY","contentHeight","originY","bottomMargin","atYEnd","followTail","userScrollActive","count","hovered","open","truncated","currentIndex","disabledIndices"}){
+            for(const char* key:{"text","displayText","contentY","contentHeight","originY","bottomMargin","atYEnd","followTail","userScrollActive","count","hovered","open","truncated","currentIndex","disabledIndices","selectedText"}){
                 const auto value=item->property(key);if(value.isValid()){auto json=QJsonValue::fromVariant(value);if(QJsonDocument(QJsonObject{{"v",json}}).toJson().size()>16384)throw QString("Workspace property exceeds observation bounds");row[key]=json;}
             }
             if(item->objectName()=="AgentWorkspaceModelSelector"||item->objectName()=="AgentWorkspaceEffortSelector"){
@@ -118,18 +118,30 @@ struct WorkspaceProbe {
                 }
                 row["images"]=images;
             }
-            if(item->objectName()=="AgentWorkspaceMessageList"&&request.contains("anchorIndex")){
-                const auto index=request["anchorIndex"].toInt(-1);if(!request["anchorIndex"].isDouble()||request["anchorIndex"].toDouble()!=index||index<0||index>255||index>=item->property("count").toInt())throw QString("Use an observed transcript index from 0 to 255");
-                QQuickItem* anchor=nullptr;if(!QMetaObject::invokeMethod(item,"itemAtIndex",Qt::DirectConnection,Q_RETURN_ARG(QQuickItem*,anchor),Q_ARG(int,index))||!anchor)throw QString("Transcript anchor is not materialized; reveal and observe again");
-                row["anchor"]=QJsonObject{{"index",index},{"identity",QString::number(quintptr(anchor),16)},{"offset",anchor->y()-item->property("contentY").toDouble()}};
+            if(item->objectName()=="AgentWorkspaceMessageList"&&(request.contains("anchorIndex")||request.contains("anchorEventId")||request["anchorVisible"].toBool())){
+                QQuickItem* anchor=nullptr;
+                if(request.contains("anchorIndex")){
+                    const auto index=request["anchorIndex"].toInt(-1);if(!request["anchorIndex"].isDouble()||request["anchorIndex"].toDouble()!=index||index<0||index>255||index>=item->property("count").toInt())throw QString("Use an observed transcript index from 0 to 255");
+                    if(!QMetaObject::invokeMethod(item,"itemAtIndex",Qt::DirectConnection,Q_RETURN_ARG(QQuickItem*,anchor),Q_ARG(int,index))||!anchor)throw QString("Transcript anchor is not materialized; reveal and observe again");
+                }else{
+                    const QString event=request["anchorEventId"].toString();if(request.contains("anchorEventId")&&(event.isEmpty()||event.size()>100))throw QString("Use the observed bounded transcript event identity");
+                    for(auto* candidate:items())if(candidate->objectName()=="ChatMessageDelegate"&&candidate->isVisible()){
+                        const auto y=candidate->mapToItem(item,QPointF{}).y();
+                        if(request["anchorVisible"].toBool()){if(y>=0&&y+candidate->height()<=item->height()&&!candidate->property("eventId").toString().isEmpty()&&(!anchor||y<anchor->mapToItem(item,QPointF{}).y()))anchor=candidate;}
+                        else if(candidate->property("eventId").toString()==event){if(anchor)throw QString("Transcript event identity is ambiguous");anchor=candidate;}
+                    }
+                }
+                if(!anchor)throw QString("Transcript event anchor is not materialized; reveal and observe again");
+                const auto event=anchor->property("eventId").toString();if(event.isEmpty())throw QString("Transcript anchor has no event identity");
+                row["anchor"]=QJsonObject{{"index",anchor->property("index").toInt()},{"identity",event},{"delegate",QString::number(quintptr(anchor),16)},{"offset",anchor->mapToItem(item,QPointF{}).y()}};
             }
             result.append(row);
         }
         QJsonObject state;for(const char* key:{"modelOptions","currentModelIndex","effortOptions","currentEffortIndex","effortEnabled","disabledModelIndices","cancelVisible","chatEvents"})state[key]=QJsonValue::fromVariant(controller->property(key));
         if(result.size()>256)throw QString("Named workspace items exceed observation bounds");
-        return {{"items",result},{"controller",state},{"complete",true},{"surface",view->objectName()},{"setupScope","Direct packaged Qt Quick state; no provider execution"}};
+        return {{"panelWidth",panel->width()},{"panelHeight",panel->height()},{"items",result},{"controller",state},{"complete",true},{"surface",view->objectName()},{"setupScope","Direct packaged Qt Quick state; no provider execution"}};
     }
-    void append(QWidget* panel,const QJsonObject& request) const {
+    void append(QWidget* panel,const QJsonObject& request,const QString& sessionRoot) const {
         const auto text=request["text"].toString(),event=request["eventId"].toString();
         if(text.isEmpty()||text.size()>4096||!event.startsWith("athanor-fixture-")||event.size()>100||text.contains("://"))throw QString("Use bounded local fixture text and an athanor-fixture event ID");
         if(text.contains(QRegularExpression("<[^>]+>")))throw QString("Fixture text cannot contain HTML");
@@ -137,15 +149,39 @@ struct WorkspaceProbe {
         const QRegularExpression imagePath(R"(^assets/context/images/[a-zA-Z0-9_-][a-zA-Z0-9_.-]*\.png$)");
         while(references.hasNext()){const auto reference=references.next().captured(1);if(!imagePath.match(reference).hasMatch()||reference.contains(".."))throw QString("Fixture references must be local project-relative PNG images");}
         QList<QObject*> histories;for(auto* window:QApplication::topLevelWidgets())if(QString(window->metaObject()->className())=="MainWindow")for(auto* object:window->findChildren<QObject*>())if(QString(object->metaObject()->className())=="ChatHistory")histories.append(object);
-        using Append=void(*)(QObject*,const QString&,bool,const QString&);
-        auto call=reinterpret_cast<Append>(dlsym(RTLD_DEFAULT,"_ZN11ChatHistory18appendAgentMessageERK7QStringbS2_"));
-        if(histories.size()!=1||!call)throw QString("Reviewed three-argument ChatHistory append API unavailable; no fixture was appended");
-        call(histories.first(),text,true,event);
+        if(histories.size()!=1)throw QString("Observe one owned ChatHistory; no fixture was appended");
+        using Append4=void(*)(QObject*,const QString&,bool,const QString&,const QVariantList&);
+        using Append3=void(*)(QObject*,const QString&,bool,const QString&);
+        auto current=reinterpret_cast<Append4>(dlsym(RTLD_DEFAULT,"_ZN11ChatHistory18appendAgentMessageERK7QStringbS2_RK5QListI8QVariantE"));
+        auto legacy=reinterpret_cast<Append3>(dlsym(RTLD_DEFAULT,"_ZN11ChatHistory18appendAgentMessageERK7QStringbS2_"));
+        if(!current&&!legacy)throw QString("Reviewed ChatHistory append API unavailable; no fixture was appended");
+        if(request.contains("fixtureBundle")){
+            // Image admission now requires a verified project identity as well as
+            // a local path. Establish only this disposable session's image fixture.
+            const QFileInfo bundle(request["fixtureBundle"].toString()),owned(QDir(sessionRoot).filePath("projects"));
+            const QString path=bundle.canonicalFilePath(),parent=owned.canonicalFilePath();
+            const QFileInfo image(QDir(path).filePath("assets/context/images/athanor-square.png"));
+            if(event!="athanor-fixture-inline-image"||text!="![Athanor local image](assets/context/images/athanor-square.png)"||parent.isEmpty()||!path.startsWith(parent+"/")||!bundle.isDir()||!bundle.fileName().endsWith(".wiz")||!image.isFile()||image.canonicalFilePath()!=image.absoluteFilePath())throw QString("Image fixture must stay in this session's disposable project");
+            using Bind=void(*)(QObject*,const QString&,const QString&);using Origin=void(*)(QObject*,const QString&);using Root=QString(*)(const QObject*,const QString&);
+            auto bind=reinterpret_cast<Bind>(dlsym(RTLD_DEFAULT,"_ZN24AgentWorkspaceController24setProjectContextBindingERK7QStringS2_"));
+            auto origin=reinterpret_cast<Origin>(dlsym(RTLD_DEFAULT,"_ZN11ChatHistory18setOriginProjectIdERK7QString"));
+            auto readRoot=reinterpret_cast<Root>(dlsym(RTLD_DEFAULT,"_ZNK24AgentWorkspaceController18projectContextRootERK7QString"));
+            if(!bind||!origin||!readRoot)throw QString("Reviewed project-bound image fixture API unavailable; no fixture was appended");
+            const QString fixtureId="athanor-fixture-inline-image";bind(controller,fixtureId,path);
+            if(readRoot(controller,fixtureId)!=path)throw QString("Disposable image project binding was rejected; no fixture was appended");
+            origin(histories.first(),fixtureId);
+        }
+        if(current)current(histories.first(),text,true,event,QVariantList{});
+        else if(legacy)legacy(histories.first(),text,true,event);
+        else throw QString("Reviewed ChatHistory append API unavailable; no fixture was appended");
     }
-    void hover(const QJsonObject& request) const {
+    QJsonObject hover(const QJsonObject& request) const {
         const auto name=request["name"].toString();if(name!="AgentWorkspaceModelSelector"&&name!="AgentWorkspaceEffortSelector")throw QString("Hover requires a model or effort selector");
         auto* item=named(name);if(!item->isVisible()||!item->isEnabled())throw QString("Workspace selector is unavailable");
-        QTest::mouseMove(view,item->mapToScene(QPointF(item->width()/2,item->height()/2)).toPoint());
+        // Hover delivery does not use childAt(): decorative Quick overlays can
+        // be visible without accepting hover. Read the control state afterward.
+        const auto point=visibleBounds(item).center().toPoint();QTest::mouseMove(view,point);
+        return {{"dispatched",true},{"name",name},{"localX",point.x()},{"localY",point.y()},{"inputMode","Qt pointer event on the owned visible selector"}};
     }
     void header(const QJsonObject& request) const {
         const auto phase=request["phase"].toString();if(phase!="begin"&&phase!="end"&&phase!="hide-cancel")throw QString("Choose begin, hide-cancel or end for the owned header fixture");

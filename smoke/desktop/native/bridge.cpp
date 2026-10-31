@@ -95,7 +95,7 @@ class SmokeBridge : public QObject {
         output.write(QJsonDocument(value).toJson());output.commit();
     }
     static QJsonObject capabilities(){
-        return {{"protocol",1},{"version",13},{"operations",QJsonArray{"capabilities","inspect","add-floating-panel","workspace-inspect","workspace-composer-inspect","workspace-composer-type","workspace-composer-send","workspace-append","workspace-hover","workspace-scroll","workspace-pipeline-inspect","workspace-request-selection","workspace-model-fixture","workspace-header","workspace-image-width","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
+        return {{"protocol",1},{"version",13},{"operations",QJsonArray{"capabilities","inspect","add-floating-panel","workspace-inspect","workspace-composer-inspect","workspace-composer-type","workspace-composer-send","workspace-append","workspace-hover","workspace-scroll","workspace-pipeline-inspect","workspace-request-selection","workspace-model-fixture","workspace-header","workspace-image-width","model-page","model-value","model-reveal","bug-report-prefill","timeline-track-header","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
                 {"buttonClickGeometry",true},{"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
                 {"timelinePoint",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget7timeToXEd")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11trackHeightEi"))},
                 {"limits",QJsonObject{{"modelRows",64},{"modelPageRows",64},{"timelineClipIds",1024},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
@@ -163,7 +163,7 @@ class SmokeBridge : public QObject {
             if(auto* p=qobject_cast<QAbstractSlider*>(w)){item["value"]=p->value();item["minimum"]=p->minimum();item["maximum"]=p->maximum();item["orientation"]=p->orientation()==Qt::Horizontal?"horizontal":"vertical";}
             if(auto* p=qobject_cast<QSlider*>(w)){QStyleOptionSlider opt;opt.initFrom(p);opt.orientation=p->orientation();opt.minimum=p->minimum();opt.maximum=p->maximum();opt.upsideDown=p->invertedAppearance();auto center=[&](int value){opt.sliderPosition=value;opt.sliderValue=value;return p->style()->subControlRect(QStyle::CC_Slider,&opt,QStyle::SC_SliderHandle,p).center();};auto point=[](QPoint v){return QJsonArray{v.x(),v.y()};};item["handle"]=point(center(p->value()));item["minHandle"]=point(center(p->minimum()));item["maxHandle"]=point(center(p->maximum()));const auto groove=p->style()->subControlRect(QStyle::CC_Slider,&opt,QStyle::SC_SliderGroove,p);item["groove"]=QJsonArray{groove.x(),groove.y(),groove.width(),groove.height()};}
             if(auto* p=qobject_cast<QTextEdit*>(w)){item["text"]=p->toPlainText().left(32768);item["html"]=p->toHtml().left(65536);}
-            if(auto* p=qobject_cast<QGraphicsView*>(w);p&&p->scene()){QJsonArray entries;item["sceneTextTruncated"]=false;for(auto* g:p->scene()->items()){QString text;if(auto* t=qgraphicsitem_cast<QGraphicsTextItem*>(g))text=t->toPlainText();if(auto* t=qgraphicsitem_cast<QGraphicsSimpleTextItem*>(g))text=t->text();if(text.isEmpty())continue;if(entries.size()>=256){item["sceneTextTruncated"]=true;break;}auto r=p->mapFromScene(g->sceneBoundingRect()).boundingRect();entries.append(QJsonObject{{"text",text},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}});}item["sceneText"]=entries;item["viewport"]=id(p->viewport());}
+            if(auto* p=qobject_cast<QGraphicsView*>(w);p&&p->scene()){QJsonArray entries;item["sceneTextTruncated"]=false;for(auto* g:p->scene()->items()){if(!g->isVisible())continue;QString text;if(auto* t=qgraphicsitem_cast<QGraphicsTextItem*>(g))text=t->toPlainText();if(auto* t=qgraphicsitem_cast<QGraphicsSimpleTextItem*>(g))text=t->text();if(text.isEmpty())continue;if(entries.size()>=256){item["sceneTextTruncated"]=true;break;}auto r=p->mapFromScene(g->sceneBoundingRect()).boundingRect();entries.append(QJsonObject{{"text",text},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()}});}item["sceneText"]=entries;item["viewport"]=id(p->viewport());}
 
             if(QString(w->metaObject()->className())=="TimelineWidget"){
                 for(auto* owner=w->parentWidget();owner;owner=owner->parentWidget())if(QString(owner->metaObject()->className())=="TimelinePanel"){
@@ -188,16 +188,17 @@ class SmokeBridge : public QObject {
                 auto graph=reinterpret_cast<Getter>(dlsym(RTLD_DEFAULT,"_ZNK16RenderGraphPanel16inspectorGraphIdEv"));
                 auto timeline=reinterpret_cast<Getter>(dlsym(RTLD_DEFAULT,"_ZNK16RenderGraphPanel19inspectorTimelineIdEv"));
                 for(auto* owner=w->parentWidget();owner;owner=owner->parentWidget())if(QString(owner->metaObject()->className())=="RenderGraphPanel"){
-                    if(graph)item["graphId"]=graph(owner);if(timeline)item["timelineId"]=timeline(owner);break;
+                    if(graph)item["graphId"]=graph(owner);if(timeline)item["timelineId"]=timeline(owner);using Selection=QStringList(*)(const QWidget*);auto selection=reinterpret_cast<Selection>(dlsym(RTLD_DEFAULT,"_ZNK16RenderGraphPanel15selectedNodeIdsEv"));if(selection)item["selectedNodeIds"]=QJsonArray::fromStringList(selection(owner));break;
                 }
             }
             if(auto* p=qobject_cast<QComboBox*>(w)){QJsonArray entries,values;for(int i=0;i<p->count();i++){entries.append(p->itemText(i));values.append(QJsonValue::fromVariant(p->itemData(i)));}item["items"]=entries;item["itemValues"]=values;item["index"]=p->currentIndex();}
-            if(auto* p=qobject_cast<QGraphicsView*>(w);p&&p->scene()){QJsonArray entries;item["sceneItemsTruncated"]=false;for(auto* g:p->scene()->items()){if(!(g->flags()&QGraphicsItem::ItemIsSelectable))continue;if(entries.size()>=128){item["sceneItemsTruncated"]=true;break;}QJsonArray labels;for(auto* child:g->childItems())if(auto* proxy=qgraphicsitem_cast<QGraphicsProxyWidget*>(child);proxy&&proxy->widget())for(auto* label:proxy->widget()->findChildren<QLabel*>())labels.append(label->text());const auto r=p->mapFromScene(g->sceneBoundingRect()).boundingRect();QJsonArray ports;
+            if(auto* p=qobject_cast<QGraphicsView*>(w);p&&p->scene()){QJsonArray entries;item["sceneItemsTruncated"]=false;for(auto* g:p->scene()->items()){if(!(g->flags()&QGraphicsItem::ItemIsSelectable)||!g->isVisible())continue;if(entries.size()>=128){item["sceneItemsTruncated"]=true;break;}QJsonArray labels;for(auto* child:g->childItems())if(auto* proxy=qgraphicsitem_cast<QGraphicsProxyWidget*>(child);proxy&&proxy->widget())for(auto* label:proxy->widget()->findChildren<QLabel*>())labels.append(label->text());const auto r=p->mapFromScene(g->sceneBoundingRect()).boundingRect();QJsonArray ports;
                 for(auto* child:g->childItems())if(child->isVisible()&&(qgraphicsitem_cast<QGraphicsEllipseItem*>(child)||(QString(p->metaObject()->className())=="RenderGraphView"&&child->type()==QGraphicsItem::UserType+1&&child->boundingRect()==QRectF(-6,-6,12,12)))){
                     const auto center=p->mapFromScene(child->mapToScene(child->boundingRect().center()));
                     ports.append(QJsonObject{{"x",center.x()},{"y",center.y()},{"side",child->pos().x()<g->boundingRect().center().x()?"input":"output"},{"tooltip",child->toolTip()}});
                 }
-                QJsonObject node{{"labels",labels},{"selected",g->isSelected()},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()},{"sceneX",g->pos().x()},{"sceneY",g->pos().y()},{"ports",ports}};
+                const auto headerPoint=p->mapFromScene(g->mapToScene(QPointF(g->boundingRect().center().x(),g->boundingRect().top()+std::min(14.0,g->boundingRect().height()/4))));
+                QJsonObject node{{"headerPoint",QJsonObject{{"x",headerPoint.x()},{"y",headerPoint.y()}}},{"labels",labels},{"selected",g->isSelected()},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()},{"sceneX",g->pos().x()},{"sceneY",g->pos().y()},{"ports",ports}};
                 if(QString(p->metaObject()->className())=="RenderGraphView"&&g->type()==QGraphicsItem::UserType+4&&g->toGraphicsObject()){
                     using Getter=QString(*)(const QGraphicsObject*);auto getter=reinterpret_cast<Getter>(dlsym(RTLD_DEFAULT,"_ZNK14RenderNodeItem6nodeIdEv"));
                     if(getter)node["nodeId"]=getter(g->toGraphicsObject());
@@ -215,7 +216,7 @@ class SmokeBridge : public QObject {
                 if(index>=0){const auto key=id(w);if(!previewSpies.contains(key))previewSpies[key]=QSharedPointer<QSignalSpy>::create(w,w->metaObject()->method(index));if(previewSpies[key]->isValid())item["playClickedCount"]=previewSpies[key]->count();}
             }
             widgets.append(item);
-            for(auto* a:w->findChildren<QAction*>(QString{},scope?Qt::FindDirectChildrenOnly:Qt::FindChildrenRecursively))if(!seen.contains(a)){seen.insert(a);QJsonObject action{{"id",id(a)},{"text",a->text()},{"name",a->objectName()},{"enabled",a->isEnabled()},{"checked",a->isChecked()},{"checkable",a->isCheckable()},{"shortcut",a->shortcut().toString()}};if(a->property("mediaSearchBaseLabel").isValid())action["mediaSearchSource"]=a->property("mediaSearchBaseLabel").toString();actions.append(action);}
+            for(auto* a:w->findChildren<QAction*>(QString{},scope?Qt::FindDirectChildrenOnly:Qt::FindChildrenRecursively))if(!seen.contains(a)){seen.insert(a);QJsonObject action{{"id",id(a)},{"owner",id(a->parent())},{"text",a->text()},{"name",a->objectName()},{"enabled",a->isEnabled()},{"checked",a->isChecked()},{"checkable",a->isCheckable()},{"shortcut",a->shortcut().toString()}};if(a->property("mediaSearchBaseLabel").isValid())action["mediaSearchSource"]=a->property("mediaSearchBaseLabel").toString();actions.append(action);}
         }
         QString focus=qApp->focusWidget()?id(qApp->focusWidget()):QString();
         // Native file panels are AppKit surfaces. Read public view/window APIs;
@@ -268,8 +269,8 @@ class SmokeBridge : public QObject {
             if(op=="workspace-composer-inspect")return probe.composer([this](QObject* object){return id(object);});
             if(op=="workspace-inspect")return probe.inspect(widget,request);
             if(op=="workspace-pipeline-inspect")return probe.pipelineState();
-            if(op=="workspace-append")probe.append(widget,request);
-            else if(op=="workspace-hover")probe.hover(request);
+            if(op=="workspace-append")probe.append(widget,request,QFileInfo(root).dir().absolutePath());
+            else if(op=="workspace-hover")return probe.hover(request);
             else if(op=="workspace-scroll")probe.scroll(request);
             else if(op=="workspace-request-selection")probe.requestSelection(request);
             else if(op=="workspace-model-fixture")probe.modelFixture(request);
@@ -312,6 +313,19 @@ class SmokeBridge : public QObject {
             throw QString("Native panel window is unavailable");
         }
         if(op=="bug-report-prefill")return prefillBugReport(widget,request);
+        if(op=="timeline-track-header"){
+            using Label=std::pair<QWidget*,int>(*)(const QWidget*,const QString&);using TrackValue=int(*)(const QWidget*,int);using TrackId=QString(*)(const QWidget*,int,bool);
+            auto label=reinterpret_cast<Label>(dlsym(RTLD_DEFAULT,"_ZNK13TimelinePanel14ozTrackLabelOfERK7QString"));
+            auto y=reinterpret_cast<TrackValue>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi"));
+            auto height=reinterpret_cast<TrackValue>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11trackHeightEi"));
+            auto trackId=reinterpret_cast<TrackId>(dlsym(RTLD_DEFAULT,"_ZN13TimelinePanel15trackIdForIndexEPK14TimelineWidgetib"));
+            const auto track=request["trackId"].toString();
+            if(!widget||QString(widget->metaObject()->className())!="TimelinePanel"||!label||!y||!height||!trackId||track.isEmpty()||track.size()>256)throw QString("Observe a packaged Timeline panel and exact track identity");
+            const auto found=label(widget,track);if(!found.first||found.second<0||!found.first->isVisible())throw QString("Track label is unavailable");
+            QWidget* lane=nullptr;for(auto* child:widget->findChildren<QWidget*>())if(QString(child->metaObject()->className())=="TimelineWidget"&&trackId(child,found.second,false)==track){if(lane)throw QString("Ambiguous track lane");lane=child;}
+            if(!lane)throw QString("Track lane is unavailable");const int rowHeight=height(lane,found.second);const int top=lane->mapToGlobal(QPoint(0,y(lane,found.second))).y()-found.first->mapToGlobal(QPoint{}).y();
+            return {{"target",id(found.first)},{"trackId",track},{"width",found.first->width()},{"rowTop",top},{"rowHeight",rowHeight}};
+        }
         if(op=="timeline-point"){
             using TimeX=int(*)(const QWidget*,double);using TrackValue=int(*)(const QWidget*,int);
             auto timeX=reinterpret_cast<TimeX>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget7timeToXEd"));

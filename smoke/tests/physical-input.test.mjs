@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {windowPoint,clipPoint,defaultClickPoint,postInputFocus,spellTextBaseline,verifySpellTextCommit,requireTargetGeometry} from '../desktop/physical-input.mjs';
+import {windowPoint,clipPoint,defaultClickPoint,uncoveredDropPoint,postInputFocus,spellTextBaseline,verifySpellTextCommit,requireTargetGeometry} from '../desktop/physical-input.mjs';
 import {validateNativeRequest,keyboardWindowProof} from '../desktop/macos-input.mjs';
 import {mkdtemp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
@@ -151,4 +151,17 @@ test('window screenshots retain embedded Quick content while child targets keep 
   assert.equal((await physicalInput(file,'screenshot',{target:'main',crop:true})).request.captureRect,undefined);
   assert.deepEqual((await physicalInput(file,'screenshot',{target:'child',crop:true})).request.captureRect,{x:10,y:48,width:60,height:40});
  }finally{await rm(root,{recursive:true,force:true});}
+});
+
+test('ordinary clipped labels target the visible portion without relaxing the clipping guard',()=>{
+ const label={width:400,height:20,visibleRect:{x:300,y:0,width:100,height:20}};
+ assert.deepEqual(defaultClickPoint(label),{x:350,y:10});
+ for(const visibleRect of [{x:0,y:0,width:0,height:20},{x:390,y:0,width:20,height:20}])assert.throws(()=>defaultClickPoint({...label,visibleRect}),e=>e.status==='Blocked');
+});
+
+test('picker drags land on an exposed canvas region and retain a fully-covered guard',()=>{
+ const widget={id:'canvas',window:'graph',x:0,y:50,width:800,height:300},ui={widgets:[{id:'graph',window:'graph',nativeWindow:1,width:800,height:400},{id:'picker',window:'picker',nativeWindow:2}]},native={windows:[{window:1,frame:{x:100,y:100,width:800,height:428}},{window:2,frame:{x:110,y:160,width:360,height:400}}]};
+ const p=uncoveredDropPoint(ui,native,widget,['picker']);assert(p.x>370&&p.x<800&&p.y>=0&&p.y<300);
+ assert.throws(()=>uncoveredDropPoint(ui,{windows:[native.windows[0],{window:2,frame:{x:0,y:0,width:2000,height:2000}}]},widget,['picker']),e=>e.code==='occluded_drop_target');
+ assert.throws(()=>uncoveredDropPoint(ui,{windows:[native.windows[0]]},widget,['picker']),e=>e.code==='ambiguous_drop_overlay');
 });
