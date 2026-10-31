@@ -1,5 +1,6 @@
 import {blurParameters} from '../runner/graph-parameters.mjs';
 import {graphNodeGeometry,graphGroupGeometry} from './graph-geometry.mjs';
+import {withinWidgets} from './ui-query.mjs';
 import {testSpecification,evidenceCaption} from '../test-details.mjs';
 import path from 'node:path';
 import {copyFile} from 'node:fs/promises';
@@ -41,10 +42,12 @@ async function binDrop(f){
  }
  return receipt;
 }
-async function blurFixture(name){const f=await fixture(name);const g=await graph(f),edge=g.edges.find(e=>e.from_node===g.nodes.find(n=>n.type==='transform_2d').node_id&&e.to_node===g.nodes.find(n=>n.type==='composite').node_id);assert(edge,'Fixture image edge absent');await c('graph.insert_on_edge',{...f.scope,type:'gaussian_blur',from_node:edge.from_node,from_slot:edge.from_slot,to_node:edge.to_node,to_slot:edge.to_slot,edge_type:edge.type,new_input_slot:'input',new_output_slot:'output',params:await blurParameters(s.bundle,12),expect_structural_revision:g.structural_revision,expect_content_revision:g.content_revision});await select(f);if(!(await ui()).widgets.some(w=>w.class==='RenderGraphView'))await action('Render Graph');await fitGraph(f);return f;}
+async function blurFixture(name){const f=await fixture(name);const g=await graph(f),edge=g.edges.find(e=>e.from_node===g.nodes.find(n=>n.type==='transform_2d').node_id&&e.to_node===g.nodes.find(n=>n.type==='composite').node_id);assert(edge,'Fixture image edge absent');await c('graph.insert_on_edge',{...f.scope,type:'gaussian_blur',from_node:edge.from_node,from_slot:edge.from_slot,to_node:edge.to_node,to_slot:edge.to_slot,edge_type:edge.type,new_input_slot:'input',new_output_slot:'output',params:await blurParameters(s.bundle,12),expect_structural_revision:g.structural_revision,expect_content_revision:g.content_revision});await select(f);if(!(await ui()).widgets.some(w=>w.class==='RenderGraphView'))await action('Render Graph');await manualGraph(f);await fitGraph(f);return f;}
 async function graphView(scope){const owner=scope&&'clip:'+scope.timeline_id+':'+scope.clip_id;return until(async()=>(await ui()).widgets.find(w=>w.class==='RenderGraphView'&&(!scope||w.timelineId===scope.timeline_id&&(w.graphId===owner||scope.graph_id&&w.graphId===scope.graph_id))));}
 async function graphPoints(actionId){const points=(await readJSON(file)).agentProof?.binding?.points?.[actionId];assert(points,'Verified graph action geometry is absent: '+actionId);return points;}
-async function fitGraph(f){const v=await graphView(f?await graph(f):null),button=(await ui()).widgets.find(w=>w.window===v.window&&w.tooltip==='Fit all');assert(button,'Render Graph Fit all absent');await n('click',{target:button.id});await pause(200);}
+async function graphToolbar(f){const v=await graphView(await graph(f)),scoped=withinWidgets(await ui(),{class:'RenderGraphPanel'});assert(scoped.widgets.some(w=>w.id===v.id),'Graph toolbar does not own the selected graph view');return scoped.widgets;}
+async function manualGraph(f){const buttons=(await graphToolbar(f)).filter(w=>w.name==='graphAutoArrange'&&w.enabled);assert(buttons.length===1,'Render Graph layout control is absent or ambiguous');if(buttons[0].checked){await n('click',{target:buttons[0].id});await until(async()=>(await graphToolbar(f)).some(w=>w.id===buttons[0].id&&w.checked===false));}}
+async function fitGraph(f){const buttons=(await graphToolbar(f)).filter(w=>w.tooltip==='Fit all'&&w.enabled);assert(buttons.length===1,'Render Graph Fit all is absent or ambiguous');await n('click',{target:buttons[0].id});await pause(200);}
 async function blurItem(f){const g=await graph(f),v=await graphView(g),nodes=g.nodes.filter(n=>n.type==='gaussian_blur');assert(nodes.length===1,'Blur fixture identity is absent or ambiguous');return {v,node:graphNodeGeometry(v,g,nodes[0].node_id)};}
 async function selectBlur(f){const {v,node}=await blurItem(f);await physical('click',{target:v.viewport,x:node.x+node.width*.5,y:node.y+8});await until(async()=>(await blurItem(f)).node.selected);return v;}
 async function undoGraph(f,before){await physical('key',{target:(await graphView()).id,key:'cmd+z'});await until(async()=>JSON.stringify(content(await graph(f)))===JSON.stringify(content(before)));}

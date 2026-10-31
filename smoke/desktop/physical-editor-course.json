@@ -1,7 +1,7 @@
 {
   "id": "physical-editor-candidate",
   "title": "Physical editor paths \u00b7 candidate qualification",
-  "revision": 9,
+  "revision": 10,
   "target": "Instrumented isolated desktop with native macOS input",
   "status": "Candidate",
   "cases": [
@@ -235,7 +235,7 @@
       "steps": [
         {
           "id": "setup",
-          "title": "Prepare a blur graph and capture its starting layout",
+          "title": "Prepare the owned clip graph in manual layout and observe its controls",
           "phase": "prepare"
         },
         {
@@ -344,7 +344,7 @@
       "steps": [
         {
           "id": "setup",
-          "title": "Prepare a disconnected blur input and observe its visible ports",
+          "title": "Prepare the owned clip graph in manual layout and observe its controls",
           "phase": "prepare"
         },
         {
@@ -468,7 +468,7 @@
       "steps": [
         {
           "id": "setup",
-          "title": "Prepare and select a blur node; preserve the system clipboard",
+          "title": "Prepare the owned clip graph in manual layout and observe its controls",
           "phase": "prepare"
         },
         {
