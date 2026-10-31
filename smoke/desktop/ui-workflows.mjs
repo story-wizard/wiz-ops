@@ -20,6 +20,11 @@ export function dockDragPoint(ui,windowId){
  const tab=observedWidget(ui,w=>w.window===window.id&&w.name==='dockWidgetTabLabel'&&w.text===window.title,'Floating dock tab');
  return {target:tab.id,x:(tab.width-1)/2,y:(tab.height-1)/2};
 }
+export function dockDropPoint(ui,windowId,panelTitle){
+ const panel=observedWidget(ui,w=>w.window===windowId&&w.class==='WizPanelDock'&&w.title===panelTitle,'Destination dock panel');
+ const area=observedWidget(ui,w=>w.id===panel.parent&&w.window===windowId&&w.class==='ads::CDockAreaWidget','Destination dock area');
+ return {toTarget:windowId,toX:area.x+area.width/2,toY:area.y+area.height/2};
+}
 
 // Shared authored setup, physical actions and retained observations. Assertions
 // stay in the check or its pure oracle; these helpers never manufacture Pass.
