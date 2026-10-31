@@ -1,12 +1,24 @@
 import {digest} from './runner/files.mjs';
 
+const canonical=v=>Array.isArray(v)?v.map(canonical):v&&typeof v==='object'?Object.fromEntries(Object.keys(v).sort().map(k=>[k,canonical(v[k])])):v;
+function decisiveEvidence(summary){
+ if(!summary)return null;
+ const failed=summary.failedStep,step=s=>({id:s.id,phase:s.phase,status:s.status});
+ // Hash only authored comparisons and phase facts. Artifact paths, capture IDs,
+ // source excerpts and timestamps are incidental. Values explicitly asserted by
+ // the author (including identity/path invariants) must not be stripped or guessed.
+ const semantic={failedStep:failed?{...step(failed),observation:failed.observation}:null,lastCompletedStep:summary.lastCompletedStep?.id||null,
+  assertions:(summary.assertions||[]).filter(a=>a.stepId===failed?.id||['Fail','Blocked','Unknown'].includes(a.status)).map(a=>({stepId:a.stepId,status:a.status,invariant:a.invariant,expected:a.expected,actual:a.actual,failureReason:a.failureReason})),
+  notRun:(summary.notRun||[]).map(step),blocked:(summary.blocked||[]).map(step)};
+ return {failedStep:failed?step(failed):null,semanticHash:digest(canonical(semantic))};
+}
 // These are review annotations. They never change an outcome, submit an issue,
 // resolve a case or authorize execution. Keep comparison evidence in the record.
 export function findingObservation(record,c){
  const a=c.attempts.at(-1)||c.original;
  return {packageHash:record.baseline.identities.packageHash,checkId:c.id,
   definitionHash:a.definitionHash,status:a.status,expected:a.expected,
-  observation:a.observation,classification:c.classification};
+  observation:a.observation,classification:c.classification,decisiveEvidence:decisiveEvidence(a.conclusion)};
 }
 function evidence(record,c){const a=c.attempts.at(-1)||record.baseline;return {runId:a.runId,reportUrl:a.reportUrl,reportHash:a.reportHash};}
 function reviewedEvidence(record,c){const proof=evidence(record,c);if(typeof proof.runId!=='string'||!proof.runId||!/^[a-f0-9]{64}$/.test(proof.reportHash||''))throw Error('Finding review needs a retained report identity.');return proof;}
@@ -27,7 +39,7 @@ export function reviewFindingFollowUp(record,c,input,actor,lookup){
   const source=lookup?.(input.reference.investigationId),prior=source?.cases.find(x=>x.id===input.reference.caseId);
   if(!source||source.revision!==input.reference.revision||!prior)throw Error('Referenced finding changed or is absent. Reload it before review.');
   const priorObservation=findingObservation(source,prior);
-  if(digest(observation)!==digest(priorObservation))throw Error('Package, definition, outcome, observation or classification changed. Review this as a new finding instead of a known match.');
+  if(digest(observation)!==digest(priorObservation))throw Error('Package, definition, outcome, observation, decisive evidence or classification changed. Review this as a new finding instead of a known match.');
   value.reference={...input.reference,...reviewedEvidence(source,prior),observation:priorObservation};
  }else if(input.reference!==undefined)throw Error('Only a known finding may reference an earlier occurrence.');
  return value;

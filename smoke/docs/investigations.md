@@ -85,7 +85,7 @@ original outcome and later reproductions.
 review-by date is a reminder for the owner, with no scheduler or automatic closure.
 The service records the reviewer, time and exact reviewed observation. Omit
 `followUp` to retain it; use `null` to remove the current annotation while keeping
-the earlier review in triage history.
+the complete earlier review and generated attempt/report bindings in triage history.
 
 Triage tasks include `relatedFindings` from at most the 200 most recent local
 investigations, with at most 20 comparisons per task response. Request a single case to focus
@@ -107,7 +107,9 @@ After reviewing both occurrences, use `kind: "known"` with an explicit reference
 ```
 
 A known link requires the exact package, test definition, outcome, expected and
-observed values, and classification. The referenced revision must still be current
+observed values, decisive failed phase/assertion values, and classification.
+Decisive comparisons exclude capture paths, timestamps and generated capture IDs;
+values explicitly asserted by the test remain part of the comparison. The referenced revision must still be current
 when previewed and applied. A new build or different symptom needs fresh review;
 record it as `new` rather than extending a match automatically. The reference
 retains its reviewed run, report digest and observation even if the source is later

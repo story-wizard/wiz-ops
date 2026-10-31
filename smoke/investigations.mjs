@@ -49,8 +49,9 @@ export function previewTriage(previous,input,lookup){
  return {next,changes:input.updates.map(update=>({id:update.id,before:previous.cases.find(c=>c.id===update.id),after:next.cases.find(c=>c.id===update.id),afterFollowUp:findingFollowUp(next,next.cases.find(c=>c.id===update.id))})),log};
 }
 export function triageInvestigation(db,id,input){
- const previous=checked(db,id,input),{next,log}=previewTriage(previous,input,ref=>investigation(db,ref));
- return save(db,previous,next,input.actor,'Triage',{updates:input.updates,log});
+ const previous=checked(db,id,input),{next,log,changes}=previewTriage(previous,input,ref=>investigation(db,ref));
+ const followUps=changes.filter(c=>input.updates.find(u=>u.id===c.id).followUp!==undefined).map(c=>({id:c.id,before:c.before.followUp||null,after:c.after.followUp||null}));
+ return save(db,previous,next,input.actor,'Triage',{updates:input.updates,log,...(followUps.length?{followUps}:{})});
 }
 // Match the exact case-owned retained path and digest, never a same-named file from another capture.
 export function diagnosticCaptures(item,report,buffers,runRoot){
