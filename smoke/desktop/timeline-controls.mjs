@@ -8,8 +8,10 @@ export function timelineToggle(ui,view,kind){
  return rows[0];
 }
 export function timelineToolActive(ui,view,label){
+ const tool={Cut:'cut',Slip:'slip',Anchor:'anchor',Tether:'anchor',Select:'select'}[label];
+ if(!tool)return false;
  const buttons=(ui.widgets||[]).filter(w=>w.window===view.window&&w.checked===true&&w.enabled&&
-  (w.name?.startsWith('toolbarTool_')?new RegExp('^'+label+'(?:\\s|$|\\()').test(w.tooltip||''):w.name==='panelChromeAction'&&w.text===label));
+  (w.name?.startsWith('toolbarTool_')?new RegExp('^toolbarTool_(?:wiz\\.)?timeline_'+tool+'$').test(w.name):w.name==='panelChromeAction'&&w.text===label));
  return buttons.length===1;
 }
 export async function timelineClipPoint(native,view,clipId,part='body'){

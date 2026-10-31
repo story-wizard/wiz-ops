@@ -152,3 +152,9 @@ test('window screenshots retain embedded Quick content while child targets keep 
   assert.deepEqual((await physicalInput(file,'screenshot',{target:'child',crop:true})).request.captureRect,{x:10,y:48,width:60,height:40});
  }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test('ordinary clipped labels target the visible portion without relaxing the clipping guard',()=>{
+ const label={width:400,height:20,visibleRect:{x:300,y:0,width:100,height:20}};
+ assert.deepEqual(defaultClickPoint(label),{x:350,y:10});
+ for(const visibleRect of [{x:0,y:0,width:0,height:20},{x:390,y:0,width:20,height:20}])assert.throws(()=>defaultClickPoint({...label,visibleRect}),e=>e.status==='Blocked');
+});

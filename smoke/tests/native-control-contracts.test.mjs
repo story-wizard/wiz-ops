@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {timelineToggle,trackHeaderPoint,timelineToolActive} from '../desktop/timeline-controls.mjs';
-import {spellNodeGeometry} from '../desktop/graph-geometry.mjs';
+import {spellNodeGeometry,graphNodeHeaderPoint} from '../desktop/graph-geometry.mjs';
 import {spellBlurRadius} from '../desktop/spell-controls.mjs';
 
 test('timeline toggles bind the owning panel even when another timeline has identical labels',()=>{
@@ -24,4 +24,21 @@ test('Spell card targeting follows authored identity and position with no parame
  for(const mutate of [x=>x.raw.document_id='other',x=>x.raw.document_fingerprint='stale',x=>x.view.sceneItemsTruncated=true,x=>x.view.sceneItems.push({...x.view.sceneItems[0]}),x=>x.raw.scene.graph_layout.positions={}]){const x=structuredClone({view,overview,raw});mutate(x);assert.throws(()=>spellNodeGeometry(x.view,x.overview,x.raw,'native:stable'),e=>e.status==='Blocked');}
  assert.equal(spellBlurRadius({controls:{horizontal_radius:{effective:17},vertical_radius:{effective:17},uniform_radius:{effective:true}}}),17);
  assert.throws(()=>spellBlurRadius({controls:{horizontal_radius:{effective:17},vertical_radius:{effective:5}}}));
+});
+
+test('source cards use sentinel identity even when the App also supplies numeric zero',()=>{
+ const overview={document_id:'doc',document_fingerprint:'r',nodes:[{node_ref:'source:uuid',node_id:0}]},raw={document_id:'doc',document_fingerprint:'r',state_source:'live_registry',scene:{graph_layout:{positions:{'sentinel:uuid':[360,0]}}}},view={class:'DetachedGraphView',sceneItems:[{sceneX:360,sceneY:0,width:50,height:100}]};
+ assert.equal(spellNodeGeometry(view,overview,raw,'source:uuid'),view.sceneItems[0]);
+});
+test('graph header targets use mapped scene geometry at any zoom and reject unavailable points',()=>{
+ const card={x:10,y:20,width:40,height:100,headerPoint:{x:30,y:21}};
+ assert.deepEqual(graphNodeHeaderPoint(card),{x:30,y:21});
+ for(const headerPoint of [null,{x:30,y:200},{x:NaN,y:21}])assert.throws(()=>graphNodeHeaderPoint({...card,headerPoint}),e=>e.status==='Blocked');
+});
+
+test('timeline tool identity survives a display-name change without accepting a preview tool',()=>{
+ const view={window:'main'},button={window:'main',name:'toolbarTool_wiz.timeline_anchor',tooltip:'Tether (F)',checked:true,enabled:true};
+ assert(timelineToolActive({widgets:[button]},view,'Anchor'));
+ assert(!timelineToolActive({widgets:[{...button,name:'toolbarTool_wiz.preview_anchor'}]},view,'Anchor'));
+ assert(!timelineToolActive({widgets:[button,button]},view,'Anchor'));
 });

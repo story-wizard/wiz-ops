@@ -84,7 +84,11 @@ export function defaultClickPoint(widget){
   requireProof(Array.isArray(h)&&h.length===2&&h.every(Number.isFinite)&&h[0]>=v.x&&h[0]<v.x+v.width&&h[1]>=v.y&&h[1]<v.y+v.height,'clipped_slider_thumb','Reveal the current Inspector thumb before focusing it',['observe']);
   return {x:h[0],y:h[1]};
  }
- if(!widget.clickRect)return {x:widget.width/2,y:widget.height/2};
+ if(!widget.clickRect){
+  const v=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height};
+  requireProof(['x','y','width','height'].every(k=>Number.isFinite(v[k]))&&v.x>=0&&v.y>=0&&v.width>0&&v.height>0&&v.x+v.width<=widget.width&&v.y+v.height<=widget.height,'clipped_widget_target','Reveal a visible widget hit region before clicking',['observe']);
+  return {x:v.x+v.width/2,y:v.y+v.height/2};
+ }
  const r=widget.clickRect,v=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height};
  assert(['x','y','width','height'].every(k=>Number.isFinite(r[k]))&&r.x>=0&&r.y>=0&&r.width>0&&r.height>0&&r.x+r.width<=widget.width&&r.y+r.height<=widget.height,'Invalid styled click rectangle');
  const x=Math.max(r.x,v.x),y=Math.max(r.y,v.y),right=Math.min(r.x+r.width,v.x+v.width),bottom=Math.min(r.y+r.height,v.y+v.height);

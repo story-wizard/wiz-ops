@@ -1,15 +1,15 @@
-import {spellNodeGeometry} from './graph-geometry.mjs';
+import {spellNodeGeometry,graphNodeHeaderPoint} from './graph-geometry.mjs';
 import {spellBlurParameters} from './spell-controls.mjs';
 import {testSpecification} from '../test-details.mjs';
 import path from 'node:path';
 import {checks} from './check-support.mjs';
-import {physicalInput} from './physical-input.mjs';
+import {physicalInput,defaultClickPoint} from './physical-input.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
 import {assert,same,pause,OutcomeError} from '../runner/engine.mjs';
 const file=process.argv[2],{s,n,c,ui,until,check:runCheck,action,finish,report}=await checks(file,'desktop-physical-report.json');
 const check=(id,fn)=>runCheck(id,async()=>{try{return await fn();}catch(e){if(e.status!=='Unknown'){await writeJSON(path.join(s.root,id+'-observed-ui.json'),await ui());try{await saveScreen(id+'-failure');}catch{}}throw e;}});
 report.course=await readJSON(new URL('./physical-course.json',import.meta.url));report.acceptance='Candidate qualification';report.specifications=report.course.cases.map(testSpecification);
-const physical=(command,params)=>physicalInput(file,command,params),inspect=id=>c('spellbook.inspect',{document_id:id,view:'overview',limit:100}),content=g=>({name:g.name,nodes:g.nodes,edges:g.edges,public_inputs:g.public_inputs,media_inputs:g.media_inputs});
+const physical=(command,params)=>physicalInput(file,command,params),inspect=id=>c('spellbook.inspect',{document_id:id,view:'overview',limit:100}),content=g=>({name:g.name,nodes:g.nodes.map(({position,...n})=>n),edges:g.edges,public_inputs:g.public_inputs,media_inputs:g.media_inputs});
 async function canvas(){const v=(await ui()).widgets.find(w=>w.class==='DetachedGraphView');assert(v,'Spellbook canvas absent');return v;}
 async function focus(){const v=await canvas();await physical('click',{target:v.viewport,x:25,y:25});return v;}
 async function saveScreen(label){const v=await canvas(),receipt=await physical('screenshot',{target:v.id});await writeJSON(path.join(s.root,label+'-screen.json'),receipt);return receipt.artifacts;}
@@ -27,7 +27,7 @@ async function blurFixture(){const d=await create(),receipt=await edit(d.documen
 async function fit(){const u=await ui(),v=await canvas(),button=u.widgets.find(w=>w.window===v.window&&w.tooltip==='Fit all');assert(button,'Fit all absent');await n('click',{target:button.id});await pause(150);}
 async function spellNode(doc,ref){const overview=await inspect(doc),raw=await c('spellbook.inspect',{document_id:doc,view:'raw'}),v=await canvas();return {v,node:spellNodeGeometry(v,overview,raw,ref)};}
 async function blurNode(){assert(activeBlur,'Owned blur fixture missing');return spellNode(activeBlur.doc,activeBlur.ref);}
-async function selectBlur(){const {v,node}=await blurNode();await physical('click',{target:v.viewport,x:node.x+node.width/2,y:node.y+8});await until(async()=>{const a=await blurNode();return a.node.selected;});return canvas();}
+async function selectBlur(){const {v,node}=await blurNode();await physical('click',{target:v.viewport,...graphNodeHeaderPoint(node)});await until(async()=>{const a=await blurNode();return a.node.selected;});return canvas();}
 async function undoTo(v,id,before){await physical('key',{target:v.id,key:'cmd+z'});return until(async()=>{const g=await inspect(id);return JSON.stringify(content(g))===JSON.stringify(content(before))?g:null;});}
 
 await check('P-SB-CREATE',async()=>{
@@ -41,7 +41,8 @@ await check('P-SB-CREATE',async()=>{
 });
 await check('P-SB-SEARCH-DROP',async()=>{
  const observations=[];
- for(const key of ['cmd+shift+k','cmd+k']){
+ // The selected App's NodeCreationTabFilter now owns node search exclusively on Tab.
+ for(const key of ['tab']){
   const d=await create(),before=await inspect(d.document_id),v=await focus();await physical('key',{target:v.id,key});
   const popup=await until(async()=>(await ui()).widgets.find(w=>['Quick Node Search','Add Node'].includes(w.title)&&w.id===w.window));
   try{
@@ -73,7 +74,7 @@ await check('P-SB-BYPASS',async()=>{
 });
 await check('P-SB-GESTURE-UNDO',async()=>{
  const f=await blurFixture(),baseline=await inspect(f.doc);await edit(f.doc,[{op:'set_params',node_ref:f.ref,values:await spellBlurParameters(c,s.bundle,17)}]);
- const marker=await inspect(f.doc),{v,node}=await blurNode(),start={x:node.sceneX,y:node.sceneY},receipt=await physical('drag',{target:v.viewport,x:node.x+node.width/2,y:node.y+8,toX:node.x+node.width/2+45,toY:node.y+38});
+ const marker=await inspect(f.doc),{v,node}=await blurNode(),start={x:node.sceneX,y:node.sceneY},receipt=await physical('drag',{target:v.viewport,...graphNodeHeaderPoint(node),toX:graphNodeHeaderPoint(node).x+45,toY:graphNodeHeaderPoint(node).y+30});
  const moved=await until(async()=>{const p=(await blurNode()).node;return p.sceneX!==start.x||p.sceneY!==start.y?p:null;});same(content(await inspect(f.doc)),content(marker),'Node move must preserve graph values');
  const screenshots=await saveScreen('P-SB-GESTURE-UNDO');await physical('key',{target:(await canvas()).id,key:'cmd+z'});
  await until(async()=>{const p=(await blurNode()).node;return p.sceneX===start.x&&p.sceneY===start.y;});same(content(await inspect(f.doc)),content(marker),'One Undo must retain the preceding separate parameter edit');
@@ -94,7 +95,7 @@ await check('P-SB-DOCK',async()=>{
   await until(async()=>(await canvas()).window===main.id).catch(e=>{e.message='Initial floating Spellbook did not redock: '+e.message;throw e;});same(content(await inspect(f.doc)),content(before),'Fixture redock changed Spell content');
  }
  const {v,node}=await blurNode(),label=headerFor(await ui());assert(label,'Spellbook dock header absent');
- const receipt=await physical('click',{target:label.id,x:label.width/2,y:label.height/2,button:'right'});
+ const receipt=await physical('click',{target:label.id,...defaultClickPoint(label),button:'right'});
  const menu=await until(async()=>(await ui()).widgets.find(w=>w.class==='QMenu'&&w.menuItems?.some(m=>/detach|float/i.test(m.text)&&m.enabled))).catch(e=>{throw new OutcomeError('Title-bar redock succeeded; a supported Float/Detach control remains to be bound','Blocked');});
  const detach=menu.menuItems.filter(m=>/detach|float/i.test(m.text)&&m.enabled);assert(detach.length===1,'Float action is ambiguous');
  await n('click',{target:menu.id,x:detach[0].x+detach[0].width/2,y:detach[0].y+detach[0].height/2});

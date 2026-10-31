@@ -36,8 +36,10 @@ export function tailFollowProof(before,samples){
  for(const read of samples){const w=workspaceItem(read,'AgentWorkspaceMessageList');assert(w.count===a.count+1,'Append did not add exactly one transcript row');assert(w.contentY>=a.contentY-.5&&Math.abs(w.contentY-tail(w))<=.5&&w.followTail===true,'Appended transcript bounced away from the tail');}
  return {beforeCount:a.count,afterCount:a.count+1,samples:samples.length,tolerance:.5};
 }
-export function selectorProof(observation,name){
- const w=workspaceItem(observation,name);assert(w.visible&&w.enabled&&w.hovered===true,'Selector was not hovered');assert(typeof w.accessibleDescription==='string'&&w.accessibleDescription.trim().length>0,'Selector accessible description missing');assert(w.tooltipVisible===false,'Selector displayed a hover tooltip');return {name,description:w.accessibleDescription,hovered:true,tooltipVisible:false};
+export function selectorProof(observation,name,receipt){
+ const w=workspaceItem(observation,name);assert(w.visible&&w.enabled,'Selector is unavailable');
+ if(Object.hasOwn(w,'hovered'))assert(w.hovered===true,'Selector was not hovered');
+ else assert(name==='AgentWorkspaceEffortSelector'&&receipt?.dispatched===true&&receipt.name===name&&Number.isFinite(receipt.localX)&&Number.isFinite(receipt.localY),'Effort slider needs a verified Qt pointer dispatch');assert(typeof w.accessibleDescription==='string'&&w.accessibleDescription.trim().length>0,'Selector accessible description missing');assert(w.tooltipVisible===false,'Selector displayed a hover tooltip');return {name,description:w.accessibleDescription,hovered:w.hovered??null,inputMode:receipt?.inputMode??'Qt hover state',tooltipVisible:false};
 }
 export function headerProof(narrow,wide,popup){
  const item=(o,n)=>workspaceItem(o,'AgentWorkspace'+n),title=item(narrow,'TitleSlot'),text=item(narrow,'TitleText'),model=item(narrow,'ModelSelector'),cancel=item(narrow,'CancelButton');
@@ -65,7 +67,7 @@ export function scrollAwayProof(before,samples,resumed){
 export function gestureAnchorProof(before,samples,resumed){
  const a=workspaceItem(before,'AgentWorkspaceMessageList');assert(a.userScrollActive===true&&a.followTail===true&&a.anchor?.identity&&Number.isFinite(a.anchor.offset),'Owned tail gesture and materialized anchor required');
  assert(samples.length>=3,'Gesture anchor needs append and settled samples');
- for(const read of samples){const w=workspaceItem(read,'AgentWorkspaceMessageList');assert(w.count===a.count+1&&w.userScrollActive===true&&w.followTail===true&&w.anchor?.identity===a.anchor.identity&&w.anchor.index===a.anchor.index&&Math.abs(w.anchor.offset-a.anchor.offset)<=.5,'Append moved or replaced the held transcript anchor');}
+ for(const read of samples){const w=workspaceItem(read,'AgentWorkspaceMessageList');assert(w.count===a.count+1&&w.userScrollActive===true&&w.followTail===true&&w.anchor?.identity===a.anchor.identity&&Math.abs(w.anchor.offset-a.anchor.offset)<=.5,'Append moved or replaced the held transcript anchor');}
  const end=workspaceItem(resumed,'AgentWorkspaceMessageList');assert(end.count===a.count+1&&end.userScrollActive===false&&end.followTail===true&&end.atYEnd===true,'Gesture end did not catch up to the tail');
  return {anchorIndex:a.anchor.index,anchorOffset:a.anchor.offset,afterCount:a.count+1,caughtUp:true,tolerance:.5};
 }

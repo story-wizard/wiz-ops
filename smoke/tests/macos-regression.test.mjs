@@ -87,7 +87,7 @@ test('detached transcript observation catches auto-follow, bounce and missing ap
 test('gesture observation catches replacing or moving the old row even when the list reports the tail',()=>{
  const list={name:'AgentWorkspaceMessageList',count:20,followTail:true,atYEnd:true,userScrollActive:true,anchor:{index:19,identity:'retained-row',offset:200}},before=observation([list]),after=observation([{...list,count:21}]),resumed=observation([{...list,count:21,userScrollActive:false}]);
  assert.doesNotThrow(()=>gestureAnchorProof(before,[after,after,after],resumed));
- for(const change of [{identity:'new-row'},{offset:210},{index:20}]){const bad=structuredClone(after);Object.assign(bad.items[0].anchor,change);assert.throws(()=>gestureAnchorProof(before,[after,bad,after],resumed));}
+ for(const change of [{identity:'new-row'},{offset:210}]){const bad=structuredClone(after);Object.assign(bad.items[0].anchor,change);assert.throws(()=>gestureAnchorProof(before,[after,bad,after],resumed));}
  assert.throws(()=>gestureAnchorProof(before,[after,after,after],after));
 });
 test('custom-model popup needs the actual untruncated option inside observed bounds',()=>{
@@ -107,4 +107,24 @@ test('selected model and effort are verified in the independent pipeline, not on
  for(const changes of [{model:'openai/gpt-6.1-sol'},{effort:1},{spawnSuppressed:false},{agentActive:true},{running:true},{identity:''},{available:false}])assert.throws(()=>pipelineSelectionProof(read,{...pipeline,...changes},expected));
  assert.throws(()=>pipelineSelectionProof({...read,controller:{...read.controller,currentEffortIndex:0}},pipeline,expected));
  assert.doesNotThrow(()=>validateNativeParams('workspace-pipeline-inspect',{target:'panel'}));assert.doesNotThrow(()=>validateNativeParams('workspace-request-selection',{target:'panel',kind:'model',index:5}));for(const index of [-1,32,NaN,1.1])assert.throws(()=>validateNativeParams('workspace-request-selection',{target:'panel',kind:'model',index}));
+});
+
+test('current effort slider needs pointer delivery and accessible semantics, not an absent hover property',()=>{
+ const item={name:'AgentWorkspaceEffortSelector',visible:true,enabled:true,accessibleDescription:'Main-agent reasoning effort',tooltipVisible:false},receipt={name:item.name,dispatched:true,localX:120,localY:80,inputMode:'Qt pointer'};
+ assert.doesNotThrow(()=>selectorProof(observation([item]),item.name,receipt));
+ for(const change of [{dispatched:false},{name:'foreign'},{localX:NaN}])assert.throws(()=>selectorProof(observation([item]),item.name,{...receipt,...change}));
+ for(const change of [{accessibleDescription:''},{tooltipVisible:true},{visible:false}])assert.throws(()=>selectorProof(observation([{...item,...change}]),item.name,receipt));
+});
+
+test('project-bound images are restricted to the one disposable local image fixture',()=>{
+ const p={target:'panel',text:'![Athanor local image](assets/context/images/athanor-square.png)',eventId:'athanor-fixture-inline-image',fixtureBundle:'/private/session/projects/Golden.wiz'};
+ assert.doesNotThrow(()=>validateNativeParams('workspace-append',p));
+ for(const change of [{fixtureBundle:'relative.wiz'},{text:'another message'},{eventId:'athanor-fixture-other'}])assert.throws(()=>validateNativeParams('workspace-append',{...p,...change}));
+});
+
+test('transcript anchors follow stable event identity across a reversed-model row insertion',()=>{
+ const list=(count,index,offset)=>observation([{name:'AgentWorkspaceMessageList',count,userScrollActive:true,followTail:true,anchor:{identity:'athanor-fixture-stable-event',index,offset}}]);
+ const before=list(18,10,40),samples=[list(19,11,40),list(19,11,40),list(19,11,40)],resumed=observation([{name:'AgentWorkspaceMessageList',count:19,userScrollActive:false,followTail:true,atYEnd:true}]);
+ assert.doesNotThrow(()=>gestureAnchorProof(before,samples,resumed));
+ const changed=structuredClone(samples);changed[1].items[0].anchor.offset=55;assert.throws(()=>gestureAnchorProof(before,changed,resumed));
 });

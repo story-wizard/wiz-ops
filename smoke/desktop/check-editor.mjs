@@ -1,3 +1,4 @@
+import {withinWidgets,inspectorRowBinding} from './ui-query.mjs';
 import {selectTimelineClip} from './timeline-controls.mjs';
 import {beginCheck,endCheck} from './check-support.mjs';
 import path from 'node:path';
@@ -34,14 +35,13 @@ await check('D-EDIT-CLIPBOARD',async()=>{
 });
 await check('D-INSPECTOR-01',async()=>{
   const v=await focusTimeline();await selectTimelineClip(native,v,s.clip);let u=await ui();if(!u.widgets.some(w=>w.class==='ads::CFloatingDockContainer'&&w.title==='Inspector'))await native('action',{target:u.actions.find(a=>a.text==='Inspector').id});
-  u=await until(async()=>{const a=await ui();return a.widgets.some(w=>w.name==='InspectorSectionHeading'&&w.text==='Transform 2D')?a:null;});
-  if(!u.widgets.some(w=>w.name==='InspectorParamLabel'&&w.text==='Position X')){const h=u.widgets.find(w=>w.name==='InspectorSectionHeading'&&w.text==='Transform 2D');await native('click',{target:u.widgets.find(w=>w.name==='InspectorSectionDisclosure'&&w.window===h.window&&w.y===h.y).id});}
-  u=await ui();const label=u.widgets.find(w=>w.name==='InspectorParamLabel'&&w.text==='Position X'),slider=u.widgets.find(w=>w.name==='InspectorSliderControl'&&w.window===label.window&&Math.abs(w.y-label.y)<5);
-  await native('activate',{target:label.window});
-  const graph=()=>call('graph.get_clip_graph',{timeline_id:s.main.id,clip_id:s.clip});const before=await graph(),node=before.nodes.find(n=>n.params?.position_x!==undefined),original=await frame('inspector-before');
+  const graph=()=>call('graph.get_clip_graph',{timeline_id:s.main.id,clip_id:s.clip});const before=await graph(),nodes=before.nodes.filter(n=>n.type==='transform_2d'&&Number.isFinite(n.params?.position_x));assert(nodes.length===1,'Inspector fixture requires one transform');const node=nodes[0];
+  const panel=withinWidgets(await ui(),{class:'InspectorPanel'}),expand=panel.widgets.filter(w=>w.name==='InspectorExpandAllButton');assert(expand.length===1,'Inspector Expand all is unavailable or ambiguous');await native('click',{target:expand[0].id});
+  async function boundRow(){const a=withinWidgets(await ui(),{class:'InspectorPanel'}),rows=a.widgets.filter(w=>w.name==='InspectorParamControlRow'&&w.paramPath==='position_x').filter(w=>{const b=inspectorRowBinding(w);return b.ids.node_id===node.node_id&&b.ids.graph_id==='clip:'+s.main.id+':'+s.clip;});if(rows.length!==1)return null;return withinWidgets(a,{id:rows[0].id});}
+  const row=await until(boundRow),controls=row.widgets.filter(w=>w.name==='InspectorSliderControl'&&w.enabled);assert(controls.length===1,'Declared Inspector parameter has no unique control');const slider=controls[0];await native('activate',{target:slider.window});const original=await frame('inspector-before');
   await native('key',{target:slider.id,key:'Right'});const after=await until(async()=>{const g=await graph();return g.nodes.find(n=>n.node_id===node.node_id).params.position_x===node.params.position_x+1?g:null;});
   const delta=pixelDifference(original,await frame('inspector-after'));assert(delta>0.01,'Inspector edit did not change rendered pixels');
-  u=await ui();const l=u.widgets.find(w=>w.name==='InspectorParamLabel'&&w.text==='Position X');await native('click',{target:u.widgets.find(w=>w.name==='InspectorResetButton'&&w.window===l.window&&Math.abs(w.y-l.y)<5).id});await pause(100);
+  const resetRow=await boundRow(),resets=resetRow.widgets.filter(w=>w.name==='InspectorResetButton'&&w.enabled);assert(resets.length===1,'Declared Inspector parameter has no unique Reset');await native('click',{target:resets[0].id});await pause(100);
   same((await graph()).nodes.find(n=>n.node_id===node.node_id).params,node.params,'Reset parameters');const resetDelta=pixelDifference(original,await frame('inspector-reset'));assert(resetDelta===0,'Reset did not restore pixels');return {positionBefore:node.params.position_x,positionAfter:after.nodes.find(n=>n.node_id===node.node_id).params.position_x,delta,resetDelta};
 });
 await check('D-EXPORT-01',async()=>{await focusTimeline();return exportDialog({s,n:native,ui,until},path.join(directory,'export.mp4'));});

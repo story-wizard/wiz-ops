@@ -28,8 +28,16 @@ export function graphNodeOutputGeometry(view,graph,nodeId){return outputPort(gra
 export function spellNodeGeometry(view,overview,raw,nodeRef){
  requireGeometry(view.class==='DetachedGraphView'&&!view.sceneItemsTruncated&&Array.isArray(view.sceneItems)&&overview.document_id===raw.document_id&&overview.document_fingerprint===raw.document_fingerprint&&raw.state_source==='live_registry','Spell observations are incomplete or from different document revisions');
  const nodes=overview.nodes?.filter(n=>n.node_ref===nodeRef)||[];requireGeometry(nodes.length===1,'Spell node identity is absent or ambiguous');
- const node=nodes[0],key=Number.isSafeInteger(node.node_id)?'node:'+node.node_id:nodeRef.startsWith('source:')?'sentinel:'+nodeRef.slice(7):null;
+ const node=nodes[0],key=nodeRef.startsWith('source:')?'sentinel:'+nodeRef.slice(7):Number.isSafeInteger(node.node_id)?'node:'+node.node_id:null;
  const point=raw.scene?.graph_layout?.positions?.[key];requireGeometry(Array.isArray(point)&&point.length===2&&point.every(Number.isFinite),'Authored Spell node position is unavailable');
  const matches=view.sceneItems.filter(n=>Math.abs(n.sceneX-point[0])<.01&&Math.abs(n.sceneY-point[1])<.01);
  requireGeometry(matches.length===1&&matches[0].width>0&&matches[0].height>0,'Authored Spell position is absent or overlaps another card');return matches[0];
+}
+
+// Mapped from the card's own scene coordinates, so zoom does not turn a
+// header click into a parameter-body click. Native input still checks clipping.
+export function graphNodeHeaderPoint(node){
+ const p=node.headerPoint;
+ requireGeometry(p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=node.x&&p.x<node.x+node.width&&p.y>=node.y&&p.y<node.y+node.height,'Owned graph card header geometry is unavailable');
+ return {x:p.x,y:p.y};
 }

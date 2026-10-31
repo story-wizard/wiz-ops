@@ -197,7 +197,8 @@ class SmokeBridge : public QObject {
                     const auto center=p->mapFromScene(child->mapToScene(child->boundingRect().center()));
                     ports.append(QJsonObject{{"x",center.x()},{"y",center.y()},{"side",child->pos().x()<g->boundingRect().center().x()?"input":"output"},{"tooltip",child->toolTip()}});
                 }
-                QJsonObject node{{"labels",labels},{"selected",g->isSelected()},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()},{"sceneX",g->pos().x()},{"sceneY",g->pos().y()},{"ports",ports}};
+                const auto headerPoint=p->mapFromScene(g->mapToScene(QPointF(g->boundingRect().center().x(),g->boundingRect().top()+std::min(5.0,g->boundingRect().height()/4))));
+                QJsonObject node{{"headerPoint",QJsonObject{{"x",headerPoint.x()},{"y",headerPoint.y()}}},{"labels",labels},{"selected",g->isSelected()},{"x",r.x()},{"y",r.y()},{"width",r.width()},{"height",r.height()},{"sceneX",g->pos().x()},{"sceneY",g->pos().y()},{"ports",ports}};
                 if(QString(p->metaObject()->className())=="RenderGraphView"&&g->type()==QGraphicsItem::UserType+4&&g->toGraphicsObject()){
                     using Getter=QString(*)(const QGraphicsObject*);auto getter=reinterpret_cast<Getter>(dlsym(RTLD_DEFAULT,"_ZNK14RenderNodeItem6nodeIdEv"));
                     if(getter)node["nodeId"]=getter(g->toGraphicsObject());
@@ -268,8 +269,8 @@ class SmokeBridge : public QObject {
             if(op=="workspace-composer-inspect")return probe.composer([this](QObject* object){return id(object);});
             if(op=="workspace-inspect")return probe.inspect(widget,request);
             if(op=="workspace-pipeline-inspect")return probe.pipelineState();
-            if(op=="workspace-append")probe.append(widget,request);
-            else if(op=="workspace-hover")probe.hover(request);
+            if(op=="workspace-append")probe.append(widget,request,QFileInfo(root).dir().absolutePath());
+            else if(op=="workspace-hover")return probe.hover(request);
             else if(op=="workspace-scroll")probe.scroll(request);
             else if(op=="workspace-request-selection")probe.requestSelection(request);
             else if(op=="workspace-model-fixture")probe.modelFixture(request);
