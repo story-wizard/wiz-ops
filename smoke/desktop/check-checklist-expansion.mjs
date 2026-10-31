@@ -35,7 +35,7 @@ async function selectNode(f,nodeId){
  await revealGraphNode({graph:()=>graph(f),view:()=>graphView(f),n,action,until},nodeId);
  let view=await graphView(f);const buttons=(await ui()).widgets.filter(w=>w.window===view.window&&w.tooltip==='Fit all');
  if(buttons.length===1)await n('click',{target:buttons[0].id});
- view=await graphView(f);const nodes=view.sceneItems.filter(x=>x.nodeId===nodeId);
+ const settled=await until(async()=>{const v=await graphView(f),nodes=v.sceneItems.filter(x=>x.nodeId===nodeId);return nodes.length===1?{viewport:v.viewport,node:nodes[0]}:null;},{description:'Graph node geometry settles',stableForMs:300});view=await graphView(f);const nodes=[settled.node];
  if(nodes.length!==1)throw new OutcomeError('Exact graph-node geometry is unavailable; refresh the adapter binding','Blocked');
  const node=nodes[0];await physical('click',{target:view.viewport,...graphNodeHeaderPoint(node)});
  await until(async()=>(await graphView(f)).sceneItems.some(x=>x.nodeId===nodeId&&x.selected),{description:'Exact graph node selection'});
