@@ -1,14 +1,14 @@
 import {mkdir,appendFile,readFile,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {ROOT,inside,writeJSON} from './files.mjs';
 import {assert,OutcomeError,command,retainProcess} from './engine.mjs';
 
 export const ingestPython=app=>path.join(app,'Contents/Resources/python',process.arch==='arm64'?'arm64':'x86_64','bin/python3');
-export function validateIngestProfile(app){
-  const directory=path.join(ROOT,'runner');
-  const script="import sys; from wiz_ingest.settings import load_settings; s=load_settings(sys.argv[1]); flags=['asr_enabled','embeddings_enabled','llm_enrich_enabled','visual_enrichment_enabled','project_context_enabled','speaker_face_enabled','audio_analysis_enabled','camera_motion_enabled','multicam_enabled','model_prefetch_enabled']; assert all(getattr(s,k) is False for k in flags), 'Local ingest must disable model analysis and downloads'; assert s.diarization_backend=='none' and s.wizserver_backend=='http', 'Local ingest must use the owned HTTP engine'; print('Local ingest profile valid')";
-  execFileSync(ingestPython(app),['-c',script,path.join(directory,'ingest-local.toml')],{cwd:directory,env:{PATH:'/usr/bin:/bin',HOME:process.env.HOME,WIZARD_SETTINGS:directory,XDG_CONFIG_HOME:directory,PYTHONDONTWRITEBYTECODE:'1'},timeout:20000,maxBuffer:1024*1024,stdio:['ignore','pipe','pipe']});
+export function validateIngestProfile(app,{profile=path.join(ROOT,'runner/ingest-local.toml'),speech=false,modelDirectory=''}={}){
+  const directory=path.dirname(profile);
+  execFileSync(ingestPython(app),[fileURLToPath(new URL('./ingest-profile.py',import.meta.url)),profile,String(speech),modelDirectory],{cwd:directory,env:{PATH:'/usr/bin:/bin',HOME:process.env.HOME,WIZARD_SETTINGS:directory,XDG_CONFIG_HOME:directory,PYTHONDONTWRITEBYTECODE:'1'},timeout:20000,maxBuffer:1024*1024,stdio:['ignore','pipe','pipe']});
 }
 export function parseIngest(receipt,bundle,assetIds){
   if(receipt.timedOut||receipt.overflow||receipt.aborted)throw new OutcomeError('Ingest outcome is unknown; no retry was made.','Unknown');
@@ -44,8 +44,7 @@ export async function ingestAssets(engine,bundle,clips,{speech=false}={}){
   const local=await readFile(path.join(ROOT,'runner/ingest-local.toml'),'utf8');
   const profile=speech?speechProfile(local,engine.plan.speechModel?.directory):local;
   const config=path.join(settings,'wiz-ingest.toml');await writeFile(config,profile);
-  const verify="import sys; from wiz_ingest.settings import load_settings; s=load_settings(sys.argv[1]); assert s.asr_enabled==(sys.argv[2]=='true'); assert all(getattr(s,k) is False for k in ['embeddings_enabled','llm_enrich_enabled','visual_enrichment_enabled','project_context_enabled','speaker_face_enabled','audio_analysis_enabled','camera_motion_enabled','multicam_enabled','model_prefetch_enabled']); assert s.diarization_backend=='none' and s.wizserver_backend=='http'; assert sys.argv[2]=='false' or (s.asr_backend=='coreml_asr' and s.model_cache_dir==sys.argv[3])";
-  execFileSync(ingestPython(engine.plan.app),['-c',verify,config,String(speech),speech?engine.plan.speechModel.directory:''],{cwd:engine.root,env:{...engine.env,WIZARD_SETTINGS:settings,XDG_CONFIG_HOME:configRoot,PYTHONDONTWRITEBYTECODE:'1'},timeout:20000,maxBuffer:1024*1024});
+  validateIngestProfile(engine.plan.app,{profile:config,speech,modelDirectory:speech?engine.plan.speechModel.directory:''});
   const python=ingestPython(engine.plan.app);
   const env={...engine.env,PATH:path.dirname(python)+':'+engine.env.PATH,WIZSERVER_ADDR:engine.url,WIZARD_SETTINGS:settings,XDG_CONFIG_HOME:configRoot,PYTHONDONTWRITEBYTECODE:'1'};
   assert(engine.child?.exitCode===null&&!engine.child.signalCode,'Owned engine stopped before ingest.');

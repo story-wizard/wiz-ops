@@ -266,7 +266,7 @@
     },
     {
       "file": "runner/ingest-local.toml",
-      "sha256": "76425fe82bfa785fd3dd79c472eddf094ec3b881adb1000f030c134fdc0a044b"
+      "sha256": "6f35ba02e3c35a49c1da3a9794df5b9751b5b6dfa358c763dcd97ee0a8ef3ee5"
     }
   ],
   "sourceRows": [
