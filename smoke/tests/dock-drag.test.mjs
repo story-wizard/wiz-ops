@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {dockDragPoint,dockDropPoint,exposedDockDropPoint} from '../desktop/ui-workflows.mjs';
+import {dockDragPoint,dockDropPoint,exposedDockDropPoint,dockTabForView} from '../desktop/ui-workflows.mjs';
+
+test('a merged dock binds the view owner despite elided labels and hidden sibling tabs',()=>{
+ const area={id:'area',class:'ads::CDockAreaWidget',window:'main'},panel={id:'spell',parent:'area',class:'WizPanelDock',title:'Spellbook',window:'main'},view={id:'view',parent:'spell',class:'DetachedGraphView',window:'main'};
+ const media={id:'media-tab',parent:'area',name:'dockWidgetTabLabel',text:'Me…',tooltip:'Media',window:'main',visibleRect:{width:0,height:0}},tab={...media,id:'spell-tab',text:'Sp…',tooltip:'Spellbook',visibleRect:{width:23,height:20}},foreign={...tab,id:'foreign-tab',parent:'foreign-area'};
+ const widgets=[area,panel,view,media,foreign,tab];assert.equal(dockTabForView({widgets},'view').id,'spell-tab');
+ for(const rows of [widgets.filter(w=>w!==tab),[...widgets,{...tab,id:'duplicate'}],widgets.filter(w=>w!==panel)])assert.throws(()=>dockTabForView({widgets:rows},'view'),e=>e.status==='Blocked');
+});
 
 test('panel docking targets the named owned Qt dock tab rather than empty title bar or native chrome',()=>{
  const window={id:'float',window:'float',class:'ads::CFloatingDockContainer',title:'Media',visible:true,width:1085,height:234};

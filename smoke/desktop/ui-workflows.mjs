@@ -20,6 +20,14 @@ export function dockDragPoint(ui,windowId){
  const tab=observedWidget(ui,w=>w.window===window.id&&w.name==='dockWidgetTabLabel'&&w.text===window.title,'Floating dock tab');
  return {target:tab.id,x:(tab.width-1)/2,y:(tab.height-1)/2};
 }
+export function dockTabForView(ui,viewId){
+ const byId=new Map(ui.widgets.map(w=>[w.id,w]));
+ const ancestors=widget=>{const chain=[],seen=new Set();for(let w=widget;w&&!seen.has(w.id);w=byId.get(w.parent)){chain.push(w);seen.add(w.id);}return chain;};
+ const chain=ancestors(observedWidget(ui,w=>w.id===viewId,'Docked view')),panel=chain.find(w=>w.class==='WizPanelDock'),area=chain.find(w=>w.class==='ads::CDockAreaWidget');
+ if(!panel?.title||!area)throw new OutcomeError('View has no owned dock panel and area','Blocked');
+ // Tabs can be elided, and a merged area can contain hidden sibling labels.
+ return observedWidget(ui,w=>w.window===panel.window&&w.name==='dockWidgetTabLabel'&&(w.tooltip||w.text)===panel.title&&ancestors(w).some(p=>p.id===area.id),'Owned '+panel.title+' dock tab');
+}
 export function dockDropPoint(ui,windowId,panelTitle){
  const panel=observedWidget(ui,w=>w.window===windowId&&w.class==='WizPanelDock'&&w.title===panelTitle,'Destination dock panel');
  const area=observedWidget(ui,w=>w.id===panel.parent&&w.window===windowId&&w.class==='ads::CDockAreaWidget','Destination dock area');

@@ -1,4 +1,4 @@
-import {exposedDockDropPoint} from './ui-workflows.mjs';
+import {exposedDockDropPoint,dockTabForView} from './ui-workflows.mjs';
 import {nativeDesktopInput} from './macos-input.mjs';
 import {spellNodeGeometry,graphNodeHeaderPoint} from './graph-geometry.mjs';
 import {spellBlurParameters} from './spell-controls.mjs';
@@ -86,12 +86,7 @@ await check('P-SB-GESTURE-UNDO',async()=>{
 });
 await check('P-SB-DOCK',async()=>{
  const f=await blurFixture(),before=await inspect(f.doc),initial=await blurNode(),u=await ui(),main=u.widgets.find(w=>w.class==='MainWindow');
- const headerFor=a=>{
-  const parents=new Map(a.widgets.map(w=>[w.id,w]));let graph=a.widgets.find(v=>v.class==='DetachedGraphView'),area=graph;
-  while(area&&area.class!=='ads::CDockAreaWidget')area=parents.get(area.parent);
-  if(!area)return undefined;
-  return a.widgets.find(w=>{if(w.name!=='dockWidgetTabLabel')return false;for(let p=w;p;p=parents.get(p.parent))if(p.id===area.id)return true;return false;});
- };
+ const headerFor=a=>dockTabForView(a,initial.v.id);
  if(initial.v.window!==main.id){
   const header=headerFor(u);assert(header,'Initial floating dock header absent');
   await physical('drag',{target:initial.v.window,chrome:true,x:200,y:16,...exposedDockDropPoint(u,await nativeDesktopInput(file,{command:'inspect',depth:0,mode:'window-server'}),main.id,initial.v.window)});
