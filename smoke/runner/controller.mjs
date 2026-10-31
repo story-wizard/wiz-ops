@@ -13,7 +13,8 @@ import {verifyChangePlan} from './change-course.mjs';
 import {verifyWorkerState} from './worker.mjs';
 import {retainInvestigationHandoff,jobResultBrief,readJobReport} from './job-handoff.mjs';
 
-const exec=promisify(execFile),busy=s=>s.preparing||s.active||s.ownedSessions?.length||s.activeDesktopJobs?.length;
+const exec=promisify(execFile),busy=s=>s.maintainingStorage||s.preparing||s.active||s.ownedSessions?.length||s.activeDesktopJobs?.length;
+const notAdmittedBusy=e=>e.status===409&&e.code==='WORKER_BUSY'&&e.admitted===false&&!e.responseLost;
 export async function resolveJobBuild(request,get=async endpoint=>JSON.parse((await exec('gh',['api',endpoint],{timeout:30000,maxBuffer:8*1024*1024})).stdout)){
  if(request.kind==='app')return {input:{path:request.value},label:request.value,resolvedAt:new Date().toISOString()};
  const releases=request.kind==='tag'?[await get('repos/story-wizard/wizard-release/releases/tags/'+encodeURIComponent(request.value))]:await get('repos/story-wizard/wizard-release/releases?per_page=100');
@@ -130,11 +131,15 @@ export class JobController{
   if(job.state==='Importing')return this.stop(job,'Build import response was interrupted. Inspect the verified cache and create a new job; import was not replayed.','Unknown');
   if(job.state==='Imported'){
    if(busy(await this.worker()))return {id:job.id,state:'Waiting',reason:'Worker busy; preparation intent not dispatched.'};
-   job=this.change(job,{state:'Preparing',dispatchStatus:null},'Preparation intent '+job.preparationId+' retained before dispatch.');
-   try{const preparation=await this.call('/api/preparations',{app:job.imported.app,selection:job.activeCourse==='changes'?job.changePlan.input:job.request.selection,preparationId:job.preparationId});return this.change(job,{preparation},'Preparation admitted.');}catch(e){return this.change(job,{lastError:e.message,dispatchStatus:e.status||null},'Preparation reply failed; inspect its original ID before deciding the outcome.');}
+   job=this.change(job,{state:'Preparing',dispatchStatus:null,admissionRejected:false},'Preparation intent '+job.preparationId+' retained before dispatch.');
+   try{const preparation=await this.call('/api/preparations',{app:job.imported.app,selection:job.activeCourse==='changes'?job.changePlan.input:job.request.selection,preparationId:job.preparationId});return this.change(job,{preparation},'Preparation admitted.');}catch(e){return this.change(job,{lastError:e.message,dispatchStatus:e.status||null,admissionRejected:notAdmittedBusy(e)},'Preparation reply failed; inspect its original ID before deciding the outcome.');}
   }
   if(job.state==='Preparing'){
-   const preparation=await this.lookup('/api/preparations/'+job.preparationId);if(!preparation)return this.stop(job,'Retained preparation ID was not found after the failed reply; no setup replay.',job.dispatchStatus&&job.dispatchStatus<500?'Blocked':'Unknown');
+   const preparation=await this.lookup('/api/preparations/'+job.preparationId);if(!preparation){
+    if(job.admissionRejected&&cancel)return this.stop(job,'Preparation was not admitted before cancellation/deadline.',job.cancelRequested?'Cancelled':'Blocked');
+    if(job.admissionRejected&&!cancel)return this.change(job,{state:'Imported',admissionRejected:false,dispatchStatus:null},'Worker explicitly rejected preparation before admission; original ID is absent. Wait for idle before admission.');
+    return this.stop(job,'Retained preparation ID was not found after the failed reply; no setup replay.',job.dispatchStatus&&job.dispatchStatus<500?'Blocked':'Unknown');
+   }
    if(preparation.id!==job.preparationId||preparation.app!==job.imported.app||preparation.runnerHash!==this.profile.runnerHash||digest(preparation.selection)!==digest(job.selection))return this.stop(job,'Preparation record belongs to another app, source or selection.','Unknown');
    if(preparation.state==='Preparing')return {id:job.id,state:job.state};
    job=this.change(job,{preparation},'Preparation settled: '+preparation.state);
@@ -160,11 +165,15 @@ export class JobController{
   }
   if(job.state==='Ready'){
    if(busy(await this.worker()))return {id:job.id,state:'Waiting',reason:'Worker busy; no Start dispatched.'};
-   job=this.change(job,{state:'Starting',dispatchStatus:null,courseStartedAt:new Date(this.now()).toISOString()},'Run request '+job.runRequestId+' retained before Start.');
-   try{const admitted=await this.call('/api/runner/start',{planHash:job.planHash,requestId:job.runRequestId,operator:job.request.operator});return this.change(job,{state:'Running',runId:admitted.runId},'Run admitted.');}catch(e){return this.change(job,{lastError:e.message,dispatchStatus:e.status||null},'Start reply failed; inspect its original request ID before deciding the outcome.');}
+   job=this.change(job,{state:'Starting',dispatchStatus:null,admissionRejected:false,courseStartedAt:new Date(this.now()).toISOString()},'Run request '+job.runRequestId+' retained before Start.');
+   try{const admitted=await this.call('/api/runner/start',{planHash:job.planHash,requestId:job.runRequestId,operator:job.request.operator});return this.change(job,{state:'Running',runId:admitted.runId},'Run admitted.');}catch(e){return this.change(job,{lastError:e.message,dispatchStatus:e.status||null,admissionRejected:notAdmittedBusy(e)},'Start reply failed; inspect its original request ID before deciding the outcome.');}
   }
   if(job.state==='Starting'){
-   const run=await this.lookup('/api/requests/'+job.runRequestId);if(!run)return this.stop(job,'Run request not found after the failed reply. Inspect before a new job; Start was not replayed.',job.dispatchStatus&&job.dispatchStatus<500?'Blocked':'Unknown');
+   const run=await this.lookup('/api/requests/'+job.runRequestId);if(!run){
+    if(job.admissionRejected&&cancel)return this.stop(job,'Start was not admitted before cancellation/deadline.',job.cancelRequested?'Cancelled':'Blocked');
+    if(job.admissionRejected&&!cancel)return this.change(job,{state:'Ready',admissionRejected:false,dispatchStatus:null},'Worker explicitly rejected Start before admission; original request is absent. Wait for idle before admission.');
+    return this.stop(job,'Run request not found after the failed reply. Inspect before a new job; Start was not replayed.',job.dispatchStatus&&job.dispatchStatus<500?'Blocked':'Unknown');
+   }
    if(run.execution?.plan_hash!==job.planHash||run.operator!==job.request.operator)return this.stop(job,'Retained request belongs to another plan or operator; its run was not adopted.','Unknown');
    return this.change(job,{state:'Running',runId:run.id},'Original run recovered by request ID.');
   }
