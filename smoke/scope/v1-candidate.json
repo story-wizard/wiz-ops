@@ -237,9 +237,9 @@
     },
     {
       "file": "desktop/physical-editor-course.json",
-      "sha256": "89a630c0b714cfc5dca9af39f58bdbf0e2bcd18b63ccca5eb9052c3be6b124eb",
+      "sha256": "ef964b41eb181e4d615e324eab44fdea323b18b5d18e6d612fa26b9acb886500",
       "id": "physical-editor-candidate",
-      "revision": 11,
+      "revision": 12,
       "target": "Instrumented isolated desktop with native macOS input",
       "requiredCheckIds": [
         "P-TL-BIN-DROP",

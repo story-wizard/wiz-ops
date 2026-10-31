@@ -1,7 +1,7 @@
 {
   "id": "physical-editor-candidate",
   "title": "Physical editor paths \u00b7 candidate qualification",
-  "revision": 11,
+  "revision": 12,
   "target": "Instrumented isolated desktop with native macOS input",
   "status": "Candidate",
   "cases": [
@@ -567,6 +567,16 @@
             "surface": "view",
             "key": "cmd+z",
             "checkpoint": "restored"
+          },
+          {
+            "id": "frame-paste",
+            "command": "click",
+            "stepId": "verify",
+            "checkpoint": "pasted",
+            "target": {
+              "class": "QPushButton",
+              "tooltip": "Fit all"
+            }
           }
         ],
         "checkpoints": [
@@ -574,7 +584,8 @@
             "id": "pasted",
             "actions": [
               "copy",
-              "paste"
+              "paste",
+              "frame-paste"
             ],
             "verifier": "editor",
             "capture": "presented"
