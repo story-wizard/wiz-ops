@@ -18,8 +18,12 @@ export async function timelineClipPoint(native,view,clipId,part='body'){
  if(view.class!=='TimelineWidget'||view.clipIdsTruncated||!view.clipIds?.includes(clipId))throw new OutcomeError('The clip is absent from the observed Timeline canvas.','Blocked');
  return clipPoint(await native('timeline-clip-rect',{target:view.id,clipId}),part);
 }
-export async function selectTimelineClip(native,view,clipId){
+export async function selectTimelineClip(native,view,clipId,{emptyTimelineTime}={}){
  await native('key',{target:view.id,key:'V'});
+ if(emptyTimelineTime!==undefined){
+  if(!Number.isFinite(emptyTimelineTime)||emptyTimelineTime<0)throw new OutcomeError('Use a fixture-proven empty timeline time to clear selection.','Blocked');
+  const {point}=await native('timeline-point',{target:view.id,trackIndex:0,timeSeconds:emptyTimelineTime});await native('click',{target:view.id,x:point.x,y:point.y});
+ }
  await native('click',{target:view.id,...await timelineClipPoint(native,view,clipId)});
 }
 
