@@ -98,10 +98,11 @@ await check('P-SB-DOCK',async()=>{
  const detach=menu.menuItems.filter(m=>/detach|float/i.test(m.text)&&m.enabled);assert(detach.length===1,'Float action is ambiguous');
  await n('click',{target:menu.id,x:detach[0].x+detach[0].width/2,y:detach[0].y+detach[0].height/2});
  const floating=await until(async()=>{const a=await ui(),graph=a.widgets.find(w=>w.class==='DetachedGraphView'),window=a.widgets.find(w=>w.id===graph?.window&&w.class==='ads::CFloatingDockContainer');return graph&&window&&window.id!==main.id?{graph,window}:null;});
- same(content(await inspect(f.doc)),content(before),'Floating changed Spell content');const floatScreens=await physical('screenshot',{target:floating.graph.id});
+ same(content(await inspect(f.doc)),content(before),'Floating changed Spell content');
  await n('activate',{target:floating.graph.window});
  const stable=await until(async()=>{const u=await ui(),graph=u.widgets.find(w=>w.class==='DetachedGraphView'),window=u.widgets.find(w=>w.id===graph?.window&&w.class==='ads::CFloatingDockContainer');if(!window)return null;const native=await nativeDesktopInput(file,{command:'inspect',depth:0,mode:'window-server'}),frames=native.windows.filter(w=>w.window===window.nativeWindow),frame=frames[0]?.frame;if(frames.length!==1||Math.abs(frame.width-window.width)>1||frame.height-window.height<0||frame.height-window.height>80)return null;return {id:window.id,width:window.width,height:window.height,frame};},{description:'Native and Qt floating dock geometry settles',stableForMs:300});
  const fresh=await ui(),graph=fresh.widgets.find(w=>w.class==='DetachedGraphView'),window=fresh.widgets.find(w=>w.id===stable.id&&w.id===graph?.window&&w.class==='ads::CFloatingDockContainer');assert(window,'Floating window absent before redock');
+ const floatScreens=await physical('screenshot',{target:graph.id});
  const tab=dockTabForView(fresh,graph.id),back=await physical('drag',{target:tab.id,...defaultClickPoint(tab),...exposedDockDropPoint(fresh,await nativeDesktopInput(file,{command:'inspect',depth:0,mode:'window-server'}),main.id,window.id)});
  await until(async()=>(await canvas()).window===main.id);same(content(await inspect(f.doc)),content(before),'Redocking changed Spell content');
  const restored=(await blurNode()).node;assert(restored.sceneX===node.sceneX&&restored.sceneY===node.sceneY,'Docking changed node position');
