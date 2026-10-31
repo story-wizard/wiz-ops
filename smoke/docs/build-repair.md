@@ -10,6 +10,14 @@ A blocker starts recovery work; it does not end the task. Investigate the cause,
 
 A full-registry difference remains a review finding. The prepared plan also freezes per-operation admission against reviewed request, response and error contracts, including shared desktop setup. Qualified independent checks can run; missing APIs remain N/A and changed unqualified contracts remain Blocked. Both packaged and desktop dispatch enforce the frozen admission. Read the retained schema review to repair each remaining contract and prepare a new attempt.
 
+## Resolve compatibility before Start
+
+Treat app and SDK drift as routine work within an authorized run. Inspect the complete frozen selection, including shared setup, even when preparation says Ready: `buildSupport.checks` may still contain Blocked or N/A checks. Retain the original attempt, package identity and exact diagnostic; group affected checks by the shared operation or SDK contract rather than patching each test.
+
+Read the selected package's no-spawn registry and shipped SDK definitions. Compare only the contracts the affected checks use, including responses and error semantics. Trace existing callers and their independent assertions. A retired SDK setting is safely absent only when the SDK explicitly declares its retirement and active safety controls still validate. Do not invent a default for a missing control. Keep local-only/no-egress and paid-operation limits explicit.
+
+Review compatible changes yourself from this evidence. Use scoped operation anchors or shared adapters, qualify old-contract and changed-contract cases plus a rejection control, then prepare a new isolated attempt and run the affected checks. Keep unrelated unreviewed operations guarded. A changed test purpose or expected behavior needs a decision; an ordinary compatibility repair does not need the user to diagnose it. Ready describes preparation, not a functional Pass. Return the tested repair for installed-source adoption after execution; preserve machine holds, ownership and uncertain-input rules.
+
 ## Inspect the build
 
 Use the existing service URL with `smoke.mjs setup`, `builds` and `context`. Identify the exact local app, tag or asset and package hash. Read the packaged CLI schema without starting Wizard:

@@ -163,3 +163,22 @@ test('optional response metadata preserves consumers, including nested tagged cl
  const errorExtension=structuredClone(extended);errorExtension.errors.inspect={type:'object'};
  assert.throws(()=>assertMappedPackagedSchema(errorExtension,baseline,null),/different command schema/);
 });
+
+test('reviewed import and clip graph extensions admit existing callers without approving unrelated contracts',async()=>{
+ const {operationSupport}=await import('../runner/schema-compatibility.mjs');
+ const {admitChecks}=await import('../runner/capabilities.mjs');
+ const {resolveSelection,selectedRecipe}=await import('../runner/catalog.mjs');
+ const entry=qualified.reviewed.find(r=>r.operationsFile==='packaged-schema-2026.10.31-local-operations.json');
+ const operations=JSON.parse(await readFile(new URL('../runner/contracts/'+entry.operationsFile,import.meta.url)));
+ const schema={...captured,operations:Object.fromEntries(Object.entries({...captured.operations,...operations}).sort(([a],[b])=>a.localeCompare(b)))};
+ assert.equal(digest(schema),entry.schemaHash);
+ const old={...qualified,reviewed:qualified.reviewed.filter(e=>e!==entry)};
+ const recipe=selectedRecipe(resolveSelection({}, {courseIds:['smoke-full'],subsetIds:['IN-01','A-RG-01'],desktopMode:'grouped'}));
+ assert(admitChecks(recipe,schema,captured,old).checks.some(c=>c.state==='Blocked'));
+ assert(admitChecks(recipe,schema,captured,qualified).checks.every(c=>c.state==='Ready'));
+ for(const mutate of [s=>s.operations['media.import_asset'].required.push('media_root'),s=>s.operations['graph.set_param'].properties.clip_id.description='Selects a different graph',s=>s.results['graph.get_clip_graph']={type:'string'}]){
+  const changed=structuredClone(schema);mutate(changed);assert(operationSupport(changed,captured,qualified).unqualifiedOperations.length>0);
+ }
+ const unrelated=structuredClone(schema);unrelated.operations['project.create'].required.push('unreviewed');
+ assert(operationSupport(unrelated,captured,qualified).unqualifiedOperations.includes('project.create'));
+});
