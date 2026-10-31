@@ -16,6 +16,8 @@ Treat app and SDK drift as routine work within an authorized run. Inspect the co
 
 Read the selected package's no-spawn registry and shipped SDK definitions. Compare only the contracts the affected checks use, including responses and error semantics. Trace existing callers and their independent assertions. A retired SDK setting is safely absent only when the SDK explicitly declares its retirement and active safety controls still validate. Do not invent a default for a missing control. Keep local-only/no-egress and paid-operation limits explicit.
 
+When completion evidence moves, preserve its meaning rather than its old field name. The October 31 ingest adapter reads the exact observed job from the project's read-only ledger, requires successful finalization, and matches asset, path and source hash against the saved sidecar. Missing, stale, partial or misbound records still fail; an existing stale legacy marker cannot fall back to the new route.
+
 Review compatible changes yourself from this evidence. Use scoped operation anchors or shared adapters, qualify old-contract and changed-contract cases plus a rejection control, then prepare a new isolated attempt and run the affected checks. Keep unrelated unreviewed operations guarded. A changed test purpose or expected behavior needs a decision; an ordinary compatibility repair does not need the user to diagnose it. Ready describes preparation, not a functional Pass. Return the tested repair for installed-source adoption after execution; preserve machine holds, ownership and uncertain-input rules.
 
 ## Inspect the build

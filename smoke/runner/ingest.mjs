@@ -2,6 +2,7 @@ import {mkdir,appendFile,readFile,writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {fileURLToPath} from 'node:url';
+import {DatabaseSync} from 'node:sqlite';
 import {ROOT,inside,writeJSON} from './files.mjs';
 import {assert,OutcomeError,command,retainProcess} from './engine.mjs';
 
@@ -27,10 +28,27 @@ export function parseIngest(receipt,bundle,assetIds){
   assert(ran.some(o=>o.operation==='finalize_project'&&o.status==='ok'),'Ingest did not finalize the project.');
   return snapshot;
 }
-export function verifyIngestSidecar(sidecar,assetId){
+export function verifyIngestSidecar(sidecar,assetId,{bundle,jobId}={}){
   assert(sidecar.id===assetId,'Ingest sidecar asset identity mismatch.');
-  const hash=sidecar.technical?.file_hash;
-  assert(typeof hash==='string'&&hash.length>0&&sidecar.coverage?.ingest_complete?.source_hash===hash,`Asset ${assetId} has no current completed ingest record.`);
+  const hash=sidecar.technical?.file_hash,marker=sidecar.coverage?.ingest_complete;
+  const message=`Asset ${assetId} has no current completed ingest record.`;
+  assert(typeof hash==='string'&&hash.length>0,message);
+  if(marker!==undefined){assert(marker?.source_hash===hash,message);return;}
+  // Current SDKs retain completion in the project job ledger, not clip coverage.
+  // Read the exact observed job; never infer completion from metadata or exit zero.
+  assert(typeof bundle==='string'&&path.isAbsolute(bundle)&&typeof jobId==='string'&&jobId.length>0,message);
+  const db=new DatabaseSync(path.join(bundle,'.wizindex.db'),{readOnly:true});
+  try{
+    const row=db.prepare('SELECT wiz_path,status,error,finished_at,request_json,summary_json FROM ingest_jobs WHERE job_id=?').get(jobId);
+    assert(row?.wiz_path===bundle&&row.status==='succeeded'&&!row.error&&row.finished_at,message);
+    const request=JSON.parse(row.request_json),summary=JSON.parse(row.summary_json);
+    assert(request.wiz_path===bundle&&Array.isArray(summary.operations_failed)&&summary.operations_failed.length===0,message);
+    const requested=request.clips?.filter(c=>c.asset_id===assetId)||[];
+    const completed=summary.operations_run?.filter(o=>o.operation==='add_clip'&&o.asset_id===assetId)||[];
+    assert(requested.length===1&&requested[0].media_path===sidecar.path&&completed.length===1,message);
+    const op=completed[0];assert(op.status==='ok'&&!op.error&&op.media_path===sidecar.path&&op.source_hash===hash,message);
+    assert(summary.operations_run.some(o=>o.operation==='finalize_project'&&o.status==='ok'&&!o.error),message);
+  }finally{db.close();}
 }
 export function speechProfile(local,modelDirectory){
   assert(typeof modelDirectory==='string'&&path.isAbsolute(modelDirectory),'A pinned local speech model is required.');
@@ -56,7 +74,7 @@ export async function ingestAssets(engine,bundle,clips,{speech=false}={}){
   await appendFile(path.join(engine.root,'operations.jsonl'),JSON.stringify({sequence:++engine.counter,caseId:engine.caseId,operation:'wiz-ingest.submit',profile:speech?'offline-speech':'local-source-preparation',params:request,...receipt})+'\n');
   const snapshot=parseIngest(receipt,bundle,clips.map(c=>c.asset_id));
   await writeJSON(path.join(path.dirname(bundle),'ingest.json'),snapshot);
-  for(const c of clips)verifyIngestSidecar(JSON.parse(await readFile(path.join(bundle,'assets/clips',c.asset_id+'.json'),'utf8')),c.asset_id);
+  for(const c of clips)verifyIngestSidecar(JSON.parse(await readFile(path.join(bundle,'assets/clips',c.asset_id+'.json'),'utf8')),c.asset_id,{bundle,jobId:snapshot.job_id});
   // Ingest publishes through the shared project store; refresh the registry and its revision before editorial mutations.
   await engine.call(bundle,'project.close');await engine.call(bundle,'project.open');
   return snapshot;
