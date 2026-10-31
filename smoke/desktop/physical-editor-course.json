@@ -1,7 +1,7 @@
 {
   "id": "physical-editor-candidate",
   "title": "Physical editor paths \u00b7 candidate qualification",
-  "revision": 8,
+  "revision": 9,
   "target": "Instrumented isolated desktop with native macOS input",
   "status": "Candidate",
   "cases": [
@@ -305,7 +305,12 @@
             "capture": "presented"
           }
         ]
-      }
+      },
+      "operations": [
+        "graph.get_clip_graph",
+        "graph.insert_on_edge",
+        "playback.seek"
+      ]
     },
     {
       "id": "P-RG-WIRE",
@@ -423,7 +428,13 @@
             "capture": "presented"
           }
         ]
-      }
+      },
+      "operations": [
+        "graph.get_clip_graph",
+        "graph.insert_on_edge",
+        "playback.seek",
+        "graph.disconnect_edge"
+      ]
     },
     {
       "id": "P-RG-CLIPBOARD",
@@ -594,7 +605,12 @@
             "capture": "presented"
           }
         ]
-      }
+      },
+      "operations": [
+        "graph.get_clip_graph",
+        "graph.insert_on_edge",
+        "playback.seek"
+      ]
     },
     {
       "id": "P-GRADE-LIVE",

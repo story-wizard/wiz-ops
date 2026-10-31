@@ -54,6 +54,8 @@ The selected package and instrumented desktop tools are separate inputs. A deskt
 
 ## Verify and deliver
 
+Bind Render Graph targets by the API node identity and the owned Qt graph identity, not rendered labels. A collapsed group may expose a hidden node's port; resolve that boundary from published group membership and the retained edge. Keep physical gestures and independent graph readback. Declare operations used by fixture setup as well as test actions so an unqualified dependency is found during preparation.
+
 Run `npm test` and `npm run scope:check` from `smoke/`. For a regression, demonstrate failure with the old behavior and success with the repair where practical. Prepare the actual selected package again. Check the added prerequisites and frozen package, schema, fixture and source identities.
 
 Run affected checks within the user's authorized scope before relying on a changed behavioral mapping. Foreground checks control the desktop. Preserve Fail, Blocked and Unknown; never retry an uncertain mutation just because its response was lost.

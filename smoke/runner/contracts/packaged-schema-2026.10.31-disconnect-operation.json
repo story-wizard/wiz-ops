@@ -1,0 +1,138 @@
+{
+  "graph.disconnect_edge": {
+    "additionalProperties": true,
+    "allOf": [],
+    "properties": {
+      "bound_node": {
+        "description": "Boundary-bound durable node",
+        "type": "string"
+      },
+      "boundary": {
+        "description": "Boundary: input or output",
+        "type": "string"
+      },
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "bypassed": {
+        "description": "Pass bypass state",
+        "type": "boolean"
+      },
+      "channel": {
+        "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+        "enum": [
+          "alpha",
+          "luma"
+        ],
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id; omit for the timeline graph",
+        "type": "string"
+      },
+      "edge_type": {
+        "description": "Edge type",
+        "type": "string"
+      },
+      "expect_content_revision": {
+        "description": "Graph content revision gate",
+        "type": "integer"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "expect_structural_revision": {
+        "description": "Graph structural revision gate",
+        "type": "integer"
+      },
+      "from_node": {
+        "description": "Durable source node id",
+        "type": "string"
+      },
+      "from_slot": {
+        "description": "Source slot",
+        "type": "string"
+      },
+      "group_id": {
+        "description": "Group the new pass joins",
+        "type": "string"
+      },
+      "input_slot": {
+        "description": "Matte or correction mask input slot",
+        "type": "string"
+      },
+      "new_input_slot": {
+        "description": "New pass input slot",
+        "type": "string"
+      },
+      "new_output_slot": {
+        "description": "New pass output slot",
+        "type": "string"
+      },
+      "node_id": {
+        "description": "Durable node id",
+        "type": "string"
+      },
+      "op": {
+        "description": "Wire operation name",
+        "type": "string"
+      },
+      "ops": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "param": {
+        "description": "Parameter name",
+        "type": "string"
+      },
+      "params": {
+        "type": "object"
+      },
+      "peer_slot": {
+        "description": "Peer slot",
+        "type": "string"
+      },
+      "producer_slot": {
+        "description": "Producing node output slot",
+        "type": "string"
+      },
+      "slot": {
+        "description": "Graph boundary slot",
+        "type": "string"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      },
+      "to_node": {
+        "description": "Durable target node id",
+        "type": "string"
+      },
+      "to_slot": {
+        "description": "Target slot",
+        "type": "string"
+      },
+      "type": {
+        "description": "Pass type or edge type",
+        "type": "string"
+      },
+      "value": {
+        "description": "Typed parameter value"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "from_slot",
+      "to_slot",
+      "type",
+      "from_node",
+      "to_node"
+    ],
+    "type": "object"
+  }
+}

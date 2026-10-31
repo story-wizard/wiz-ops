@@ -108,6 +108,15 @@
         "Existing calls still supply clip_id for clip graphs, omit the new fields, retain explicit media.add_media_root and source/revision/graph/persistence assertions. No result or error contract changes are approved."
       ],
       "basis": "Official nightly-2026.10.31-86bf800, ZIP SHA-256 bfb0aa6767422e69f3d124606ce27c3e46cb7b8a629843beaf82e60d744382e2, App 86bf8001f30fa118a9111e9f35c6d61a55916f79 and Core 497d59ae152452d1bc57f45dbc249ef445b71b29. Compared each used operation with the October 23 anchor: every existing import field is identical; graph changes are exactly the listed optional fields, clip-scope description/required-field removal and new batch variant. All 15 prior batch alternatives retain their types, required fields, constraints and semantics apart from those shared optional fields and clip description. ProjectSession.import/setup and render-helpers.insertEffect keep path permission, stable asset identity, explicit clip scope, revision gates, single inserted-node identity and rendered-path assertions. This synthetic anchor qualifies only these operation contracts for existing callers; it does not approve the whole registry or establish new timeline-graph, matte or media-root behavior. Exact-package runtime outcomes remain independent."
+    },
+    {
+      "schemaHash": "f53e030936ad3faef05df34894941a9d03ab47ff239f164e98ee6f9368f97e43",
+      "operationsFile": "packaged-schema-2026.10.31-disconnect-operation.json",
+      "reviewedAt": "2026-10-31",
+      "changes": [
+        "graph.disconnect_edge adds optional channel, group_id, input_slot and producer_slot and permits omitted clip_id for timeline graphs. Existing required endpoints, slots, pixel type and revision guards are unchanged."
+      ],
+      "basis": "Exact October 31 official package already retained for this run. Compared every request field, result and error with the baseline: only the listed optional scope fields and clip description/required-field removal differ. The physical wire fixture still supplies explicit timeline_id/clip_id, the observed pixel edge, both optimistic revisions, and independently verifies physical connection plus Undo/Redo. No result/error change or unrelated operation is approved. The prior eight-operation anchor remains byte-for-byte intact."
     }
   ]
 }
