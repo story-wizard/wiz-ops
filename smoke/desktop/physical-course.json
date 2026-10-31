@@ -1,6 +1,6 @@
 {
   "id": "physical-spellbook-candidate",
-  "revision": 5,
+  "revision": 6,
   "target": "Instrumented isolated desktop with native macOS input",
   "status": "Candidate",
   "cases": [
@@ -38,7 +38,7 @@
       "id": "P-SB-DOCK",
       "sourceId": "SB-09",
       "title": "Float and redock a populated Spellbook",
-      "expected": "A visible Float/Detach control floats the Spellbook panel; physical native title-bar redocking preserves the document, nodes, edges, parameters and layout."
+      "expected": "A visible Float/Detach control floats the Spellbook panel; physically dragging its application-owned dock tab back into the main window preserves the document, nodes, edges, parameters and layout."
     }
   ]
 }
