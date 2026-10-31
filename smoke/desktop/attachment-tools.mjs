@@ -1,7 +1,7 @@
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {existsSync,constants} from 'node:fs';
-import {mkdir,mkdtemp,cp,rename,rm} from 'node:fs/promises';
+import {mkdir,mkdtemp,cp,rename,rm,realpath} from 'node:fs/promises';
 import {ROOT,dataDirectory,fingerprint,readJSON,writeJSON,digest,sha} from '../runner/files.mjs';
 import {assert} from '../runner/engine.mjs';
 
@@ -33,7 +33,7 @@ export async function setupAttachmentTools(app,configuredDataDir){
   run('/bin/sh',[path.join(ROOT,'desktop/native/build.sh')],{env:{...process.env,SMOKE_DATA_DIR:temp}});
   const output=path.join(temp,'tools');await mkdir(path.join(output,'styles'),{recursive:true});
   const bridge=path.join(output,'styles/libwizard_smoke.dylib');await cp(path.join(temp,'native/styles/libwizard_smoke.dylib'),bridge);
-  const test=path.join(output,'QtTest.framework');await cp(path.join(sdk,'lib/QtTest.framework'),test,{recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE});
+  const test=path.join(output,'QtTest.framework');await cp(await realpath(path.join(sdk,'lib/QtTest.framework')),test,{recursive:true,verbatimSymlinks:true,mode:constants.COPYFILE_FICLONE});
   const testBinary=path.join(test,'Versions/A/QtTest');
   for(const binary of [bridge,testBinary]){
    const dependencies=run('/usr/bin/otool',['-L',binary]).split('\n').slice(1).map(line=>line.trim().split(' (')[0]);
