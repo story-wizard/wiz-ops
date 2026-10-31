@@ -7,7 +7,7 @@ import {verifySearchIdentity} from './ui-cohort-proof.mjs';
 import {assert,OutcomeError,same} from '../runner/engine.mjs';
 import {readJSON,sha} from '../runner/files.mjs';
 const file=process.argv[2],h=await uiWorkflows(file,'desktop-media-search-report.json');
-const {s,n,c,ui,until,check,stage,physical,observe,capture,unique,click,type,modelRow,value,search,clearSearch,finish}=h;
+const {s,n,c,ui,until,check,stage,physical,observe,capture,unique,click,type,modelValues,modelRow,value,search,clearSearch,finish}=h;
 const assetPath=id=>path.join(s.root,'media',id==='plate'?'pattern_24.mov':'comet_report.mov');
 async function list(){const result=await c('media.list_assets');assert(Array.isArray(result.assets),'Asset registry is incomplete');return result.assets;}
 async function identity(row,expected){const id=await value(row,0,274);assert(id.available&&id.type==='QString'&&id.value===expected,'Model role is not bound to the expected asset in this build');return id.value;}
@@ -37,20 +37,21 @@ await check('D-IMPORT-DIALOG',async()=>{
 await check('D-MEDIA-THUMBNAIL',async()=>{
  const id='D-MEDIA-THUMBNAIL';await clearSearch();let row;
  await stage('thumbnail','Read the cached thumbnail for the known plate','verify',async()=>{
-  const thumb=await until(async()=>{row=await modelRow('pattern_24.mov');await identity(row,s.assets.plate);const image=await value(row,0,270);return image.available&&image.path?image:null;},{description:'Source thumbnail',timeoutMs:15000});
+  const thumb=await until(async()=>{const view=unique(await ui(),w=>w.class==='QTreeView'&&Array.isArray(w.model),'Media list'),read=await modelValues(view,'pattern_24.mov',[{column:0,role:274},{column:0,role:270}]);row=read.row;const [asset,image]=read.values;assert(asset.available&&asset.type==='QString'&&asset.value===s.assets.plate,'Thumbnail model role is not bound to the expected asset');await observe(id,'model-read',read);return image.available&&image.path?image:null;},{description:'Source thumbnail',timeoutMs:15000});
   assert(thumb.width>64&&thumb.height>32,'Thumbnail is too small to represent the source');
   const rgb=Buffer.from(thumb.sampleRgb||'','base64');assert(rgb.length===6144,'Thumbnail raster is incomplete');let bright=0,chroma=0;for(let i=0;i<rgb.length;i+=3){bright+=Math.max(rgb[i],rgb[i+1],rgb[i+2]);chroma+=Math.max(rgb[i],rgb[i+1],rgb[i+2])-Math.min(rgb[i],rgb[i+1],rgb[i+2]);}assert(bright/2048>40&&chroma/2048>25,'Known colour-plate thumbnail is blank or lacks its coloured bars');
-  const out=path.join(s.root,'evidence',id+'-after.png');await mkdir(path.dirname(out),{recursive:true});await copyFile(thumb.path,out);h.retained.set(id,[out]);await observe(id,'thumbnail',{assetId:s.assets.plate,thumbnail:thumb,row});
+  const out=path.join(s.root,'evidence',id+'-after.png');await mkdir(path.dirname(out),{recursive:true});await copyFile(thumb.path,out);h.retained.set(id,[...(h.retained.get(id)||[]),out]);await observe(id,'thumbnail',{assetId:s.assets.plate,thumbnail:thumb,row});
  });await capture(id,'after-bin',row.view.id,'widget');return {assetId:s.assets.plate,scope:'Cached source thumbnail identity and visible media list; timeline filmstrip and waveform shape remain additional coverage'};
 });
 
 await check('D-MEDIA-COLOR-COLUMN',async()=>{
- const id='D-MEDIA-COLOR-COLUMN';await clearSearch();const row=await modelRow('pattern_24.mov');await identity(row,s.assets.plate);
- const column=row.page.headers.findIndex(h=>/colou?r\s*space/i.test(h));if(column<0)throw new OutcomeError('Media model has no identified colour-space column','Blocked');
- const cell=await value(row,column,0),sidecar=await readJSON(path.join(s.bundle,'assets/clips',s.assets.plate+'.json'));
+ const id='D-MEDIA-COLOR-COLUMN';await clearSearch();
+ const view=unique(await ui(),w=>w.class==='QTreeView'&&Array.isArray(w.model),'Media list'),read=await modelValues(view,'pattern_24.mov',[{column:0,role:274},{header:/colou?r\s*space/i,role:0}]),row=read.row,column=read.columns[1],[asset,cell]=read.values;
+ assert(asset.available&&asset.type==='QString'&&asset.value===s.assets.plate,'Colour model role is not bound to the expected asset');
+ const sidecar=await readJSON(path.join(s.bundle,'assets/clips',s.assets.plate+'.json'));
  assert(cell.available&&typeof cell.value==='string'&&/709/.test(cell.value),'Rec.709 fixture colour column is empty or wrong');
  const source=JSON.stringify(sidecar);assert(/709/i.test(source),'Fixture sidecar does not identify the expected Rec.709 source');
- await observe(id,'column',{assetId:s.assets.plate,column,header:row.page.headers[column],cell,sidecar});await capture(id,'after',row.view.id,'widget');return {assetId:s.assets.plate,colour:cell.value};
+ await observe(id,'column',{assetId:s.assets.plate,column,header:row.page.headers[column],cell,sidecar,read});await capture(id,'after',row.view.id,'widget');return {assetId:s.assets.plate,colour:cell.value};
 });
 
 await check('D-TRANSCRIPT-SEARCH',async()=>{
