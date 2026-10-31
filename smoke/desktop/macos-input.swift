@@ -223,6 +223,15 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                 })
             }
             func foreground() -> Bool { windowServer ? (topWindow()?[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == pid : attribute(app,kAXFrontmostAttribute) as? Bool == true }
+            func requireGestureForeground(_ message:String) throws {
+                let front=topWindow() ?? [:]
+                let owned=windowServer ? (front[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == pid : foreground()
+                if inputInterrupted || !owned {
+                    throw InputError(message:message,diagnostics:["expectedPid":pid,"interrupted":inputInterrupted,
+                        "frontmostApplicationPid":NSWorkspace.shared.frontmostApplication?.processIdentifier ?? 0,
+                        "frontWindow":["pid":front[kCGWindowOwnerPID as String] ?? 0,"window":front[kCGWindowNumber as String] ?? 0,"owner":front[kCGWindowOwnerName as String] ?? "","layer":front[kCGWindowLayer as String] ?? 0,"frame":front[kCGWindowBounds as String] ?? [:]]])
+                }
+            }
             let inventory = CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements], kCGNullWindowID) as? [[String:Any]] ?? []
             let owned = inventory.filter { ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == pid }
             var elements: [(AXUIElement,[Int])] = [], rows: [[String:Any]] = []
@@ -384,7 +393,7 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                             down.type = .flagsChanged;up.type = .flagsChanged;return (down,up,modifier.2)
                         }
                         defer { for (up,flag) in heldModifiers.reversed(){flags.remove(flag);up.flags=flags;up.post(tap:.cghidEventTap);modifierCleanupReleased=true} }
-                        for (down,up,flag) in modifierEvents {try verifyOwner();try require(!inputInterrupted && foreground(),"Gesture interrupted before modifier dispatch");flags.insert(flag);down.flags=flags;dispatched=true;down.post(tap:.cghidEventTap);heldModifiers.append((up,flag))}
+                        for (down,up,flag) in modifierEvents {try verifyOwner();try requireGestureForeground("Gesture interrupted before modifier dispatch");flags.insert(flag);down.flags=flags;dispatched=true;down.post(tap:.cghidEventTap);heldModifiers.append((up,flag))}
                         result["modifiers"]=modifiers.map{$0.0};result["pathPoints"]=path.count
                         let buttonName=request["button"] as? String ?? "left"
                         let button: CGMouseButton=buttonName=="middle" ? .center : buttonName=="right" ? .right : .left
@@ -399,7 +408,7 @@ func sampleRGB(_ image: CGImage) throws -> Data {
                         func mouse(_ type: CGEventType,_ location: CGPoint) throws {
                             guard let event = CGEvent(mouseEventSource:nil,mouseType:type,mouseCursorPosition:location,mouseButton:button) else { throw InputError(message:"Unable to create mouse event") }
                             event.setIntegerValueField(.mouseEventClickState,value:Int64(clickState));event.flags=flags
-                            try verifyOwner(); try require(!inputInterrupted && foreground(),"Gesture interrupted or verified PID lost foreground input ownership")
+                            try verifyOwner(); try requireGestureForeground("Gesture interrupted or verified PID lost foreground input ownership")
                             if windowServer {
                                 try requirePointerWindow(topWindow(location),at:location,pid:pid,window:number,starting:type==downType)
                             } else {
