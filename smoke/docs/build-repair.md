@@ -111,9 +111,9 @@ baseline remain blocked. Preparation and application test outcomes are retained
 separately in the external workspace. An older failed preparation stays failed;
 update the source and prepare again as a new attempt.
 
-The policy checks every existing operation. Course-specific exclusions remain
-deferred until declarations include shared setup calls and desktop dependencies;
-the current desktop selection does not retain a complete operation list.
+This historical review checked every existing operation. Current preparation
+also checks each selected check's required operations, shared setup calls and
+desktop dependencies against reviewed contracts, as described above.
 Compatibility permits test execution; independent assertions still decide Pass.
 A new application dialog, such as the fresh-project version warning, needs a
 separate startup-flow repair and cannot be handled by schema comparison.

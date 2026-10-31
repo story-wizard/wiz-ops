@@ -13,6 +13,14 @@ export function mediaSearchAction(ui,source){
  return choices[0];
 }
 
+// Panel docking belongs to Qt's title bar. Dragging macOS title chrome can
+// invoke WindowManager tiling instead, especially while Option is held.
+export function dockDragPoint(ui,windowId){
+ const window=observedWidget(ui,w=>w.id===windowId&&w.class==='ads::CFloatingDockContainer','Floating dock window');
+ const bar=observedWidget(ui,w=>w.window===window.id&&w.class==='ads::CDockAreaTitleBar','Floating dock title bar');
+ return {target:bar.id,x:Math.min(200,(bar.width-1)/2),y:(bar.height-1)/2};
+}
+
 // Shared authored setup, physical actions and retained observations. Assertions
 // stay in the check or its pure oracle; these helpers never manufacture Pass.
 export async function uiWorkflows(file,reportName){
