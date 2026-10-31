@@ -1,3 +1,4 @@
+import {blurParameters,blurRadius,setBlurRadius} from './graph-parameters.mjs';
 import path from 'node:path';
 import {mkdir,realpath} from 'node:fs/promises';
 import {assert,same,near,clip} from './engine.mjs';
@@ -30,12 +31,12 @@ export const renderCases={
     const initial=await get(),baseline=await still(c,'graph-baseline');visibleImage(baseline);
     const transform=initial.nodes.find(n=>n.type==='transform_2d'),composite=initial.nodes.find(n=>n.type==='composite');assert(transform&&composite,'Expected clip render graph nodes are missing.');
     const edge=initial.edges.find(e=>e.from_node===transform.node_id&&e.to_node===composite.node_id);assert(edge,'Expected transform-to-composite edge is missing.');
-    await c.call('graph.insert_on_edge',{...scope,type:'gaussian_blur',from_node:edge.from_node,from_slot:edge.from_slot,to_node:edge.to_node,to_slot:edge.to_slot,edge_type:edge.type,new_input_slot:'input',new_output_slot:'output',params:{radius:16},expect_structural_revision:initial.structural_revision,expect_content_revision:initial.content_revision});
+    await c.call('graph.insert_on_edge',{...scope,type:'gaussian_blur',from_node:edge.from_node,from_slot:edge.from_slot,to_node:edge.to_node,to_slot:edge.to_slot,edge_type:edge.type,new_input_slot:'input',new_output_slot:'output',params:await blurParameters(c.bundle,16),expect_structural_revision:initial.structural_revision,expect_content_revision:initial.content_revision});
     let graph=await get();const added=graph.nodes.filter(n=>!initial.nodes.some(i=>i.node_id===n.node_id));assert(added.length===1&&added[0].type==='gaussian_blur','Graph did not add exactly one blur node.');const id=added[0].node_id;
     assert(graph.edges.some(e=>e.from_node===edge.from_node&&e.to_node===id)&&graph.edges.some(e=>e.from_node===id&&e.to_node===edge.to_node),'Blur node was not connected in the expected render path.');
     const blurred=await still(c,'blurred');assert(pixelDifference(baseline,blurred)>1,'Connected blur did not change rendered pixels.');assert(pixelStats(blurred).edgeEnergy<pixelStats(baseline).edgeEnergy*.98,'Blur did not reduce image edge contrast.');
-    await c.call('graph.set_param',{...scope,node_id:id,param:'radius',value:0});graph=await get();assert(graph.nodes.find(n=>n.node_id===id).params.radius===0,'Blur radius did not update.');const zero=await still(c,'zero-radius');assert(pixelDifference(baseline,zero)<=1,'Zero-radius blur did not restore the reference.');
-    await c.call('graph.set_param',{...scope,node_id:id,param:'radius',value:16});await c.call('graph.set_bypass',{...scope,node_id:id,bypassed:true});assert((await get()).nodes.find(n=>n.node_id===id).bypassed===true,'Graph node did not bypass.');const bypassed=await still(c,'bypassed');assert(pixelDifference(baseline,bypassed)<=1,'Bypassed blur still changed rendered pixels.');
+    await setBlurRadius((op,params)=>c.call(op,params),c.bundle,scope,id,0);graph=await get();assert(blurRadius(graph.nodes.find(n=>n.node_id===id).params)===0,'Blur radius did not update.');const zero=await still(c,'zero-radius');assert(pixelDifference(baseline,zero)<=1,'Zero-radius blur did not restore the reference.');
+    await setBlurRadius((op,params)=>c.call(op,params),c.bundle,scope,id,16);await c.call('graph.set_bypass',{...scope,node_id:id,bypassed:true});assert((await get()).nodes.find(n=>n.node_id===id).bypassed===true,'Graph node did not bypass.');const bypassed=await still(c,'bypassed');assert(pixelDifference(baseline,bypassed)<=1,'Bypassed blur still changed rendered pixels.');
     await c.call('graph.edit_batch',{...scope,ops:[{op:'delete_node',node_id:id},{op:'connect_edge',...edge}]});same(graphState(await get()),graphState(initial),'Restored render graph');const restored=await still(c,'graph-restored');assert(pixelDifference(baseline,restored)<=1,'Restored graph changed rendered pixels.');await evidence(c,{baseline,blurred,zero,bypassed,restored});return 'Graph insertion, parameter changes, bypass and removal matched graph readback and independently checked rendered pixels. Clipboard UI was not exercised.';
   },
   async 'A-IN-04-T'(c){

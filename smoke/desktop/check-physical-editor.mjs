@@ -1,3 +1,4 @@
+import {blurParameters} from '../runner/graph-parameters.mjs';
 import {testSpecification,evidenceCaption} from '../test-details.mjs';
 import path from 'node:path';
 import {copyFile} from 'node:fs/promises';
@@ -39,7 +40,7 @@ async function binDrop(f){
  }
  return receipt;
 }
-async function blurFixture(name){const f=await fixture(name);const g=await graph(f),edge=g.edges.find(e=>e.from_node===g.nodes.find(n=>n.type==='transform_2d').node_id&&e.to_node===g.nodes.find(n=>n.type==='composite').node_id);assert(edge,'Fixture image edge absent');await c('graph.insert_on_edge',{...f.scope,type:'gaussian_blur',from_node:edge.from_node,from_slot:edge.from_slot,to_node:edge.to_node,to_slot:edge.to_slot,edge_type:edge.type,new_input_slot:'input',new_output_slot:'output',params:{radius:12},expect_structural_revision:g.structural_revision,expect_content_revision:g.content_revision});await select(f);if(!(await ui()).widgets.some(w=>w.class==='RenderGraphView'))await action('Render Graph');await fitGraph();return f;}
+async function blurFixture(name){const f=await fixture(name);const g=await graph(f),edge=g.edges.find(e=>e.from_node===g.nodes.find(n=>n.type==='transform_2d').node_id&&e.to_node===g.nodes.find(n=>n.type==='composite').node_id);assert(edge,'Fixture image edge absent');await c('graph.insert_on_edge',{...f.scope,type:'gaussian_blur',from_node:edge.from_node,from_slot:edge.from_slot,to_node:edge.to_node,to_slot:edge.to_slot,edge_type:edge.type,new_input_slot:'input',new_output_slot:'output',params:await blurParameters(s.bundle,12),expect_structural_revision:g.structural_revision,expect_content_revision:g.content_revision});await select(f);if(!(await ui()).widgets.some(w=>w.class==='RenderGraphView'))await action('Render Graph');await fitGraph();return f;}
 async function graphView(){return until(async()=>(await ui()).widgets.find(w=>w.class==='RenderGraphView'));}
 async function fitGraph(){const v=await graphView(),button=(await ui()).widgets.find(w=>w.window===v.window&&w.tooltip==='Fit all');assert(button,'Render Graph Fit all absent');await n('click',{target:button.id});await pause(200);}
 async function blurItem(){const v=await graphView(),nodes=v.sceneItems.filter(n=>n.labels?.some(l=>/radius/i.test(l)));assert(nodes.length===1,'Blur geometry absent or ambiguous');return {v,node:nodes[0]};}

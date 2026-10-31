@@ -1,3 +1,4 @@
+import {blurParameters} from './graph-parameters.mjs';
 import path from 'node:path';
 import {assert,command} from './engine.mjs';
 import {writeJSON} from './files.mjs';
@@ -21,6 +22,7 @@ export async function reference(c,label,file,seconds){
 }
 
 export async function insertEffect(c,type,params={}){
+  if(type==='gaussian_blur'&&Object.hasOwn(params,'radius')){const {radius,...rest}=params;params={...rest,...await blurParameters(c.bundle,radius)};}
   const scope={timeline_id:c.main.id,clip_id:c.a};
   const graph=await c.call('graph.get_clip_graph',scope);
   const composite=graph.nodes.find(n=>n.type==='composite');

@@ -35,6 +35,9 @@ test('Inspector oracle rejects no-op, wrong parameter, foreign graph and collate
  for(const mutate of [g=>g.nodes[1].params.radius=16,g=>g.nodes[0].params.size=.5,g=>g.edges=[],g=>g.clip_id='foreign',g=>g.nodes[1].owners=['foreign'],g=>g.nodes.push({...g.nodes[0],node_id:'extra'})]){
   const wrong=structuredClone(after);mutate(wrong);assert.throws(()=>verifyInspectorEdit(before,wrong,'blur','radius'));
  }
+ const linked=graph();linked.nodes[1].params={horizontal_radius:16,vertical_radius:16,uniform_radius:true,border:'clamp'};const edited=structuredClone(linked);edited.nodes[1].params.horizontal_radius=17;edited.nodes[1].params.vertical_radius=17;const fields=['horizontal_radius','vertical_radius'];
+ assert.deepEqual(verifyInspectorEdit(linked,edited,'blur',fields).after,{horizontal_radius:17,vertical_radius:17});
+ for(const mutate of [g=>g.nodes[1].params.vertical_radius=16,g=>g.nodes[1].params.border='mirror',g=>g.nodes[1].params.uniform_radius=false,g=>g.nodes[0].params.size=.5,g=>g.edges=[]]){const wrong=structuredClone(edited);mutate(wrong);assert.throws(()=>verifyInspectorEdit(linked,wrong,'blur',fields));}
 });
 test('mask clipboard oracle rejects shared identity, changed originals, wrong owners and rewired masks',()=>{
  const before=graph(),after=graph();after.nodes.push({...structuredClone(before.nodes[0]),node_id:'copy'});

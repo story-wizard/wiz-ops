@@ -21,14 +21,16 @@ export function previewCenterBrightness(image){
 
 // Incidence lists are derived from the independently compared edge list.
 const nodeState=node=>{const {incoming,outgoing,...state}=node;return state;};
+// A reviewed linked control can own several fields; every other value stays exact.
 export function verifyInspectorEdit(before,after,nodeId,param){
  assert(before.graph_id===after.graph_id&&before.timeline_id===after.timeline_id&&before.clip_id===after.clip_id,'Inspector changed graph ownership');
- const old=before.nodes.find(n=>n.node_id===nodeId),changed=after.nodes.find(n=>n.node_id===nodeId);
- assert(old&&changed&&Number.isFinite(old.params[param])&&Number.isFinite(changed.params[param])&&old.params[param]!==changed.params[param],'Inspector did not change the intended numeric parameter');
- const expected=before.nodes.map(n=>n.node_id===nodeId?{...n,params:{...n.params,[param]:changed.params[param]}}:n);
+ const old=before.nodes.find(n=>n.node_id===nodeId),changed=after.nodes.find(n=>n.node_id===nodeId),fields=Array.isArray(param)?param:[param];
+ assert(fields.length>0&&new Set(fields).size===fields.length&&old&&changed&&fields.every(p=>Number.isFinite(old.params[p])&&Number.isFinite(changed.params[p])&&old.params[p]!==changed.params[p]),'Inspector did not change the intended numeric parameter');
+ const edited=Object.fromEntries(fields.map(p=>[p,changed.params[p]]));
+ const expected=before.nodes.map(n=>n.node_id===nodeId?{...n,params:{...n.params,...edited}}:n);
  same(after.nodes.map(nodeState),expected.map(nodeState),'Inspector preserves other nodes and parameters');
  same(after.edges,before.edges,'Inspector preserves wiring');
- return {nodeId,param,before:old.params[param],after:changed.params[param]};
+ return {nodeId,param,before:Array.isArray(param)?Object.fromEntries(fields.map(p=>[p,old.params[p]])):old.params[param],after:Array.isArray(param)?edited:changed.params[param]};
 }
 
 export function verifyMaskPaste(before,after,sourceId){
