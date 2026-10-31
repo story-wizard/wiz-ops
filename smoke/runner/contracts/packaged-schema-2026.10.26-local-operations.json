@@ -1,0 +1,283 @@
+{
+  "color.add_swatch": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "color": {
+        "description": "SelectedColor tuple: value [r,g,b] as authored in space, the color space name, intent working|surface|appearance, and an optional anchor {amount_stops, reference graphics_white|mid_gray}",
+        "properties": {
+          "anchor": {
+            "description": "Optional intensity anchor"
+          },
+          "intent": {
+            "description": "working, surface or appearance",
+            "type": "string"
+          },
+          "space": {
+            "description": "Color space name from the project's color config",
+            "type": "string"
+          },
+          "value": {
+            "description": "Three finite channel values in space",
+            "items": {
+              "type": "number"
+            },
+            "maxItems": 3,
+            "minItems": 3,
+            "type": "array"
+          }
+        },
+        "required": [
+          "value",
+          "space",
+          "intent"
+        ],
+        "type": "object"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version; when given it must equal the current project revision, else stale_revision. remove_swatch with an index requires it.",
+        "type": "string"
+      },
+      "name": {
+        "description": "Unique swatch name within the project group",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "name",
+      "color"
+    ],
+    "type": "object"
+  },
+  "color.add_swatches": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version; when given it must equal the current project revision, else stale_revision. remove_swatch with an index requires it.",
+        "type": "string"
+      },
+      "swatches": {
+        "description": "Swatches to add together; each name must be new and unique within the batch",
+        "items": {
+          "properties": {
+            "color": {
+              "description": "SelectedColor tuple: value [r,g,b] as authored in space, the color space name, intent working|surface|appearance, and an optional anchor {amount_stops, reference graphics_white|mid_gray}",
+              "properties": {
+                "anchor": {
+                  "description": "Optional intensity anchor"
+                },
+                "intent": {
+                  "description": "working, surface or appearance",
+                  "type": "string"
+                },
+                "space": {
+                  "description": "Color space name from the project's color config",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Three finite channel values in space",
+                  "items": {
+                    "type": "number"
+                  },
+                  "maxItems": 3,
+                  "minItems": 3,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "value",
+                "space",
+                "intent"
+              ],
+              "type": "object"
+            },
+            "name": {
+              "description": "Unique swatch name",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "color"
+          ],
+          "type": "object"
+        },
+        "maxItems": 256,
+        "minItems": 1,
+        "type": "array"
+      }
+    },
+    "required": [
+      "bundle",
+      "swatches"
+    ],
+    "type": "object"
+  },
+  "color.get_swatch": {
+    "additionalProperties": true,
+    "allOf": [
+      {
+        "else": {
+          "required": [
+            "name"
+          ]
+        },
+        "if": {
+          "properties": {
+            "group": {
+              "const": "recent"
+            }
+          },
+          "required": [
+            "group"
+          ]
+        },
+        "then": {
+          "required": [
+            "index"
+          ]
+        }
+      }
+    ],
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "group": {
+        "description": "project (default), user, or recent; user and recent need the Wizard app running",
+        "enum": [
+          "project",
+          "user",
+          "recent"
+        ],
+        "type": "string"
+      },
+      "index": {
+        "description": "Recent: the pick's index from color.list_swatches. Otherwise, when names repeat, the index of the swatch with this name",
+        "type": "integer"
+      },
+      "name": {
+        "description": "Swatch name (exact after trimming; ASCII letters match in any case); not used for recent",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle"
+    ],
+    "type": "object"
+  },
+  "color.list_swatches": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "group": {
+        "description": "project (default), user, or recent; user and recent need the Wizard app running",
+        "enum": [
+          "project",
+          "user",
+          "recent"
+        ],
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle"
+    ],
+    "type": "object"
+  },
+  "color.remove_swatch": {
+    "additionalProperties": true,
+    "allOf": [
+      {
+        "if": {
+          "required": [
+            "index"
+          ]
+        },
+        "then": {
+          "required": [
+            "expect_revision"
+          ]
+        }
+      }
+    ],
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version; when given it must equal the current project revision, else stale_revision. remove_swatch with an index requires it.",
+        "type": "string"
+      },
+      "index": {
+        "description": "When names repeat: the index of the swatch with this name, from the latest color.list_swatches (remove also needs that call's bundle_version as expect_revision)",
+        "type": "integer"
+      },
+      "name": {
+        "description": "Project swatch name (exact after trimming; ASCII letters match in any case)",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "name"
+    ],
+    "type": "object"
+  },
+  "graph.add_text": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id",
+        "type": "string"
+      },
+      "expect_content_revision": {
+        "description": "Graph content revision gate",
+        "type": "integer"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "expect_structural_revision": {
+        "description": "Graph structural revision gate",
+        "type": "integer"
+      },
+      "params": {
+        "type": "object"
+      },
+      "text": {
+        "description": "The title's text (newlines allowed)",
+        "type": "string"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "clip_id",
+      "text"
+    ],
+    "type": "object"
+  }
+}

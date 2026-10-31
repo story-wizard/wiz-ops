@@ -4,6 +4,12 @@ Start with the error, the selected build and the intended checks. A preparation 
 
 Within an authorized test task, diagnose and repair harness setup locally, qualify the shared fix, then rerun affected checks after known cleanup. Choose routine workspace and tool settings yourself. Keep the selected package and test expectations fixed; source adoption on a managed worker, system changes, new paid calls and external publication stay within their separately authorized scope.
 
+## Recover the run
+
+A blocker starts recovery work; it does not end the task. Investigate the cause, repair the shared harness problem in isolation, qualify the exact repair, and rerun affected checks after known cleanup. Continue independent checks while recovering. Ask to apply a tested fix to the installed harness only after its patch and results are ready; keep production unchanged until approved. Preserve every original outcome and App failure. Reconcile uncertain input before further action; never replay it. If access, ownership, credentials or another external prerequisite prevents progress, retain the exact required action and continue work that does not depend on it. Success means executing the intended checks with valid assertions, not removing blockers by weakening them.
+
+A full-registry difference remains a review finding. The prepared plan also freezes per-operation admission against reviewed request, response and error contracts, including shared desktop setup. Qualified independent checks can run; missing APIs remain N/A and changed unqualified contracts remain Blocked. Both packaged and desktop dispatch enforce the frozen admission. Read the retained schema review to repair each remaining contract and prepare a new attempt.
+
 ## Inspect the build
 
 Use the existing service URL with `smoke.mjs setup`, `builds` and `context`. Identify the exact local app, tag or asset and package hash. Read the packaged CLI schema without starting Wizard:

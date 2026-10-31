@@ -52,6 +52,52 @@
         "generate.graphics uses live authored source directories and an optional separate resources_path; existing project-relative source/entry remain accepted"
       ],
       "basis": "Official 2026.10.09-01169c1 package, shipped project create --schema --no-spawn: 162 operations, all top-level fields/results/errors unchanged; versus baseline four removals, five additions and thirteen changed definitions. Exact app source 01169c1e2 removes the four dispatch entries in src/wizserver/ops.def.h and describes bundle-relative or absolute live source paths in project_tool_schemas.h; generate_source_reference.cpp resolves bundle-relative source under the owned bundle. Existing generation fixtures require generate.renderers, which is now absent; desktopCall validates the shipped schema before dispatch and records those checks Blocked. No generation request or assertion is loosened or replaced by a provider call. Other changed operations retain the October 8 review basis. This exact contract review permits unaffected checks to prepare; it does not qualify the new MGFX architecture or establish a functional Pass."
+    },
+    {
+      "schemaHash": "43b88ea663f800b558b361bc3c423a767855612b9b1068718cd67b4e64a4864c",
+      "reviewedAt": "2026-10-15",
+      "changes": [
+        "Versus the October 9 reviewed contract, audio.batch.properties.ops.items.properties.op.enum adds set_dialogue_leveler while retaining every existing value",
+        "Adds audio.set_dialogue_leveler and render.cancel_export/export_capabilities/export_status/export_video; four results are added only for those new operations"
+      ],
+      "basis": "Exact registry captured from official nightly-2026.10.15-0067d1f, verified ZIP SHA-256 112aaedd1aa75af3d101d6ee74ba099e60f68b144293b101d6592ac338b0e557, App 0067d1f734bc4bcbec924cd53cc3f7a416a76202 and Core 63f66db53f29c6f979231749aa5362aa780e9526. Every registry field was compared against the retained October 9 anchor: 167 operations, five additions, no removals, one existing request enum expansion, four new-operation results, no other differences. The runtime runner, desktop and scripts have no references to audio.batch or the five additions. Existing checks need no request or assertion changes; new dialogue leveling and export behavior are not qualified. This hash-only entry approves exactly the captured registry and supplies no new structural anchor; future array-item changes still require review. The baseline, compatibility algorithm, selected tests, desktop guards and historical results remain unchanged. Local schema tests do not establish package GUI acceptance or deployment."
+    },
+    {
+      "schemaHash": "a1045e5b29786b731421e2d6338613773f929d70dda94f763b1a4176ecae097f",
+      "operationsFile": "packaged-schema-2026.10.23-operations.json",
+      "resultsFile": "packaged-schema-2026.10.23-results.json",
+      "removedOperations": [
+        "generate.catalog",
+        "generate.image",
+        "generate.renderers",
+        "generate.video"
+      ],
+      "reviewedAt": "2026-10-23",
+      "changes": [
+        "Retains earlier reviewed contracts; media.import_asset adds optional require_exact_revision; graph requests and graph.edit_batch alternatives add optional producer_slot. Existing required fields, types, defaults and descriptions are unchanged.",
+        "timeline.inspect adds required transitions and changes schema_version from 0.8.0 to 0.9.0. Every prior result field is unchanged.",
+        "audio.batch adds set_dialogue_leveler, and new operations/results cover audio leveling, color balance, asynchronous export, Spellbook and voice isolation."
+      ],
+      "basis": "Exact no-spawn registry from official nightly-2026.10.23-ab20f56, package 92507ac3a99ff9192dae60428891598b7169848844659eeec417e6f27ed1bc3a. Full structured comparison retained with isolated qualification. Existing harness requests omit the two added fields; they retain current revision gates and graph targeting. Existing timeline checks consume the unchanged prior members; this review does not accept transition behavior. Retain request and result definitions as one verified anchor for future conservative extensions. New features need their own tests; no old assertion, baseline or acceptance definition is changed."
+    },
+    {
+      "schemaHash": "90be7fcfc1f196496c20173635779f053a59c889775e543f118ba57482a134b1",
+      "operationsFile": "packaged-schema-2026.10.26-media-operations.json",
+      "reviewedAt": "2026-10-26",
+      "changes": [
+        "Scoped anchor: retains the baseline definitions and updates only media.detect_color from the retained October 26 schema. Adds audio category; preserves all previous category values and the previously reviewed omitted-category video/camera-RAW classification.",
+        "default_policy description changes the omitted policy from none to per_category, explicitly retains per_category and none overrides, and describes computed_with provenance metadata. This is a semantic default change, not a cosmetic description edit."
+      ],
+      "basis": "Local proposal for task 57a32717-600d-4372-ab72-2a9d6a2312e2, retained schema 98ee6b149091cd867a212f5cc19374dcf530f7c4c25be88a41bd4066674f8cdd. A-IN-05 and scripts/probe-remaining.mjs explicitly request per_category for MOV and still detection; still explicitly selects still. Existing callers therefore do not rely on the changed omitted-policy default. A-IN-05 retains exact Rec.1886 Rec.709 - Display and sRGB - Display values, file_rule/file_rule_default provenance, needs_confirmation statuses and ingested clip input-transform equality. A-CLI-01 endpoint/process binding, exact project name and nonempty revision are untouched. Relative to the previously reviewed October 23 media.detect_color definition, every other request member, required field and type is unchanged; no result/error definition is changed. This synthetic anchor hash identifies retained definitions, not approval of the entire supplied registry. Unrelated color.detect_input_color_space and render.export_video changes remain unreviewed; no new audio/default-policy behavior or app acceptance is claimed."
+    },
+    {
+      "schemaHash": "c76e3c356d3fff6e63af6667282e74bcd0fbb0a35719c803e775b3feafe111d7",
+      "operationsFile": "packaged-schema-2026.10.26-local-operations.json",
+      "reviewedAt": "2026-10-26",
+      "changes": [
+        "Scoped operation anchor: five project-palette operations and local graph.add_text, copied exactly from the selected October 26 shipped CLI schema. Existing baseline definitions, result contracts and error contracts remain unchanged."
+      ],
+      "basis": "Retained selected-build schema, package 1ab32b53d5803733c2cea546d1d4f77ee701751d036414e91f8efb830d92094e, App 3de2935a2d78960bb3fda19a80d672928722ccfa and Core 70438b3c2dd667094447283156ae863aa80d8761. add_swatch/add_swatches carry SelectedColor value/space/intent and optional anchor; batch count is bounded 1..256. Reads distinguish project/user/recent; get_swatch recent requires index, otherwise name. remove_swatch requires name and requires optimistic revision with index. graph.add_text targets the owned timeline/clip with optional bundle/content/structural revision guards. All six are bundle-bound, no provider/network/export operation is approved. Selected runtime supplies no result/error schema for these operations; this preserves that honest gap rather than inventing fields. Operation-scoped contract admission only; behavior, invalid-value rejection, persistence and GUI remain independent test outcomes. No schema algorithm, existing expectation or production source changes."
     }
   ]
 }

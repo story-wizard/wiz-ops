@@ -1,3 +1,4 @@
+import {requireQualifiedOperation} from '../runner/capabilities.mjs';
 import {registerDisposableApp} from './disposable-app.mjs';
 import path from 'node:path';
 import {performance} from 'node:perf_hooks';
@@ -202,6 +203,7 @@ export async function desktopCall(file,operation,params={},expectedError){
 }
 async function desktopCallOwned(file,operation,params={},expectedError){
   let session=await readJSON(file);verifyDesktopPaths(session);
+  requireQualifiedOperation(session.plan,operation);
   validateApplicationParams(session.schema,operation,params);
   const lock=path.join(session.root,'call.lock');const held=await open(lock,'wx');
   try{
