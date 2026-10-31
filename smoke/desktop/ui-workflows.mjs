@@ -3,7 +3,7 @@ import {modelEntry as observedModelEntry,readModelValues} from './model-read.mjs
 import {mkdir,copyFile} from 'node:fs/promises';
 import {checks,gapFixture,usableGeometry} from './check-support.mjs';
 import {observedWidget,searchObservation} from './checklist-proof.mjs';
-import {physicalInput,clipPoint} from './physical-input.mjs';
+import {physicalInput,clipPoint,windowPoint} from './physical-input.mjs';
 import {assert,clips,OutcomeError} from '../runner/engine.mjs';
 import {writeJSON} from '../runner/files.mjs';
 
@@ -24,6 +24,19 @@ export function dockDropPoint(ui,windowId,panelTitle){
  const panel=observedWidget(ui,w=>w.window===windowId&&w.class==='WizPanelDock'&&w.title===panelTitle,'Destination dock panel');
  const area=observedWidget(ui,w=>w.id===panel.parent&&w.window===windowId&&w.class==='ads::CDockAreaWidget','Destination dock area');
  return {toTarget:windowId,toX:area.x+area.width/2,toY:area.y+area.height/2};
+}
+
+// A floating source can cover the old drop target. Choose an owned dock-area
+// centre that is exposed before starting a cross-window native drag.
+export function exposedDockDropPoint(ui,native,windowId,sourceWindowId){
+ const owner=observedWidget(ui,w=>w.id===windowId&&w.id===w.window,'Destination window'),source=observedWidget(ui,w=>w.id===sourceWindowId&&w.class==='ads::CFloatingDockContainer','Floating source');
+ const frame=w=>{const rows=native.windows.filter(x=>x.window===w.nativeWindow);if(rows.length!==1)throw new OutcomeError('Dock window frame is absent or ambiguous','Blocked');return rows[0];},target=frame(owner),floating=frame(source).frame;
+ for(const title of ['Preview','Media','Timeline']){
+  if(!ui.widgets.some(w=>w.window===windowId&&w.class==='WizPanelDock'&&w.title===title))continue;
+  const p=dockDropPoint(ui,windowId,title),q=windowPoint(owner,owner,target,p.toX,p.toY),x=target.frame.x+q.x,y=target.frame.y+q.y;
+  if(x<floating.x||x>=floating.x+floating.width||y<floating.y||y>=floating.y+floating.height)return p;
+ }
+ throw new OutcomeError('Floating source covers every observed dock destination; reveal a target before dragging','Blocked');
 }
 
 // Shared authored setup, physical actions and retained observations. Assertions

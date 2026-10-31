@@ -188,7 +188,7 @@ class SmokeBridge : public QObject {
                 auto graph=reinterpret_cast<Getter>(dlsym(RTLD_DEFAULT,"_ZNK16RenderGraphPanel16inspectorGraphIdEv"));
                 auto timeline=reinterpret_cast<Getter>(dlsym(RTLD_DEFAULT,"_ZNK16RenderGraphPanel19inspectorTimelineIdEv"));
                 for(auto* owner=w->parentWidget();owner;owner=owner->parentWidget())if(QString(owner->metaObject()->className())=="RenderGraphPanel"){
-                    if(graph)item["graphId"]=graph(owner);if(timeline)item["timelineId"]=timeline(owner);break;
+                    if(graph)item["graphId"]=graph(owner);if(timeline)item["timelineId"]=timeline(owner);using Selection=QStringList(*)(const QWidget*);auto selection=reinterpret_cast<Selection>(dlsym(RTLD_DEFAULT,"_ZNK16RenderGraphPanel15selectedNodeIdsEv"));if(selection)item["selectedNodeIds"]=QJsonArray::fromStringList(selection(owner));break;
                 }
             }
             if(auto* p=qobject_cast<QComboBox*>(w)){QJsonArray entries,values;for(int i=0;i<p->count();i++){entries.append(p->itemText(i));values.append(QJsonValue::fromVariant(p->itemData(i)));}item["items"]=entries;item["itemValues"]=values;item["index"]=p->currentIndex();}

@@ -1,4 +1,4 @@
-import {graphNodeHeaderPoint,revealGraphNode} from './graph-geometry.mjs';
+import {graphNodeHeaderPoint,revealGraphNode,graphNodeSelected} from './graph-geometry.mjs';
 import {blurParameters,blurRadius} from '../runner/graph-parameters.mjs';
 import path from 'node:path';
 import {mkdir,copyFile} from 'node:fs/promises';
@@ -38,7 +38,7 @@ async function selectNode(f,nodeId){
  const settled=await until(async()=>{const v=await graphView(f),nodes=v.sceneItems.filter(x=>x.nodeId===nodeId);return nodes.length===1?{viewport:v.viewport,node:nodes[0]}:null;},{description:'Graph node geometry settles',stableForMs:300});view=await graphView(f);const nodes=[settled.node];
  if(nodes.length!==1)throw new OutcomeError('Exact graph-node geometry is unavailable; refresh the adapter binding','Blocked');
  const node=nodes[0];await physical('click',{target:view.viewport,...graphNodeHeaderPoint(node)});
- await until(async()=>(await graphView(f)).sceneItems.some(x=>x.nodeId===nodeId&&x.selected),{description:'Exact graph node selection'});
+ await until(async()=>graphNodeSelected(await graphView(f),nodeId),{description:'Exact graph node selection'});
  return graphView(f);
 }
 

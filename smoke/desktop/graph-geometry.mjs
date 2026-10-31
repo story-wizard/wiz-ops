@@ -55,3 +55,11 @@ export async function revealGraphNode({graph,view,n,action,until},nodeId){
  }
  throw new OutcomeError('Graph presentation nesting exceeds the bounded reveal operation.','Blocked');
 }
+
+// The panel's public selection survives presentation rebuilds; graphics-item
+// selection is only the legacy fallback when that semantic read is unavailable.
+export function graphNodeSelected(view,nodeId){
+ if(!view)return false;
+ if(Array.isArray(view.selectedNodeIds))return view.selectedNodeIds.length===1&&view.selectedNodeIds[0]===nodeId;
+ return view.sceneItems?.filter(n=>n.selected).length===1&&view.sceneItems.some(n=>n.nodeId===nodeId&&n.selected);
+}

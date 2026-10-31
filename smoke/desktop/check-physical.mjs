@@ -1,4 +1,4 @@
-import {dockDragPoint,dockDropPoint} from './ui-workflows.mjs';
+import {exposedDockDropPoint} from './ui-workflows.mjs';
 import {nativeDesktopInput} from './macos-input.mjs';
 import {spellNodeGeometry,graphNodeHeaderPoint} from './graph-geometry.mjs';
 import {spellBlurParameters} from './spell-controls.mjs';
@@ -94,7 +94,7 @@ await check('P-SB-DOCK',async()=>{
  };
  if(initial.v.window!==main.id){
   const header=headerFor(u);assert(header,'Initial floating dock header absent');
-  await physical('drag',{...dockDragPoint(u,initial.v.window),...dockDropPoint(u,main.id,'Preview')});
+  await physical('drag',{target:initial.v.window,chrome:true,x:200,y:16,...exposedDockDropPoint(u,await nativeDesktopInput(file,{command:'inspect',depth:0,mode:'window-server'}),main.id,initial.v.window)});
   await until(async()=>(await canvas()).window===main.id).catch(e=>{e.message='Initial floating Spellbook did not redock: '+e.message;throw e;});same(content(await inspect(f.doc)),content(before),'Fixture redock changed Spell content');
  }
  const {v,node}=await blurNode(),label=headerFor(await ui());assert(label,'Spellbook dock header absent');
@@ -107,7 +107,7 @@ await check('P-SB-DOCK',async()=>{
  await n('resize-window',{target:floating.graph.window,width:800,height:500});await n('activate',{target:floating.graph.window});
  const stable=await until(async()=>{const u=await ui(),graph=u.widgets.find(w=>w.class==='DetachedGraphView'),window=u.widgets.find(w=>w.id===graph?.window&&w.class==='ads::CFloatingDockContainer');return window?{id:window.id,width:window.width,height:window.height}:null;},{description:'Floating dock geometry settles',stableForMs:300});
  const fresh=await ui(),graph=fresh.widgets.find(w=>w.class==='DetachedGraphView'),window=fresh.widgets.find(w=>w.id===stable.id&&w.id===graph?.window&&w.class==='ads::CFloatingDockContainer');assert(window,'Floating window absent before redock');
- const back=await physical('drag',{...dockDragPoint(fresh,window.id),...dockDropPoint(fresh,main.id,'Preview')});
+ const back=await physical('drag',{target:window.id,chrome:true,x:Math.min(200,window.width-20),y:16,...exposedDockDropPoint(fresh,await nativeDesktopInput(file,{command:'inspect',depth:0,mode:'window-server'}),main.id,window.id)});
  await until(async()=>(await canvas()).window===main.id);same(content(await inspect(f.doc)),content(before),'Redocking changed Spell content');
  const restored=(await blurNode()).node;assert(restored.sceneX===node.sceneX&&restored.sceneY===node.sceneY,'Docking changed node position');
  return {document:f.doc,receipt,back,floatingWindow:floating.graph.window,floatAction:detach[0].text,paths:['native title-bar redock','native context menu and visible Float/Detach action','native title-bar redock'],contentPreserved:true,screenshots:[...floatScreens.artifacts,...await saveScreen('P-SB-DOCK')]};

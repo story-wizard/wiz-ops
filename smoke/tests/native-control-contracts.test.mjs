@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {timelineToggle,trackHeaderPoint,timelineToolActive} from '../desktop/timeline-controls.mjs';
-import {spellNodeGeometry,graphNodeHeaderPoint} from '../desktop/graph-geometry.mjs';
+import {spellNodeGeometry,graphNodeHeaderPoint,graphNodeSelected} from '../desktop/graph-geometry.mjs';
 import {spellBlurRadius} from '../desktop/spell-controls.mjs';
 
 test('timeline toggles bind the owning panel even when another timeline has identical labels',()=>{
@@ -41,4 +41,11 @@ test('timeline tool identity survives a display-name change without accepting a 
  assert(timelineToolActive({widgets:[button]},view,'Anchor'));
  assert(!timelineToolActive({widgets:[{...button,name:'toolbarTool_wiz.preview_anchor'}]},view,'Anchor'));
  assert(!timelineToolActive({widgets:[button,button]},view,'Anchor'));
+});
+
+test('semantic graph selection rejects an empty, foreign or multiple selection even if the old card stays highlighted',()=>{
+ const sceneItems=[{nodeId:'18',selected:true}];
+ assert(graphNodeSelected({selectedNodeIds:['18'],sceneItems:[{nodeId:'18',selected:false}]},'18'));
+ for(const selectedNodeIds of [[],['19'],['18','19']])assert(!graphNodeSelected({selectedNodeIds,sceneItems},'18'));
+ assert(graphNodeSelected({sceneItems},'18'));assert(!graphNodeSelected({sceneItems:[...sceneItems,{nodeId:'19',selected:true}]},'18'));
 });

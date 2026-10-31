@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {dockDragPoint,dockDropPoint} from '../desktop/ui-workflows.mjs';
+import {dockDragPoint,dockDropPoint,exposedDockDropPoint} from '../desktop/ui-workflows.mjs';
 
 test('panel docking targets the named owned Qt dock tab rather than empty title bar or native chrome',()=>{
  const window={id:'float',window:'float',class:'ads::CFloatingDockContainer',title:'Media',visible:true,width:1085,height:234};
@@ -19,4 +19,12 @@ test('dock drops use the destination panel area rather than a fraction of the ma
  const point=dockDropPoint({widgets:[other,area,panel]},'main','Preview');
  assert.deepEqual(point,{toTarget:'main',toX:1021.5,toY:236.5});
  for(const widgets of [[other,panel],[area,{...panel,window:'other'}],[area,panel,{...panel,id:'duplicate'}]])assert.throws(()=>dockDropPoint({widgets},'main','Preview'));
+});
+
+test('cross-window docking rejects a destination covered by its floating source',()=>{
+ const owner={id:'main',window:'main',nativeWindow:1,width:1000,height:700,x:0,y:0},source={id:'float',window:'float',class:'ads::CFloatingDockContainer',nativeWindow:2},area=(id,x)=>({id,window:'main',class:'ads::CDockAreaWidget',x,y:0,width:500,height:600}),panel=(id,title)=>({id:title,window:'main',class:'WizPanelDock',parent:id,title});
+ const ui={widgets:[owner,source,area('preview',500),panel('preview','Preview'),area('media',0),panel('media','Media')]},native={windows:[{window:1,frame:{x:0,y:0,width:1000,height:728}},{window:2,frame:{x:500,y:0,width:500,height:728}}]};
+ assert.equal(exposedDockDropPoint(ui,native,'main','float').toX,250);
+ native.windows[1].frame={x:0,y:0,width:1000,height:728};assert.throws(()=>exposedDockDropPoint(ui,native,'main','float'),e=>e.status==='Blocked');
+ assert.throws(()=>exposedDockDropPoint(ui,{windows:[]},'main','float'),e=>e.status==='Blocked');
 });
