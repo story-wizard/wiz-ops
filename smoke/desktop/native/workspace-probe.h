@@ -178,7 +178,9 @@ struct WorkspaceProbe {
     QJsonObject hover(const QJsonObject& request) const {
         const auto name=request["name"].toString();if(name!="AgentWorkspaceModelSelector"&&name!="AgentWorkspaceEffortSelector")throw QString("Hover requires a model or effort selector");
         auto* item=named(name);if(!item->isVisible()||!item->isEnabled())throw QString("Workspace selector is unavailable");
-        const auto point=hitPoint(item);QTest::mouseMove(view,point);
+        // Hover delivery does not use childAt(): decorative Quick overlays can
+        // be visible without accepting hover. Read the control state afterward.
+        const auto point=visibleBounds(item).center().toPoint();QTest::mouseMove(view,point);
         return {{"dispatched",true},{"name",name},{"localX",point.x()},{"localY",point.y()},{"inputMode","Qt pointer event on the owned visible selector"}};
     }
     void header(const QJsonObject& request) const {

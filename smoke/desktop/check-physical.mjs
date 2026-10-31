@@ -1,9 +1,10 @@
+import {nativeDesktopInput} from './macos-input.mjs';
 import {spellNodeGeometry,graphNodeHeaderPoint} from './graph-geometry.mjs';
 import {spellBlurParameters} from './spell-controls.mjs';
 import {testSpecification} from '../test-details.mjs';
 import path from 'node:path';
 import {checks} from './check-support.mjs';
-import {physicalInput,defaultClickPoint} from './physical-input.mjs';
+import {physicalInput,defaultClickPoint,uncoveredDropPoint} from './physical-input.mjs';
 import {readJSON,writeJSON} from '../runner/files.mjs';
 import {assert,same,pause,OutcomeError} from '../runner/engine.mjs';
 const file=process.argv[2],{s,n,c,ui,until,check:runCheck,action,finish,report}=await checks(file,'desktop-physical-report.json');
@@ -49,7 +50,8 @@ await check('P-SB-SEARCH-DROP',async()=>{
    const field=(await ui()).widgets.find(w=>w.window===popup.id&&w.class==='QLineEdit');assert(field,'Quick search field missing');await n('text',{target:field.id,text:'Text'});
    const list=await until(async()=>(await ui()).widgets.find(w=>w.window===popup.id&&w.model?.some(r=>r[0]==='Text'))),row=list.model.findIndex(r=>r[0]==='Text'),rectangle=list.itemRects.find(r=>r.row===row);
    assert(rectangle&&rectangle.width>0&&rectangle.height>0,'Search result geometry missing');
-   const receipt=await physical('drag',{target:list.viewport,x:rectangle.x+rectangle.width/2,y:rectangle.y+rectangle.height/2,toTarget:v.viewport,toX:70,toY:80});
+   const fresh=await ui(),destination=fresh.widgets.find(w=>w.id===v.viewport),drop=uncoveredDropPoint(fresh,await nativeDesktopInput(file,{command:'inspect',depth:0,mode:'window-server'}),destination,[popup.id]);
+   const receipt=await physical('drag',{target:list.viewport,x:rectangle.x+rectangle.width/2,y:rectangle.y+rectangle.height/2,toTarget:v.viewport,toX:drop.x,toY:drop.y});
    const after=await until(async()=>{const g=await inspect(d.document_id);return g.nodes.length===1?g:null;}).catch(e=>{e.message='Physical glossary drop did not create a node: '+e.message;throw e;});assert(after.nodes[0].type==='text','Physical drop created the wrong node');
    if((await ui()).widgets.some(w=>w.id===popup.id))await n('close-window',{target:popup.id});await focus();const screenshots=await saveScreen('P-SB-SEARCH-DROP-'+key.replaceAll('+','-'));await undoTo(await canvas(),d.document_id,before);
    observations.push({key,document:d.document_id,node:after.nodes[0],receipt,screenshots,undoRestored:true});
@@ -101,7 +103,9 @@ await check('P-SB-DOCK',async()=>{
  await n('click',{target:menu.id,x:detach[0].x+detach[0].width/2,y:detach[0].y+detach[0].height/2});
  const floating=await until(async()=>{const a=await ui(),graph=a.widgets.find(w=>w.class==='DetachedGraphView'),window=a.widgets.find(w=>w.id===graph?.window&&w.class==='ads::CFloatingDockContainer');return graph&&window&&window.id!==main.id?{graph,window}:null;});
  same(content(await inspect(f.doc)),content(before),'Floating changed Spell content');const floatScreens=await physical('screenshot',{target:floating.graph.id});
- const fresh=await ui(),graph=fresh.widgets.find(w=>w.class==='DetachedGraphView'),window=fresh.widgets.find(w=>w.id===graph?.window&&w.class==='ads::CFloatingDockContainer');assert(window,'Floating window absent before redock');
+ await n('activate',{target:floating.graph.window});
+ const stable=await until(async()=>{const u=await ui(),graph=u.widgets.find(w=>w.class==='DetachedGraphView'),window=u.widgets.find(w=>w.id===graph?.window&&w.class==='ads::CFloatingDockContainer');return window?{id:window.id,width:window.width,height:window.height}:null;},{description:'Floating dock geometry settles',stableForMs:300});
+ const fresh=await ui(),graph=fresh.widgets.find(w=>w.class==='DetachedGraphView'),window=fresh.widgets.find(w=>w.id===stable.id&&w.id===graph?.window&&w.class==='ads::CFloatingDockContainer');assert(window,'Floating window absent before redock');
  const back=await physical('drag',{target:window.id,chrome:true,x:Math.min(200,window.width-20),y:16,toTarget:main.id,toX:100,toY:Math.floor(main.height*.3)});
  await until(async()=>(await canvas()).window===main.id);same(content(await inspect(f.doc)),content(before),'Redocking changed Spell content');
  const restored=(await blurNode()).node;assert(restored.sceneX===node.sceneX&&restored.sceneY===node.sceneY,'Docking changed node position');

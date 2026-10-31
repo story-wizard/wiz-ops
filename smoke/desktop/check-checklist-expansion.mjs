@@ -1,4 +1,4 @@
-import {graphNodeHeaderPoint} from './graph-geometry.mjs';
+import {graphNodeHeaderPoint,revealGraphNode} from './graph-geometry.mjs';
 import {blurParameters,blurRadius} from '../runner/graph-parameters.mjs';
 import path from 'node:path';
 import {mkdir,copyFile} from 'node:fs/promises';
@@ -32,6 +32,7 @@ async function selectClip(f){
 }
 async function graphView(f){return observedWidget(await ui(),w=>w.class==='RenderGraphView'&&w.timelineId===f.id&&(w.graphId===f.graphId||w.graphId==='clip:'+f.id+':'+f.scope.clip_id),'Fixture Render Graph');}
 async function selectNode(f,nodeId){
+ await revealGraphNode({graph:()=>graph(f),view:()=>graphView(f),n,action,until},nodeId);
  let view=await graphView(f);const buttons=(await ui()).widgets.filter(w=>w.window===view.window&&w.tooltip==='Fit all');
  if(buttons.length===1)await n('click',{target:buttons[0].id});
  view=await graphView(f);const nodes=view.sceneItems.filter(x=>x.nodeId===nodeId);

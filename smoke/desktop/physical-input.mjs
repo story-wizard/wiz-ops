@@ -161,3 +161,18 @@ async function physicalInputOwned(file,command,params={}){
  receipt.physicalTiming={...timing,totalMs:performance.now()-began,activationRequested,scope:'Physical wrapper; nested native timings overlap. Admission and outer agent target lookup excluded.'};
  return receipt;
 }
+
+// Resolve a drop inside the observed canvas but outside the picker that owns
+// the drag. Window-server frames are used; no macOS accessibility inspection.
+export function uncoveredDropPoint(ui,native,widget,occluderIds){
+ requireProof(widget&&Array.isArray(occluderIds)&&occluderIds.length<=32,'invalid_drop_target','Observe the destination canvas and picker windows',['observe']);
+ const window=ui.widgets.find(w=>w.id===widget.window),frames=id=>native.windows.filter(w=>w.window===id);
+ const targets=frames(window?.nativeWindow);requireProof(targets.length===1,'ambiguous_drop_window','Destination window is unavailable or ambiguous',['observe']);const target=targets[0];
+ const v=widget.visibleRect||{x:0,y:0,width:widget.width,height:widget.height},p=windowPoint(widget,window,target,v.x,v.y),origin={x:target.frame.x+p.x-v.x,y:target.frame.y+p.y-v.y};
+ let regions=[{x:origin.x+v.x,y:origin.y+v.y,width:v.width,height:v.height}];
+ for(const id of occluderIds){
+  const owner=ui.widgets.find(w=>w.id===id&&w.window===id),matches=frames(owner?.nativeWindow);requireProof(matches.length===1,'ambiguous_drop_overlay','Picker window is unavailable or ambiguous',['observe']);const b=matches[0].frame;
+  regions=regions.flatMap(a=>{const l=Math.max(a.x,b.x),t=Math.max(a.y,b.y),r=Math.min(a.x+a.width,b.x+b.width),bottom=Math.min(a.y+a.height,b.y+b.height);if(r<=l||bottom<=t)return [a];return [{x:a.x,y:a.y,width:a.width,height:t-a.y},{x:a.x,y:bottom,width:a.width,height:a.y+a.height-bottom},{x:a.x,y:t,width:l-a.x,height:bottom-t},{x:r,y:t,width:a.x+a.width-r,height:bottom-t}].filter(c=>c.width>0&&c.height>0);});
+ }
+ const region=regions.filter(r=>r.width>=8&&r.height>=8).sort((a,b)=>b.width*b.height-a.width*a.height)[0];requireProof(region,'occluded_drop_target','Reveal an uncovered canvas region before dropping',['reveal','observe']);return {x:region.x+region.width/2-origin.x,y:region.y+region.height/2-origin.y};
+}

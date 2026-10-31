@@ -41,3 +41,17 @@ export function graphNodeHeaderPoint(node){
  requireGeometry(p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=node.x&&p.x<node.x+node.width&&p.y>=node.y&&p.y<node.y+node.height,'Owned graph card header geometry is unavailable');
  return {x:p.x,y:p.y};
 }
+
+// Reveal an authored node through its presentation group before resolving its
+// geometry. Hidden members can retain scene rectangles without being hit targets.
+export async function revealGraphNode({graph,view,n,action,until},nodeId){
+ for(let depth=0;depth<8;depth++){
+  const g=await graph(),groups=(g.presentation?.groups||[]).filter(x=>x.collapsed&&!x.hidden&&x.members?.includes('node:'+nodeId));
+  if(!groups.length)return g;
+  requireGeometry(groups.length===1,'Node belongs to ambiguous collapsed presentation groups');
+  const group=groups[0],v=await view(),card=graphGroupGeometry(v,g,group.id);
+  await n('context-click',{target:v.viewport,...graphNodeHeaderPoint(card)});await action('Expand group');
+  await until(async()=>{const read=await graph();return read.presentation?.groups?.find(x=>x.id===group.id)?.collapsed===false?read:null;},{description:'Owned graph group expands'});
+ }
+ throw new OutcomeError('Graph presentation nesting exceeds the bounded reveal operation.','Blocked');
+}
