@@ -1,7 +1,7 @@
 {
   "id": "physical-editor-candidate",
   "title": "Physical editor paths \u00b7 candidate qualification",
-  "revision": 10,
+  "revision": 11,
   "target": "Instrumented isolated desktop with native macOS input",
   "status": "Candidate",
   "cases": [
@@ -478,7 +478,7 @@
         },
         {
           "id": "verify",
-          "title": "Check the new identity, matching parameters and unchanged original",
+          "title": "Frame the pasted node and verify independent identity, parameters and topology",
           "phase": "verify"
         },
         {
