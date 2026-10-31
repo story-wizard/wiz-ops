@@ -1,7 +1,8 @@
+import {blurParameters,blurRadius} from '../runner/graph-parameters.mjs';
 import path from 'node:path';
 import {mkdir,copyFile} from 'node:fs/promises';
 import {checks,gapFixture,widgetPixelDifference} from './check-support.mjs';
-import {observedWidget,verifyInspectorEdit,verifyMaskPaste,verifySearchFocus,previewCenterBrightness} from './checklist-proof.mjs';
+import {observedWidget,searchResultView,verifyInspectorEdit,verifyMaskPaste,verifySearchFocus,previewCenterBrightness} from './checklist-proof.mjs';
 import {physicalInput,clipPoint} from './physical-input.mjs';
 import {assert,same,clips,snapshotState,OutcomeError} from '../runner/engine.mjs';
 import {writeJSON} from '../runner/files.mjs';
@@ -54,8 +55,9 @@ await check('D-SEARCH-FOCUS',async()=>{
    await physical('click',{target:field.id,x:field.width/2,y:field.height/2});await physical('type',{target:field.id,text:query});await physical('key',{target:field.id,key:'Return'});
    const result=await until(async()=>{const u=await ui(),field=observedWidget(u,w=>w.class==='MediaSearchField','Media search field'),status=u.widgets.find(w=>w.name==='mediaSearchStatus')?.text||'';
     if(/unavailable/i.test(status))throw new OutcomeError('Selected build search worker is unavailable','Blocked');
-    const bin=observedWidget(u,w=>w.class==='QTreeView'&&Array.isArray(w.model),'Media search results');
-    return field.text===query&&!/searching|pending|loading/i.test(status)&&bin.model.some(r=>r[0]==='pattern_24.mov')?{query:field.text,status,names:bin.model.map(r=>r[0]).sort(),bin}:null;
+    if(field.text!==query||/searching|pending|loading/i.test(status))return null;
+    const bin=searchResultView(u,'Name');
+    return bin.model.some(r=>r[0]==='pattern_24.mov')?{query:field.text,status,names:bin.model.map(r=>r[0]).sort(),bin}:null;
    },{description:'Project-wide search match in focused timeline'});
    observations.push({...result,timelineId:f.id});await observe(id,observations);
    screenshots.push(await capture(id,'after-'+observations.length,result.bin.id,'widget'));
@@ -72,15 +74,15 @@ await check('D-SEARCH-FOCUS',async()=>{
 await check('D-INSPECTOR-BLUR-PHYSICAL',async()=>{
  const id='D-INSPECTOR-BLUR-PHYSICAL',f=await stage('setup','Prepare and select a blur in the clip graph','prepare',async()=>{
   const f=await fixture('Physical blur Inspector'),g=await graph(f),edge=g.edges.find(e=>e.from_node===g.nodes.find(n=>n.type==='transform_2d').node_id&&e.to_node===g.nodes.find(n=>n.type==='composite').node_id);
-  assert(edge,'Fixture transform-to-composite edge missing');await c('graph.insert_on_edge',{...f.scope,type:'gaussian_blur',from_node:edge.from_node,from_slot:edge.from_slot,to_node:edge.to_node,to_slot:edge.to_slot,edge_type:edge.type,new_input_slot:'input',new_output_slot:'output',params:{radius:16},expect_structural_revision:g.structural_revision,expect_content_revision:g.content_revision});
+  assert(edge,'Fixture transform-to-composite edge missing');f.blurParams=await blurParameters(s.bundle,16);f.radiusFields=Object.keys(f.blurParams).filter(p=>p!=='uniform_radius');f.radiusLabel=f.radiusFields[0]==='radius'?'Radius':'Horizontal Radius';await c('graph.insert_on_edge',{...f.scope,type:'gaussian_blur',from_node:edge.from_node,from_slot:edge.from_slot,to_node:edge.to_node,to_slot:edge.to_slot,edge_type:edge.type,new_input_slot:'input',new_output_slot:'output',params:f.blurParams,expect_structural_revision:g.structural_revision,expect_content_revision:g.content_revision});
   const before=await graph(f);f.graphId=before.graph_id;f.nodeId=before.nodes.find(n=>n.type==='gaussian_blur').node_id;f.graphBefore=before;
   await selectClip(f);if(!(await ui()).widgets.some(w=>w.class==='RenderGraphView'))await action('Render Graph');await selectNode(f,f.nodeId);
-  if(!(await ui()).widgets.some(w=>w.name==='InspectorParamLabel'&&w.text==='Radius'))await action('Inspector');return f;
+  if(!(await ui()).widgets.some(w=>w.name==='InspectorParamLabel'&&w.text===f.radiusLabel))await action('Inspector');return f;
  });
  const preview=observedWidget(await ui(),w=>w.class==='MetalPreviewWidget','Displayed preview'),before=await capture(id,'before',preview.id),screenshots=[before];
  assert(Buffer.from(before.sampleRgb,'base64').reduce((a,b)=>a+b,0)/(64*32*3)>5,'Inspector baseline preview is blank');
- const control=await until(async()=>{const u=await ui(),labels=u.widgets.filter(w=>w.name==='InspectorParamLabel'&&w.text==='Radius');if(!labels.length)return null;
-  const label=observedWidget(u,w=>w.name==='InspectorParamLabel'&&w.text==='Radius','Inspector Radius label');
+ const control=await until(async()=>{const u=await ui(),labels=u.widgets.filter(w=>w.name==='InspectorParamLabel'&&w.text===f.radiusLabel);if(!labels.length)return null;
+  const label=observedWidget(u,w=>w.name==='InspectorParamLabel'&&w.text===f.radiusLabel,'Inspector Radius label');
   return observedWidget(u,w=>w.name==='InspectorSliderControl'&&w.window===label.window&&Math.abs(w.y-label.y)<5&&w.enabled,'Inspector Radius slider');
  },{description:'Selected blur Inspector control'});
  await stage('edit','Focus the current Radius thumb and increase it with the physical keyboard','execute',async()=>{
@@ -89,10 +91,10 @@ await check('D-INSPECTOR-BLUR-PHYSICAL',async()=>{
   same(content(await graph(f)),content(f.graphBefore),'Focusing the slider preserves its value');
   await physical('key',{target:control.id,key:'right'});
  });
- const after=await until(async()=>{const a=await graph(f);return a.nodes.find(n=>n.node_id===f.nodeId)?.params.radius!==16?a:null;},{description:'Blur Radius changed by Inspector input'});
+ const after=await until(async()=>{const a=await graph(f);return blurRadius(a.nodes.find(n=>n.node_id===f.nodeId)?.params)!==16?a:null;},{description:'Blur Radius changed by Inspector input'});
  const observations=await observe(id,{before:f.graphBefore,after});
  const result=await stage('verify','Check only Radius changed and preview pixels respond','verify',async()=>{
-  const result=verifyInspectorEdit(f.graphBefore,after,f.nodeId,'radius');
+  const result=verifyInspectorEdit(f.graphBefore,after,f.nodeId,f.radiusFields);
   const changed=await until(async()=>{const image=await capture(id,'after',preview.id);return widgetPixelDifference(before,image)>.01?image:null;},{description:'Displayed blur responds to Inspector'});
   screenshots.push(changed);return {...result,pixelDifference:widgetPixelDifference(before,changed),observations,screenshots};
  });

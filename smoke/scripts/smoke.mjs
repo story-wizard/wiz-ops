@@ -17,7 +17,7 @@ export function client(base='http://127.0.0.1:4317'){
   let response;try{response=await fetch(new URL(route,url),{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,signal:AbortSignal.timeout(route==='/api/builds/import'?900000:route.startsWith('/api/builds')?300000:route==='/api/plans'||route.endsWith('/kit')?300000:20000)});}
   catch(e){throw Object.assign(Error(body?'Response lost; inspect the request or saved records before retrying. No automatic retry was made.':'Local smoke service unavailable. Start it with npm start. '+e.message),{responseLost:!!body,serviceUnavailable:!body});}
   let value;try{value=await response.json();}catch{throw Object.assign(Error(body?'Response unreadable; outcome unknown. Inspect saved records before retrying.':'Unreadable service response.'),{responseLost:!!body,serviceUnavailable:!body});}
-  if(!response.ok)throw Object.assign(Error(value.error||'Request failed'),{status:response.status});return value;
+  if(!response.ok)throw Object.assign(Error(value.error||'Request failed'),{status:response.status,code:value.code,admitted:value.admitted});return value;
  };
 }
 export async function waitForRun(call,id,{timeout=300,pollMs=1000}={}){

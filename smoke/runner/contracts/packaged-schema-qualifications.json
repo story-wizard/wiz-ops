@@ -98,6 +98,25 @@
         "Scoped operation anchor: five project-palette operations and local graph.add_text, copied exactly from the selected October 26 shipped CLI schema. Existing baseline definitions, result contracts and error contracts remain unchanged."
       ],
       "basis": "Retained selected-build schema, package 1ab32b53d5803733c2cea546d1d4f77ee701751d036414e91f8efb830d92094e, App 3de2935a2d78960bb3fda19a80d672928722ccfa and Core 70438b3c2dd667094447283156ae863aa80d8761. add_swatch/add_swatches carry SelectedColor value/space/intent and optional anchor; batch count is bounded 1..256. Reads distinguish project/user/recent; get_swatch recent requires index, otherwise name. remove_swatch requires name and requires optimistic revision with index. graph.add_text targets the owned timeline/clip with optional bundle/content/structural revision guards. All six are bundle-bound, no provider/network/export operation is approved. Selected runtime supplies no result/error schema for these operations; this preserves that honest gap rather than inventing fields. Operation-scoped contract admission only; behavior, invalid-value rejection, persistence and GUI remain independent test outcomes. No schema algorithm, existing expectation or production source changes."
+    },
+    {
+      "schemaHash": "e4b6cf424c71585175e110d6c8bf6396d175c56fe2fa70057a1e51b08bc95c6d",
+      "operationsFile": "packaged-schema-2026.10.31-local-operations.json",
+      "reviewedAt": "2026-10-31",
+      "changes": [
+        "Scoped anchor: only media.import_asset and seven used graph operations copied from the October 31 shipped CLI. Import adds optional media_root; it does not grant access. Graph operations allow omitted clip_id for timeline graphs, add optional channel/group_id/input_slot, and graph.edit_batch adds set_matte_channel while retaining every existing alternative.",
+        "Existing calls still supply clip_id for clip graphs, omit the new fields, retain explicit media.add_media_root and source/revision/graph/persistence assertions. No result or error contract changes are approved."
+      ],
+      "basis": "Official nightly-2026.10.31-86bf800, ZIP SHA-256 bfb0aa6767422e69f3d124606ce27c3e46cb7b8a629843beaf82e60d744382e2, App 86bf8001f30fa118a9111e9f35c6d61a55916f79 and Core 497d59ae152452d1bc57f45dbc249ef445b71b29. Compared each used operation with the October 23 anchor: every existing import field is identical; graph changes are exactly the listed optional fields, clip-scope description/required-field removal and new batch variant. All 15 prior batch alternatives retain their types, required fields, constraints and semantics apart from those shared optional fields and clip description. ProjectSession.import/setup and render-helpers.insertEffect keep path permission, stable asset identity, explicit clip scope, revision gates, single inserted-node identity and rendered-path assertions. This synthetic anchor qualifies only these operation contracts for existing callers; it does not approve the whole registry or establish new timeline-graph, matte or media-root behavior. Exact-package runtime outcomes remain independent."
+    },
+    {
+      "schemaHash": "f53e030936ad3faef05df34894941a9d03ab47ff239f164e98ee6f9368f97e43",
+      "operationsFile": "packaged-schema-2026.10.31-disconnect-operation.json",
+      "reviewedAt": "2026-10-31",
+      "changes": [
+        "graph.disconnect_edge adds optional channel, group_id, input_slot and producer_slot and permits omitted clip_id for timeline graphs. Existing required endpoints, slots, pixel type and revision guards are unchanged."
+      ],
+      "basis": "Exact October 31 official package already retained for this run. Compared every request field, result and error with the baseline: only the listed optional scope fields and clip description/required-field removal differ. The physical wire fixture still supplies explicit timeline_id/clip_id, the observed pixel edge, both optimistic revisions, and independently verifies physical connection plus Undo/Redo. No result/error change or unrelated operation is approved. The prior eight-operation anchor remains byte-for-byte intact."
     }
   ]
 }

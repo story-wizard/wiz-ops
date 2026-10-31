@@ -26,3 +26,5 @@ backend = "none"
 enabled = false
 [project_context]
 enabled = false
+[privacy]
+cloud_media_egress = false

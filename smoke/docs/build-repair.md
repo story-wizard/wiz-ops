@@ -8,7 +8,25 @@ Within an authorized test task, diagnose and repair harness setup locally, quali
 
 A blocker starts recovery work; it does not end the task. Investigate the cause, repair the shared harness problem in isolation, qualify the exact repair, and rerun affected checks after known cleanup. Continue independent checks while recovering. Ask to apply a tested fix to the installed harness only after its patch and results are ready; keep production unchanged until approved. Preserve every original outcome and App failure. Reconcile uncertain input before further action; never replay it. If access, ownership, credentials or another external prerequisite prevents progress, retain the exact required action and continue work that does not depend on it. Success means executing the intended checks with valid assertions, not removing blockers by weakening them.
 
+Maintenance and another owner's work are busy states, not failed tests. The controller waits before admission. A structured `WORKER_BUSY` rejection with `admitted: false` can return to that queue only after lookup confirms the original preparation/request is absent. Reconcile an existing record instead. A timeout, lost reply, generic conflict or error text alone never authorizes replay. Keep the original deadline and cancellation boundary.
+
 A full-registry difference remains a review finding. The prepared plan also freezes per-operation admission against reviewed request, response and error contracts, including shared desktop setup. Qualified independent checks can run; missing APIs remain N/A and changed unqualified contracts remain Blocked. Both packaged and desktop dispatch enforce the frozen admission. Read the retained schema review to repair each remaining contract and prepare a new attempt.
+
+## Resolve compatibility before Start
+
+Treat app and SDK drift as routine work within an authorized run. Inspect the complete frozen selection, including shared setup, even when preparation says Ready: `buildSupport.checks` may still contain Blocked or N/A checks. Retain the original attempt, package identity and exact diagnostic; group affected checks by the shared operation or SDK contract rather than patching each test.
+
+A missing or renamed API is a discovery task before it is N/A. Search the shipped operations, release changes and source for a replacement or equivalent supported GUI route. Keep the test's purpose and required gestures; retain N/A only when no qualified route exists. Open parameter maps need their domain contract too: inspect `graph.get_node_type` or the selected build's node registry before constructing graph fixtures. Do not guess parameter names from an older build.
+
+Read the selected package's no-spawn registry and shipped SDK definitions. Compare only the contracts the affected checks use, including responses and error semantics. Trace existing callers and their independent assertions. A retired SDK setting is safely absent only when the SDK explicitly declares its retirement and active safety controls still validate. Do not invent a default for a missing control. Keep local-only/no-egress and paid-operation limits explicit.
+
+Named UI domains need scoped bindings too. Split media search exposes separate name and semantic result models and an always-visible filename lane; do not bind any tree view or click an unrelated Name sort action. Keep query completion, unique target, model completeness, asset-role and negative controls.
+
+For fixtures using authored renderer parameters, `runner/graph-parameters.mjs` maps the intended isotropic blur in pixels from the selected project's published registry. It supplies both linked radii where declared, binds the corresponding Inspector label, and keeps graph, collateral-edit and pixel assertions. Unknown units or layouts remain review work; do not send a guessed stale field.
+
+When completion evidence moves, preserve its meaning rather than its old field name. The October 31 ingest adapter reads the exact observed job from the project's read-only ledger, requires successful finalization, and matches asset, path and source hash against the saved sidecar. Missing, stale, partial or misbound records still fail; an existing stale legacy marker cannot fall back to the new route.
+
+Review compatible changes yourself from this evidence. Use scoped operation anchors or shared adapters, qualify old-contract and changed-contract cases plus a rejection control, then prepare a new isolated attempt and run the affected checks. Keep unrelated unreviewed operations guarded. A changed test purpose or expected behavior needs a decision; an ordinary compatibility repair does not need the user to diagnose it. Ready describes preparation, not a functional Pass. Return the tested repair for installed-source adoption after execution; preserve machine holds, ownership and uncertain-input rules.
 
 ## Inspect the build
 
@@ -35,6 +53,8 @@ The selected package and instrumented desktop tools are separate inputs. A deskt
 - If the app itself is defective, retain the failure and reproduction context. A repair to Athanor must not disguise an app failure or reduce the assertion to make it pass.
 
 ## Verify and deliver
+
+Bind Render Graph targets by the API node identity and the owned Qt graph identity, not rendered labels. When a fixture needs a hidden member's disconnected port, bind the published group by identity, expand it through the observed App action, then observe the actual member port. A collapsed group only publishes ports for crossing edges. For manual layout/port gestures, establish manual layout in the owned Render Graph panel first; automatic layout can reposition nodes. Bind toolbar controls inside that panel. Wait for the intended clip graph before binding its view. Scripted actions use the geometry retained by the proof binding instead of a second earlier observation. Keep physical gestures and independent graph readback. Declare operations used by fixture setup as well as test actions so an unqualified dependency is found during preparation.
 
 Run `npm test` and `npm run scope:check` from `smoke/`. For a regression, demonstrate failure with the old behavior and success with the repair where practical. Prepare the actual selected package again. Check the added prerequisites and frozen package, schema, fixture and source identities.
 

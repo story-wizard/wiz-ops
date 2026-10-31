@@ -6,7 +6,7 @@ const request={planHash:'a'.repeat(64),requestId:'request-1',operator:'Tester'};
 test('managed dispatch returns the existing run when busy and leaves admission atomic in the runner',async()=>{
  const calls=[],call=async(route,body)=>{calls.push({route,body});return route==='/api/worker'?{active:{run_id:'existing',url:'http://127.0.0.1:4317/#run/existing'}}:{runId:'new'};};
  const result=await workerRun(call,request);assert.equal(result.state,'Busy');assert.equal(result.runId,'existing');assert.deepEqual(calls.map(c=>c.route),['/api/worker']);
- for(const state of [{preparing:true},{ownedSessions:[{}]},{activeDesktopJobs:[{}]}]){
+ for(const state of [{maintainingStorage:true},{preparing:true},{ownedSessions:[{}]},{activeDesktopJobs:[{}]}]){
   let inputs=0;assert.equal((await workerRun(async route=>{if(route!=='/api/worker')inputs++;return {ownedSessions:[],activeDesktopJobs:[],...state};},request)).state,'Busy');assert.equal(inputs,0);
  }
  const seen=[];const admitted=await workerRun(async(route,body)=>{seen.push({route,body});return route==='/api/worker'?{ownedSessions:[],activeDesktopJobs:[]}:{runId:'new',reused:true};},request);

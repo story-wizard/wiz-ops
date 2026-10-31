@@ -2,7 +2,7 @@ import path from 'node:path';
 import {modelEntry as observedModelEntry,readModelValues} from './model-read.mjs';
 import {mkdir,copyFile} from 'node:fs/promises';
 import {checks,gapFixture,usableGeometry} from './check-support.mjs';
-import {observedWidget} from './checklist-proof.mjs';
+import {observedWidget,searchObservation} from './checklist-proof.mjs';
 import {physicalInput,clipPoint} from './physical-input.mjs';
 import {assert,clips,OutcomeError} from '../runner/engine.mjs';
 import {writeJSON} from '../runner/files.mjs';
@@ -46,15 +46,18 @@ export async function uiWorkflows(file,reportName){
  const surface=(u,fn,label)=>{const matches=u.widgets.filter(fn);if(matches.length!==1)throw new OutcomeError(label+' is absent or ambiguous','Blocked');return matches[0];};
  const modelEntry=(view,match)=>observedModelEntry(n,view,match);
  const modelValues=(view,match,requests)=>readModelValues(n,view,match,requests);
- async function modelRow(name){return modelEntry(surface(await ui(),w=>w.class==='QTreeView'&&Array.isArray(w.model),'Media list'),name);}
+ async function modelRow(name,view){return modelEntry(view||surface(await ui(),w=>w.class==='QTreeView'&&Array.isArray(w.model),'Media list'),name);}
  async function value(row,column,role){return n('model-value',{target:row.view.id,offset:row.row,column,role,cursor:row.page.cursor});}
  async function search(text,source='Name'){
-  await n('action',{target:mediaSearchAction(await ui(),source).id});
-  await until(async()=>mediaSearchAction(await ui(),source).checked,{description:'Media search source '+source+' selected'});
+  const initial=await ui(),nameLane=source==='Name'&&initial.widgets.some(w=>w.name==='mediaSearchSectionsSplitter')&&!initial.actions.some(a=>a.enabled&&a.checkable&&a.mediaSearchSource==='Name');
+  // Split-lane builds always publish filename matches; their other Name action
+  // is a sort option. Do not select it or substitute semantic results.
+  if(!nameLane){await n('action',{target:mediaSearchAction(initial,source).id});await until(async()=>mediaSearchAction(await ui(),source).checked,{description:'Media search source '+source+' selected'});}
   const field=unique(await ui(),w=>w.class==='MediaSearchField','Media search field');await type(field,text);
-  return until(async()=>{const u=await ui(),status=unique(u,w=>w.name==='mediaSearchStatus','Search status').text||'',view=unique(u,w=>w.class==='QTreeView'&&Array.isArray(w.model),'Search results');
+  return until(async()=>{const u=await ui(),status=unique(u,w=>w.name==='mediaSearchStatus','Search status').text||'';
    if(/unavailable|error/i.test(status))throw new OutcomeError('Search backend unavailable: '+status,'Blocked');
-   return unique(u,w=>w.id===field.id,'Search field').text===text&&!/searching|pending|loading/i.test(status)?{status,view,names:view.model.map(r=>r[0]),ui:u}:null;
+   if(unique(u,w=>w.id===field.id,'Search field').text!==text||/searching|pending|loading/i.test(status))return null;
+   return {...searchObservation(u,source),ui:u};
   },{description:'Search completion',timeoutMs:15000});
  }
  async function clearSearch(){const field=unique(await ui(),w=>w.class==='MediaSearchField','Media search field');await n('text',{target:field.id,text:''});}

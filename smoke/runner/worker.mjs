@@ -27,7 +27,7 @@ export async function workerRun(call,{planHash,requestId,operator}){
  if(!/^[a-f0-9]{64}$/.test(planHash)||typeof requestId!=='string'||!requestId.match(/^[A-Za-z0-9-]{1,100}$/)||typeof operator!=='string'||!operator.trim()||operator.length>120)throw Error('Supply a frozen plan hash, retained request ID and operator.');
  const state=await call('/api/worker');
  if(state.active)return {state:'Busy',runId:state.active.run_id,url:state.active.url,inputDispatched:false};
- if(state.preparing||state.ownedSessions.length||state.activeDesktopJobs.length)return {state:'Busy',runId:null,inputDispatched:false,message:'Finish the active preparation or desktop session.'};
+ if(state.maintainingStorage||state.preparing||state.ownedSessions.length||state.activeDesktopJobs.length)return {state:'Busy',runId:null,inputDispatched:false,message:'Finish the active maintenance, preparation or desktop session.'};
  // The server repeats admission checks atomically; this observation reserves nothing.
  const result=await call('/api/runner/start',{planHash,requestId,operator});return {...result,state:'Admitted'};
 }

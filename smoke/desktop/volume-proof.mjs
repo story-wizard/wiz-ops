@@ -2,7 +2,8 @@ import {assert,same,near,clips,snapshotState,OutcomeError} from '../runner/engin
 
 export function verifyEmptySearch(positive,empty,restored,{query,name}){
  assert(positive.query!==query&&positive.names.includes(name),'Missing search lacks a working positive control');
- assert(empty.query===query&&empty.names.length===0&&/^0 matches?\b|^no (?:matches|results)\b/i.test(empty.status||''),'Missing term must produce an explicit completed empty result');
+ const explicitZero=empty.completion?.source==='Name'&&empty.completion.count===0&&!!empty.completion.headingId;
+ assert(empty.query===query&&empty.names.length===0&&(explicitZero||/^0 matches?\b|^no (?:matches|results)\b/i.test(empty.status||'')),'Missing term must produce an explicit completed empty result');
  for(const result of [positive,empty,restored])assert(!/searching|pending|loading|unavailable|error/i.test(result.status||''),'Search is unfinished or unavailable');
  assert(restored.query===positive.query,'Restored query differs');same(restored.names,positive.names,'Positive result restored after empty query');
  return {query,emptyResults:0,positiveResults:positive.names,restored:true};

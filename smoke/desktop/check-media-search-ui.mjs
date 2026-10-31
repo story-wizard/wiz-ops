@@ -64,7 +64,7 @@ await check('D-TRANSCRIPT-SEARCH',async()=>{
  // the physical UI query project-wide and retain its reported completeness.
  const semantic=await c('search.query',{query:{kind:'text',text:'silver camera'},sources:['transcript'],scope:{kind:'assets',asset_ids:[asset]},include:['excerpt']});await observe(id,'backend',{asset,semantic});
  assert(semantic.completion==='complete'&&!semantic.truncated,'Transcript search incomplete');const hit=semantic.matches.find(m=>m.item_id===asset),e=hit?.evidence.find(e=>e.source==='transcript');assert(e?.match_range&&e.match_range.start_secs<.5&&e.match_range.end_secs>.8&&e.match_range.end_secs<1.5,'Transcript timestamps differ from the known spoken phrase');
- const row=await modelRow('comet_report.mov');await identity(row,asset);
+ const row=await modelRow('comet_report.mov',result.view);await identity(row,asset);
  await observe(id,'search',{pid,asset,result:{names:result.names,status:result.status,rows:result.view.model},semantic});await capture(id,'after',result.view.id,'widget');await clearSearch();same((await readJSON(file)).pid,pid,'Search did not restart Wizard');return {assetId:asset,range:e.match_range,scope:'Physical transcript query with correct asset and backend word range; seek activation is a separate check'};
 });
 
@@ -72,6 +72,6 @@ await check('D-INGEST-SEARCH-LIVE',async()=>{
  const id='D-INGEST-SEARCH-LIVE',pid=s.pid,name='fresh-search-'+s.harnessId+'.mov',query=name.replace(/\.mov$/,''),before=await stage('before','Search before importing a uniquely named clip','prepare',()=>search(query));assert(before.names.length===0,'Unique new source already appears in search');await clearSearch();
  const destination=await imported(name),asset=await stage('ingest','Import and ingest the new clip in the same process','execute',async()=>{const a=await c('media.import_asset',{path:destination});await ingestFixture(file,[{asset_id:a.asset_id,media_path:destination}]);return a.asset_id;});
  const after=await stage('search','Repeat the physical search without restarting Wizard','verify',()=>search(query));assert(after.names.includes(name),'Newly ingested source did not appear');
- const row=await modelRow(name),rows=[{id:await identity(row,asset)}];verifySearchIdentity(rows,asset);same((await readJSON(file)).pid,pid,'Live ingest restarted Wizard');await observe(id,'transition',{pid,before:{names:before.names,status:before.status},after:{names:after.names,status:after.status},asset});await capture(id,'after',after.view.id,'widget');await clearSearch();return {pid,assetId:asset,scope:'Filename lane after local source ingest; transcript/embedding live indexing is additional coverage'};
+ const row=await modelRow(name,after.view),rows=[{id:await identity(row,asset)}];verifySearchIdentity(rows,asset);same((await readJSON(file)).pid,pid,'Live ingest restarted Wizard');await observe(id,'transition',{pid,before:{names:before.names,status:before.status},after:{names:after.names,status:after.status},asset});await capture(id,'after',after.view.id,'widget');await clearSearch();return {pid,assetId:asset,scope:'Filename lane after local source ingest; transcript/embedding live indexing is additional coverage'};
 });
 finish();

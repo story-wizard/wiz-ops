@@ -163,3 +163,44 @@ test('optional response metadata preserves consumers, including nested tagged cl
  const errorExtension=structuredClone(extended);errorExtension.errors.inspect={type:'object'};
  assert.throws(()=>assertMappedPackagedSchema(errorExtension,baseline,null),/different command schema/);
 });
+
+test('reviewed import and clip graph extensions admit existing callers without approving unrelated contracts',async()=>{
+ const {operationSupport}=await import('../runner/schema-compatibility.mjs');
+ const {admitChecks}=await import('../runner/capabilities.mjs');
+ const {resolveSelection,selectedRecipe}=await import('../runner/catalog.mjs');
+ const entry=qualified.reviewed.find(r=>r.operationsFile==='packaged-schema-2026.10.31-local-operations.json');
+ const operations=JSON.parse(await readFile(new URL('../runner/contracts/'+entry.operationsFile,import.meta.url)));
+ const schema={...captured,operations:Object.fromEntries(Object.entries({...captured.operations,...operations}).sort(([a],[b])=>a.localeCompare(b)))};
+ assert.equal(digest(schema),entry.schemaHash);
+ const old={...qualified,reviewed:qualified.reviewed.filter(e=>e!==entry)};
+ const recipe=selectedRecipe(resolveSelection({}, {courseIds:['smoke-full'],subsetIds:['IN-01','A-RG-01'],desktopMode:'grouped'}));
+ assert(admitChecks(recipe,schema,captured,old).checks.some(c=>c.state==='Blocked'));
+ assert(admitChecks(recipe,schema,captured,qualified).checks.every(c=>c.state==='Ready'));
+ for(const mutate of [s=>s.operations['media.import_asset'].required.push('media_root'),s=>s.operations['graph.set_param'].properties.clip_id.description='Selects a different graph',s=>s.results['graph.get_clip_graph']={type:'string'}]){
+  const changed=structuredClone(schema);mutate(changed);assert(operationSupport(changed,captured,qualified).unqualifiedOperations.length>0);
+ }
+ const unrelated=structuredClone(schema);unrelated.operations['project.create'].required.push('unreviewed');
+ assert(operationSupport(unrelated,captured,qualified).unqualifiedOperations.includes('project.create'));
+});
+
+test('physical wiring declares and qualifies its disconnect setup before admission',async()=>{
+ const {operationSupport}=await import('../runner/schema-compatibility.mjs');
+ const {admitChecks}=await import('../runner/capabilities.mjs');
+ const {resolveSelection,selectedRecipe}=await import('../runner/catalog.mjs');
+ const local=JSON.parse(await readFile(new URL('../runner/contracts/packaged-schema-2026.10.31-local-operations.json',import.meta.url)));
+ const entry=qualified.reviewed.find(r=>r.operationsFile==='packaged-schema-2026.10.31-disconnect-operation.json');
+ const disconnect=JSON.parse(await readFile(new URL('../runner/contracts/'+entry.operationsFile,import.meta.url)));
+ const ordered=o=>Object.fromEntries(Object.entries(o).sort(([a],[b])=>a.localeCompare(b)));
+ assert.equal(digest({...captured,operations:ordered({...captured.operations,...local})}),'e4b6cf424c71585175e110d6c8bf6396d175c56fe2fa70057a1e51b08bc95c6d');
+ assert.equal(digest({...captured,operations:ordered({...captured.operations,...disconnect})}),entry.schemaHash);
+ const schema={...captured,operations:ordered({...captured.operations,...local,...disconnect})};
+ const recipe=selectedRecipe(resolveSelection({}, {courseIds:['smoke-full'],subsetIds:['P-RG-WIRE'],desktopMode:'grouped'}));
+ const prior={...qualified,reviewed:qualified.reviewed.filter(e=>e!==entry)};
+ assert(operationSupport(schema,captured,prior).unqualifiedOperations.includes('graph.disconnect_edge'));
+ const blocked=admitChecks(recipe,schema,captured,prior).checks.find(c=>c.id==='P-RG-WIRE');
+ assert.equal(blocked.state,'Blocked');
+ assert(admitChecks(recipe,schema,captured,qualified).checks.every(c=>c.state==='Ready'));
+ for(const mutate of [s=>s.operations['graph.disconnect_edge'].required.push('new_required'),s=>s.results['graph.disconnect_edge']={type:'string'}]){
+  const changed=structuredClone(schema);mutate(changed);assert(operationSupport(changed,captured,qualified).unqualifiedOperations.includes('graph.disconnect_edge'));
+ }
+});

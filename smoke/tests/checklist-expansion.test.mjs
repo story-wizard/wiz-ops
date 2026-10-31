@@ -35,6 +35,9 @@ test('Inspector oracle rejects no-op, wrong parameter, foreign graph and collate
  for(const mutate of [g=>g.nodes[1].params.radius=16,g=>g.nodes[0].params.size=.5,g=>g.edges=[],g=>g.clip_id='foreign',g=>g.nodes[1].owners=['foreign'],g=>g.nodes.push({...g.nodes[0],node_id:'extra'})]){
   const wrong=structuredClone(after);mutate(wrong);assert.throws(()=>verifyInspectorEdit(before,wrong,'blur','radius'));
  }
+ const linked=graph();linked.nodes[1].params={horizontal_radius:16,vertical_radius:16,uniform_radius:true,border:'clamp'};const edited=structuredClone(linked);edited.nodes[1].params.horizontal_radius=17;edited.nodes[1].params.vertical_radius=17;const fields=['horizontal_radius','vertical_radius'];
+ assert.deepEqual(verifyInspectorEdit(linked,edited,'blur',fields).after,{horizontal_radius:17,vertical_radius:17});
+ for(const mutate of [g=>g.nodes[1].params.vertical_radius=16,g=>g.nodes[1].params.border='mirror',g=>g.nodes[1].params.uniform_radius=false,g=>g.nodes[0].params.size=.5,g=>g.edges=[]]){const wrong=structuredClone(edited);mutate(wrong);assert.throws(()=>verifyInspectorEdit(linked,wrong,'blur',fields));}
 });
 test('mask clipboard oracle rejects shared identity, changed originals, wrong owners and rewired masks',()=>{
  const before=graph(),after=graph();after.nodes.push({...structuredClone(before.nodes[0]),node_id:'copy'});
@@ -63,4 +66,24 @@ test('new candidates resolve individually, run in isolated groups and carry usab
  }
  assert.equal(desktopGroups(ids,map).length,1);assert.equal(desktopGroups(ids,map,'isolated').length,ids.length);
  }finally{db.close();}
+});
+
+test('search result binding selects its authored lane while preserving legacy uniqueness and model completeness',async()=>{
+ const {searchResultView}=await import('../desktop/checklist-proof.mjs');
+ const tree=(id,name,model=[])=>({id,name,class:'QTreeView',model,rows:model.length});
+ const bin=tree('bin','',[['motion_25.mp4']]),name=tree('name','mediaNameSearchResults',[['pattern_24.mov']]),semantic=tree('semantic','mediaSemanticSearchResults',[['comet_report.mov']]),splitter={name:'mediaSearchSectionsSplitter'};
+ assert.equal(searchResultView({widgets:[bin]},'Name').id,'bin');
+ const ui={widgets:[bin,name,semantic,splitter]};assert.equal(searchResultView(ui,'Name').id,'name');assert.equal(searchResultView(ui,'Transcript').id,'semantic');
+ const section={id:'semantic-section',parent:'split'},header={id:'semantic-header',name:'mediaSemanticSearchHeading',parent:section.id},unnamed={...semantic,name:'',parent:section.id};const observed={widgets:[bin,name,{id:'split',...splitter},section,header,unnamed]};assert.equal(searchResultView(observed,'Transcript').id,'semantic');assert.throws(()=>searchResultView({widgets:[...observed.widgets,{...unnamed,id:'duplicate'}]},'Transcript'),e=>e.status==='Blocked');
+ for(const widgets of [[bin,tree('other','')],[bin,name,{...name,id:'duplicate'},splitter],[bin,splitter],[bin,{...name,rows:2},splitter]])assert.throws(()=>searchResultView({widgets},'Name'),e=>e.status==='Blocked');
+});
+
+test('filename empty state uses its published count without inventing a tree or semantic completeness',async()=>{
+ const {searchObservation}=await import('../desktop/checklist-proof.mjs');
+ const splitter={id:'split',name:'mediaSearchSectionsSplitter'},heading={id:'heading',name:'mediaNameSearchHeading',text:'Name matches · 0'},status={name:'mediaSearchStatus',text:'Search results may be incomplete'},bin={id:'bin',class:'QTreeView',model:[['wrong.mov']],rows:1};
+ const ui={widgets:[splitter,heading,status,bin]},empty=searchObservation(ui);
+ assert.equal(empty.view.id,'heading');assert.equal(empty.view.model,undefined);assert.deepEqual(empty.names,[]);assert.equal(empty.globalStatus,status.text);assert.equal(empty.completion.count,0);
+ const view={id:'name',name:'mediaNameSearchResults',class:'QTreeView',model:[['pattern.mov']],rows:1},positive={widgets:[splitter,{...heading,text:'Name matches · 1'},status,bin,view]};
+ assert.deepEqual(searchObservation(positive).names,['pattern.mov']);
+ for(const widgets of [[splitter,status,bin],[splitter,{...heading,text:'Name matches · 0+'},status,bin],[splitter,{...heading,text:'Name matches · 1'},status,bin],[...ui.widgets,view]])assert.throws(()=>searchObservation({widgets}),e=>e.status==='Blocked');
 });

@@ -149,3 +149,21 @@ test('relocated CLI entry points execute from paths with spaces and URL characte
   assert.match(run.stderr,/requires --execute --run-id/);assert.match(prepare.stderr,/Choose a build and test course/);
  }finally{await rm(root,{recursive:true,force:true});}
 });
+
+test('current ingest completion survives reopen and rejects stale, partial or misbound durable job records',async()=>{
+ const {DatabaseSync}=await import('node:sqlite');
+ const root=await mkdtemp(path.join(tmpdir(),'athanor-ingest-ledger-')),bundle=path.join(root,'Owned.wiz');await mkdir(bundle);
+ const sidecar={id:'asset_a',path:path.join(root,'source.mov'),technical:{file_hash:'current-source'}};
+ const request={wiz_path:bundle,clips:[{asset_id:'asset_a',media_path:sidecar.path}]};
+ const summary={operations_failed:[],operations_run:[{operation:'add_clip',asset_id:'asset_a',media_path:sidecar.path,source_hash:'current-source',status:'ok'},{operation:'finalize_project',status:'ok'}]};
+ const row={wiz_path:bundle,status:'succeeded',error:null,finished_at:'2026-10-31T17:38:22Z',request_json:JSON.stringify(request),summary_json:JSON.stringify(summary)};
+ const save=(changes={})=>{const db=new DatabaseSync(path.join(bundle,'.wizindex.db'));try{db.exec('CREATE TABLE IF NOT EXISTS ingest_jobs(job_id TEXT PRIMARY KEY,wiz_path TEXT,status TEXT,error TEXT,finished_at TEXT,request_json TEXT,summary_json TEXT)');const r={...row,...changes};db.prepare('INSERT OR REPLACE INTO ingest_jobs VALUES(?,?,?,?,?,?,?)').run('observed-job',r.wiz_path,r.status,r.error,r.finished_at,r.request_json,r.summary_json);}finally{db.close();}};
+ const verify=()=>verifyIngestSidecar(sidecar,'asset_a',{bundle,jobId:'observed-job'});
+ try{
+  save();verify();
+  assert.throws(()=>verifyIngestSidecar(sidecar,'asset_a',{bundle,jobId:'unobserved-job'}),/no current completed ingest/);
+  for(const changes of [{status:'failed'},{finished_at:null},{error:'write failed'},{wiz_path:path.join(root,'Other.wiz')},{request_json:JSON.stringify({...request,clips:[{asset_id:'asset_a',media_path:'/another.mov'}]})}]){save(changes);assert.throws(verify,/no current completed ingest/);}
+  for(const mutate of [s=>s.operations_run[0].source_hash='stale',s=>s.operations_run[0].status='cancelled',s=>s.operations_run[0].asset_id='other',s=>s.operations_run[0].media_path='/another.mov',s=>s.operations_run.pop(),s=>s.operations_failed.push({operation:'add_clip'}),s=>s.operations_run.push({...s.operations_run[0]})]){const s=structuredClone(summary);mutate(s);save({summary_json:JSON.stringify(s)});assert.throws(verify,/no current completed ingest/);}
+  save();assert.throws(()=>verifyIngestSidecar({...sidecar,coverage:{ingest_complete:{source_hash:'stale'}}},'asset_a',{bundle,jobId:'observed-job'}),/no current completed ingest/);verify();
+ }finally{await rm(root,{recursive:true,force:true});}
+});

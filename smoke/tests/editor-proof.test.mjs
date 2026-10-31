@@ -4,9 +4,9 @@ import {readFile} from 'node:fs/promises';
 import {beginProof,verifyCheckpoint} from '../desktop/agent-proof.mjs';
 const defs=JSON.parse(await readFile(new URL('../desktop/physical-editor-course.json',import.meta.url))).cases;
 const edge={from_node:'t',from_slot:'output',to_node:'b',to_slot:'input',type:'pixel'},out={from_node:'b',from_slot:'output',to_node:'c',to_slot:'fg',type:'pixel'};
-const graph={graph_id:'graph',timeline_id:'timeline',clip_id:'clip',nodes:[{node_id:'t',type:'transform_2d',params:{}},{node_id:'b',type:'gaussian_blur',params:{radius:12},owners:['clip:timeline:clip'],bypassed:false},{node_id:'c',type:'composite',params:{}}],edges:[out]};
-const node={nodeId:'b',labels:['Radius'],x:60,y:60,sceneX:200,sceneY:200,width:50,height:60,ports:[{side:'input',x:60,y:70},{side:'output',x:110,y:70}]};
-const view={id:'view',window:'window',viewport:'viewport',class:'RenderGraphView',graphId:'graph',timelineId:'timeline',sceneItems:[node,{nodeId:'t',labels:['Scale'],ports:[{side:'output',x:30,y:40}]}]};
+const graph={graph_id:'graph',timeline_id:'timeline',clip_id:'clip',nodes:[{node_id:'t',type:'transform_2d',params:{},owners:['clip:timeline:clip']},{node_id:'b',type:'gaussian_blur',params:{radius:12},owners:['clip:timeline:clip'],bypassed:false},{node_id:'c',type:'composite',params:{}}],edges:[out]};
+const node={nodeId:'b',labels:[],x:60,y:60,sceneX:200,sceneY:200,width:50,height:60,ports:[{side:'input',x:60,y:70},{side:'output',x:110,y:70}]};
+const view={id:'view',window:'window',viewport:'viewport',class:'RenderGraphView',graphId:'graph',timelineId:'timeline',sceneItems:[node,{nodeId:'t',labels:[],x:10,y:10,width:50,height:60,ports:[{side:'output',x:30,y:40}]}]};
 function fixture(id,base=graph){const proof=beginProof(defs.find(c=>c.id===id)),session={proofTarget:'view',proofRead:{timeline_id:'timeline',clip_id:'clip'}};const result=verifyCheckpoint(proof,'baseline',base,{widgets:[view]},session);Object.assign(proof,{baseline:structuredClone(base),binding:result.binding});return {proof,session};}
 function verify(f,id,g,ui=view){const point=f.proof.contract.checkpoints.find(c=>c.id===id);f.proof.actions.push(...(point?.actions||[]).map(id=>({...f.proof.contract.actions.find(a=>a.id===id),receipt:{status:'Dispatched'}})));return verifyCheckpoint(f.proof,id,g,{widgets:[ui]},f.session);}
 test('graph proof binds the displayed graph/node and cannot rebaseline away old actions or taint',()=>{
@@ -36,6 +36,7 @@ test('move requires graph preservation and pan requires scene preservation',()=>
 test('clipboard accepts one matching serial copy and exact delete/two Undo states',()=>{
  const connected={...graph,edges:[edge,out]},f=fixture('P-RG-CLIPBOARD',connected),copy={...graph.nodes[1],node_id:'copy'},pasted={...connected,nodes:[...connected.nodes,copy],edges:[edge,{...out,to_node:'copy',to_slot:'input'},{...out,from_node:'copy'}]},display={...view,sceneItems:[...view.sceneItems,{...node,nodeId:'copy',sceneX:250,sceneY:250,x:110,y:110}]};
  assert.equal(verify(f,'pasted',pasted,display).matched,true);f.proof.checkpoints.pasted={observed:pasted};
- for(const change of [x=>x.nodes.at(-1).owners=['clip:other:clip'],x=>delete x.nodes.at(-1).owners,x=>x.nodes.at(-1).params={radius:17},x=>x.nodes[0].params={unexpected:1},x=>x.edges.push({...edge,to_node:'c'})]){const bad=structuredClone(pasted);change(bad);assert.equal(verify(f,'pasted',bad,display).matched,false);}
+ for(const change of [x=>x.nodes.at(-1).owners=['clip:other:clip'],x=>delete x.nodes.at(-1).owners]){const bad=structuredClone(pasted);change(bad);assert.throws(()=>verify(f,'pasted',bad,display),e=>e.code==='wrong_fixture');}
+ for(const change of [x=>x.nodes.at(-1).params={radius:17},x=>x.nodes[0].params={unexpected:1},x=>x.edges.push({...edge,to_node:'c'})]){const bad=structuredClone(pasted);change(bad);assert.equal(verify(f,'pasted',bad,display).matched,false);}
  assert.equal(verify(f,'deleted',connected).matched,true);assert.equal(verify(f,'paste-restored',pasted,display).matched,true);assert.equal(verify(f,'restored',connected).matched,true);assert.equal(verify(f,'restored',pasted,display).matched,false);
 });

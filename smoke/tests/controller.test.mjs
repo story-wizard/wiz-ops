@@ -172,3 +172,49 @@ test('conflicting preparation or run identities are never adopted or cancelled',
 test('an unattended job rejects a manual checkpoint before queue or app admission',async()=>fixture(async store=>{
  assert.throws(()=>store.submit({...request,selection:{...request.selection,checkpoint:'desktop'}},selection,digest(profile)),/manual checkpoints/);assert.equal(store.list().length,0);
 }));
+
+test('maintenance waits before dispatch and explicit non-admission requeues only after original identity lookup',async()=>fixture(async store=>{
+ const job=store.submit(request,selection,digest(profile));
+ for(const stage of ['Imported','Ready']){
+  store.update(job.id,{state:stage,imported:{app:request.build.value},planHash:'b'.repeat(64),admissionRejected:false});let maintaining=true,posts=0,lookups=0;const bodies=[];
+  const controller=new JobController(store,{profile,call:async(route,body)=>{
+   if(route==='/api/worker')return {...idle,maintainingStorage:maintaining};
+   if(body){posts++;bodies.push(body);if(posts===1)throw Object.assign(Error('Storage maintenance is active.'),{status:409,code:'WORKER_BUSY',admitted:false});return stage==='Imported'?{id:job.preparationId,state:'Preparing'}:{runId:'admitted-run'};}
+   lookups++;throw Object.assign(Error('not found'),{status:404});
+  }});
+  assert.equal((await controller.tick()).state,'Waiting');assert.equal(posts,0);maintaining=false;
+  await controller.tick();assert.equal(posts,1);assert.equal(store.get(job.id).admissionRejected,true);
+  await controller.tick();assert.equal(lookups,1);assert.equal(store.get(job.id).state,stage);assert.equal(posts,1);
+  maintaining=true;assert.equal((await controller.tick()).state,'Waiting');assert.equal(posts,1);maintaining=false;
+  await controller.tick();assert.equal(posts,2);assert.deepEqual(bodies[0],bodies[1]);assert.equal(store.get(job.id).state,stage==='Imported'?'Preparing':'Running');
+ }
+}));
+
+test('ambiguous rejection and lost replies never become retryable merely because they mention maintenance',async()=>fixture(async store=>{
+ const job=store.submit(request,selection,digest(profile));
+ for(const fields of [{status:409},{status:500,code:'WORKER_BUSY',admitted:false},{status:409,code:'WORKER_BUSY',admitted:true},{status:409,code:'OTHER',admitted:false},{status:409,code:'WORKER_BUSY',admitted:false,responseLost:true}]){
+  store.update(job.id,{state:'Imported',imported:{app:request.build.value},admissionRejected:false,dispatchStatus:null});let posts=0;
+  const controller=new JobController(store,{profile,call:async(route,body)=>{if(route==='/api/worker')return idle;if(body){posts++;throw Object.assign(Error('Storage maintenance is active.'),fields);}throw Object.assign(Error('not found'),{status:404});}});
+  await controller.tick();await controller.tick();assert.equal(posts,1);assert.equal(store.get(job.id).state,'Reporting');assert.ok(['Unknown','Blocked'].includes(store.get(job.id).outcome));
+ }
+}));
+
+test('HTTP client retains explicit non-admission metadata for controller reconciliation',async()=>{
+ const {client}=await import('../scripts/smoke.mjs');const server=http.createServer((req,res)=>{res.writeHead(409,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Storage maintenance is active.',code:'WORKER_BUSY',admitted:false}));});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));try{const call=client('http://127.0.0.1:'+server.address().port);await assert.rejects(()=>call('/api/preparations',{preparationId:'retained-id'}),e=>e.status===409&&e.code==='WORKER_BUSY'&&e.admitted===false&&!e.responseLost);}finally{await new Promise(resolve=>server.close(resolve));}
+});
+
+test('a retained preparation or run wins over a contradictory busy rejection',async()=>fixture(async store=>{
+ const job=store.submit(request,selection,digest(profile));
+ for(const stage of ['Imported','Ready']){
+  store.update(job.id,{state:stage,imported:{app:request.build.value},planHash:'b'.repeat(64),admissionRejected:false});let posts=0;
+  const controller=new JobController(store,{profile,call:async(route,body)=>{if(route==='/api/worker')return idle;if(body){posts++;throw Object.assign(Error('busy'),{status:409,code:'WORKER_BUSY',admitted:false});}return stage==='Imported'?{id:job.preparationId,state:'Preparing',app:request.build.value,runnerHash:profile.runnerHash,selection}:{id:'original-run',operator:request.operator,execution:{plan_hash:'b'.repeat(64)}};}});
+  await controller.tick();await controller.tick();assert.equal(posts,1);assert.equal(store.get(job.id).state,stage==='Imported'?'Preparing':'Running');
+ }
+}));
+
+test('explicit non-admission remains bounded by cancellation',async()=>fixture(async store=>{
+ const job=store.submit(request,selection,digest(profile));store.update(job.id,{state:'Preparing',dispatchStatus:409,admissionRejected:true,cancelRequested:true});let posts=0;
+ const controller=new JobController(store,{profile,call:async(_route,body)=>{if(body)posts++;throw Object.assign(Error('not found'),{status:404});}});
+ await controller.tick();assert.equal(posts,0);assert.equal(store.get(job.id).outcome,'Cancelled');assert.equal(store.get(job.id).state,'Reporting');
+}));

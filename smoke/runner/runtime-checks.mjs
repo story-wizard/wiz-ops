@@ -92,7 +92,7 @@ export const runtimeCases={
     const elapsedMs=performance.now()-start;
     for(const index of [0,100,200]){const matches=(await search(c,`bulk_${String(index).padStart(3,'0')}`)).matches;same(matches.map(m=>m.item_id),[assets[index].asset_id],'Bulk name search');same((await c.call('media.resolve_path',{asset_id:assets[index].asset_id})).path,assets[index].media_path,'Bulk source path');}
     const all=await c.call('media.list_assets');await writeJSON(path.join(path.dirname(c.bundle),'bulk-result.json'),{elapsedMs,assets:assets.length,listed:all});
-    await reopen(c);for(const a of assets)verifyIngestSidecar(JSON.parse(await readFile(path.join(c.bundle,'assets/clips',a.asset_id+'.json'),'utf8')),a.asset_id);
+    await reopen(c);for(const [index,a]of assets.entries()){const snapshot=JSON.parse(await readFile(path.join(path.dirname(c.bundle),`ingest-batch-${Math.floor(index/20)*20}.json`),'utf8'));verifyIngestSidecar(JSON.parse(await readFile(path.join(c.bundle,'assets/clips',a.asset_id+'.json'),'utf8')),a.asset_id,{bundle:c.bundle,jobId:snapshot.job_id});}
     return `201 independently registered small video files complete packaged local ingest and retain source records after reopen; sampled search results return exact identities. ${elapsedMs.toFixed(0)} ms retained; UI scrolling/concurrent responsiveness remains separate.`;
   }
 };

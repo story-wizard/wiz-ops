@@ -1,7 +1,7 @@
 {
   "id": "physical-editor-candidate",
   "title": "Physical editor paths \u00b7 candidate qualification",
-  "revision": 8,
+  "revision": 12,
   "target": "Instrumented isolated desktop with native macOS input",
   "status": "Candidate",
   "cases": [
@@ -235,7 +235,7 @@
       "steps": [
         {
           "id": "setup",
-          "title": "Prepare a blur graph and capture its starting layout",
+          "title": "Prepare the owned clip graph in manual layout and observe its controls",
           "phase": "prepare"
         },
         {
@@ -305,7 +305,12 @@
             "capture": "presented"
           }
         ]
-      }
+      },
+      "operations": [
+        "graph.get_clip_graph",
+        "graph.insert_on_edge",
+        "playback.seek"
+      ]
     },
     {
       "id": "P-RG-WIRE",
@@ -339,7 +344,7 @@
       "steps": [
         {
           "id": "setup",
-          "title": "Prepare a disconnected blur input and observe its visible ports",
+          "title": "Prepare the owned clip graph in manual layout and observe its controls",
           "phase": "prepare"
         },
         {
@@ -423,7 +428,13 @@
             "capture": "presented"
           }
         ]
-      }
+      },
+      "operations": [
+        "graph.get_clip_graph",
+        "graph.insert_on_edge",
+        "playback.seek",
+        "graph.disconnect_edge"
+      ]
     },
     {
       "id": "P-RG-CLIPBOARD",
@@ -457,7 +468,7 @@
       "steps": [
         {
           "id": "setup",
-          "title": "Prepare and select a blur node; preserve the system clipboard",
+          "title": "Prepare the owned clip graph in manual layout and observe its controls",
           "phase": "prepare"
         },
         {
@@ -467,7 +478,7 @@
         },
         {
           "id": "verify",
-          "title": "Check the new identity, matching parameters and unchanged original",
+          "title": "Frame the pasted node and verify independent identity, parameters and topology",
           "phase": "verify"
         },
         {
@@ -556,6 +567,16 @@
             "surface": "view",
             "key": "cmd+z",
             "checkpoint": "restored"
+          },
+          {
+            "id": "frame-paste",
+            "command": "click",
+            "stepId": "verify",
+            "checkpoint": "pasted",
+            "target": {
+              "class": "QPushButton",
+              "tooltip": "Fit all"
+            }
           }
         ],
         "checkpoints": [
@@ -563,7 +584,8 @@
             "id": "pasted",
             "actions": [
               "copy",
-              "paste"
+              "paste",
+              "frame-paste"
             ],
             "verifier": "editor",
             "capture": "presented"
@@ -594,7 +616,12 @@
             "capture": "presented"
           }
         ]
-      }
+      },
+      "operations": [
+        "graph.get_clip_graph",
+        "graph.insert_on_edge",
+        "playback.seek"
+      ]
     },
     {
       "id": "P-GRADE-LIVE",

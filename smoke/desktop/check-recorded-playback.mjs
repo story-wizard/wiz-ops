@@ -1,3 +1,4 @@
+import {blurParameters} from '../runner/graph-parameters.mjs';
 import path from 'node:path';
 import {mkdir,copyFile} from 'node:fs/promises';
 import {uiWorkflows} from './ui-workflows.mjs';
@@ -16,7 +17,7 @@ async function fixture(name,{graded=false}={}){
   // This package reports the timeline's projected revision even for a fresh
   // clip whose edit gate is clip-local. Fixture setup is serialized under the
   // owned bundle revision gate; verify every created graph before playback.
-  const effects=[{type:'wiz.color.grading_primary',params:{'grade.primary.saturation':.8}},{type:'wiz.color.balance_group',params:{'balance.grade.exposure_contrast.exposure':.2}},{type:'gaussian_blur',params:{radius:2}}];
+  const effects=[{type:'wiz.color.grading_primary',params:{'grade.primary.saturation':.8}},{type:'wiz.color.balance_group',params:{'balance.grade.exposure_contrast.exposure':.2}},{type:'gaussian_blur',params:await blurParameters(s.bundle,2)}];
   await c('graph.edit_batch',{...scope,ops:effects.map((effect,i)=>({op:'insert_on_edge',local_ref:-i-1,...effect,...(i?{from_local_ref:-i,from_slot:'output'}:{from_node:edge.from_node,from_slot:edge.from_slot}),to_node:edge.to_node,to_slot:edge.to_slot,edge_type:edge.type,new_input_slot:'input',new_output_slot:'output'}))});
   const built=await c('graph.get_clip_graph',scope);assert(effects.every(effect=>built.nodes.some(n=>n.type===effect.type))&&built.nodes.length===g.nodes.length+3,'Atomic graded fixture is incomplete');
  }
@@ -31,20 +32,20 @@ async function recording(id,f,onSample){const r=await recordPresented(file,{targ
 await check('D-INSPECTOR-PLAYBACK',async()=>{
  const id='D-INSPECTOR-PLAYBACK',f=await stage('setup','Prepare eight clips with six-node graded graphs','prepare',()=>fixture(id,{graded:true}));
  await stage('inspector','Select the blur node and open its real Inspector','prepare',async()=>{
-  assert(f.graph.nodes.length>=6,'Inspector fixture is not a six-node graph');const node=f.graph.nodes.find(n=>n.type==='gaussian_blur');assert(node,'Inspector blur missing');if(!(await ui()).widgets.some(w=>w.class==='RenderGraphView'&&w.timelineId===f.id))await action('Render Graph');
+  assert(f.graph.nodes.length>=6,'Inspector fixture is not a six-node graph');const node=f.graph.nodes.find(n=>n.type==='gaussian_blur');assert(node,'Inspector blur missing');f.radiusLabel=Object.hasOwn(node.params,'radius')?'Radius':'Horizontal Radius';if(!(await ui()).widgets.some(w=>w.class==='RenderGraphView'&&w.timelineId===f.id))await action('Render Graph');
   // The visible scene is clip-scoped; CLI graph_id names its parent timeline
   // graph. Bind the actual clip scene identity and its independently read nodes.
   const sceneId='clip:'+f.id+':'+f.scope.clip_id;
   let view=unique(await ui(),w=>w.class==='RenderGraphView'&&w.timelineId===f.id&&w.graphId===sceneId,'Fixture render graph');const fit=unique(await ui(),w=>w.window===view.window&&w.tooltip==='Fit all','Fit graph');await n('click',{target:fit.id});view=unique(await ui(),w=>w.id===view.id,'Fixture render graph');const rect=view.sceneItems.find(x=>x.nodeId===node.node_id);assert(rect,'Blur geometry missing');await physical('click',{target:view.viewport,x:rect.x+rect.width/2,y:rect.y+Math.min(8,rect.height/2)});
-  await until(async()=>(await ui()).widgets.find(w=>w.id===view.id)?.sceneItems.some(x=>x.nodeId===node.node_id&&x.selected));if(!(await ui()).widgets.some(w=>w.name==='InspectorParamLabel'&&w.text==='Radius'))await action('Inspector');await until(async()=>(await ui()).widgets.some(w=>w.name==='InspectorParamLabel'&&w.text==='Radius'));
+  await until(async()=>(await ui()).widgets.find(w=>w.id===view.id)?.sceneItems.some(x=>x.nodeId===node.node_id&&x.selected));if(!(await ui()).widgets.some(w=>w.name==='InspectorParamLabel'&&w.text===f.radiusLabel))await action('Inspector');await until(async()=>(await ui()).widgets.some(w=>w.name==='InspectorParamLabel'&&w.text===f.radiusLabel));
   // Activating the Timeline dock changes the Inspector owner to clip context.
   // Keep the selected node owner and send the global shortcut through its window.
   const current=await ui();f.inputTarget=unique(current,w=>w.class==='InspectorPanel','Selected node Inspector').id;f.view=unique(current,w=>w.class==='TimelineWidget'&&w.clipIds?.includes(f.scope.clip_id),'Recorded fixture video canvas');
-  if(!current.widgets.some(w=>w.name==='InspectorParamLabel'&&w.text==='Radius'))throw new OutcomeError('The blur Inspector was lost during fixture setup','Blocked');
+  if(!current.widgets.some(w=>w.name==='InspectorParamLabel'&&w.text===f.radiusLabel))throw new OutcomeError('The blur Inspector was lost during fixture setup','Blocked');
  });
  let uncertain=false;try{
-  await stage('play','Start playback using Space in the selected node Inspector window','execute',()=>play(f));const recorded=await stage('record','Collect presented motion, transport and resource samples','verify',()=>recording(id,f,async()=>assert((await ui()).widgets.some(w=>w.name==='InspectorParamLabel'&&w.text==='Radius'),'Inspector disappeared during a playback sample')));
-  const proof=verifyPlaybackRecording(recorded);assert((await ui()).widgets.some(w=>w.name==='InspectorParamLabel'&&w.text==='Radius'),'Inspector disappeared during playback');same(snapshotState(await c('timeline.inspect',{timeline_id:f.id})),snapshotState(f.before),'Playback preserves timeline');const graph=await c('graph.get_clip_graph',f.scope);same({nodes:graph.nodes,edges:graph.edges},{nodes:f.graph.nodes,edges:f.graph.edges},'Inspector playback preserves grade graph');await observe(id,'after',{proof,graph,binding:recorded.binding});await capture(id,'after',f.preview.id);return {...proof,scope:'Visible Inspector on a six-node graded graph with advancing presented playback. Every-frame/drop counts and comparison baselines remain separate.'};
+  await stage('play','Start playback using Space in the selected node Inspector window','execute',()=>play(f));const recorded=await stage('record','Collect presented motion, transport and resource samples','verify',()=>recording(id,f,async()=>assert((await ui()).widgets.some(w=>w.name==='InspectorParamLabel'&&w.text===f.radiusLabel),'Inspector disappeared during a playback sample')));
+  const proof=verifyPlaybackRecording(recorded);assert((await ui()).widgets.some(w=>w.name==='InspectorParamLabel'&&w.text===f.radiusLabel),'Inspector disappeared during playback');same(snapshotState(await c('timeline.inspect',{timeline_id:f.id})),snapshotState(f.before),'Playback preserves timeline');const graph=await c('graph.get_clip_graph',f.scope);same({nodes:graph.nodes,edges:graph.edges},{nodes:f.graph.nodes,edges:f.graph.edges},'Inspector playback preserves grade graph');await observe(id,'after',{proof,graph,binding:recorded.binding});await capture(id,'after',f.preview.id);return {...proof,scope:'Visible Inspector on a six-node graded graph with advancing presented playback. Every-frame/drop counts and comparison baselines remain separate.'};
  }catch(e){uncertain=e.status==='Unknown';throw e;}finally{if(!uncertain)await stage('pause','Pause playback physically','cleanup',()=>stop(f));}
 });
 

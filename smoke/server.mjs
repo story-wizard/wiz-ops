@@ -118,6 +118,7 @@ async function catalogPayload(){
   return {...seed,gp,historyUrl:historyUrl(),tests:catalog(),runner,checkpoint:{source:checkpoint.source,sha256:checkpoint.sha256,build:checkpoint.sourceBuild,comparison:checkpoint.comparison,rows:checklistCoverage(checkpoint,{cases:[...course.cases,...physicalChecks,...[desktopCourse,serviceCourse].flatMap(d=>d.cases.map(c=>({...c,scope:d.target+'; '+c.expected})))]})}};
 }
 const fail=(status,message)=>{throw Object.assign(new Error(message),{status});};
+const admissionBusy=message=>{throw Object.assign(Error(message),{status:409,code:'WORKER_BUSY',admitted:false});};
 const str=(value,label,max=6000)=>{if(typeof value!=='string'||value.length>max)fail(400,`Invalid ${label}.`);return value.trim();};
 function validateTest(input,previous){
   const t={...previous};
@@ -139,11 +140,11 @@ async function storageMaintenance(){
  maintainingStorage=true;try{return await maintainStorage(dataDir,{idle:storageIdle});}finally{maintainingStorage=false;}
 }
 async function storageAdmission(){
- if(maintainingStorage)fail(409,'Storage maintenance is active.');
+ if(maintainingStorage)admissionBusy('Storage maintenance is active.');
  const status=await storageStatus(dataDir);
  if(status.enabled&&(!status.capacityReady||!status.cacheWithinBudget||!status.scratchWithinBudget))await storageMaintenance();
  try{await requireStorageCapacity(dataDir);}catch(e){fail(409,e.message);}
- if(maintainingStorage)fail(409,'Storage maintenance became active.');
+ if(maintainingStorage)admissionBusy('Storage maintenance became active.');
 }
 async function admitRun(body){
         const operator=str(body.operator||'Local runner','operator',120),requestId=body.requestId;
@@ -154,14 +155,14 @@ async function admitRun(body){
           if(previous){if(previous.plan_hash!==body.planHash||previous.operator!==operator)fail(409,'Request ID was already used with different inputs.');return {status:200,result:{runId:previous.run_id,requestId,reused:true}};}
         }
         await storageAdmission();
-        if(preparing)fail(409,'A plan is being prepared.');
-        if(ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'A desktop course or human setup is active.');
+        if(preparing)admissionBusy('A plan is being prepared.');
+        if(ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))admissionBusy('A desktop course or human setup is active.');
         recoverInterrupted(db);let plan;
         if(typeof body.planHash==='string'&&/^[a-f0-9]{64}$/.test(body.planHash))try{plan=await readJSON(path.join(dataDir,'plans',body.planHash+'.json'));}catch(e){if(e.code!=='ENOENT')fail(409,'Stored plan cannot be read.');}
         if(plan){const {planHash,...content}=plan;if(planHash!==body.planHash||digest(content)!==planHash||await sourceIdentity()!==plan.runnerHash)fail(409,'Plan or runner changed. Prepare the selected course again.');}
         else{const status=await runnerStatus();if(!status.prepared)fail(409,'Prepare the fixture pack and current runner before starting.');if(body.planHash!==status.plan.planHash)fail(409,'Prepared plan changed. Review the run setup again.');plan=status.plan;}
         // Recheck after asynchronous identity reads, before synchronous admission/spawn.
-        if(maintainingStorage||preparing||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'Another preparation, maintenance or desktop setup became active.');
+        if(maintainingStorage||preparing||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))admissionBusy('Another preparation, maintenance or desktop setup became active.');
         if(requestId){const previous=db.prepare('SELECT * FROM execution_requests WHERE request_id=?').get(requestId);if(previous){if(previous.plan_hash!==body.planHash||previous.operator!==operator)fail(409,'Request ID was already used with different inputs.');return {status:200,result:{runId:previous.run_id,requestId,reused:true}};}}
         let id;try{id=createExecution(db,plan,dataDir,operator,requestId);}catch(error){fail(409,error.message);}
         const blocked=error=>{for(const r of db.prepare('SELECT test_id FROM results WHERE run_id=?').all(id))record(db,id,r.test_id,'Blocked',error.message,'');updateExecution(db,id,'Blocked',error.message);};
@@ -180,10 +181,10 @@ async function beginPreparation(body,preparationId){
  await storageAdmission();
  if(body.preparationId!==undefined){if(preparationId!==undefined&&preparationId!==body.preparationId)fail(400,'Preparation identities differ.');preparationId=body.preparationId;}
  if(preparationId!==undefined&&!/^[a-f0-9-]{36}$/.test(preparationId))fail(400,'Invalid preparation ID.');
- if(maintainingStorage||preparing||(await runnerStatus()).active||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))fail(409,'A course, desktop setup, maintenance or preparation is active.');
+ if(maintainingStorage||preparing||(await runnerStatus()).active||ownedDesktopSessions(dataDir).length||desktopState(dataDir).jobs.some(j=>['Preparing','Ready','Running'].includes(j.state)))admissionBusy('A course, desktop setup, maintenance or preparation is active.');
  if(typeof body.app!=='string'||!path.isAbsolute(body.app))fail(400,'Choose an explicit absolute app path.');
  let selection;try{selection=resolveSelection(db,body.selection);}catch(e){fail(409,e.message);}
- if(maintainingStorage||preparing)fail(409,'Another preparation or maintenance became active.');preparing=true;
+ if(maintainingStorage||preparing)admissionBusy('Another preparation or maintenance became active.');preparing=true;
  try{const {job}=await startPreparation({app:body.app,dataDir,selection,preparationId},{onFinished:()=>{preparing=false;}});return job;}catch(e){preparing=false;throw e;}
 }
 const reproServices={preparation:id=>readPreparation(dataDir,id),request:id=>db.prepare('SELECT * FROM execution_requests WHERE request_id=?').get(id),getRun};
@@ -230,7 +231,7 @@ const server=http.createServer(async(req,res)=>{
       }
       if(url.pathname==='/api/worker'&&req.method==='GET'){
         const runner=await runnerStatus(),desktop=desktopState(dataDir),active=runner.active;
-        return send(200,{format:'athanor-worker-status/v1',name:process.env.ATHANOR_WORKER_NAME||'Local Athanor',dataDir,sourceHash:startedRunnerHash,fullSourceHash:startedSourceHash,sourceMatches:(await fingerprint(root)).sha256===startedSourceHash,preparing,
+        return send(200,{format:'athanor-worker-status/v1',name:process.env.ATHANOR_WORKER_NAME||'Local Athanor',dataDir,sourceHash:startedRunnerHash,fullSourceHash:startedSourceHash,sourceMatches:(await fingerprint(root)).sha256===startedSourceHash,preparing,maintainingStorage,
           active:active?{run_id:active.run_id,state:active.state,url:`http://${host}/#run/${active.run_id}`} : null,
           ownedSessions:desktop.ownedSessions,activeDesktopJobs:desktop.jobs.filter(j=>['Preparing','Ready','Running'].includes(j.state)),
           desktopReadiness:'Requires owned unlocked-session qualification',delivery:'Local reports; managed workers follow their configured reporting policy'});
@@ -451,7 +452,7 @@ const server=http.createServer(async(req,res)=>{
     if(!assets[url.pathname])return send(404,{error:'File not found.'});
     const [file,type]=assets[url.pathname];const content=readFileSync(path.join(root,'public',file));
     res.writeHead(200,{'Content-Type':type,'Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'self'"});res.end(req.method==='HEAD'?undefined:content);
-  }catch(error){send(error.status||500,{error:error.status?error.message:'Unable to save or load workspace data. Check the local server.'});if(!error.status)console.error(error);}
+  }catch(error){send(error.status||500,{error:error.status?error.message:'Unable to save or load workspace data. Check the local server.',...(error.status===409&&error.code==='WORKER_BUSY'&&error.admitted===false?{code:'WORKER_BUSY',admitted:false}:{})});if(!error.status)console.error(error);}
 });
 const storageTimer=setInterval(()=>{void storageMaintenance().catch(e=>console.error(JSON.stringify({format:'athanor-storage-error/v1',error:e.message})));},900000);storageTimer.unref();server.once('close',()=>clearInterval(storageTimer));
 server.listen(Number(process.env.PORT||4317),'127.0.0.1',()=>{

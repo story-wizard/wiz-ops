@@ -1,0 +1,3462 @@
+{
+  "media.import_asset": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "media_root": {
+        "description": "Optional absolute directory containing every file, registered as the media root level (reused when already registered); files under a deeper registered root keep that root. Does not grant access: the directory must already be inside the allowed area, so grant a new volume with media.add_media_root first",
+        "type": "string"
+      },
+      "path": {
+        "description": "Absolute path to the media file to register (not a .wiz bundle)",
+        "type": "string"
+      },
+      "require_exact_revision": {
+        "description": "When true, expect_revision must equal the current autosave bundle_version exactly. This opts snapshot-derived multicam publication out of the default per-clip/disjoint-edit semantics",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "bundle",
+      "path"
+    ],
+    "type": "object"
+  },
+  "graph.get_clip_graph": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id; omit for the timeline graph",
+        "type": "string"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id"
+    ],
+    "type": "object"
+  },
+  "graph.insert_on_edge": {
+    "additionalProperties": true,
+    "allOf": [],
+    "properties": {
+      "bound_node": {
+        "description": "Boundary-bound durable node",
+        "type": "string"
+      },
+      "boundary": {
+        "description": "Boundary: input or output",
+        "type": "string"
+      },
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "bypassed": {
+        "description": "Pass bypass state",
+        "type": "boolean"
+      },
+      "channel": {
+        "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+        "enum": [
+          "alpha",
+          "luma"
+        ],
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id; omit for the timeline graph",
+        "type": "string"
+      },
+      "edge_type": {
+        "description": "Edge type",
+        "type": "string"
+      },
+      "expect_content_revision": {
+        "description": "Graph content revision gate",
+        "type": "integer"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "expect_structural_revision": {
+        "description": "Graph structural revision gate",
+        "type": "integer"
+      },
+      "from_node": {
+        "description": "Durable source node id",
+        "type": "string"
+      },
+      "from_slot": {
+        "description": "Source slot",
+        "type": "string"
+      },
+      "group_id": {
+        "description": "Group the new pass joins",
+        "type": "string"
+      },
+      "input_slot": {
+        "description": "Matte or correction mask input slot",
+        "type": "string"
+      },
+      "new_input_slot": {
+        "description": "New pass input slot",
+        "type": "string"
+      },
+      "new_output_slot": {
+        "description": "New pass output slot",
+        "type": "string"
+      },
+      "node_id": {
+        "description": "Durable node id",
+        "type": "string"
+      },
+      "op": {
+        "description": "Wire operation name",
+        "type": "string"
+      },
+      "ops": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "param": {
+        "description": "Parameter name",
+        "type": "string"
+      },
+      "params": {
+        "type": "object"
+      },
+      "peer_slot": {
+        "description": "Peer slot",
+        "type": "string"
+      },
+      "producer_slot": {
+        "description": "Producing node output slot",
+        "type": "string"
+      },
+      "slot": {
+        "description": "Graph boundary slot",
+        "type": "string"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      },
+      "to_node": {
+        "description": "Durable target node id",
+        "type": "string"
+      },
+      "to_slot": {
+        "description": "Target slot",
+        "type": "string"
+      },
+      "type": {
+        "description": "Pass type or edge type",
+        "type": "string"
+      },
+      "value": {
+        "description": "Typed parameter value"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "type",
+      "from_slot",
+      "to_slot",
+      "edge_type",
+      "new_input_slot",
+      "new_output_slot",
+      "from_node",
+      "to_node"
+    ],
+    "type": "object"
+  },
+  "graph.set_param": {
+    "additionalProperties": true,
+    "allOf": [],
+    "properties": {
+      "bound_node": {
+        "description": "Boundary-bound durable node",
+        "type": "string"
+      },
+      "boundary": {
+        "description": "Boundary: input or output",
+        "type": "string"
+      },
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "bypassed": {
+        "description": "Pass bypass state",
+        "type": "boolean"
+      },
+      "channel": {
+        "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+        "enum": [
+          "alpha",
+          "luma"
+        ],
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id; omit for the timeline graph",
+        "type": "string"
+      },
+      "edge_type": {
+        "description": "Edge type",
+        "type": "string"
+      },
+      "expect_content_revision": {
+        "description": "Graph content revision gate",
+        "type": "integer"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "expect_structural_revision": {
+        "description": "Graph structural revision gate",
+        "type": "integer"
+      },
+      "from_node": {
+        "description": "Durable source node id",
+        "type": "string"
+      },
+      "from_slot": {
+        "description": "Source slot",
+        "type": "string"
+      },
+      "group_id": {
+        "description": "Group the new pass joins",
+        "type": "string"
+      },
+      "input_slot": {
+        "description": "Matte or correction mask input slot",
+        "type": "string"
+      },
+      "new_input_slot": {
+        "description": "New pass input slot",
+        "type": "string"
+      },
+      "new_output_slot": {
+        "description": "New pass output slot",
+        "type": "string"
+      },
+      "node_id": {
+        "description": "Durable node id",
+        "type": "string"
+      },
+      "op": {
+        "description": "Wire operation name",
+        "type": "string"
+      },
+      "ops": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "param": {
+        "description": "Parameter name",
+        "type": "string"
+      },
+      "params": {
+        "type": "object"
+      },
+      "peer_slot": {
+        "description": "Peer slot",
+        "type": "string"
+      },
+      "producer_slot": {
+        "description": "Producing node output slot",
+        "type": "string"
+      },
+      "slot": {
+        "description": "Graph boundary slot",
+        "type": "string"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      },
+      "to_node": {
+        "description": "Durable target node id",
+        "type": "string"
+      },
+      "to_slot": {
+        "description": "Target slot",
+        "type": "string"
+      },
+      "type": {
+        "description": "Pass type or edge type",
+        "type": "string"
+      },
+      "value": {
+        "description": "Typed parameter value"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "param",
+      "value",
+      "node_id"
+    ],
+    "type": "object"
+  },
+  "graph.set_bypass": {
+    "additionalProperties": true,
+    "allOf": [],
+    "properties": {
+      "bound_node": {
+        "description": "Boundary-bound durable node",
+        "type": "string"
+      },
+      "boundary": {
+        "description": "Boundary: input or output",
+        "type": "string"
+      },
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "bypassed": {
+        "description": "Pass bypass state",
+        "type": "boolean"
+      },
+      "channel": {
+        "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+        "enum": [
+          "alpha",
+          "luma"
+        ],
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id; omit for the timeline graph",
+        "type": "string"
+      },
+      "edge_type": {
+        "description": "Edge type",
+        "type": "string"
+      },
+      "expect_content_revision": {
+        "description": "Graph content revision gate",
+        "type": "integer"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "expect_structural_revision": {
+        "description": "Graph structural revision gate",
+        "type": "integer"
+      },
+      "from_node": {
+        "description": "Durable source node id",
+        "type": "string"
+      },
+      "from_slot": {
+        "description": "Source slot",
+        "type": "string"
+      },
+      "group_id": {
+        "description": "Group the new pass joins",
+        "type": "string"
+      },
+      "input_slot": {
+        "description": "Matte or correction mask input slot",
+        "type": "string"
+      },
+      "new_input_slot": {
+        "description": "New pass input slot",
+        "type": "string"
+      },
+      "new_output_slot": {
+        "description": "New pass output slot",
+        "type": "string"
+      },
+      "node_id": {
+        "description": "Durable node id",
+        "type": "string"
+      },
+      "op": {
+        "description": "Wire operation name",
+        "type": "string"
+      },
+      "ops": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "param": {
+        "description": "Parameter name",
+        "type": "string"
+      },
+      "params": {
+        "type": "object"
+      },
+      "peer_slot": {
+        "description": "Peer slot",
+        "type": "string"
+      },
+      "producer_slot": {
+        "description": "Producing node output slot",
+        "type": "string"
+      },
+      "slot": {
+        "description": "Graph boundary slot",
+        "type": "string"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      },
+      "to_node": {
+        "description": "Durable target node id",
+        "type": "string"
+      },
+      "to_slot": {
+        "description": "Target slot",
+        "type": "string"
+      },
+      "type": {
+        "description": "Pass type or edge type",
+        "type": "string"
+      },
+      "value": {
+        "description": "Typed parameter value"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "bypassed",
+      "node_id"
+    ],
+    "type": "object"
+  },
+  "graph.edit_batch": {
+    "additionalProperties": true,
+    "properties": {
+      "bound_local_ref": {
+        "description": "Boundary-bound local ref",
+        "type": "integer"
+      },
+      "bound_node": {
+        "description": "Boundary-bound durable node",
+        "type": "string"
+      },
+      "boundary": {
+        "description": "Boundary: input or output",
+        "type": "string"
+      },
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "bypassed": {
+        "description": "Pass bypass state",
+        "type": "boolean"
+      },
+      "channel": {
+        "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+        "enum": [
+          "alpha",
+          "luma"
+        ],
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id; omit for the timeline graph",
+        "type": "string"
+      },
+      "edge_type": {
+        "description": "Edge type",
+        "type": "string"
+      },
+      "expect_content_revision": {
+        "description": "Graph content revision gate",
+        "type": "integer"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "expect_structural_revision": {
+        "description": "Graph structural revision gate",
+        "type": "integer"
+      },
+      "from_local_ref": {
+        "description": "Batch-local source node ref",
+        "type": "integer"
+      },
+      "from_node": {
+        "description": "Durable source node id",
+        "type": "string"
+      },
+      "from_slot": {
+        "description": "Source slot",
+        "type": "string"
+      },
+      "group_id": {
+        "description": "Group the new pass joins",
+        "type": "string"
+      },
+      "input_slot": {
+        "description": "Matte or correction mask input slot",
+        "type": "string"
+      },
+      "local_ref": {
+        "description": "Negative batch-local node ref",
+        "type": "integer"
+      },
+      "new_input_slot": {
+        "description": "New pass input slot",
+        "type": "string"
+      },
+      "new_output_slot": {
+        "description": "New pass output slot",
+        "type": "string"
+      },
+      "node_id": {
+        "description": "Durable node id",
+        "type": "string"
+      },
+      "op": {
+        "description": "Wire operation name",
+        "type": "string"
+      },
+      "ops": {
+        "items": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "allOf": [],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "add_pass",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "type",
+                "local_ref"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "node_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "delete_node",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "from_node"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "from_local_ref"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "to_node"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "to_local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "connect_edge",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "from_slot",
+                "to_slot",
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "from_node"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "from_local_ref"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "to_node"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "to_local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "disconnect_edge",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "from_slot",
+                "to_slot",
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "from_node"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "from_local_ref"
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "to_node"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "to_local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "insert_on_edge",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "local_ref",
+                "type",
+                "from_slot",
+                "to_slot",
+                "edge_type",
+                "new_input_slot",
+                "new_output_slot"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "bound_node"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "bound_local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "insert_on_boundary",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "boundary",
+                "slot",
+                "peer_slot",
+                "edge_type",
+                "local_ref",
+                "type"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "node_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "set_param",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "param",
+                "value"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "node_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "remove_param",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "param"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "node_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "set_bypass",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "bypassed"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "node_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "set_matte_channel",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "input_slot",
+                "channel"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "node_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "set_graph_input",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "slot"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "node_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "add_graph_input",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "slot"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "node_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "remove_graph_input",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "slot"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "node_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "set_graph_output",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "slot"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "node_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "add_graph_output",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "slot"
+              ],
+              "type": "object"
+            },
+            {
+              "additionalProperties": true,
+              "allOf": [
+                {
+                  "oneOf": [
+                    {
+                      "required": [
+                        "node_id"
+                      ]
+                    },
+                    {
+                      "required": [
+                        "local_ref"
+                      ]
+                    }
+                  ]
+                }
+              ],
+              "properties": {
+                "bound_local_ref": {
+                  "description": "Boundary-bound local ref",
+                  "type": "integer"
+                },
+                "bound_node": {
+                  "description": "Boundary-bound durable node",
+                  "type": "string"
+                },
+                "boundary": {
+                  "description": "Boundary: input or output",
+                  "type": "string"
+                },
+                "bundle": {
+                  "description": "Path to the .wiz bundle",
+                  "type": "string"
+                },
+                "bypassed": {
+                  "description": "Pass bypass state",
+                  "type": "boolean"
+                },
+                "channel": {
+                  "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+                  "enum": [
+                    "alpha",
+                    "luma"
+                  ],
+                  "type": "string"
+                },
+                "clip_id": {
+                  "description": "Clip id; omit for the timeline graph",
+                  "type": "string"
+                },
+                "edge_type": {
+                  "description": "Edge type",
+                  "type": "string"
+                },
+                "expect_content_revision": {
+                  "description": "Graph content revision gate",
+                  "type": "integer"
+                },
+                "expect_structural_revision": {
+                  "description": "Graph structural revision gate",
+                  "type": "integer"
+                },
+                "from_local_ref": {
+                  "description": "Batch-local source node ref",
+                  "type": "integer"
+                },
+                "from_node": {
+                  "description": "Durable source node id",
+                  "type": "string"
+                },
+                "from_slot": {
+                  "description": "Source slot",
+                  "type": "string"
+                },
+                "group_id": {
+                  "description": "Group the new pass joins",
+                  "type": "string"
+                },
+                "input_slot": {
+                  "description": "Matte or correction mask input slot",
+                  "type": "string"
+                },
+                "local_ref": {
+                  "description": "Negative batch-local node ref",
+                  "type": "integer"
+                },
+                "new_input_slot": {
+                  "description": "New pass input slot",
+                  "type": "string"
+                },
+                "new_output_slot": {
+                  "description": "New pass output slot",
+                  "type": "string"
+                },
+                "node_id": {
+                  "description": "Durable node id",
+                  "type": "string"
+                },
+                "op": {
+                  "const": "remove_graph_output",
+                  "description": "Wire operation name",
+                  "type": "string"
+                },
+                "ops": {
+                  "items": {
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "param": {
+                  "description": "Parameter name",
+                  "type": "string"
+                },
+                "params": {
+                  "type": "object"
+                },
+                "peer_slot": {
+                  "description": "Peer slot",
+                  "type": "string"
+                },
+                "producer_slot": {
+                  "description": "Producing node output slot",
+                  "type": "string"
+                },
+                "slot": {
+                  "description": "Graph boundary slot",
+                  "type": "string"
+                },
+                "timeline_id": {
+                  "description": "Timeline id",
+                  "type": "string"
+                },
+                "to_local_ref": {
+                  "description": "Batch-local target node ref",
+                  "type": "integer"
+                },
+                "to_node": {
+                  "description": "Durable target node id",
+                  "type": "string"
+                },
+                "to_slot": {
+                  "description": "Target slot",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Pass type or edge type",
+                  "type": "string"
+                },
+                "value": {
+                  "description": "Typed parameter value"
+                }
+              },
+              "required": [
+                "op",
+                "slot"
+              ],
+              "type": "object"
+            }
+          ]
+        },
+        "minItems": 1,
+        "type": "array"
+      },
+      "param": {
+        "description": "Parameter name",
+        "type": "string"
+      },
+      "params": {
+        "type": "object"
+      },
+      "peer_slot": {
+        "description": "Peer slot",
+        "type": "string"
+      },
+      "producer_slot": {
+        "description": "Producing node output slot",
+        "type": "string"
+      },
+      "slot": {
+        "description": "Graph boundary slot",
+        "type": "string"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      },
+      "to_local_ref": {
+        "description": "Batch-local target node ref",
+        "type": "integer"
+      },
+      "to_node": {
+        "description": "Durable target node id",
+        "type": "string"
+      },
+      "to_slot": {
+        "description": "Target slot",
+        "type": "string"
+      },
+      "type": {
+        "description": "Pass type or edge type",
+        "type": "string"
+      },
+      "value": {
+        "description": "Typed parameter value"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "ops"
+    ],
+    "type": "object"
+  },
+  "graph.add_pass": {
+    "additionalProperties": true,
+    "allOf": [],
+    "properties": {
+      "bound_node": {
+        "description": "Boundary-bound durable node",
+        "type": "string"
+      },
+      "boundary": {
+        "description": "Boundary: input or output",
+        "type": "string"
+      },
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "bypassed": {
+        "description": "Pass bypass state",
+        "type": "boolean"
+      },
+      "channel": {
+        "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+        "enum": [
+          "alpha",
+          "luma"
+        ],
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id; omit for the timeline graph",
+        "type": "string"
+      },
+      "edge_type": {
+        "description": "Edge type",
+        "type": "string"
+      },
+      "expect_content_revision": {
+        "description": "Graph content revision gate",
+        "type": "integer"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "expect_structural_revision": {
+        "description": "Graph structural revision gate",
+        "type": "integer"
+      },
+      "from_node": {
+        "description": "Durable source node id",
+        "type": "string"
+      },
+      "from_slot": {
+        "description": "Source slot",
+        "type": "string"
+      },
+      "group_id": {
+        "description": "Group the new pass joins",
+        "type": "string"
+      },
+      "input_slot": {
+        "description": "Matte or correction mask input slot",
+        "type": "string"
+      },
+      "new_input_slot": {
+        "description": "New pass input slot",
+        "type": "string"
+      },
+      "new_output_slot": {
+        "description": "New pass output slot",
+        "type": "string"
+      },
+      "node_id": {
+        "description": "Durable node id",
+        "type": "string"
+      },
+      "op": {
+        "description": "Wire operation name",
+        "type": "string"
+      },
+      "ops": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "param": {
+        "description": "Parameter name",
+        "type": "string"
+      },
+      "params": {
+        "type": "object"
+      },
+      "peer_slot": {
+        "description": "Peer slot",
+        "type": "string"
+      },
+      "producer_slot": {
+        "description": "Producing node output slot",
+        "type": "string"
+      },
+      "slot": {
+        "description": "Graph boundary slot",
+        "type": "string"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      },
+      "to_node": {
+        "description": "Durable target node id",
+        "type": "string"
+      },
+      "to_slot": {
+        "description": "Target slot",
+        "type": "string"
+      },
+      "type": {
+        "description": "Pass type or edge type",
+        "type": "string"
+      },
+      "value": {
+        "description": "Typed parameter value"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "type"
+    ],
+    "type": "object"
+  },
+  "graph.remove_param": {
+    "additionalProperties": true,
+    "allOf": [],
+    "properties": {
+      "bound_node": {
+        "description": "Boundary-bound durable node",
+        "type": "string"
+      },
+      "boundary": {
+        "description": "Boundary: input or output",
+        "type": "string"
+      },
+      "bundle": {
+        "description": "Path to the .wiz bundle",
+        "type": "string"
+      },
+      "bypassed": {
+        "description": "Pass bypass state",
+        "type": "boolean"
+      },
+      "channel": {
+        "description": "Alpha reads source transparency; luma derives coverage from source RGB.",
+        "enum": [
+          "alpha",
+          "luma"
+        ],
+        "type": "string"
+      },
+      "clip_id": {
+        "description": "Clip id; omit for the timeline graph",
+        "type": "string"
+      },
+      "edge_type": {
+        "description": "Edge type",
+        "type": "string"
+      },
+      "expect_content_revision": {
+        "description": "Graph content revision gate",
+        "type": "integer"
+      },
+      "expect_revision": {
+        "description": "Optional autosave bundle_version expected by the caller; enforced by dispatch (Tier-1): a stale expectation on a targeted clip is rejected with stale_revision and the current revision to retry with. Ops that target no clip (timeline/track/settings/asset mutations) only require the revision to be a known bundle_version \u2014 best-effort under concurrency, per-clip collisions are the Tier-1 scope",
+        "type": "string"
+      },
+      "expect_structural_revision": {
+        "description": "Graph structural revision gate",
+        "type": "integer"
+      },
+      "from_node": {
+        "description": "Durable source node id",
+        "type": "string"
+      },
+      "from_slot": {
+        "description": "Source slot",
+        "type": "string"
+      },
+      "group_id": {
+        "description": "Group the new pass joins",
+        "type": "string"
+      },
+      "input_slot": {
+        "description": "Matte or correction mask input slot",
+        "type": "string"
+      },
+      "new_input_slot": {
+        "description": "New pass input slot",
+        "type": "string"
+      },
+      "new_output_slot": {
+        "description": "New pass output slot",
+        "type": "string"
+      },
+      "node_id": {
+        "description": "Durable node id",
+        "type": "string"
+      },
+      "op": {
+        "description": "Wire operation name",
+        "type": "string"
+      },
+      "ops": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "param": {
+        "description": "Parameter name",
+        "type": "string"
+      },
+      "params": {
+        "type": "object"
+      },
+      "peer_slot": {
+        "description": "Peer slot",
+        "type": "string"
+      },
+      "producer_slot": {
+        "description": "Producing node output slot",
+        "type": "string"
+      },
+      "slot": {
+        "description": "Graph boundary slot",
+        "type": "string"
+      },
+      "timeline_id": {
+        "description": "Timeline id",
+        "type": "string"
+      },
+      "to_node": {
+        "description": "Durable target node id",
+        "type": "string"
+      },
+      "to_slot": {
+        "description": "Target slot",
+        "type": "string"
+      },
+      "type": {
+        "description": "Pass type or edge type",
+        "type": "string"
+      },
+      "value": {
+        "description": "Typed parameter value"
+      }
+    },
+    "required": [
+      "bundle",
+      "timeline_id",
+      "param",
+      "node_id"
+    ],
+    "type": "object"
+  }
+}

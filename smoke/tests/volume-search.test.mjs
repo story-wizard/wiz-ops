@@ -20,6 +20,9 @@ const snapshot=(id='src',count=0)=>({timeline:{timeline_id:id,name:'History',fra
 test('empty search requires positive, explicit complete zero-match, and restored controls',()=>{
  const positive={query:'pattern',status:'1 match',names:['pattern.mov']},empty={query:'absent',status:'0 matches in 0 clips',names:[]},restored=structuredClone(positive),expected={query:'absent',name:'pattern.mov'};
  assert.equal(verifyEmptySearch(positive,empty,restored,expected).emptyResults,0);
+ const lane={...empty,status:'Name matches · 0',completion:{source:'Name',count:0,headingId:'heading'},globalStatus:'Search results may be incomplete'};
+ assert.equal(verifyEmptySearch(positive,lane,restored,expected).emptyResults,0);
+ for(const completion of [undefined,{source:'Transcript',count:0,headingId:'heading'},{source:'Name',count:1,headingId:'heading'},{source:'Name',count:0}])assert.throws(()=>verifyEmptySearch(positive,{...lane,completion},restored,expected));
  for(const change of [a=>a[0].names=[],a=>a[1].names=['wrong.mov'],a=>a[1].status='Searching…',a=>a[1].status='Unavailable',a=>a[1].status='',a=>a[1].query='wrong',a=>a[2].names=[]]){const args=[positive,empty,restored].map(x=>structuredClone(x));change(args);assert.throws(()=>verifyEmptySearch(...args,expected));}
 });
 test('large paste rejects missing clips, reused IDs, reordered timing, altered sources and foreign destinations',()=>{

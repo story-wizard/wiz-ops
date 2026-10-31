@@ -21,7 +21,7 @@ export async function ingestFixture(file,assets,{speech=false,audioAnalysis=fals
  onFinished({finishedAt:Date.now()});
  const latest=await readJSON(file);await appendFile(path.join(s.root,'operations.jsonl'),JSON.stringify({caseId:latest.currentCheck,stepId:latest.currentStep,operation:'wiz-ingest.submit',params:request,profile:speech?'offline-speech':audioAnalysis?'offline-audio-analysis':'local-source-preparation',pid:s.pid,...receipt})+'\n');
  const snapshot=parseIngest(receipt,s.bundle,assets.map(a=>a.asset_id));
- for(const a of assets)verifyIngestSidecar(JSON.parse(await readFile(path.join(s.bundle,'assets/clips',a.asset_id+'.json'),'utf8')),a.asset_id);
  await writeJSON(path.join(s.root,'ui-ingest-'+snapshot.job_id+'.json'),{pid:s.pid,snapshot});
+ for(const a of assets)verifyIngestSidecar(JSON.parse(await readFile(path.join(s.bundle,'assets/clips',a.asset_id+'.json'),'utf8')),a.asset_id,{bundle:s.bundle,jobId:snapshot.job_id});
  verifyDesktopOwner(await readJSON(file));return snapshot;
 }
