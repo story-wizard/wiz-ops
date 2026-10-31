@@ -18,6 +18,8 @@ A missing or renamed API is a discovery task before it is N/A. Search the shippe
 
 Read the selected package's no-spawn registry and shipped SDK definitions. Compare only the contracts the affected checks use, including responses and error semantics. Trace existing callers and their independent assertions. A retired SDK setting is safely absent only when the SDK explicitly declares its retirement and active safety controls still validate. Do not invent a default for a missing control. Keep local-only/no-egress and paid-operation limits explicit.
 
+Named UI domains need scoped bindings too. Split media search exposes separate name and semantic result models and an always-visible filename lane; do not bind any tree view or click an unrelated Name sort action. Keep query completion, unique target, model completeness, asset-role and negative controls.
+
 For fixtures using authored renderer parameters, `runner/graph-parameters.mjs` maps the intended isotropic blur in pixels from the selected project's published registry. It supplies both linked radii where declared, binds the corresponding Inspector label, and keeps graph, collateral-edit and pixel assertions. Unknown units or layouts remain review work; do not send a guessed stale field.
 
 When completion evidence moves, preserve its meaning rather than its old field name. The October 31 ingest adapter reads the exact observed job from the project's read-only ledger, requires successful finalization, and matches asset, path and source hash against the saved sidecar. Missing, stale, partial or misbound records still fail; an existing stale legacy marker cannot fall back to the new route.

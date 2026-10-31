@@ -10,6 +10,37 @@ export function observedWidget(ui,predicate,description){
  return widget;
 }
 
+// New media search publishes separate authored lanes beside the ordinary bin.
+// A named lane must stay unique; legacy builds still require one complete tree.
+export function searchResultView(ui,source='Name'){
+ const name=source==='Name'?'mediaNameSearchResults':'mediaSemanticSearchResults';
+ const named=ui.widgets.some(w=>w.name===name),split=ui.widgets.some(w=>w.name==='mediaSearchSectionsSplitter');
+ const byId=new Map(ui.widgets.map(w=>[w.id,w]));
+ const ancestors=widget=>{const chain=[],seen=new Set();for(let w=widget;w&&!seen.has(w.id);w=byId.get(w.parent)){chain.push(w);seen.add(w.id);}return chain;};
+ let section;
+ if(split&&!named){
+  const heading=observedWidget(ui,w=>w.name===(source==='Name'?'mediaNameSearchHeading':'mediaSemanticSearchHeading'),'Media '+source+' result heading');
+  const chain=ancestors(heading),index=chain.findIndex(w=>w.name==='mediaSearchSectionsSplitter');
+  if(index>0)section=chain[index-1].id;
+ }
+ return observedWidget(ui,w=>w.class==='QTreeView'&&Array.isArray(w.model)&&(named?w.name===name:split?!!section&&ancestors(w).some(p=>p.id===section):true),'Media '+source+' search results');
+}
+
+export function searchObservation(ui,source='Name'){
+ const globalStatus=observedWidget(ui,w=>w.name==='mediaSearchStatus','Search status').text||'';
+ if(source==='Name'&&ui.widgets.some(w=>w.name==='mediaSearchSectionsSplitter')){
+  const heading=observedWidget(ui,w=>w.name==='mediaNameSearchHeading','Filename result heading'),match=(heading.text||'').match(/(?:·|:)\s*(\d+)\s*$/);
+  if(!match)throw new OutcomeError('Filename result count is unfinished or unavailable','Blocked');
+  const count=Number(match[1]),hasView=ui.widgets.some(w=>w.name==='mediaNameSearchResults');
+  // A completed zero lane hides its tree. Retain the actual heading as the
+  // screenshot target; never invent a model read for an absent view.
+  const view=count===0&&!hasView?heading:searchResultView(ui,source),names=Array.isArray(view.model)?view.model.map(r=>r[0]):[];
+  if(names.length!==count)throw new OutcomeError('Filename result count and observed model disagree','Blocked');
+  return {view,names,status:heading.text,globalStatus,completion:{source:'Name',count,headingId:heading.id}};
+ }
+ const view=searchResultView(ui,source);return {view,names:view.model.map(r=>r[0]),status:globalStatus,globalStatus};
+}
+
 // Sample the image interior, excluding preview borders and transport chrome.
 export function previewCenterBrightness(image){
  assert(image.sampleWidth===64&&image.sampleHeight===32&&typeof image.sampleRgb==='string','Invalid preview raster');

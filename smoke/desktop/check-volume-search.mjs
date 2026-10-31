@@ -1,7 +1,7 @@
 import path from 'node:path';
 import {mkdir,copyFile} from 'node:fs/promises';
 import {checks,requireOrdinaryTimingFixture} from './check-support.mjs';
-import {observedWidget} from './checklist-proof.mjs';
+import {observedWidget,searchObservation} from './checklist-proof.mjs';
 import {verifyEmptySearch,verifyLargePaste,verifyNudgeState,verifyDisplayedClips} from './volume-proof.mjs';
 import {physicalInput,clipPoint} from './physical-input.mjs';
 import {assert,same,clips,snapshotState,OutcomeError} from '../runner/engine.mjs';
@@ -21,15 +21,16 @@ await check('D-SEARCH-EMPTY',async()=>{
  async function search(query,empty=false){
   const field=observedWidget(await ui(),w=>w.class==='MediaSearchField','Media search field');await n('text',{target:field.id,text:''});
   await physical('click',{target:field.id,x:field.width/2,y:field.height/2});await physical('type',{target:field.id,text:query});await physical('key',{target:field.id,key:'Return'});
-  return until(async()=>{const u=await ui(),field=observedWidget(u,w=>w.class==='MediaSearchField','Media search field'),status=observedWidget(u,w=>w.name==='mediaSearchStatus','Search status').text||'',bin=observedWidget(u,w=>w.class==='QTreeView'&&Array.isArray(w.model),'Media results');
+  return until(async()=>{const u=await ui(),field=observedWidget(u,w=>w.class==='MediaSearchField','Media search field'),status=observedWidget(u,w=>w.name==='mediaSearchStatus','Search status').text||'';
    if(/unavailable|error/i.test(status))throw new OutcomeError('Filename search is unavailable: '+status,'Blocked');
-   const names=bin.model.map(r=>r[0]).sort(),ready=empty?names.length===0&&/^0 matches?\b|^no (?:matches|results)\b/i.test(status):names.includes('pattern_24.mov');
-   return field.text===query&&!/searching|pending|loading/i.test(status)&&ready?{query,status,names,target:bin.id}:null;
+   if(field.text!==query||/searching|pending|loading/i.test(status))return null;
+   const observation=searchObservation(u,'Name'),names=observation.names.sort(),ready=empty?names.length===0:names.includes('pattern_24.mov');
+   return ready?{...observation,query,names,target:observation.view.id}:null;
   },{description:'Completed '+(empty?'empty':'positive')+' filename search'});
  }
  let uncertain=false;
  try{
-  const positive=await stage('positive','Select Name search and find a known clip','prepare',async()=>{await n('action',{target:mediaSearchAction(await ui(),'Name').id});await until(async()=>mediaSearchAction(await ui(),'Name').checked,{description:'Media Name source selected'});return search('pattern_24');});await keep(id,'before',positive);await capture(id,'before',positive.target);
+  const positive=await stage('positive','Select filename search and find a known clip','prepare',async()=>{const initial=await ui();if(!initial.widgets.some(w=>w.name==='mediaSearchSectionsSplitter')){await n('action',{target:mediaSearchAction(initial,'Name').id});await until(async()=>mediaSearchAction(await ui(),'Name').checked,{description:'Media Name source selected'});}return search('pattern_24');});await keep(id,'before',positive);await capture(id,'before',positive.target);
   const empty=await stage('missing','Physically search for a term absent from the project','execute',()=>search(query,true));await keep(id,'empty',empty);await capture(id,'after',empty.target);
   const restored=await stage('restore','Repeat the known query and compare results','verify',()=>search('pattern_24'));await keep(id,'restored',restored);await capture(id,'restored',restored.target);
   const result=verifyEmptySearch(positive,empty,restored,{query,name:'pattern_24.mov'});same(snapshotState(await inspect(s.main.id)),snapshotState(before),'Search preserves timeline');return result;
