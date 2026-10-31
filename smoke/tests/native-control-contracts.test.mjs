@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {timelineToggle,trackHeaderPoint,timelineToolActive} from '../desktop/timeline-controls.mjs';
-import {spellNodeGeometry,graphNodeHeaderPoint,graphNodeSelected} from '../desktop/graph-geometry.mjs';
+import {spellNodeGeometry,graphNodeHeaderPoint,graphNodeSelected,revealGraphNode} from '../desktop/graph-geometry.mjs';
 import {spellBlurRadius} from '../desktop/spell-controls.mjs';
 
 test('timeline toggles bind the owning panel even when another timeline has identical labels',()=>{
@@ -48,4 +48,10 @@ test('semantic graph selection rejects an empty, foreign or multiple selection e
  assert(graphNodeSelected({selectedNodeIds:['18'],sceneItems:[{nodeId:'18',selected:false}]},'18'));
  for(const selectedNodeIds of [[],['19'],['18','19']])assert(!graphNodeSelected({selectedNodeIds,sceneItems},'18'));
  assert(graphNodeSelected({sceneItems},'18'));assert(!graphNodeSelected({sceneItems:[...sceneItems,{nodeId:'19',selected:true}]},'18'));
+});
+
+test('revealing a group completes its context-menu interaction before returning node geometry',async()=>{
+ let collapsed=true,menuOpen=false;const requests=[],graph=async()=>({timeline_id:'tl',clip_id:'clip',presentation:{groups:[{id:'group',collapsed,hidden:false,members:['node:18']}]}}),view=async()=>({class:'RenderGraphView',timelineId:'tl',graphId:'clip:tl:clip',viewport:'vp',sceneItems:[{nodeId:'group',x:0,y:0,width:200,height:100,headerPoint:{x:100,y:14}}]}),ui=async()=>({widgets:menuOpen?[{id:'menu',class:'QMenu',menuItems:[{text:'Expand group',enabled:true,x:0,y:0,width:120,height:24}]}]:[]});
+ const n=async(op,p)=>{requests.push({op,...p});if(op==='context-click')menuOpen=true;if(op==='click'&&p.target==='menu'){collapsed=false;menuOpen=false;}},until=async fn=>{const v=await fn();assert(v,'Expected observation unavailable');return v;};
+ await revealGraphNode({graph,view,ui,n,until,action:async()=>{collapsed=false;}},'18');assert.equal(menuOpen,false);assert.equal(collapsed,false);assert(requests.some(r=>r.op==='click'&&r.target==='menu'));
 });

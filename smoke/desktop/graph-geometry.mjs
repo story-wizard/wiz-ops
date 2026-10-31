@@ -44,13 +44,16 @@ export function graphNodeHeaderPoint(node){
 
 // Reveal an authored node through its presentation group before resolving its
 // geometry. Hidden members can retain scene rectangles without being hit targets.
-export async function revealGraphNode({graph,view,n,action,until},nodeId){
+export async function revealGraphNode({graph,view,ui,n,until},nodeId){
  for(let depth=0;depth<8;depth++){
   const g=await graph(),groups=(g.presentation?.groups||[]).filter(x=>x.collapsed&&!x.hidden&&x.members?.includes('node:'+nodeId));
   if(!groups.length)return g;
   requireGeometry(groups.length===1,'Node belongs to ambiguous collapsed presentation groups');
   const group=groups[0],v=await view(),card=graphGroupGeometry(v,g,group.id);
-  await n('context-click',{target:v.viewport,...graphNodeHeaderPoint(card)});await action('Expand group');
+  await n('context-click',{target:v.viewport,...graphNodeHeaderPoint(card)});
+  const menu=await until(async()=>{const u=await ui(),menus=u.widgets.filter(w=>w.class==='QMenu'&&w.menuItems?.some(m=>m.text.replaceAll('&','')==='Expand group'&&m.enabled));requireGeometry(menus.length<=1,'Expand group context menu is ambiguous');return menus[0]||null;},{description:'Owned Expand group menu'}),entry=menu.menuItems.find(m=>m.text.replaceAll('&','')==='Expand group'&&m.enabled);
+  await n('click',{target:menu.id,x:entry.x+entry.width/2,y:entry.y+entry.height/2});
+  await until(async()=>!(await ui()).widgets.some(w=>w.id===menu.id),{description:'Expand group context menu closes'});
   await until(async()=>{const read=await graph();return read.presentation?.groups?.find(x=>x.id===group.id)?.collapsed===false?read:null;},{description:'Owned graph group expands'});
  }
  throw new OutcomeError('Graph presentation nesting exceeds the bounded reveal operation.','Blocked');

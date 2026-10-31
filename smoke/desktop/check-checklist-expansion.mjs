@@ -32,7 +32,7 @@ async function selectClip(f){
 }
 async function graphView(f){return observedWidget(await ui(),w=>w.class==='RenderGraphView'&&w.timelineId===f.id&&(w.graphId===f.graphId||w.graphId==='clip:'+f.id+':'+f.scope.clip_id),'Fixture Render Graph');}
 async function selectNode(f,nodeId){
- await revealGraphNode({graph:()=>graph(f),view:()=>graphView(f),n,action,until},nodeId);
+ await revealGraphNode({graph:()=>graph(f),view:()=>graphView(f),ui,n,until},nodeId);
  let view=await graphView(f);const buttons=(await ui()).widgets.filter(w=>w.window===view.window&&w.tooltip==='Fit all');
  if(buttons.length===1)await n('click',{target:buttons[0].id});
  const settled=await until(async()=>{const v=await graphView(f),nodes=v.sceneItems.filter(x=>x.nodeId===nodeId);return nodes.length===1?{viewport:v.viewport,node:nodes[0]}:null;},{description:'Graph node geometry settles',stableForMs:300});view=await graphView(f);const nodes=[settled.node];
