@@ -1,0 +1,2352 @@
+{
+  "audio.set_dialogue_leveler": {
+    "additionalProperties": false,
+    "properties": {
+      "background_reduction": {
+        "description": "Background Reduction now stored",
+        "type": "boolean"
+      },
+      "bypassed": {
+        "description": "Whether the slot is now bypassed",
+        "type": "boolean"
+      },
+      "lift_soft": {
+        "description": "Lift Soft Dialogue now stored",
+        "type": "boolean"
+      },
+      "output_gain_db": {
+        "description": "Output gain in dB now stored (0 to 6)",
+        "type": "number"
+      },
+      "present": {
+        "description": "Whether the owner now carries the slot",
+        "type": "boolean"
+      },
+      "preset": {
+        "description": "Leveling preset (default allow_wider_dynamics)",
+        "enum": [
+          "allow_wider_dynamics",
+          "more_lift_for_low_levels",
+          "lift_soft_whispery_sources",
+          "optimize_moderate_levels"
+        ],
+        "type": "string"
+      },
+      "reduce_loud": {
+        "description": "Reduce Loud Dialogue now stored",
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "present",
+      "bypassed",
+      "preset",
+      "reduce_loud",
+      "lift_soft",
+      "background_reduction",
+      "output_gain_db"
+    ],
+    "type": "object"
+  },
+  "render.cancel_export": {
+    "properties": {
+      "cancellable": {
+        "type": "boolean"
+      },
+      "diagnostics": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "job_id": {
+        "type": "string"
+      },
+      "output": {
+        "description": "Actual destination. This is completed output only when state is succeeded and published is true.",
+        "type": "string"
+      },
+      "progress": {
+        "maximum": 1,
+        "minimum": 0,
+        "type": "number"
+      },
+      "published": {
+        "type": "boolean"
+      },
+      "revision": {
+        "type": "string"
+      },
+      "settings": {
+        "description": "Effective worker settings, including the frame range, raster, codecs, and publication policy.",
+        "type": "object"
+      },
+      "state": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "timeline_id": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "job_id",
+      "timeline_id",
+      "revision",
+      "state",
+      "progress",
+      "output",
+      "published",
+      "settings",
+      "diagnostics"
+    ],
+    "type": "object"
+  },
+  "render.export_status": {
+    "properties": {
+      "cancellable": {
+        "type": "boolean"
+      },
+      "diagnostics": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "job_id": {
+        "type": "string"
+      },
+      "output": {
+        "description": "Actual destination. This is completed output only when state is succeeded and published is true.",
+        "type": "string"
+      },
+      "progress": {
+        "maximum": 1,
+        "minimum": 0,
+        "type": "number"
+      },
+      "published": {
+        "type": "boolean"
+      },
+      "revision": {
+        "type": "string"
+      },
+      "settings": {
+        "description": "Effective worker settings, including the frame range, raster, codecs, and publication policy.",
+        "type": "object"
+      },
+      "state": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "timeline_id": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "job_id",
+      "timeline_id",
+      "revision",
+      "state",
+      "progress",
+      "output",
+      "published",
+      "settings",
+      "diagnostics"
+    ],
+    "type": "object"
+  },
+  "render.export_video": {
+    "properties": {
+      "cancellable": {
+        "type": "boolean"
+      },
+      "diagnostics": {
+        "items": {
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "job_id": {
+        "type": "string"
+      },
+      "output": {
+        "description": "Actual destination. This is completed output only when state is succeeded and published is true.",
+        "type": "string"
+      },
+      "progress": {
+        "maximum": 1,
+        "minimum": 0,
+        "type": "number"
+      },
+      "published": {
+        "type": "boolean"
+      },
+      "revision": {
+        "type": "string"
+      },
+      "settings": {
+        "description": "Effective worker settings, including the frame range, raster, codecs, and publication policy.",
+        "type": "object"
+      },
+      "state": {
+        "enum": [
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled"
+        ],
+        "type": "string"
+      },
+      "timeline_id": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "job_id",
+      "timeline_id",
+      "revision",
+      "state",
+      "progress",
+      "output",
+      "published",
+      "settings",
+      "diagnostics"
+    ],
+    "type": "object"
+  },
+  "timeline.inspect": {
+    "additionalProperties": false,
+    "properties": {
+      "bundle_revision": {
+        "description": "Exact revision represented by this page",
+        "minLength": 1,
+        "type": "string"
+      },
+      "links": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "link_group": {
+              "description": "Stable link-group identity",
+              "minLength": 1,
+              "type": "string"
+            },
+            "members": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "clip_id": {
+                    "description": "Linked clip identity",
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "track_id": {
+                    "description": "Linked clip's containing track identity",
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "clip_id",
+                  "track_id"
+                ],
+                "type": "object"
+              },
+              "minItems": 2,
+              "type": "array"
+            }
+          },
+          "required": [
+            "link_group",
+            "members"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "multicam_catalogs": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "angles": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "audio_role": {
+                    "description": "Timeline-owned multicam audio role",
+                    "enum": [
+                      "none",
+                      "reference",
+                      "alternate"
+                    ],
+                    "type": "string"
+                  },
+                  "display_label": {
+                    "description": "Current canonical angle display label",
+                    "type": "string"
+                  },
+                  "kind": {
+                    "description": "Source multicam angle kind",
+                    "enum": [
+                      "video",
+                      "audio"
+                    ],
+                    "type": "string"
+                  },
+                  "track_id": {
+                    "description": "Stable source angle track identity",
+                    "minLength": 1,
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "track_id",
+                  "kind",
+                  "display_label",
+                  "audio_role"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "default_audio_angle_id": {
+              "anyOf": [
+                {
+                  "description": "Stable default source angle identity",
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "default_video_angle_id": {
+              "anyOf": [
+                {
+                  "description": "Stable default source angle identity",
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "display_name": {
+              "description": "Current source multicam display name",
+              "type": "string"
+            },
+            "timeline_id": {
+              "description": "Referenced source multicam identity",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "timeline_id",
+            "display_name",
+            "default_video_angle_id",
+            "default_audio_angle_id",
+            "angles"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "next_cursor": {
+        "anyOf": [
+          {
+            "description": "Opaque cursor for the next deterministic page",
+            "minLength": 1,
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "schema_version": {
+        "const": "0.9.0",
+        "description": "Version of this canonical timeline inspection projection",
+        "type": "string"
+      },
+      "timeline": {
+        "additionalProperties": false,
+        "properties": {
+          "duration_seconds": {
+            "description": "Non-negative semantic timeline duration in seconds",
+            "minimum": 0,
+            "type": "number"
+          },
+          "fps": {
+            "description": "Friendly decimal timeline frame rate; zero denotes a canonical empty Automatic (first video) timeline",
+            "minimum": 0,
+            "type": "number"
+          },
+          "frame_rate": {
+            "description": "Exact frame rate, or canonical 0/1 for an empty Automatic (first video) timeline",
+            "oneOf": [
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "denominator": {
+                    "description": "Exact frame-rate denominator",
+                    "minimum": 1,
+                    "type": "integer"
+                  },
+                  "numerator": {
+                    "description": "Exact positive frame-rate numerator",
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "numerator",
+                  "denominator"
+                ],
+                "type": "object"
+              },
+              {
+                "additionalProperties": false,
+                "properties": {
+                  "denominator": {
+                    "const": 1,
+                    "type": "integer"
+                  },
+                  "numerator": {
+                    "const": 0,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "numerator",
+                  "denominator"
+                ],
+                "type": "object"
+              }
+            ]
+          },
+          "height": {
+            "description": "Positive timeline raster dimension",
+            "minimum": 1,
+            "type": "integer"
+          },
+          "kind": {
+            "description": "Timeline kind",
+            "minLength": 1,
+            "type": "string"
+          },
+          "locked": {
+            "description": "Current timeline lock state",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "Current timeline display name",
+            "type": "string"
+          },
+          "timeline_id": {
+            "description": "Stable inspected timeline identity",
+            "minLength": 1,
+            "type": "string"
+          },
+          "width": {
+            "description": "Positive timeline raster dimension",
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "timeline_id",
+          "name",
+          "kind",
+          "locked",
+          "width",
+          "height",
+          "frame_rate",
+          "fps",
+          "duration_seconds"
+        ],
+        "type": "object"
+      },
+      "tracks": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "address": {
+              "description": "Current structural Vn/An address",
+              "minLength": 1,
+              "type": "string"
+            },
+            "enabled": {
+              "description": "Current enabled state",
+              "type": "boolean"
+            },
+            "has_placed_items": {
+              "description": "Whether this track contains any placed item in the complete timeline",
+              "type": "boolean"
+            },
+            "items": {
+              "items": {
+                "oneOf": [
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "kind": {
+                        "const": "gap",
+                        "description": "Derived occupancy item kind",
+                        "type": "string"
+                      },
+                      "timeline_range": {
+                        "additionalProperties": false,
+                        "description": "Visible empty timeline interval",
+                        "properties": {
+                          "end_seconds": {
+                            "description": "Exclusive semantic end in seconds",
+                            "type": "number"
+                          },
+                          "start_seconds": {
+                            "description": "Inclusive semantic start in seconds",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "start_seconds",
+                          "end_seconds"
+                        ],
+                        "type": "object"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "timeline_range"
+                    ],
+                    "type": "object"
+                  },
+                  {
+                    "additionalProperties": false,
+                    "properties": {
+                      "clip_id": {
+                        "description": "Stable clip identity",
+                        "minLength": 1,
+                        "type": "string"
+                      },
+                      "display_name": {
+                        "description": "Current placed-item display name",
+                        "type": "string"
+                      },
+                      "enabled": {
+                        "description": "Current placed-item enabled state",
+                        "type": "boolean"
+                      },
+                      "kind": {
+                        "const": "clip",
+                        "description": "Placed item kind",
+                        "type": "string"
+                      },
+                      "link_group": {
+                        "anyOf": [
+                          {
+                            "description": "Stable cross-track link identity",
+                            "minLength": 1,
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "multicam": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": false,
+                            "properties": {
+                              "active_audio_angle": {
+                                "anyOf": [
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "audio_role": {
+                                        "description": "Timeline-owned multicam audio role",
+                                        "enum": [
+                                          "none",
+                                          "reference",
+                                          "alternate"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "display_label": {
+                                        "description": "Current mutation-adjacent display label",
+                                        "type": "string"
+                                      },
+                                      "track_id": {
+                                        "description": "Stable source multicam angle track identity",
+                                        "minLength": 1,
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "track_id",
+                                      "display_label",
+                                      "audio_role"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "active_video_angle": {
+                                "anyOf": [
+                                  {
+                                    "additionalProperties": false,
+                                    "properties": {
+                                      "audio_role": {
+                                        "description": "Timeline-owned multicam audio role",
+                                        "enum": [
+                                          "none",
+                                          "reference",
+                                          "alternate"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "display_label": {
+                                        "description": "Current mutation-adjacent display label",
+                                        "type": "string"
+                                      },
+                                      "track_id": {
+                                        "description": "Stable source multicam angle track identity",
+                                        "minLength": 1,
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "track_id",
+                                      "display_label",
+                                      "audio_role"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "audio_clip_id": {
+                                "anyOf": [
+                                  {
+                                    "description": "Placed audio member identity",
+                                    "minLength": 1,
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "has_video_switching_overrides": {
+                                "description": "Whether switching overrides prevent one uniform video angle",
+                                "type": "boolean"
+                              },
+                              "member_clip_ids": {
+                                "items": {
+                                  "description": "Stable member clip identity",
+                                  "minLength": 1,
+                                  "type": "string"
+                                },
+                                "minItems": 1,
+                                "type": "array",
+                                "uniqueItems": true
+                              },
+                              "source_timeline_id": {
+                                "description": "Referenced source multicam identity",
+                                "minLength": 1,
+                                "type": "string"
+                              },
+                              "video_clip_id": {
+                                "anyOf": [
+                                  {
+                                    "description": "Placed video member identity",
+                                    "minLength": 1,
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "source_timeline_id",
+                              "member_clip_ids",
+                              "video_clip_id",
+                              "audio_clip_id",
+                              "active_video_angle",
+                              "active_audio_angle",
+                              "has_video_switching_overrides"
+                            ],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "source": {
+                        "oneOf": [
+                          {
+                            "allOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "asset_id": {
+                                    "anyOf": [
+                                      {
+                                        "description": "Canonical asset identity when available",
+                                        "minLength": 1,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "audio_stream_ordinal": {
+                                    "description": "Selected source audio stream ordinal",
+                                    "minimum": 0,
+                                    "type": "integer"
+                                  },
+                                  "fps": {
+                                    "oneOf": [
+                                      {
+                                        "description": "Positive source-domain clock rate",
+                                        "exclusiveMinimum": 0,
+                                        "type": "number"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "kind": {
+                                    "const": "asset",
+                                    "description": "Source kind",
+                                    "type": "string"
+                                  },
+                                  "projection_diagnostics": {
+                                    "items": {
+                                      "description": "Closed source-projection diagnostic code",
+                                      "enum": [
+                                        "exact_authority_limit_exceeded",
+                                        "exact_authority_malformed",
+                                        "exact_authority_unsupported",
+                                        "exact_authority_carrier_mismatch",
+                                        "exact_authority_source_domain_mismatch",
+                                        "exact_authority_source_clock_mismatch",
+                                        "source_carrier_invalid",
+                                        "source_clock_incoherent",
+                                        "source_range_missing",
+                                        "source_range_invalid",
+                                        "temporal_transform_unsupported"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "maxItems": 11,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  },
+                                  "projection_status": {
+                                    "description": "Integrity of the source-window projection",
+                                    "enum": [
+                                      "exact",
+                                      "carrier",
+                                      "authority_rejected",
+                                      "implicit_full_range",
+                                      "not_applicable",
+                                      "projection_unavailable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "source_availability": {
+                                    "description": "Independent finite-bound evidence for the projected source",
+                                    "enum": [
+                                      "bounded",
+                                      "unbounded",
+                                      "unknown",
+                                      "out_of_bounds",
+                                      "not_applicable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "source_range": {
+                                    "oneOf": [
+                                      {
+                                        "additionalProperties": false,
+                                        "description": "Physical/resolved source interval",
+                                        "properties": {
+                                          "end_seconds": {
+                                            "description": "Exclusive semantic end in seconds",
+                                            "type": "number"
+                                          },
+                                          "start_seconds": {
+                                            "description": "Inclusive semantic start in seconds",
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "start_seconds",
+                                          "end_seconds"
+                                        ],
+                                        "type": "object"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "timing": {
+                                    "const": "timed",
+                                    "description": "Asset timing capability",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "timing",
+                                  "asset_id",
+                                  "source_range",
+                                  "fps",
+                                  "audio_stream_ordinal",
+                                  "projection_status",
+                                  "source_availability",
+                                  "projection_diagnostics"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "oneOf": [
+                                  {
+                                    "properties": {
+                                      "fps": {
+                                        "description": "Positive source-domain clock rate",
+                                        "exclusiveMinimum": 0,
+                                        "type": "number"
+                                      },
+                                      "projection_diagnostics": {
+                                        "const": [],
+                                        "type": "array"
+                                      },
+                                      "projection_status": {
+                                        "const": "exact",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "description": "Source availability for a time-addressed source",
+                                        "enum": [
+                                          "bounded",
+                                          "unbounded",
+                                          "unknown",
+                                          "out_of_bounds"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "additionalProperties": false,
+                                        "description": "Exact physical source interval",
+                                        "properties": {
+                                          "end_seconds": {
+                                            "description": "Exclusive semantic end in seconds",
+                                            "type": "number"
+                                          },
+                                          "start_seconds": {
+                                            "description": "Inclusive semantic start in seconds",
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "start_seconds",
+                                          "end_seconds"
+                                        ],
+                                        "type": "object"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics",
+                                      "fps"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "properties": {
+                                      "fps": {
+                                        "description": "Positive source-domain clock rate",
+                                        "exclusiveMinimum": 0,
+                                        "type": "number"
+                                      },
+                                      "projection_diagnostics": {
+                                        "oneOf": [
+                                          {
+                                            "const": [],
+                                            "type": "array"
+                                          },
+                                          {
+                                            "const": [
+                                              "exact_authority_limit_exceeded"
+                                            ],
+                                            "type": "array"
+                                          }
+                                        ]
+                                      },
+                                      "projection_status": {
+                                        "const": "carrier",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "description": "Source availability for a time-addressed source",
+                                        "enum": [
+                                          "bounded",
+                                          "unbounded",
+                                          "unknown",
+                                          "out_of_bounds"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "additionalProperties": false,
+                                        "description": "Carrier-derived physical source interval",
+                                        "properties": {
+                                          "end_seconds": {
+                                            "description": "Exclusive semantic end in seconds",
+                                            "type": "number"
+                                          },
+                                          "start_seconds": {
+                                            "description": "Inclusive semantic start in seconds",
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "start_seconds",
+                                          "end_seconds"
+                                        ],
+                                        "type": "object"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics",
+                                      "fps"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "properties": {
+                                      "fps": {
+                                        "description": "Positive source-domain clock rate",
+                                        "exclusiveMinimum": 0,
+                                        "type": "number"
+                                      },
+                                      "projection_diagnostics": {
+                                        "items": {
+                                          "description": "Exact-authority rejection diagnostic",
+                                          "enum": [
+                                            "exact_authority_limit_exceeded",
+                                            "exact_authority_malformed",
+                                            "exact_authority_unsupported",
+                                            "exact_authority_carrier_mismatch",
+                                            "exact_authority_source_domain_mismatch",
+                                            "exact_authority_source_clock_mismatch"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        "maxItems": 6,
+                                        "minItems": 1,
+                                        "type": "array",
+                                        "uniqueItems": true
+                                      },
+                                      "projection_status": {
+                                        "const": "authority_rejected",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "description": "Source availability for a time-addressed source",
+                                        "enum": [
+                                          "bounded",
+                                          "unbounded",
+                                          "unknown",
+                                          "out_of_bounds"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "additionalProperties": false,
+                                        "description": "Fallback carrier source interval",
+                                        "properties": {
+                                          "end_seconds": {
+                                            "description": "Exclusive semantic end in seconds",
+                                            "type": "number"
+                                          },
+                                          "start_seconds": {
+                                            "description": "Inclusive semantic start in seconds",
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "start_seconds",
+                                          "end_seconds"
+                                        ],
+                                        "type": "object"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics",
+                                      "fps"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "properties": {
+                                      "projection_diagnostics": {
+                                        "items": {
+                                          "description": "Authority and source-projection diagnostic",
+                                          "enum": [
+                                            "exact_authority_limit_exceeded",
+                                            "exact_authority_malformed",
+                                            "exact_authority_unsupported",
+                                            "exact_authority_carrier_mismatch",
+                                            "exact_authority_source_domain_mismatch",
+                                            "exact_authority_source_clock_mismatch",
+                                            "source_carrier_invalid",
+                                            "source_clock_incoherent",
+                                            "source_range_missing",
+                                            "source_range_invalid",
+                                            "temporal_transform_unsupported"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        "maxItems": 11,
+                                        "minItems": 1,
+                                        "not": {
+                                          "items": {
+                                            "description": "Exact-authority diagnostic",
+                                            "enum": [
+                                              "exact_authority_limit_exceeded",
+                                              "exact_authority_malformed",
+                                              "exact_authority_unsupported",
+                                              "exact_authority_carrier_mismatch",
+                                              "exact_authority_source_domain_mismatch",
+                                              "exact_authority_source_clock_mismatch"
+                                            ],
+                                            "type": "string"
+                                          },
+                                          "type": "array"
+                                        },
+                                        "type": "array",
+                                        "uniqueItems": true
+                                      },
+                                      "projection_status": {
+                                        "const": "projection_unavailable",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "description": "Source availability for a time-addressed source",
+                                        "enum": [
+                                          "bounded",
+                                          "unbounded",
+                                          "unknown",
+                                          "out_of_bounds"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "type": "null"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics"
+                                    ],
+                                    "type": "object"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "allOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "asset_id": {
+                                    "anyOf": [
+                                      {
+                                        "description": "Canonical still-image asset identity when available",
+                                        "minLength": 1,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "kind": {
+                                    "const": "asset",
+                                    "description": "Source kind",
+                                    "type": "string"
+                                  },
+                                  "projection_diagnostics": {
+                                    "items": {
+                                      "description": "Closed source-projection diagnostic code",
+                                      "enum": [
+                                        "exact_authority_limit_exceeded",
+                                        "exact_authority_malformed",
+                                        "exact_authority_unsupported",
+                                        "exact_authority_carrier_mismatch",
+                                        "exact_authority_source_domain_mismatch",
+                                        "exact_authority_source_clock_mismatch",
+                                        "source_carrier_invalid",
+                                        "source_clock_incoherent",
+                                        "source_range_missing",
+                                        "source_range_invalid",
+                                        "temporal_transform_unsupported"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "maxItems": 11,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  },
+                                  "projection_status": {
+                                    "description": "Integrity of the source-window projection",
+                                    "enum": [
+                                      "exact",
+                                      "carrier",
+                                      "authority_rejected",
+                                      "implicit_full_range",
+                                      "not_applicable",
+                                      "projection_unavailable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "source_availability": {
+                                    "description": "Independent finite-bound evidence for the projected source",
+                                    "enum": [
+                                      "bounded",
+                                      "unbounded",
+                                      "unknown",
+                                      "out_of_bounds",
+                                      "not_applicable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "source_range": {
+                                    "oneOf": [
+                                      {
+                                        "additionalProperties": false,
+                                        "description": "Physical/resolved source interval",
+                                        "properties": {
+                                          "end_seconds": {
+                                            "description": "Exclusive semantic end in seconds",
+                                            "type": "number"
+                                          },
+                                          "start_seconds": {
+                                            "description": "Inclusive semantic start in seconds",
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "start_seconds",
+                                          "end_seconds"
+                                        ],
+                                        "type": "object"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "timing": {
+                                    "const": "still",
+                                    "description": "Asset timing capability",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "timing",
+                                  "asset_id",
+                                  "source_range",
+                                  "projection_status",
+                                  "source_availability",
+                                  "projection_diagnostics"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "oneOf": [
+                                  {
+                                    "properties": {
+                                      "projection_diagnostics": {
+                                        "const": [],
+                                        "type": "array"
+                                      },
+                                      "projection_status": {
+                                        "const": "not_applicable",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "const": "not_applicable",
+                                        "description": "Non-time-addressed source availability",
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "type": "null"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics"
+                                    ],
+                                    "type": "object"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "allOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "const": "timeline_ref",
+                                    "description": "Source kind",
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "anyOf": [
+                                      {
+                                        "description": "Current referenced timeline display name",
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "projection_diagnostics": {
+                                    "items": {
+                                      "description": "Closed source-projection diagnostic code",
+                                      "enum": [
+                                        "exact_authority_limit_exceeded",
+                                        "exact_authority_malformed",
+                                        "exact_authority_unsupported",
+                                        "exact_authority_carrier_mismatch",
+                                        "exact_authority_source_domain_mismatch",
+                                        "exact_authority_source_clock_mismatch",
+                                        "source_carrier_invalid",
+                                        "source_clock_incoherent",
+                                        "source_range_missing",
+                                        "source_range_invalid",
+                                        "temporal_transform_unsupported"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "maxItems": 11,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  },
+                                  "projection_status": {
+                                    "description": "Integrity of the source-window projection",
+                                    "enum": [
+                                      "exact",
+                                      "carrier",
+                                      "authority_rejected",
+                                      "implicit_full_range",
+                                      "not_applicable",
+                                      "projection_unavailable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "source_availability": {
+                                    "description": "Independent finite-bound evidence for the projected source",
+                                    "enum": [
+                                      "bounded",
+                                      "unbounded",
+                                      "unknown",
+                                      "out_of_bounds",
+                                      "not_applicable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "source_range": {
+                                    "oneOf": [
+                                      {
+                                        "additionalProperties": false,
+                                        "description": "Physical/resolved source interval",
+                                        "properties": {
+                                          "end_seconds": {
+                                            "description": "Exclusive semantic end in seconds",
+                                            "type": "number"
+                                          },
+                                          "start_seconds": {
+                                            "description": "Inclusive semantic start in seconds",
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "start_seconds",
+                                          "end_seconds"
+                                        ],
+                                        "type": "object"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "timeline_id": {
+                                    "description": "Referenced source timeline identity",
+                                    "minLength": 1,
+                                    "type": "string"
+                                  },
+                                  "timeline_kind": {
+                                    "anyOf": [
+                                      {
+                                        "description": "Referenced timeline kind",
+                                        "minLength": 1,
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "timeline_id",
+                                  "name",
+                                  "timeline_kind",
+                                  "source_range",
+                                  "projection_status",
+                                  "source_availability",
+                                  "projection_diagnostics"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "oneOf": [
+                                  {
+                                    "properties": {
+                                      "projection_diagnostics": {
+                                        "const": [],
+                                        "type": "array"
+                                      },
+                                      "projection_status": {
+                                        "const": "exact",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "description": "Source availability for a time-addressed source",
+                                        "enum": [
+                                          "bounded",
+                                          "unbounded",
+                                          "unknown",
+                                          "out_of_bounds"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "additionalProperties": false,
+                                        "description": "Exact referenced source interval",
+                                        "properties": {
+                                          "end_seconds": {
+                                            "description": "Exclusive semantic end in seconds",
+                                            "type": "number"
+                                          },
+                                          "start_seconds": {
+                                            "description": "Inclusive semantic start in seconds",
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "start_seconds",
+                                          "end_seconds"
+                                        ],
+                                        "type": "object"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "properties": {
+                                      "projection_diagnostics": {
+                                        "oneOf": [
+                                          {
+                                            "const": [],
+                                            "type": "array"
+                                          },
+                                          {
+                                            "const": [
+                                              "exact_authority_limit_exceeded"
+                                            ],
+                                            "type": "array"
+                                          }
+                                        ]
+                                      },
+                                      "projection_status": {
+                                        "const": "carrier",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "description": "Source availability for a time-addressed source",
+                                        "enum": [
+                                          "bounded",
+                                          "unbounded",
+                                          "unknown",
+                                          "out_of_bounds"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "additionalProperties": false,
+                                        "description": "Carrier-derived referenced source interval",
+                                        "properties": {
+                                          "end_seconds": {
+                                            "description": "Exclusive semantic end in seconds",
+                                            "type": "number"
+                                          },
+                                          "start_seconds": {
+                                            "description": "Inclusive semantic start in seconds",
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "start_seconds",
+                                          "end_seconds"
+                                        ],
+                                        "type": "object"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "properties": {
+                                      "projection_diagnostics": {
+                                        "items": {
+                                          "description": "Exact-authority rejection diagnostic",
+                                          "enum": [
+                                            "exact_authority_limit_exceeded",
+                                            "exact_authority_malformed",
+                                            "exact_authority_unsupported",
+                                            "exact_authority_carrier_mismatch",
+                                            "exact_authority_source_domain_mismatch",
+                                            "exact_authority_source_clock_mismatch"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        "maxItems": 6,
+                                        "minItems": 1,
+                                        "type": "array",
+                                        "uniqueItems": true
+                                      },
+                                      "projection_status": {
+                                        "const": "authority_rejected",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "description": "Source availability for a time-addressed source",
+                                        "enum": [
+                                          "bounded",
+                                          "unbounded",
+                                          "unknown",
+                                          "out_of_bounds"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "additionalProperties": false,
+                                        "description": "Fallback referenced source interval",
+                                        "properties": {
+                                          "end_seconds": {
+                                            "description": "Exclusive semantic end in seconds",
+                                            "type": "number"
+                                          },
+                                          "start_seconds": {
+                                            "description": "Inclusive semantic start in seconds",
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "start_seconds",
+                                          "end_seconds"
+                                        ],
+                                        "type": "object"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "properties": {
+                                      "projection_diagnostics": {
+                                        "const": [],
+                                        "type": "array"
+                                      },
+                                      "projection_status": {
+                                        "const": "implicit_full_range",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "description": "Source availability for a time-addressed source",
+                                        "enum": [
+                                          "bounded",
+                                          "unbounded",
+                                          "unknown",
+                                          "out_of_bounds"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "type": "null"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "properties": {
+                                      "projection_diagnostics": {
+                                        "items": {
+                                          "description": "Authority and source-projection diagnostic",
+                                          "enum": [
+                                            "exact_authority_limit_exceeded",
+                                            "exact_authority_malformed",
+                                            "exact_authority_unsupported",
+                                            "exact_authority_carrier_mismatch",
+                                            "exact_authority_source_domain_mismatch",
+                                            "exact_authority_source_clock_mismatch",
+                                            "source_carrier_invalid",
+                                            "source_clock_incoherent",
+                                            "source_range_missing",
+                                            "source_range_invalid",
+                                            "temporal_transform_unsupported"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        "maxItems": 11,
+                                        "minItems": 1,
+                                        "not": {
+                                          "items": {
+                                            "description": "Exact-authority diagnostic",
+                                            "enum": [
+                                              "exact_authority_limit_exceeded",
+                                              "exact_authority_malformed",
+                                              "exact_authority_unsupported",
+                                              "exact_authority_carrier_mismatch",
+                                              "exact_authority_source_domain_mismatch",
+                                              "exact_authority_source_clock_mismatch"
+                                            ],
+                                            "type": "string"
+                                          },
+                                          "type": "array"
+                                        },
+                                        "type": "array",
+                                        "uniqueItems": true
+                                      },
+                                      "projection_status": {
+                                        "const": "projection_unavailable",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "description": "Source availability for a time-addressed source",
+                                        "enum": [
+                                          "bounded",
+                                          "unbounded",
+                                          "unknown",
+                                          "out_of_bounds"
+                                        ],
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "type": "null"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics"
+                                    ],
+                                    "type": "object"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "allOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "const": "curated_generator",
+                                    "description": "Source kind",
+                                    "type": "string"
+                                  },
+                                  "projection_diagnostics": {
+                                    "items": {
+                                      "description": "Closed source-projection diagnostic code",
+                                      "enum": [
+                                        "exact_authority_limit_exceeded",
+                                        "exact_authority_malformed",
+                                        "exact_authority_unsupported",
+                                        "exact_authority_carrier_mismatch",
+                                        "exact_authority_source_domain_mismatch",
+                                        "exact_authority_source_clock_mismatch",
+                                        "source_carrier_invalid",
+                                        "source_clock_incoherent",
+                                        "source_range_missing",
+                                        "source_range_invalid",
+                                        "temporal_transform_unsupported"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "maxItems": 11,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  },
+                                  "projection_status": {
+                                    "description": "Integrity of the source-window projection",
+                                    "enum": [
+                                      "exact",
+                                      "carrier",
+                                      "authority_rejected",
+                                      "implicit_full_range",
+                                      "not_applicable",
+                                      "projection_unavailable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "renderer": {
+                                    "description": "Curated generator renderer identity",
+                                    "minLength": 1,
+                                    "type": "string"
+                                  },
+                                  "source_availability": {
+                                    "description": "Independent finite-bound evidence for the projected source",
+                                    "enum": [
+                                      "bounded",
+                                      "unbounded",
+                                      "unknown",
+                                      "out_of_bounds",
+                                      "not_applicable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "source_range": {
+                                    "oneOf": [
+                                      {
+                                        "additionalProperties": false,
+                                        "description": "Physical/resolved source interval",
+                                        "properties": {
+                                          "end_seconds": {
+                                            "description": "Exclusive semantic end in seconds",
+                                            "type": "number"
+                                          },
+                                          "start_seconds": {
+                                            "description": "Inclusive semantic start in seconds",
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "start_seconds",
+                                          "end_seconds"
+                                        ],
+                                        "type": "object"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "renderer",
+                                  "source_range",
+                                  "projection_status",
+                                  "source_availability",
+                                  "projection_diagnostics"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "oneOf": [
+                                  {
+                                    "properties": {
+                                      "projection_diagnostics": {
+                                        "const": [],
+                                        "type": "array"
+                                      },
+                                      "projection_status": {
+                                        "const": "not_applicable",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "const": "not_applicable",
+                                        "description": "Non-time-addressed source availability",
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "type": "null"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics"
+                                    ],
+                                    "type": "object"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "allOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "generation_id": {
+                                    "description": "Admitted generated-artifact identity",
+                                    "minLength": 1,
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "const": "admitted_generator",
+                                    "description": "Source kind",
+                                    "type": "string"
+                                  },
+                                  "projection_diagnostics": {
+                                    "items": {
+                                      "description": "Closed source-projection diagnostic code",
+                                      "enum": [
+                                        "exact_authority_limit_exceeded",
+                                        "exact_authority_malformed",
+                                        "exact_authority_unsupported",
+                                        "exact_authority_carrier_mismatch",
+                                        "exact_authority_source_domain_mismatch",
+                                        "exact_authority_source_clock_mismatch",
+                                        "source_carrier_invalid",
+                                        "source_clock_incoherent",
+                                        "source_range_missing",
+                                        "source_range_invalid",
+                                        "temporal_transform_unsupported"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "maxItems": 11,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  },
+                                  "projection_status": {
+                                    "description": "Integrity of the source-window projection",
+                                    "enum": [
+                                      "exact",
+                                      "carrier",
+                                      "authority_rejected",
+                                      "implicit_full_range",
+                                      "not_applicable",
+                                      "projection_unavailable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "source_availability": {
+                                    "description": "Independent finite-bound evidence for the projected source",
+                                    "enum": [
+                                      "bounded",
+                                      "unbounded",
+                                      "unknown",
+                                      "out_of_bounds",
+                                      "not_applicable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "source_range": {
+                                    "oneOf": [
+                                      {
+                                        "additionalProperties": false,
+                                        "description": "Physical/resolved source interval",
+                                        "properties": {
+                                          "end_seconds": {
+                                            "description": "Exclusive semantic end in seconds",
+                                            "type": "number"
+                                          },
+                                          "start_seconds": {
+                                            "description": "Inclusive semantic start in seconds",
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "start_seconds",
+                                          "end_seconds"
+                                        ],
+                                        "type": "object"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "generation_id",
+                                  "source_range",
+                                  "projection_status",
+                                  "source_availability",
+                                  "projection_diagnostics"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "oneOf": [
+                                  {
+                                    "properties": {
+                                      "projection_diagnostics": {
+                                        "const": [],
+                                        "type": "array"
+                                      },
+                                      "projection_status": {
+                                        "const": "not_applicable",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "const": "not_applicable",
+                                        "description": "Non-time-addressed source availability",
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "type": "null"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics"
+                                    ],
+                                    "type": "object"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "allOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "kind": {
+                                    "const": "invalid_generator",
+                                    "description": "Source kind",
+                                    "type": "string"
+                                  },
+                                  "projection_diagnostics": {
+                                    "items": {
+                                      "description": "Closed source-projection diagnostic code",
+                                      "enum": [
+                                        "exact_authority_limit_exceeded",
+                                        "exact_authority_malformed",
+                                        "exact_authority_unsupported",
+                                        "exact_authority_carrier_mismatch",
+                                        "exact_authority_source_domain_mismatch",
+                                        "exact_authority_source_clock_mismatch",
+                                        "source_carrier_invalid",
+                                        "source_clock_incoherent",
+                                        "source_range_missing",
+                                        "source_range_invalid",
+                                        "temporal_transform_unsupported"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "maxItems": 11,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  },
+                                  "projection_status": {
+                                    "description": "Integrity of the source-window projection",
+                                    "enum": [
+                                      "exact",
+                                      "carrier",
+                                      "authority_rejected",
+                                      "implicit_full_range",
+                                      "not_applicable",
+                                      "projection_unavailable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "reason": {
+                                    "description": "Stable generator projection diagnostic",
+                                    "type": "string"
+                                  },
+                                  "source_availability": {
+                                    "description": "Independent finite-bound evidence for the projected source",
+                                    "enum": [
+                                      "bounded",
+                                      "unbounded",
+                                      "unknown",
+                                      "out_of_bounds",
+                                      "not_applicable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "source_range": {
+                                    "oneOf": [
+                                      {
+                                        "additionalProperties": false,
+                                        "description": "Physical/resolved source interval",
+                                        "properties": {
+                                          "end_seconds": {
+                                            "description": "Exclusive semantic end in seconds",
+                                            "type": "number"
+                                          },
+                                          "start_seconds": {
+                                            "description": "Inclusive semantic start in seconds",
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "start_seconds",
+                                          "end_seconds"
+                                        ],
+                                        "type": "object"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "reason",
+                                  "source_range",
+                                  "projection_status",
+                                  "source_availability",
+                                  "projection_diagnostics"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "oneOf": [
+                                  {
+                                    "properties": {
+                                      "projection_diagnostics": {
+                                        "const": [],
+                                        "type": "array"
+                                      },
+                                      "projection_status": {
+                                        "const": "not_applicable",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "const": "not_applicable",
+                                        "description": "Non-time-addressed source availability",
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "type": "null"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics"
+                                    ],
+                                    "type": "object"
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "allOf": [
+                              {
+                                "additionalProperties": false,
+                                "properties": {
+                                  "diagnostic": {
+                                    "description": "Placeholder projection diagnostic",
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "const": "placeholder",
+                                    "description": "Source kind",
+                                    "type": "string"
+                                  },
+                                  "placeholder_kind": {
+                                    "description": "Placeholder subtype",
+                                    "type": "string"
+                                  },
+                                  "projection_diagnostics": {
+                                    "items": {
+                                      "description": "Closed source-projection diagnostic code",
+                                      "enum": [
+                                        "exact_authority_limit_exceeded",
+                                        "exact_authority_malformed",
+                                        "exact_authority_unsupported",
+                                        "exact_authority_carrier_mismatch",
+                                        "exact_authority_source_domain_mismatch",
+                                        "exact_authority_source_clock_mismatch",
+                                        "source_carrier_invalid",
+                                        "source_clock_incoherent",
+                                        "source_range_missing",
+                                        "source_range_invalid",
+                                        "temporal_transform_unsupported"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "maxItems": 11,
+                                    "type": "array",
+                                    "uniqueItems": true
+                                  },
+                                  "projection_status": {
+                                    "description": "Integrity of the source-window projection",
+                                    "enum": [
+                                      "exact",
+                                      "carrier",
+                                      "authority_rejected",
+                                      "implicit_full_range",
+                                      "not_applicable",
+                                      "projection_unavailable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "source_availability": {
+                                    "description": "Independent finite-bound evidence for the projected source",
+                                    "enum": [
+                                      "bounded",
+                                      "unbounded",
+                                      "unknown",
+                                      "out_of_bounds",
+                                      "not_applicable"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "source_range": {
+                                    "oneOf": [
+                                      {
+                                        "additionalProperties": false,
+                                        "description": "Physical/resolved source interval",
+                                        "properties": {
+                                          "end_seconds": {
+                                            "description": "Exclusive semantic end in seconds",
+                                            "type": "number"
+                                          },
+                                          "start_seconds": {
+                                            "description": "Inclusive semantic start in seconds",
+                                            "type": "number"
+                                          }
+                                        },
+                                        "required": [
+                                          "start_seconds",
+                                          "end_seconds"
+                                        ],
+                                        "type": "object"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "state": {
+                                    "description": "Persisted placeholder validity state",
+                                    "enum": [
+                                      "valid",
+                                      "malformed"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "placeholder_kind",
+                                  "state",
+                                  "diagnostic",
+                                  "source_range",
+                                  "projection_status",
+                                  "source_availability",
+                                  "projection_diagnostics"
+                                ],
+                                "type": "object"
+                              },
+                              {
+                                "oneOf": [
+                                  {
+                                    "properties": {
+                                      "projection_diagnostics": {
+                                        "const": [],
+                                        "type": "array"
+                                      },
+                                      "projection_status": {
+                                        "const": "not_applicable",
+                                        "description": "Integrity of the source-window projection",
+                                        "type": "string"
+                                      },
+                                      "source_availability": {
+                                        "const": "not_applicable",
+                                        "description": "Non-time-addressed source availability",
+                                        "type": "string"
+                                      },
+                                      "source_range": {
+                                        "type": "null"
+                                      }
+                                    },
+                                    "required": [
+                                      "source_range",
+                                      "projection_status",
+                                      "source_availability",
+                                      "projection_diagnostics"
+                                    ],
+                                    "type": "object"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      },
+                      "source_display_name": {
+                        "description": "Current source display name",
+                        "type": "string"
+                      },
+                      "speed": {
+                        "description": "Positive authored playback multiplier",
+                        "exclusiveMinimum": 0,
+                        "type": "number"
+                      },
+                      "timeline_range": {
+                        "additionalProperties": false,
+                        "description": "True unclipped timeline interval",
+                        "properties": {
+                          "end_seconds": {
+                            "description": "Exclusive semantic end in seconds",
+                            "type": "number"
+                          },
+                          "start_seconds": {
+                            "description": "Inclusive semantic start in seconds",
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "start_seconds",
+                          "end_seconds"
+                        ],
+                        "type": "object"
+                      },
+                      "track_id": {
+                        "description": "Stable containing track identity",
+                        "minLength": 1,
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "clip_id",
+                      "track_id",
+                      "display_name",
+                      "source_display_name",
+                      "timeline_range",
+                      "enabled",
+                      "speed",
+                      "link_group",
+                      "source",
+                      "multicam"
+                    ],
+                    "type": "object"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "locked": {
+              "description": "Current lock state",
+              "type": "boolean"
+            },
+            "name": {
+              "description": "Mutable user-facing track name",
+              "type": "string"
+            },
+            "track_id": {
+              "description": "Stable track identity",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "track_id",
+            "address",
+            "name",
+            "locked",
+            "enabled",
+            "has_placed_items",
+            "items"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "transitions": {
+        "items": {
+          "additionalProperties": false,
+          "properties": {
+            "incoming_clip_id": {
+              "description": "Clip that starts at the cut",
+              "minLength": 1,
+              "type": "string"
+            },
+            "outgoing_clip_id": {
+              "description": "Clip that ends at the cut",
+              "minLength": 1,
+              "type": "string"
+            },
+            "timeline_range": {
+              "additionalProperties": false,
+              "description": "Span both clips play together, centered on the cut",
+              "properties": {
+                "end_seconds": {
+                  "description": "Exclusive semantic end in seconds",
+                  "type": "number"
+                },
+                "start_seconds": {
+                  "description": "Inclusive semantic start in seconds",
+                  "type": "number"
+                }
+              },
+              "required": [
+                "start_seconds",
+                "end_seconds"
+              ],
+              "type": "object"
+            },
+            "track_id": {
+              "description": "Audio track holding the crossfade",
+              "minLength": 1,
+              "type": "string"
+            },
+            "transition_id": {
+              "description": "Stable crossfade identity",
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "required": [
+            "transition_id",
+            "track_id",
+            "outgoing_clip_id",
+            "incoming_clip_id",
+            "timeline_range"
+          ],
+          "type": "object"
+        },
+        "type": "array"
+      },
+      "view_window": {
+        "additionalProperties": false,
+        "description": "Logical half-open view represented by this page",
+        "properties": {
+          "end_seconds": {
+            "description": "Exclusive semantic end in seconds",
+            "type": "number"
+          },
+          "start_seconds": {
+            "description": "Inclusive semantic start in seconds",
+            "type": "number"
+          }
+        },
+        "required": [
+          "start_seconds",
+          "end_seconds"
+        ],
+        "type": "object"
+      }
+    },
+    "required": [
+      "schema_version",
+      "bundle_revision",
+      "timeline",
+      "view_window",
+      "tracks",
+      "links",
+      "transitions",
+      "multicam_catalogs",
+      "next_cursor"
+    ],
+    "type": "object"
+  }
+}

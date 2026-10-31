@@ -118,3 +118,48 @@ test('October 9 reviewed removals permit unaffected checks but never dispatch re
  }
  const malformed=structuredClone(qualified);malformed.reviewed.at(-1).removedOperations=['project.create','project.create'];assert.throws(()=>assertMappedPackagedSchema(extension,captured,malformed),/Invalid reviewed/);
 });
+
+test('reviewed request and result definitions form a reusable anchor without approving new semantic changes',async()=>{
+ const {operationSupport}=await import('../runner/schema-compatibility.mjs');
+ const {admitChecks}=await import('../runner/capabilities.mjs');
+ const {resolveSelection,selectedRecipe}=await import('../runner/catalog.mjs');
+ const entry=qualified.reviewed.find(r=>r.reviewedAt==='2026-10-23');
+ const operations=JSON.parse(await readFile(new URL('../runner/contracts/'+entry.operationsFile,import.meta.url))),results=JSON.parse(await readFile(new URL('../runner/contracts/'+entry.resultsFile,import.meta.url)));
+ const ordered=o=>Object.fromEntries(Object.entries(o).sort(([a],[b])=>a.localeCompare(b)));
+ const schema={...captured,operations:ordered(Object.fromEntries(Object.entries({...captured.operations,...operations}).filter(([op])=>!entry.removedOperations.includes(op)))),results:ordered({...captured.results,...results})};
+ assert.equal(digest(schema),entry.schemaHash);
+ const course=selectedRecipe(resolveSelection({}, {courseIds:['smoke-full'],subsetIds:['IN-01','A-TL-01','A-RG-01'],desktopMode:'grouped'}));
+ const old={...qualified,reviewed:qualified.reviewed.filter(e=>e!==entry)};
+ assert(operationSupport(schema,captured,old).unqualifiedOperations.includes('timeline.inspect'));
+ assert(operationSupport(schema,captured,old).unqualifiedOperations.includes('media.import_asset'));
+ assert.equal(admitChecks(course,schema,captured,qualified).checks.filter(c=>c.state==='Blocked').length,0);
+ const future=structuredClone(schema);future.operations['future.read']={type:'object'};future.results['future.read']={type:'string'};
+ assert.equal(assertMappedPackagedSchema(future,captured,qualified).anchorHash,entry.schemaHash);
+ for(const mutate of [s=>s.results['timeline.inspect'].properties.schema_version.const='99',s=>s.operations['media.import_asset'].required.push('require_exact_revision'),s=>s.operations['graph.set_param'].properties.producer_slot.description='Different targeting semantics']){
+  const changed=structuredClone(future);mutate(changed);assert.throws(()=>assertMappedPackagedSchema(changed,captured,qualified),/different command schema/);
+ }
+ const broken=structuredClone(qualified);broken.reviewed.at(-1).resultsFile='../escape.json';assert.throws(()=>operationSupport(future,captured,broken),/Invalid reviewed result/);
+});
+
+
+test('optional response metadata preserves consumers, including nested tagged clips, without loosening their assertions',()=>{
+ const clip={type:'object',additionalProperties:false,properties:{kind:{const:'clip'},id:{type:'string'},position:{type:'number',description:'Timeline position in seconds'}},required:['kind','id','position']};
+ const gap={type:'object',additionalProperties:false,properties:{kind:{const:'gap'},duration:{type:'number'}},required:['kind','duration']};
+ const baseline={operations:{inspect:{type:'object'}},results:{inspect:{type:'object',additionalProperties:false,properties:{items:{type:'array',items:{oneOf:[gap,clip]}}},required:['items']}},errors:{}};
+ const extended=structuredClone(baseline),branches=extended.results.inspect.properties.items.items.oneOf;
+ branches[1].properties.status={type:'array',items:{type:'string'}};
+ const receipt=assertMappedPackagedSchema(extended,baseline,null);
+ assert.equal(receipt.mode,'compatible-extension');assert.deepEqual(receipt.changes,[{path:'results.inspect.properties.items.items.oneOf[1].properties.status',kind:'optional-response-property'}]);
+ for(const mutate of [
+  b=>b[1].required.push('status'),b=>b[1].required.splice(1,1),
+  b=>delete b[1].properties.id,b=>b[1].properties.position.type='string',
+  b=>b[1].properties.position.description='Timeline position in frames',
+  b=>b[1].properties.kind.const='other',b=>b.reverse(),
+  b=>b[1].additionalProperties=true,
+ ]){const broken=structuredClone(extended);mutate(broken.results.inspect.properties.items.items.oneOf);assert.throws(()=>assertMappedPackagedSchema(broken,baseline,null),/different command schema/);}
+ const ambiguous=structuredClone(baseline);delete ambiguous.results.inspect.properties.items.items.oneOf[1].properties.kind;
+ const ambiguousExtension=structuredClone(ambiguous);ambiguousExtension.results.inspect.properties.items.items.oneOf[1].properties.status={type:'string'};
+ assert.throws(()=>assertMappedPackagedSchema(ambiguousExtension,ambiguous,null),/different command schema/);
+ const errorExtension=structuredClone(extended);errorExtension.errors.inspect={type:'object'};
+ assert.throws(()=>assertMappedPackagedSchema(errorExtension,baseline,null),/different command schema/);
+});

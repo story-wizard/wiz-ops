@@ -12,7 +12,7 @@ function checkpointID(id){if(id!==undefined&&id!==humanCheckpoint.id)throw Error
 export const rawChecks=[...baseCourse.cases,...desktopCourse.cases,...serviceCourse.cases,...physicalChecks];
 export const targetFor=id=>baseCourse.cases.some(c=>c.id===id)?'packaged':[...desktopCourse.cases,...physicalChecks].some(c=>c.id===id)?'desktop':'service';
 // These checks share authored setup and persistence state. Expose the closure before launch.
-const families=[
+export const families=[
  ['D-CLI-02','D-LP-02-SAVE','D-LP-02-RELAUNCH'],
  ['D-COMPOUND-CREATE','D-COMPOUND-EDIT','D-MGFX-CLIPBOARD','D-EXPORT-COMPOUND','D-COMPOUND-DISSOLVE','D-EXPORT-STILL'],
  ['D-SB-CREATE','D-SB-QUICK-SEARCH','D-SB-GRAPH','D-SB-PARAMS','D-SB-BYPASS','D-SB-UNDO','D-SB-INSTANCE','D-SB-PERSIST','D-SB-LOGGING'],

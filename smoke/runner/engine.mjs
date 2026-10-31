@@ -1,3 +1,4 @@
+import {requireQualifiedOperation} from './capabilities.mjs';
 import {spawn,execFileSync} from 'node:child_process';
 import {appendFileSync} from 'node:fs';
 import {mkdir,readFile,appendFile,open} from 'node:fs/promises';
@@ -67,6 +68,7 @@ export class PackagedEngine{
     return this.stopping;
   }
   async call(bundle,operation,params={},expectedError){
+    requireQualifiedOperation(this.plan,operation);
     assert(this.child&&this.child.exitCode===null&&!this.child.signalCode,'The owned engine is not alive.');
     assert(inside(this.root,bundle)&&bundle.endsWith('.wiz'),'Refusing a bundle outside the run directory.');
     const definition=this.schema.operations[operation];assert(definition,`Unknown packaged operation ${operation}`);

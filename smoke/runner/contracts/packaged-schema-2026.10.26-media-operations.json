@@ -1,0 +1,62 @@
+{
+  "media.detect_color": {
+    "additionalProperties": true,
+    "properties": {
+      "bundle": {
+        "description": "Optional .wiz bundle path scoping this op's path confinement to that bundle's registered media roots (#839); the op stays project-less and never opens the bundle",
+        "type": "string"
+      },
+      "category": {
+        "description": "Media category override: exr_image, camera_raw_video, raw_still, video, still, audio, or unknown; omitted/empty defaults to video (camera_raw_video for a camera RAW video path)",
+        "enum": [
+          "",
+          "exr_image",
+          "camera_raw_video",
+          "raw_still",
+          "video",
+          "still",
+          "audio",
+          "unknown"
+        ],
+        "type": "string"
+      },
+      "config_path": {
+        "description": "Absolute OCIO config path for config_source ui/env; omitted for builtin",
+        "type": "string"
+      },
+      "config_source": {
+        "description": "Color config source: builtin, ui, or env (default builtin)",
+        "enum": [
+          "builtin",
+          "ui",
+          "env"
+        ],
+        "type": "string"
+      },
+      "declared_interop_id": {
+        "description": "Optional Color Interop Forum id of the declared space, e.g. 'srgb_rec709_display'; lets a config that spells the space differently still validate the declaration",
+        "type": "string"
+      },
+      "declared_name": {
+        "description": "Optional producer declaration of the encoding (OCIO name, e.g. 'sRGB - Display'); validated against the config, never trusted verbatim — an unvalidated declaration falls through to detection",
+        "type": "string"
+      },
+      "declared_producer": {
+        "description": "Optional token naming who declared it (diagnostic; becomes match_source 'declared:<producer>')",
+        "type": "string"
+      },
+      "default_policy": {
+        "description": "Optional tier-7 override, 'per_category' or 'none'. Omitted = 'per_category' (Wizard's one policy): when nothing resolves, apply the per-category default (video -> Rec.1886/Rec.709 display, still -> sRGB display), returned with provenance 'defaulted'. 'none' returns uncharacterized instead. The result's computed_with ({detector_version, config_digest, policy} or null) records what the verdict was computed with",
+        "type": "string"
+      },
+      "path": {
+        "description": "Absolute path to the media file to inspect (not a .wiz bundle)",
+        "type": "string"
+      }
+    },
+    "required": [
+      "path"
+    ],
+    "type": "object"
+  }
+}

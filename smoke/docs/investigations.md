@@ -60,6 +60,70 @@ For triage, have the agent return a JSON proposal using the packet's `proposalTe
 
 Repairs belong in the current source checkout. Preserve frozen reports, explain the cause, provide the patch and verification, and identify the checks needing rerun. A task packet supplies context; execution is a separate user-authorized action.
 
+## Reviewed finding follow-up
+
+A finding can remain open with an owner and a useful next step. Triage proposals
+accept an optional `followUp` on each update. Use the existing proposal preview
+and reviewed apply; this does not create an issue, resolve the case or start work.
+The live Brief, portable reviewer and agent first-read show it separately from the
+original outcome and later reproductions.
+
+```json
+{
+  "kind": "new",
+  "issue": "local/media-colour-readback",
+  "owner": "Colour agent",
+  "consequence": "The source colour column cannot yet be verified",
+  "nextAction": "Compare the retained model value with the source sidecar",
+  "reviewBy": "2026-11-02",
+  "evidence": "Original run/check IDs, proof files inspected and review reasoning"
+}
+```
+
+`issue` is a local finding identifier or an existing issue key, stored as text.
+`owner` records responsibility; it does not send a message or route work. The
+review-by date is a reminder for the owner, with no scheduler or automatic closure.
+The service records the reviewer, time and exact reviewed observation. Omit
+`followUp` to retain it; use `null` to remove the current annotation while keeping
+the complete earlier review and generated attempt/report bindings in triage history.
+
+Triage tasks include `relatedFindings` from at most the 200 most recent local
+investigations, with at most 20 comparisons per task response. Request a single case to focus
+the search. These compare the same check
+and original definition. The references include run/report identity and the
+recorded observation; read their retained reports before choosing a link. This is
+a bounded local search, not an exhaustive issue index or a root-cause diagnosis.
+Equal error text, a shared behavior contract or a matching test ID cannot apply a
+link. Different causes can have separate local finding identifiers.
+
+After reviewing both occurrences, use `kind: "known"` with an explicit reference:
+
+```json
+"reference": {
+  "investigationId": "ID copied from relatedFindings",
+  "caseId": "D-MEDIA-COLOR-COLUMN",
+  "revision": 2
+}
+```
+
+A known link requires the exact package, test definition, outcome, expected and
+observed values, decisive failed phase/assertion values, and classification.
+Decisive comparisons exclude capture paths, timestamps and generated capture IDs;
+values explicitly asserted by the test remain part of the comparison. The referenced revision must still be current
+when previewed and applied. A new build or different symptom needs fresh review;
+record it as `new` rather than extending a match automatically. The reference
+retains its reviewed run, report digest and observation even if the source is later
+triaged again. A new linked reproduction, changed report or changed classification makes the
+follow-up `changed` until reviewed again, even if the outcome text is identical. No review is
+`unresolved`; an explicitly reviewed occurrence is `new` or `known`. These four
+labels are follow-up context and never replace Pass, Fail, Blocked, Not run or
+Unknown. They do not relax diagnostic or human-review gates.
+
+The calling developer agent still owns its test plan. Use `tasks/triage` to inspect
+findings, `tasks/repair` when a repair is useful, and the optional repair record or
+PR tool only when wanted. Follow-up metadata does not request a PR or grant GUI,
+retry, publication or delivery authority.
+
 ## Prepare and run a focused repro
 
 1. Mark primary cases **Reproduce**. The selection keeps qualification candidates within the maintained course without accepting them into the canon.

@@ -209,7 +209,8 @@ test('the production Swift pointer scope balances its down on focus loss, owner 
   const start=original.indexOf('var held=false,lastPoint=from'),end=original.indexOf('let duration=',start);
   assert.ok(start>=0&&end>start,'Locate the production pointer scope');
   // Compile the real dispatch/cleanup scope with fake platform boundaries; never invoke HID or AX APIs.
-  const block=original.slice(start,end);
+  const block=original.slice(start,end),foregroundStart=original.indexOf('func requireGestureForeground('),foregroundEnd=original.indexOf('let inventory =',foregroundStart);
+  assert.ok(foregroundStart>=0&&foregroundEnd>foregroundStart,'Locate the production gesture foreground guard');
   const guardStart=original.indexOf('func requirePointerWindow('),guardEnd=original.indexOf('func children(',guardStart);assert.ok(guardStart>=0&&guardEnd>guardStart);
   const program=`import Foundation
 import CoreGraphics
@@ -241,11 +242,14 @@ var events:[String]=[],owner=true,front=true,pointerCleanupReleased=false,inputI
 let flags=CGEventFlags()
 func verifyOwner()throws{try require(owner,"Owner gone")}
 func foreground()->Bool{front}
-func topWindow(_ point:CGPoint)->[String:Any]?{[kCGWindowOwnerPID:NSNumber(value:123),kCGWindowNumber:NSNumber(value:5)]}
+struct ForegroundApp {let processIdentifier:Int32}
+struct NSWorkspace {static let shared=NSWorkspace();var frontmostApplication:ForegroundApp?{ForegroundApp(processIdentifier:front ? 123 : 999)}}
+func topWindow(_ point:CGPoint?=nil)->[String:Any]?{[kCGWindowOwnerPID:NSNumber(value:point == nil && !front ? 999 : 123),kCGWindowNumber:NSNumber(value:5)]}
 func run(_ scenario:String)throws{
  let from=CGPoint(x:10,y:10),to=CGPoint(x:20,y:20),button=CGMouseButton.left,downType=CGEventType.leftMouseDown,upType=CGEventType.leftMouseUp,dragType=CGEventType.leftMouseDragged
  let windowServer=true,pid:Int32=123,number=NSNumber(value:5),bounds=CGRect(origin:CGPoint(x:0,y:0),size:CGSize(width:100,height:100))
  var dispatched=false,result:[String:Any]=[:]
+ ${original.slice(foregroundStart,foregroundEnd)}
  if scenario=="preinput-denial"{front=false}
  ${block}
  try mouse(downType,from)

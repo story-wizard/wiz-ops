@@ -5,9 +5,10 @@ import {mkdtemp,mkdir,writeFile,readFile,rm,realpath,symlink} from 'node:fs/prom
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {randomUUID} from 'node:crypto';
-import {initializeInvestigations,investigation,investigationList,createInvestigation,triageInvestigation,linkReproduction,reproSelection,bugDraft,reviewDraft,exportInvestigation,diagnosticCaptures,readInvestigationFile,previewTriage,editBugDraft,investigationTask,investigationEvidence,readInvestigationArtifact,recordRepro,updateRepro,reconcileRepros,closeRepro,verifyReviewEvidence,caseNextAction} from '../investigations.mjs';
+import {initializeInvestigations,investigation,investigationList,createInvestigation,triageInvestigation,linkReproduction,reproSelection,bugDraft,reviewDraft,exportInvestigation,diagnosticCaptures,readInvestigationFile,previewTriage,editBugDraft,investigationTask,investigationEvidence,readInvestigationArtifact,recordRepro,updateRepro,reconcileRepros,closeRepro,verifyReviewEvidence,caseNextAction,investigationRelatedFindings} from '../investigations.mjs';
 import {initializeCourses,resolveSelection,selectedRecipe,validateRecipe} from '../runner/catalog.mjs';
 import {dataDirectory,digest,writeJSON,sha} from '../runner/files.mjs';
+import {findingFollowUp} from '../finding-followup.mjs';
 import {captureInvestigation} from '../desktop/check-support.mjs';
 
 async function fixture(data,{status='Fail',packageHash='a'.repeat(64),diagnostics=false,desktop=false,steps=['Import the fixture clip','Apply the colour change','Compare the rendered pixels']}={}){
@@ -246,5 +247,47 @@ test('human confirmation verifies retained repro bytes even after collection ori
   let r=await createInvestigation(db,await fixture(data),data,{actor:'Test'});r=triageInvestigation(db,r.id,{revision:r.revision,actor:'Agent',updates:[{id:'A-CO-01',classification:'App',disposition:'Reproduce',reason:'Independent state mismatch'}]});const run=await fixture(data,{diagnostics:true});r=await linkReproduction(db,r.id,run,data,{revision:r.revision,actor:'Agent',runId:run.id});
   assert.equal(bugDraft(r,r.cases[0]).ready,true);await verifyReviewEvidence(r,'A-CO-01',data);
   const retained=path.join(path.dirname(r.cases[0].attempts.at(-1).reportPath),'evidence','operations.jsonl');await writeFile(retained,'changed');await assert.rejects(()=>verifyReviewEvidence(r,'A-CO-01',data),/review evidence changed/);assert.equal(investigation(db,r.id).cases[0].review,null);
+ }finally{db.close();await rm(data,{recursive:true,force:true});}
+});
+
+const followUpReview={kind:'new',issue:'local/colour-readback',owner:'Colour agent',consequence:'Colour checks cannot establish the expected output',nextAction:'Compare the retained pixel proof before proposing a shared repair',reviewBy:'2050-11-01',evidence:'Compared the original report and render.frame receipts'};
+test('reviewed cross-run finding links remain annotations with bounded suggestions and immutable source evidence',async()=>{
+ const data=dataDirectory(await mkdtemp(path.join(tmpdir(),'athanor-follow-up-'))),db=new DatabaseSync(':memory:');initializeInvestigations(db);
+ try{
+  const originalRun=await fixture(data),source=await createInvestigation(db,originalRun,data,{actor:'Test'});
+  const triage=(r,followUp)=>({revision:r.revision,actor:'Reviewer',updates:[{id:'A-CO-01',classification:'Harness',disposition:'Investigate',reason:'Readback receipt identifies a harness comparison defect',followUp}]});
+  let reviewed=triageInvestigation(db,source.id,triage(source,followUpReview));
+  const sourceRepro=await fixture(data);reviewed=await linkReproduction(db,reviewed.id,sourceRepro,data,{revision:reviewed.revision,actor:'Test'});
+  const current=await createInvestigation(db,await fixture(data),data,{actor:'Test'}),input=triage(current,{...followUpReview,kind:'known',reference:{investigationId:source.id,revision:reviewed.revision,caseId:'A-CO-01'}});
+  const before=JSON.stringify(investigation(db,current.id));
+  const preview=previewTriage(current,input,id=>investigation(db,id));assert.equal(preview.next.cases[0].followUp.reference.reportHash,reviewed.cases[0].attempts.at(-1).reportHash);assert.equal(JSON.stringify(investigation(db,current.id)),before,'Preview is read-only');
+  const saved=triageInvestigation(db,current.id,input),c=saved.cases[0];assert.equal(findingFollowUp(saved,c).state,'known');assert.equal(c.original.status,'Fail');assert.equal(c.disposition,'Investigate');assert.equal(investigation(db,source.id).revision,reviewed.revision);
+  const sameObservation=structuredClone(saved);sameObservation.cases[0].attempts.push({...c.original,runId:'another-attempt',reportHash:'e'.repeat(64)});assert.equal(findingFollowUp(sameObservation,sameObservation.cases[0]).state,'changed','A later attempt needs review even if its outcome text is identical');
+  const related=investigationRelatedFindings(db,saved);assert.equal(related.cases[c.id][0].comparison,'same recorded observation');assert.equal(related.cases[c.id][0].investigationId,source.id);
+  const task=investigationTask(saved,{related});assert.equal(task.firstRead.cases[0].followUp.owner,'Colour agent');assert.equal(task.relatedFindings.cases[c.id][0].reportHash,reviewed.cases[0].attempts.at(-1).reportHash);
+  const pack=await exportInvestigation(db,saved.id,data),exported=JSON.parse(await readFile(path.join(pack.path,'tasks/triage.json'))),html=await readFile(path.join(pack.path,'index.html'),'utf8');assert.equal(exported.cases[0].followUp.state,'known');assert.match(html,/Finding follow-up · known/);assert.match(html,/Colour agent/);assert.match(html,/Earlier occurrence:/);
+  const later=await linkReproduction(db,saved.id,await fixture(data,{status:'Pass'}),data,{revision:saved.revision,actor:'Test'});assert.equal(findingFollowUp(later,later.cases[0]).state,'changed','A passing repro cannot silently retain a known-failure match');assert.equal(later.cases[0].original.status,'Fail');assert.equal(later.cases[0].followUp.reference.runId,sourceRepro.id);
+  const cleared=triageInvestigation(db,later.id,triage(later,null));assert.equal(findingFollowUp(cleared,cleared.cases[0]).state,'unresolved');assert.equal(cleared.history.at(-2).action,'Reproduction linked');assert.equal(cleared.history.find(h=>h.action==='Triage').updates[0].followUp.issue,'local/colour-readback');assert.deepEqual(cleared.history.at(-1).followUps[0].before,c.followUp,'Clearing retains the full prior generated review, including report binding and timestamp');assert.equal(cleared.history.at(-1).followUps[0].after,null);
+ }finally{db.close();await rm(data,{recursive:true,force:true});}
+});
+test('known finding links fail closed across changed identity, symptoms, cause or stale review; same text never applies a link',async()=>{
+ const data=dataDirectory(await mkdtemp(path.join(tmpdir(),'athanor-follow-up-scope-'))),db=new DatabaseSync(':memory:');initializeInvestigations(db);
+ try{
+  const source=await createInvestigation(db,await fixture(data),data,{actor:'Test'}),inputFor=(r,f)=>({revision:r.revision,actor:'Reviewer',updates:[{id:'A-CO-01',classification:'App',disposition:'Investigate',reason:'Compared retained evidence',followUp:f}]});
+  const reviewed=triageInvestigation(db,source.id,inputFor(source,followUpReview)),current=await createInvestigation(db,await fixture(data),data,{actor:'Test'}),reference={investigationId:source.id,revision:reviewed.revision,caseId:'A-CO-01'},proposal=inputFor(current,{...followUpReview,kind:'known',reference}),lookup=id=>investigation(db,id);
+  assert.equal(findingFollowUp(current,current.cases[0]).state,'unresolved');assert.equal(investigationRelatedFindings(db,current).cases['A-CO-01'].length,1);assert.equal(investigation(db,current.id).revision,1);
+  const witness={failedStep:{id:'undo',phase:'verify',status:'Fail',observation:'Timeline was not restored'},lastCompletedStep:{id:'edit'},assertions:[{stepId:'undo',status:'Fail',invariant:'Undo restores timing',expected:{seconds:4},actual:{seconds:6},artifact:'first.json',id:'capture-one',at:'yesterday'}],notRun:[{id:'redo',phase:'verify'}]},earlier=structuredClone(reviewed),same=structuredClone(current);
+  earlier.cases[0].original.conclusion=structuredClone(witness);same.cases[0].original.conclusion=structuredClone(witness);
+  const semanticLookup=()=>earlier;assert.doesNotThrow(()=>previewTriage(same,proposal,semanticLookup));
+  for(const change of [s=>s.failedStep.id='redo',s=>s.failedStep.phase='execute',s=>s.assertions[0].actual.seconds=7,s=>s.assertions[0].expected.seconds=5,s=>s.notRun[0].id='reopen']){const changed=structuredClone(same);change(changed.cases[0].original.conclusion);assert.throws(()=>previewTriage(changed,proposal,semanticLookup),/decisive evidence.*changed/,'Equal headline text cannot hide different decisive evidence');}
+  const incidental=structuredClone(same);Object.assign(incidental.cases[0].original.conclusion.assertions[0],{artifact:'another/path.json',id:'capture-two',at:'today',sources:[{path:'different-state.json'}]});assert.doesNotThrow(()=>previewTriage(incidental,proposal,semanticLookup),'Incidental capture metadata is not a symptom');
+  for(const change of [r=>r.baseline.identities.packageHash='b'.repeat(64),r=>r.cases[0].original.definitionHash='c'.repeat(64),r=>r.cases[0].original.observation='Same contract, different symptom',r=>r.cases[0].original.status='Blocked',r=>r.cases[0].original.expected='Different invariant']){const altered=structuredClone(current);change(altered);assert.throws(()=>previewTriage(altered,proposal,lookup),/changed/);}
+  assert.throws(()=>previewTriage(current,{...proposal,updates:[{...proposal.updates[0],classification:'Harness'}]},lookup),/changed/);
+  assert.throws(()=>previewTriage(current,inputFor(current,{...followUpReview,kind:'known',reference:{...reference,revision:1}}),lookup),/changed or is absent/);
+  assert.throws(()=>previewTriage(current,inputFor(current,{...followUpReview,kind:'known',reference:{...reference,investigationId:current.id}}),lookup),/another investigation/);
+  assert.throws(()=>previewTriage(current,inputFor(current,{...followUpReview,owner:''}),lookup),/owner/);
+  const missingProof=structuredClone(current);delete missingProof.baseline.reportHash;assert.throws(()=>previewTriage(missingProof,inputFor(missingProof,followUpReview),lookup),/retained report identity/);
+  assert.throws(()=>previewTriage(current,inputFor(current,{...followUpReview,reviewBy:'2050-02-30'}),lookup),/review-by/);
+  const independent=triageInvestigation(db,current.id,inputFor(current,{...followUpReview,issue:'local/different-cause'}));assert.equal(findingFollowUp(independent,independent.cases[0]).state,'new','A shared check definition can retain a separately reviewed cause');
  }finally{db.close();await rm(data,{recursive:true,force:true});}
 });

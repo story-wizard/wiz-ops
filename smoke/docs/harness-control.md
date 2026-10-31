@@ -165,3 +165,20 @@ for the bounded request contract and uncertainty handling.
 The component qualification uses real QtQuick controls on Qt's offscreen
 backend. Selected-package qualification remains a separate step. Generic macOS
 AX traversal is not used by these operations.
+
+## Reading values while a model updates
+
+The shared media-role reader in `desktop/model-read.mjs` reads a unique row and
+all requested roles against one model identity, revision and root. The media
+thumbnail and colour-column checks use it to keep the asset identity and inspected
+value together. A background update can invalidate that cursor. For the native
+adapter's explicit “Model changed between pages; restart inspection” rejection,
+the helper discards all partial role values and traverses the model again once.
+The second rejection, an Unknown response, another error, ambiguous rows or an
+ambiguous header stops the read. The native journal keeps the original response;
+the successful read also records the restart in the check's observation artifact.
+
+This recovery issues only `model-page` and `model-value` reads. It does not retry
+physical input, reveal rows, extend session timeouts, weaken the asset/sidecar or
+pixel assertions, or replace screenshots. Reacquire geometry separately before
+input. A model that remains unstable is still a blocker requiring investigation.

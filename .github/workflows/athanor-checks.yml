@@ -8,7 +8,7 @@ permissions:
   contents: read
 jobs:
   framework:
-    runs-on: macos-14
+    runs-on: macos-15
     defaults:
       run:
         working-directory: smoke

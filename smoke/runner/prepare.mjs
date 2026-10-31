@@ -21,6 +21,7 @@ import {selectedBuildRuntime,verifyRuntime,assertSelectedRuntime} from './runtim
 import {selectedRecipe,validateRecipe,requirementsFor} from './catalog.mjs';
 
 import {assertMappedPackagedSchema} from './schema-compatibility.mjs';
+import {admitChecks} from './capabilities.mjs';
 import {readCliSchema} from './cli-schema.mjs';
 import {imageRetention} from './evidence-retention.mjs';
 export {assertMappedPackagedSchema};
@@ -40,13 +41,14 @@ export async function checkPrepared(dataDir=dataDirectory(),frozenPlan){
   validateRecipe(course);
   if(digest(course)!==plan.courseHash)throw new Error('Course changed since preparation.');
   const fixtures=await validateFixtures(plan.fixtureRoot);if(fixtures.sha256!==plan.fixtureHash)throw new Error('Fixtures changed since preparation.');
-  if(requirementsFor(course.cases.map(c=>c.id),course.checkpoint).speechModel&&(!plan.speechModel||(await speechModelIdentity(plan.speechModel.directory)).sha256!==plan.speechModel.sha256))throw new Error('Cached speech model changed or is missing. Prepare again; downloads are disabled.');
+  if(requirementsFor(course.cases.filter(c=>!plan.admission||plan.admission.checks.find(s=>s.id===c.id)?.state==='Ready').map(c=>c.id),course.checkpoint).speechModel&&(!plan.speechModel||(await speechModelIdentity(plan.speechModel.directory)).sha256!==plan.speechModel.sha256))throw new Error('Cached speech model changed or is missing. Prepare again; downloads are disabled.');
   const pkg=await fingerprint(plan.app,{packageTree:true});if(pkg.sha256!==plan.packageHash)throw new Error('Wizard package changed since preparation. Prepare against the intended package again.');
   await access(ingestPython(plan.app),constants.X_OK);
   validateIngestProfile(plan.app);
   const schema=readCliSchema(path.join(plan.app,'Contents/MacOS/wiz-cli'));
   if(digest(schema)!==plan.schemaHash)throw new Error('Packaged operation schema changed.');
-  for(const c of course.cases)for(const op of c.operations)if(!schema.operations[op])throw new Error(`Missing packaged operation: ${op}`);
+  if(plan.admission){const current=admitChecks(course,schema,await readJSON(path.join(ROOT,'runner/contracts/installed-schema.json')),await readJSON(path.join(ROOT,'runner/contracts/packaged-schema-qualifications.json')));if(digest(current)!==digest(plan.admission))throw Error('Build capability admission changed; prepare again.');}
+  else for(const c of course.cases)for(const op of c.operations)if(!schema.operations[op])throw new Error(`Missing packaged operation: ${op}`);
   return {plan,course,fixtures,schema};
 }
 export async function prepare({app='/Applications/Wizard.app',dataDir=dataDirectory(),ffmpeg,ffprobe,selection,runtime,fixtureRoot:providedFixtures,speechDirectory,onProgress=async()=>{}}={}){
@@ -54,7 +56,10 @@ export async function prepare({app='/Applications/Wizard.app',dataDir=dataDirect
   await mkdir(dataDir,{recursive:true});await requireStorageCapacity(dataDir);app=await realpath(app);
   const course=selection?selectedRecipe(selection):await readJSON(path.join(ROOT,'runner/course.json'));
   validateRecipe(course);
-  const requirements=requirementsFor(course.cases.map(c=>c.id),course.checkpoint);
+  const schema=readCliSchema(path.join(app,'Contents/MacOS/wiz-cli'));
+  const captured=await readJSON(path.join(ROOT,'runner/contracts/installed-schema.json'));
+  const admission=admitChecks(course,schema,captured,await readJSON(path.join(ROOT,'runner/contracts/packaged-schema-qualifications.json')));
+  const requirements=requirementsFor(admission.checks.filter(c=>c.state==='Ready').map(c=>c.id),course.checkpoint);
   await onProgress('tools');
   if(runtime&&await realpath(runtime.app)!==app)throw Error('Desktop tests must use the selected build; a substitute instrumented app is not permitted.');
   const desktopRuntime=requirements.targets.some(t=>t!=='packaged')?await selectedBuildRuntime(app,dataDir):null;
@@ -68,12 +73,8 @@ export async function prepare({app='/Applications/Wizard.app',dataDir=dataDirect
   const pkg=await fingerprint(app,{packageTree:true});
   assertBuildIdentity(await localBuilds(dataDir,{verify:false}),app,pkg.sha256);
   const version=execFileSync('/usr/bin/plutil',['-extract','CFBundleShortVersionString','raw','-o','-',path.join(app,'Contents/Info.plist')],{timeout:10000,encoding:'utf8'}).trim();
-  const schema=readCliSchema(path.join(app,'Contents/MacOS/wiz-cli'));
-  for(const c of course.cases)for(const op of c.operations)if(!schema.operations[op])throw new Error(`Missing operation ${op} for ${c.id}`);
-  const captured=await readJSON(path.join(ROOT,'runner/contracts/installed-schema.json'));
-  let schemaCompatibility;
-  try{schemaCompatibility=assertMappedPackagedSchema(schema,captured,await readJSON(path.join(ROOT,'runner/contracts/packaged-schema-qualifications.json')));}
-  catch(error){if(error.schemaCompatibility){await mkdir(path.join(dataDir,'schema-reviews'),{recursive:true});await writeJSON(path.join(dataDir,'schema-reviews',digest(schema)+'.json'),error.schemaCompatibility);}throw error;}
+
+  if(admission.compatibility.mode==='review-required'){await mkdir(path.join(dataDir,'schema-reviews'),{recursive:true});await writeJSON(path.join(dataDir,'schema-reviews',digest(schema)+'.json'),{...admission.compatibility,schema,qualifiedOperations:admission.qualifiedOperations,unqualifiedOperations:admission.unqualifiedOperations,checks:admission.checks});}
   const speechModel=requirements.speechModel?await speechModelIdentity(speechDirectory):null;
   await onProgress('attach');let attachmentQualification=null;
   if(desktopRuntime){
@@ -83,7 +84,7 @@ export async function prepare({app='/Applications/Wizard.app',dataDir=dataDirect
   }
   await onProgress('ready');
   const content={imageRetention,kitVersion:2,runtime:desktopRuntime,attachmentQualification,...(selection?{recipe:course}:{}),speechModel,format:'wizard-smoke-prepared/v1',preparedAt:new Date().toISOString(),app,version,packageHash:pkg.sha256,packageFiles:pkg.files,schemaHash:digest(schema),fixtureRoot,fixtureHash:fixtures.sha256,courseHash:digest(course),runnerHash:await sourceIdentity(),runnerProvenance:await sourceProvenance(ROOT),courseId:course.id,cases:course.cases.map(c=>c.id),deferred:Object.keys(course.deferred),target:course.target,excludedPackagePaths:['Contents/MacOS/logs','**/__pycache__','**/*.pyc','**/.DS_Store']};
-  content.schemaCompatibility=schemaCompatibility;
+  content.schemaCompatibility=admission.compatibility;content.admission=admission;
   const plan={...content,planHash:digest(content)};
   if(selection){await mkdir(path.join(dataDir,'plans'),{recursive:true});await writeJSON(path.join(dataDir,'plans',plan.planHash+'.json'),plan);}
   else{await writeJSON(path.join(dataDir,'prepared.json'),plan);

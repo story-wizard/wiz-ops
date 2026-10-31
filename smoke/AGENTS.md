@@ -9,6 +9,8 @@ Developer clones use the harness locally with their agent; worker scheduling and
 
 Athanor is a tool for the agent's task. Within an authorized test, handle routine local setup: inspect prerequisites, choose an external workspace and storage limits, start the foreground service, prepare matching tools and fixtures, and repair harness setup in isolation. Qualify repairs and rerun affected checks while preserving original outcomes. Reuse existing authorization; ask only for missing decisions or effects beyond it, such as spending, privacy changes, shared services, persistent scheduling or external delivery. Preserve explicit machine holds and desktop ownership.
 
+A blocker starts recovery work; it does not end the task. Investigate the cause, repair the shared harness problem in isolation, qualify the exact repair, and rerun affected checks after known cleanup. Continue independent checks while recovering. Ask to apply a tested fix to the installed harness only after its patch and results are ready; keep production unchanged until approved. Preserve every original outcome and App failure. Reconcile uncertain input before further action; never replay it. If access, ownership, credentials or another external prerequisite prevents progress, retain the exact required action and continue work that does not depend on it. Success means executing the intended checks with valid assertions, not removing blockers by weakening them.
+
 The October 3 local slice adds fourteen further UI/playback candidates, scoped model observations, native gestures and timed evidence recording. Read [harness control](docs/harness-control.md) for how these layers work and the retained qualification state. Candidate availability is not lead acceptance.
 
 ## Choose your task
@@ -31,6 +33,7 @@ Work from the command root: `smoke/` in a checkout or `workspace/` in a bundle. 
 | Check the App caller of a Core persistence change | [Caller preflight](docs/caller-preflight.md) |
 | Qualify packaged macOS playback, native focus or Agent Workspace regressions | [macOS regression course](docs/macos-regression.md) |
 | Compare or improve agent control tooling | [Control harness baseline](docs/control-comparison.md) |
+| Review finding ownership and prior occurrences | [Reviewed finding follow-up](docs/investigations.md#reviewed-finding-follow-up); use triage task comparison hints and review the proposal before applying |
 | Investigate failed checks and prepare bug drafts | [Investigations](docs/investigations.md) |
 | Inventory a supplied .wiz project and plan representative-media checks | [Golden Project intake](docs/golden-project-intake.md) |
 | Repair build compatibility or edit a test | [Build repair](docs/build-repair.md), then [test authoring](docs/test-evidence.md) |

@@ -14,9 +14,10 @@ import {targetFor} from './catalog.mjs';
 import {testSpecification} from '../test-details.mjs';
 import {connect,execution,updateExecution,record} from './store.mjs';
 
-export async function executeCourse({course,engine,fixtures,onResult,isCancelled=()=>false}){
+export async function executeCourse({course,engine,fixtures,onResult,isCancelled=()=>false,admission=engine.plan?.admission}){
   let stopReason=null;const outcomes=[];const overallDeadline=Date.now()+course.timeoutSeconds*1000;
   for(const item of course.cases){
+    const support=admission?.checks.find(c=>c.id===item.id);if(support&&support.state!=='Ready'){outcomes.push({id:item.id,status:support.state,note:support.reason});await onResult(item,support.state,support.reason);continue;}
     if(stopReason||isCancelled()||Date.now()>=overallDeadline){const note=stopReason||(isCancelled()?'Run stopped by operator.':'Course deadline exceeded.');outcomes.push({id:item.id,status:'Blocked',note});await onResult(item,'Blocked',note);continue;}
     const binding=()=>({pid:engine.child?.pid,processStart:engine.processStart,generation:engine.generation,packageHash:engine.plan?.packageHash});
     const measurement=await beginPerformance(engine.root,item.id,binding());
@@ -46,17 +47,20 @@ async function run(dataDir,runId){
     const sourceHash=await snapshotSource(path.join(root,'source'));
     await writeJSON(path.join(root,'execution-context.json'),{startedAt:new Date().toISOString(),platform:process.platform,architecture:process.arch,node:process.version,osRelease:os.release(),operator:db.prepare('SELECT operator FROM runs WHERE id=?').get(runId).operator,sourceHash,testSpecificationsHash:digest(specifications),evidenceMode:course.target,performancePolicy,diagnostics:course.selection?.diagnostics||'standard',runtime:plan.runtime||null,runnerHash:plan.runnerHash});
     await cp(plan.fixtureRoot,path.join(root,'media'),{recursive:true,errorOnExist:true,force:false});
-    engine=new PackagedEngine(plan,root,runId,schema);await engine.start();
+    for(const support of plan.admission?.checks||[])if(support.state!=='Ready')record(db,runId,support.id,support.state,support.reason,'');
+    const eligible=new Set(plan.admission?.checks.filter(c=>c.state==='Ready').map(c=>c.id)||course.cases.map(c=>c.id));
+    engine=new PackagedEngine(plan,root,runId,schema);if(eligible.size)await engine.start();
     updateExecution(db,runId,'Running','Running the local packaged-engine course.',process.pid);
     const onResult=async(item,status,note)=>{record(db,runId,item.id,status,note,path.join(root,'operations.jsonl'));await writeJSON(path.join(root,'progress.json'),{runId,target:course.target,updatedAt:new Date().toISOString(),results:db.prepare('SELECT test_id,status,note FROM results WHERE run_id=?').all(runId)});};
     results=await executeCourse({course:{...course,cases:course.cases.filter(c=>targetFor(c.id)==='packaged')},engine,fixtures,isCancelled:()=>cancelled,onResult});
     await engine.stop();
     if(results.some(r=>r.status==='Unknown'))throw new OutcomeError('Uncertain packaged outcome; later stages were not started.','Unknown');
-    if(results.some(r=>r.id==='A-CLI-01'&&r.status!=='Pass'))throw new OutcomeError('Connection prerequisite did not pass.','Blocked');
+    if(eligible.size&&results.some(r=>r.id==='A-CLI-01'&&r.status!=='Pass'))throw new OutcomeError('Connection prerequisite did not pass.','Blocked');
     const {executeStages}=await import(pathToFileURL(path.join(root,'source/runner/stages.mjs')).href);
-    if(course.cases.some(c=>targetFor(c.id)!=='packaged'))results.push(...await executeStages({plan,course,root,dataDir,onResult,isCancelled:()=>cancelled,signal:controller.signal,onStage:(target,count)=>updateExecution(db,runId,'Running',`Running ${target} stage: ${count} selected checks.`,process.pid)}));
+    for(const c of course.cases.filter(c=>targetFor(c.id)!=='packaged'&&!eligible.has(c.id))){const support=plan.admission.checks.find(s=>s.id===c.id);results.push({id:c.id,status:support.state,note:support.reason});await onResult(c,support.state,support.reason);}
+    if(course.cases.some(c=>targetFor(c.id)!=='packaged'&&eligible.has(c.id)))results.push(...await executeStages({plan,course:{...course,cases:course.cases.filter(c=>eligible.has(c.id))},root,dataDir,onResult,isCancelled:()=>cancelled,signal:controller.signal,onStage:(target,count)=>updateExecution(db,runId,'Running',`Running ${target} stage: ${count} selected checks.`,process.pid)}));
     if(course.checkpoint&&!cancelled){await prepareCheckpoint(db,runId,dataDir);return;}
-    const state=results.some(r=>r.status==='Unknown')?'Unknown':results.some(r=>r.status==='Fail')?'Failed':results.some(r=>r.status==='Blocked')?'Blocked':'Passed';
+    const state=!eligible.size?'Blocked':results.some(r=>r.status==='Unknown')?'Unknown':results.some(r=>r.status==='Fail')?'Failed':results.some(r=>r.status==='Blocked')?'Blocked':'Passed';
     const note=`${results.filter(r=>r.status==='Pass').length}/${course.cases.length} selected checks passed. ${Object.keys(course.deferred).length} candidates remain outside this course. Scope: ${course.target}.`;
     await writeJSON(path.join(root,'report.json'),{runId,state,scope:course.scope,planHash:plan.planHash,packageHash:plan.packageHash,fixtureHash:plan.fixtureHash,courseRevision:course.revision,results,deferred:course.deferred,completedAt:new Date().toISOString()});
     updateExecution(db,runId,state,note);console.log(JSON.stringify({runId,state,note}));if(state!=='Passed')process.exitCode=1;

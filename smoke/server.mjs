@@ -1,5 +1,5 @@
 import {storageStatus,maintainStorage,requireStorageCapacity} from './runner/worker-storage.mjs';
-import {initializeInvestigations,investigation,investigationList,createInvestigation,triageInvestigation,linkReproduction,reproSelection,bugDraft,reviewDraft,exportInvestigation,agentInvestigationPrompt,readInvestigationFile,reporterHandoff,previewTriage,editBugDraft,investigationTask,investigationEvidence,caseNextAction,recordRepro,updateRepro,reconcileRepros,closeRepro,readInvestigationArtifact,verifyReviewEvidence,recordFixReference} from './investigations.mjs';
+import {initializeInvestigations,investigationRelatedFindings,investigation,investigationList,createInvestigation,triageInvestigation,linkReproduction,reproSelection,bugDraft,reviewDraft,exportInvestigation,agentInvestigationPrompt,readInvestigationFile,reporterHandoff,previewTriage,editBugDraft,investigationTask,investigationEvidence,caseNextAction,recordRepro,updateRepro,reconcileRepros,closeRepro,readInvestigationArtifact,verifyReviewEvidence,recordFixReference} from './investigations.mjs';
 import {buildCatalogPage} from './build-catalog.mjs';
 import {findBuilds,localBuilds,importBuild,buildStage,receiveArchive} from './builds.mjs';
 import {rm,realpath} from 'node:fs/promises';
@@ -12,6 +12,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, writeFileSync, mkdirSync, openSync, closeSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import {findingFollowUp} from './finding-followup.mjs';
 import {randomUUID,createHash} from 'node:crypto';
 import {spawn,execFileSync} from 'node:child_process';
 import {initializeAutomation,course,execution,createExecution,updateExecution,record,recoverInterrupted,runnerAlive} from './runner/store.mjs';
@@ -190,7 +191,7 @@ const reconciling=new Map();
 async function investigationView(id){
  recoverInterrupted(db);let pending=reconciling.get(id);if(!pending){pending=reconcileRepros(db,id,dataDir,reproServices);reconciling.set(id,pending);}
  let value;try{value=await pending;}finally{if(reconciling.get(id)===pending)reconciling.delete(id);}let selection=null;try{selection=reproSelection(value);}catch{}
- return {...value,prompt:agentInvestigationPrompt(value),selection,drafts:value.cases.filter(c=>c.classification==='App'&&!c.duplicateOf).map(c=>bugDraft(value,c)),nextActions:Object.fromEntries(value.cases.map(c=>[c.id,caseNextAction(value,c)]))};
+ return {...value,followUps:Object.fromEntries(value.cases.map(c=>[c.id,findingFollowUp(value,c)])),prompt:agentInvestigationPrompt(value),selection,drafts:value.cases.filter(c=>c.classification==='App'&&!c.duplicateOf).map(c=>bugDraft(value,c)),nextActions:Object.fromEntries(value.cases.map(c=>[c.id,caseNextAction(value,c)]))};
 }
 
 const server=http.createServer(async(req,res)=>{
@@ -340,8 +341,8 @@ const server=http.createServer(async(req,res)=>{
           if(req.method==='POST'&&parts[3]==='close-repro')return send(200,closeRepro(db,id,body));
           if(req.method==='GET'&&parts[3]==='evidence')return send(200,await investigationEvidence(investigation(db,id),url.searchParams.get('case'),dataDir));
           if(req.method==='GET'&&parts[3]==='artifact'){const file=url.searchParams.get('file'),bytes=await readInvestigationArtifact(investigation(db,id),url.searchParams.get('case'),url.searchParams.get('run'),file,dataDir),ext=path.extname(file).slice(1);res.writeHead(200,{'Content-Type':({png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',mp4:'video/mp4',mov:'video/quicktime',webm:'video/webm',wav:'audio/wav',mp3:'audio/mpeg',m4a:'audio/mp4',json:'application/json'})[ext]||'text/plain; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; sandbox"});return res.end(bytes);}
-          if(req.method==='GET'&&parts[3]==='task')return send(200,investigationTask(investigation(db,id),{task:url.searchParams.get('task')||'triage',caseId:url.searchParams.get('case')||undefined}));
-          if(req.method==='POST'&&parts[3]==='proposal')return send(200,{revision:investigation(db,id).revision,...previewTriage(investigation(db,id),body),proposal:body});
+          if(req.method==='GET'&&parts[3]==='task')return send(200,investigationTask(investigation(db,id),{task:url.searchParams.get('task')||'triage',caseId:url.searchParams.get('case')||undefined,related:investigationRelatedFindings(db,investigation(db,id),url.searchParams.get('case')||undefined)}));
+          if(req.method==='POST'&&parts[3]==='proposal')return send(200,{revision:investigation(db,id).revision,...previewTriage(investigation(db,id),body,ref=>investigation(db,ref)),proposal:body});
           if(req.method==='POST'&&parts[3]==='draft')return send(200,editBugDraft(db,id,body));
           if(req.method==='POST'&&parts[3]==='prepare'){
             const intent=recordRepro(db,id,body);if(intent.reused)return send(200,await investigationView(id));

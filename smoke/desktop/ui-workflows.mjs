@@ -1,4 +1,5 @@
 import path from 'node:path';
+import {modelEntry as observedModelEntry,readModelValues} from './model-read.mjs';
 import {mkdir,copyFile} from 'node:fs/promises';
 import {checks,gapFixture,usableGeometry} from './check-support.mjs';
 import {observedWidget} from './checklist-proof.mjs';
@@ -10,6 +11,19 @@ export function mediaSearchAction(ui,source){
  const choices=ui.actions.filter(a=>a.enabled&&a.checkable&&a.mediaSearchSource===source);
  if(choices.length!==1)throw new OutcomeError('Media search source is absent or ambiguous: '+source,'Blocked');
  return choices[0];
+}
+
+// Bind the app's draggable dock tab, not the empty title-bar area or macOS
+// title chrome (which can invoke WindowManager tiling while Option is held).
+export function dockDragPoint(ui,windowId){
+ const window=observedWidget(ui,w=>w.id===windowId&&w.class==='ads::CFloatingDockContainer','Floating dock window');
+ const tab=observedWidget(ui,w=>w.window===window.id&&w.name==='dockWidgetTabLabel'&&w.text===window.title,'Floating dock tab');
+ return {target:tab.id,x:(tab.width-1)/2,y:(tab.height-1)/2};
+}
+export function dockDropPoint(ui,windowId,panelTitle){
+ const panel=observedWidget(ui,w=>w.window===windowId&&w.class==='WizPanelDock'&&w.title===panelTitle,'Destination dock panel');
+ const area=observedWidget(ui,w=>w.id===panel.parent&&w.window===windowId&&w.class==='ads::CDockAreaWidget','Destination dock area');
+ return {toTarget:windowId,toX:area.x+area.width/2,toY:area.y+area.height/2};
 }
 
 // Shared authored setup, physical actions and retained observations. Assertions
@@ -30,14 +44,8 @@ export async function uiWorkflows(file,reportName){
  async function type(w,text){await click(w);await physical('key',{target:w.id,key:'cmd+a'});await physical('type',{target:w.id,text});return physical('key',{target:w.id,key:'Return'});}
  const unique=(u,fn,label)=>observedWidget(u,fn,label);
  const surface=(u,fn,label)=>{const matches=u.widgets.filter(fn);if(matches.length!==1)throw new OutcomeError(label+' is absent or ambiguous','Blocked');return matches[0];};
- async function modelEntry(view,match){
-  let cursor,offset=0,matches=[];
-  do{const page=await n('model-page',{target:view.id,offset,limit:64,...(cursor?{cursor}:{})});cursor=page.cursor;
-   page.model.forEach((r,i)=>{if(typeof match==='function'?match(r):r[0]===match)matches.push({view,page,row:offset+i,values:r});});if(!page.hasMore)break;offset=page.nextOffset;
-   if(offset>4096)throw new OutcomeError('Media observation exceeds the bounded fixture size','Blocked');
-  }while(true);
-  if(matches.length!==1)throw new OutcomeError('Model row is absent or ambiguous: '+String(match),'Blocked');return matches[0];
- }
+ const modelEntry=(view,match)=>observedModelEntry(n,view,match);
+ const modelValues=(view,match,requests)=>readModelValues(n,view,match,requests);
  async function modelRow(name){return modelEntry(surface(await ui(),w=>w.class==='QTreeView'&&Array.isArray(w.model),'Media list'),name);}
  async function value(row,column,role){return n('model-value',{target:row.view.id,offset:row.row,column,role,cursor:row.page.cursor});}
  async function search(text,source='Name'){
@@ -63,5 +71,5 @@ export async function uiWorkflows(file,reportName){
   }
   await n('resize-window',{target:window.id,width,height});await until(async()=>{const latest=await ui(),w=latest.widgets.find(w=>w.id===window.id);return w?.width===width&&w?.height===height?usableGeometry(latest,w):null;},{description:title+' has usable space',stableForMs:250});return surface(await ui(),w=>w.class===klass||w.class.endsWith('::'+klass),title+' floating panel');
  }
- return {...h,check,stage,physical,observe,capture,fixture,selectClip,click,type,unique,surface,modelEntry,modelRow,value,search,clearSearch,activatePanel,floatPanel,retained};
+ return {...h,check,stage,physical,observe,capture,fixture,selectClip,click,type,unique,surface,modelEntry,modelValues,modelRow,value,search,clearSearch,activatePanel,floatPanel,retained};
 }
