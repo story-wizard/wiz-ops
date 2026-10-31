@@ -20,6 +20,8 @@ if(process.argv[3]==='verify'){
       // Author a new local node after admission so the observation has a cause.
       const old=(await c('spellbook.list',{limit:100})).items,button=(await ui()).widgets.find(w=>w.tooltip?.startsWith('New Spell'));assert(button,'New Spell button unavailable for logging fixture');await n('click',{target:button.id});
       const doc=await until(async()=>{const a=(await c('spellbook.list',{limit:100})).items;return a.find(x=>!old.some(y=>y.document_id===x.document_id));}),before=await inspect(doc.document_id);
+      // Console visibility belongs to each Spell tab; the new fixture has its own toggle.
+      const freshConsole=(await ui()).widgets.find(w=>w.text==='Console');assert(freshConsole,'New Spell console toggle missing');if(!freshConsole.checked)await n('click',{target:freshConsole.id});
       await c('spellbook.edit_batch',{document_id:doc.document_id,expected_document_fingerprint:before.document_fingerprint,actions:[{op:'add_node',type:'gaussian_blur',alias:'log-probe'}]});
       const console=await until(async()=>(await ui()).widgets.find(w=>w.class==='QPlainTextEdit'&&w.text?.includes('[debug]')&&w.text.includes('gaussian_blur')));await writeJSON(path.join(s.root,'spellbook-debug-console.json'),console);return {console:console.id,debugLines:console.text.split('\n').filter(l=>l.startsWith('[debug]')).length,observed:'Native graph reconstruction messages in the visible console; no provider run'};
     }finally{await verbose(previous);}
