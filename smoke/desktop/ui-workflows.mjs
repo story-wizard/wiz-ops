@@ -13,12 +13,12 @@ export function mediaSearchAction(ui,source){
  return choices[0];
 }
 
-// Panel docking belongs to Qt's title bar. Dragging macOS title chrome can
-// invoke WindowManager tiling instead, especially while Option is held.
+// Bind the app's draggable dock tab, not the empty title-bar area or macOS
+// title chrome (which can invoke WindowManager tiling while Option is held).
 export function dockDragPoint(ui,windowId){
  const window=observedWidget(ui,w=>w.id===windowId&&w.class==='ads::CFloatingDockContainer','Floating dock window');
- const bar=observedWidget(ui,w=>w.window===window.id&&w.class==='ads::CDockAreaTitleBar','Floating dock title bar');
- return {target:bar.id,x:Math.min(200,(bar.width-1)/2),y:(bar.height-1)/2};
+ const tab=observedWidget(ui,w=>w.window===window.id&&w.name==='dockWidgetTabLabel'&&w.text===window.title,'Floating dock tab');
+ return {target:tab.id,x:(tab.width-1)/2,y:(tab.height-1)/2};
 }
 
 // Shared authored setup, physical actions and retained observations. Assertions
