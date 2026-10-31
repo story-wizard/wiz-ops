@@ -87,7 +87,7 @@ QString id(QObject*){return "fixture";}
 QJsonObject observe(QWidget* w){QJsonObject item;${original.slice(textStart,textEnd)}${original.slice(itemsStart,itemsEnd)}return item;}
 int main(int argc,char** argv){
  QApplication app(argc,argv);QGraphicsScene scene;QGraphicsView view(&scene);
- auto* hidden=scene.addRect(0,0,10,10);hidden->setFlag(QGraphicsItem::ItemIsSelectable);hidden->setVisible(false);
+ auto* hidden=scene.addRect(0,0,10,10);hidden->setFlag(QGraphicsItem::ItemIsSelectable);hidden->setVisible(false);scene.addText("hidden label")->setVisible(false);
  for(int i=0;i<128;i++){auto* item=scene.addRect(0,0,10,10);item->setFlag(QGraphicsItem::ItemIsSelectable);}
  for(int i=0;i<256;i++)scene.addText("label");
  auto full=observe(&view);std::cout<<QJsonDocument(full).toJson(QJsonDocument::Compact).toStdString()<<"\\n";
