@@ -1,25 +1,25 @@
 import {isDeepStrictEqual as same} from 'node:util';
 import {clips,snapshotState} from '../runner/engine.mjs';
 import {requireProof} from './agent-proof.mjs';
+import {graphNodeGeometry,graphNodeOutputGeometry} from './graph-geometry.mjs';
 const content=g=>({nodes:g.nodes,edges:g.edges});
 // Edge incidence is derived from the separately asserted exact edge set.
 const nodeState=n=>{const {incoming,outgoing,...state}=n;return state;};
-const blur=view=>view?.sceneItems?.filter(n=>n.labels?.some(l=>/radius/i.test(l)))||[];
+function geometry(read){try{return read();}catch(e){requireProof(false,'wrong_fixture',e.message,['observe','prepare_fixture']);}}
+const blur=(view,graph)=>graph.nodes.filter(n=>n.type==='gaussian_blur').map(n=>geometry(()=>graphNodeGeometry(view,graph,n.node_id)));
 export function editorCheckpoint(proof,assertion,observed,ui,session){
  const id=proof.definition.id,graph=id.startsWith('P-RG-'),view=ui.widgets.find(w=>w.id===(session.proofTarget||proof.binding?.target));
  requireProof(view,'test_surface_missing','Observe and bind the intended editor surface',['find']);
  if(assertion==='baseline'){
   if(graph){
    requireProof(view.class==='RenderGraphView'&&Array.isArray(observed.nodes)&&Array.isArray(observed.edges),'wrong_fixture','Read the clip graph and bind its Render Graph view',['prepare_fixture']);
-   const nodes=blur(view),node=observed.nodes.filter(n=>n.type==='gaussian_blur'),source=observed.nodes.filter(n=>n.type==='transform_2d');
+   const nodes=blur(view,observed),node=observed.nodes.filter(n=>n.type==='gaussian_blur'),source=observed.nodes.filter(n=>n.type==='transform_2d');
    requireProof(nodes.length===1&&node.length===1&&source.length===1,'wrong_fixture','Use one blur and one transform in the prepared clip graph',['prepare_fixture']);
    const owner='clip:'+observed.timeline_id+':'+observed.clip_id;
    requireProof((view.graphId===owner||view.graphId===observed.graph_id)&&view.timelineId===observed.timeline_id&&nodes[0].nodeId===node[0].node_id&&observed.clip_id===session.proofRead?.clip_id&&observed.timeline_id===session.proofRead?.timeline_id&&node[0].owners?.includes(owner),'wrong_fixture','Bind the displayed graph and node identities to this exact clip',['observe','prepare_fixture']);
    const binding={target:view.id,window:view.window,viewport:view.viewport,uiGraphId:view.graphId,readParams:session.proofRead,nodeId:node[0].node_id,node:nodes[0],points:{}};
    if(id==='P-RG-WIRE'){
-    const sources=view.sceneItems.filter(n=>n.labels?.some(l=>/scale/i.test(l))&&n.ports.some(p=>p.side==='output'));
-    requireProof(sources.length===1&&sources[0].nodeId===source[0].node_id,'wrong_fixture','Observe the exact transform output',['find']);
-    const outputs=sources[0].ports.filter(p=>p.side==='output'),inputs=nodes[0].ports.filter(p=>p.side==='input').sort((a,b)=>a.y-b.y);
+    const outputs=[geometry(()=>graphNodeOutputGeometry(view,observed,source[0].node_id))],inputs=nodes[0].ports.filter(p=>p.side==='input').sort((a,b)=>a.y-b.y);
     requireProof(outputs.length===1&&inputs.length&& !observed.edges.some(e=>e.to_node===node[0].node_id&&e.to_slot==='input'),'wrong_fixture','Use the disconnected blur input fixture',['prepare_fixture']);
     const outputEdge=observed.edges.find(e=>e.from_node===node[0].node_id);requireProof(outputEdge?.type,'wrong_fixture','Keep the blur output connected in the fixture',['prepare_fixture']);
     binding.edge={from_node:source[0].node_id,from_slot:'output',to_node:node[0].node_id,to_slot:'input',type:outputEdge.type};
@@ -48,7 +48,7 @@ export function editorCheckpoint(proof,assertion,observed,ui,session){
   const c=motion[0],matched=motion.length===1&&items.length===(id==='P-TL-BIN-OVERWRITE'?2:1)&&c.track_id===base.tracks.find(t=>t.address==='V1').track_id&&c.timeline_range.start_seconds===0&&c.timeline_range.end_seconds===8&&c.source.source_range.start_seconds===0&&c.source.source_range.end_seconds===8&&(!later||same(items.find(c=>c.clip_id===later.clip_id),later))&&same(observed.tracks.map(t=>t.track_id),base.tracks.map(t=>t.track_id));
   return {matched,observed};
  }
- const nodes=blur(view),node=nodes.find(n=>n.sceneX!==b.node.sceneX||n.sceneY!==b.node.sceneY);
+ const nodes=blur(view,observed),node=nodes.find(n=>n.sceneX!==b.node.sceneX||n.sceneY!==b.node.sceneY);
  if(id==='P-RG-MOVE'){
   const moved=proof.checkpoints.moved?.observedUI;
   return {matched:same(content(observed),content(base))&&nodes.length===1&&(assertion==='moved'?!!node:!!moved&&nodes[0].sceneX===moved.sceneX&&nodes[0].sceneY===moved.sceneY&&(nodes[0].x!==moved.x||nodes[0].y!==moved.y)),observed,observedUI:nodes[0]};

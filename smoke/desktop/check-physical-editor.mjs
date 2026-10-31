@@ -1,5 +1,5 @@
 import {blurParameters} from '../runner/graph-parameters.mjs';
-import {graphNodeGeometry,graphOutputGeometry} from './graph-geometry.mjs';
+import {graphNodeGeometry,graphGroupGeometry,graphNodeOutputGeometry} from './graph-geometry.mjs';
 import {testSpecification,evidenceCaption} from '../test-details.mjs';
 import path from 'node:path';
 import {copyFile} from 'node:fs/promises';
@@ -87,9 +87,11 @@ await check('P-RG-MOVE',async()=>{
 });
 await check('P-RG-WIRE',async()=>{
  const id='P-RG-WIRE',{f,edge,before,v,outputs,inputs,baseline}=await staged(id,'setup',async()=>{
-  const f=await blurFixture('Physical Render Graph wire'),connected=await graph(f),blur=connected.nodes.find(n=>n.type==='gaussian_blur'),edge=connected.edges.find(e=>e.to_node===blur.node_id&&e.to_slot==='input');assert(edge,'Blur input edge absent');
+  const f=await blurFixture('Physical Render Graph wire');let connected=await graph(f);const blur=connected.nodes.find(n=>n.type==='gaussian_blur'),edge=connected.edges.find(e=>e.to_node===blur.node_id&&e.to_slot==='input');assert(edge,'Blur input edge absent');
+  const groups=(connected.presentation?.groups||[]).filter(g=>g.collapsed&&!g.hidden&&g.members.includes('node:'+edge.from_node));assert(groups.length<=1,'Source group is ambiguous');
+  if(groups.length){const v=await graphView(),group=graphGroupGeometry(v,connected,groups[0].id);await n('context-click',{target:v.viewport,x:group.x+group.width*.5,y:group.y+8});await action('Expand group');await until(async()=>!(await graph(f)).presentation.groups.find(g=>g.id===groups[0].id)?.collapsed);await fitGraph();connected=await graph(f);}
   await c('graph.disconnect_edge',{...f.scope,...edge,type:edge.type,expect_structural_revision:connected.structural_revision,expect_content_revision:connected.content_revision});await fitGraph();const before=await graph(f),{v,node}=await blurItem(f);
-  const outputs=[graphOutputGeometry(v,connected,edge)],inputs=node.ports.filter(p=>p.side==='input').sort((a,b)=>a.y-b.y);assert(inputs.length>=1,'Port geometry absent');Object.assign(f,{proofGraph:true,proofView:v});await proofPoint(f,'baseline');return {f,edge,before,v,outputs,inputs,baseline:await screen(id+'-before')};
+  const outputs=[graphNodeOutputGeometry(v,before,edge.from_node)],inputs=node.ports.filter(p=>p.side==='input').sort((a,b)=>a.y-b.y);assert(inputs.length>=1,'Port geometry absent');Object.assign(f,{proofGraph:true,proofView:v});await proofPoint(f,'baseline');return {f,edge,before,v,outputs,inputs,baseline:await screen(id+'-before')};
  });
  const receipt=await staged(id,'wire',()=>physical('drag',{actionId:'wire',target:v.viewport,x:outputs[0].x,y:outputs[0].y,toX:inputs[0].x,toY:inputs[0].y}));
  const {restored,capture}=await staged(id,'verify',async()=>{await until(async()=>(await graph(f)).edges.some(e=>e.from_node===edge.from_node&&e.from_slot===edge.from_slot&&e.to_node===edge.to_node&&e.to_slot===edge.to_slot));const restored=await graph(f);await writeJSON(path.join(s.root,'evidence',id+'-graph-observations.txt'),{before,after:restored,edge});return {restored,capture:await screen(id+'-after')};});

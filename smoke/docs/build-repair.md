@@ -54,7 +54,7 @@ The selected package and instrumented desktop tools are separate inputs. A deskt
 
 ## Verify and deliver
 
-Bind Render Graph targets by the API node identity and the owned Qt graph identity, not rendered labels. A collapsed group may expose a hidden node's port; resolve that boundary from published group membership and the retained edge. Keep physical gestures and independent graph readback. Declare operations used by fixture setup as well as test actions so an unqualified dependency is found during preparation.
+Bind Render Graph targets by the API node identity and the owned Qt graph identity, not rendered labels. When a fixture needs a hidden member's disconnected port, bind the published group by identity, expand it through the observed App action, then observe the actual member port. A collapsed group only publishes ports for crossing edges. Keep physical gestures and independent graph readback. Declare operations used by fixture setup as well as test actions so an unqualified dependency is found during preparation.
 
 Run `npm test` and `npm run scope:check` from `smoke/`. For a regression, demonstrate failure with the old behavior and success with the repair where practical. Prepare the actual selected package again. Check the added prerequisites and frozen package, schema, fixture and source identities.
 
