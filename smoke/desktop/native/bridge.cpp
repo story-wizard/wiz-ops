@@ -95,7 +95,7 @@ class SmokeBridge : public QObject {
         output.write(QJsonDocument(value).toJson());output.commit();
     }
     static QJsonObject capabilities(){
-        return {{"protocol",1},{"version",13},{"operations",QJsonArray{"capabilities","inspect","add-floating-panel","workspace-inspect","workspace-composer-inspect","workspace-composer-type","workspace-composer-send","workspace-append","workspace-hover","workspace-scroll","workspace-pipeline-inspect","workspace-request-selection","workspace-model-fixture","workspace-header","workspace-image-width","model-page","model-value","model-reveal","bug-report-prefill","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
+        return {{"protocol",1},{"version",13},{"operations",QJsonArray{"capabilities","inspect","add-floating-panel","workspace-inspect","workspace-composer-inspect","workspace-composer-type","workspace-composer-send","workspace-append","workspace-hover","workspace-scroll","workspace-pipeline-inspect","workspace-request-selection","workspace-model-fixture","workspace-header","workspace-image-width","model-page","model-value","model-reveal","bug-report-prefill","timeline-track-header","timeline-clip-rect","timeline-point","quit","clipboard-save","clipboard-mark","clipboard-restore","screenshot","snapshot-widget","snapshot-presented","snapshot-node-preview","item-click","context-click","drop-model-item","drag","close-window","resize-window","activate","action","click","type-text","text","key","spellbook-run-local","select"}},
                 {"buttonClickGeometry",true},{"timelineGeometry",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11clipRectForERK7QString"))},
                 {"timelinePoint",bool(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget7timeToXEd")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi")&&dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11trackHeightEi"))},
                 {"limits",QJsonObject{{"modelRows",64},{"modelPageRows",64},{"timelineClipIds",1024},{"sceneItems",128},{"sceneText",256},{"requestBytes",1024*1024},{"typedCharacters",1024}}},
@@ -215,7 +215,7 @@ class SmokeBridge : public QObject {
                 if(index>=0){const auto key=id(w);if(!previewSpies.contains(key))previewSpies[key]=QSharedPointer<QSignalSpy>::create(w,w->metaObject()->method(index));if(previewSpies[key]->isValid())item["playClickedCount"]=previewSpies[key]->count();}
             }
             widgets.append(item);
-            for(auto* a:w->findChildren<QAction*>(QString{},scope?Qt::FindDirectChildrenOnly:Qt::FindChildrenRecursively))if(!seen.contains(a)){seen.insert(a);QJsonObject action{{"id",id(a)},{"text",a->text()},{"name",a->objectName()},{"enabled",a->isEnabled()},{"checked",a->isChecked()},{"checkable",a->isCheckable()},{"shortcut",a->shortcut().toString()}};if(a->property("mediaSearchBaseLabel").isValid())action["mediaSearchSource"]=a->property("mediaSearchBaseLabel").toString();actions.append(action);}
+            for(auto* a:w->findChildren<QAction*>(QString{},scope?Qt::FindDirectChildrenOnly:Qt::FindChildrenRecursively))if(!seen.contains(a)){seen.insert(a);QJsonObject action{{"id",id(a)},{"owner",id(a->parent())},{"text",a->text()},{"name",a->objectName()},{"enabled",a->isEnabled()},{"checked",a->isChecked()},{"checkable",a->isCheckable()},{"shortcut",a->shortcut().toString()}};if(a->property("mediaSearchBaseLabel").isValid())action["mediaSearchSource"]=a->property("mediaSearchBaseLabel").toString();actions.append(action);}
         }
         QString focus=qApp->focusWidget()?id(qApp->focusWidget()):QString();
         // Native file panels are AppKit surfaces. Read public view/window APIs;
@@ -312,6 +312,19 @@ class SmokeBridge : public QObject {
             throw QString("Native panel window is unavailable");
         }
         if(op=="bug-report-prefill")return prefillBugReport(widget,request);
+        if(op=="timeline-track-header"){
+            using Label=std::pair<QWidget*,int>(*)(const QWidget*,const QString&);using TrackValue=int(*)(const QWidget*,int);using TrackId=QString(*)(const QWidget*,int,bool);
+            auto label=reinterpret_cast<Label>(dlsym(RTLD_DEFAULT,"_ZNK13TimelinePanel14ozTrackLabelOfERK7QString"));
+            auto y=reinterpret_cast<TrackValue>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget14trackYForIndexEi"));
+            auto height=reinterpret_cast<TrackValue>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget11trackHeightEi"));
+            auto trackId=reinterpret_cast<TrackId>(dlsym(RTLD_DEFAULT,"_ZN13TimelinePanel15trackIdForIndexEPK14TimelineWidgetib"));
+            const auto track=request["trackId"].toString();
+            if(!widget||QString(widget->metaObject()->className())!="TimelinePanel"||!label||!y||!height||!trackId||track.isEmpty()||track.size()>256)throw QString("Observe a packaged Timeline panel and exact track identity");
+            const auto found=label(widget,track);if(!found.first||found.second<0||!found.first->isVisible())throw QString("Track label is unavailable");
+            QWidget* lane=nullptr;for(auto* child:widget->findChildren<QWidget*>())if(QString(child->metaObject()->className())=="TimelineWidget"&&trackId(child,found.second,false)==track){if(lane)throw QString("Ambiguous track lane");lane=child;}
+            if(!lane)throw QString("Track lane is unavailable");const int rowHeight=height(lane,found.second);const int top=lane->mapToGlobal(QPoint(0,y(lane,found.second))).y()-found.first->mapToGlobal(QPoint{}).y();
+            return {{"target",id(found.first)},{"trackId",track},{"width",found.first->width()},{"rowTop",top},{"rowHeight",rowHeight}};
+        }
         if(op=="timeline-point"){
             using TimeX=int(*)(const QWidget*,double);using TrackValue=int(*)(const QWidget*,int);
             auto timeX=reinterpret_cast<TimeX>(dlsym(RTLD_DEFAULT,"_ZNK14TimelineWidget7timeToXEd"));

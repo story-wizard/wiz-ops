@@ -59,9 +59,11 @@ await check('D-AGENT-TAIL',async()=>{
 await check('D-AGENT-SELECTORS',async()=>{
  const id='D-AGENT-SELECTORS',panel=await workspace(),results=[];
  for(const name of ['AgentWorkspaceModelSelector','AgentWorkspaceEffortSelector']){
+  if(name.includes('Effort')){const model=workspaceItem(await workspaceRead(panel),'AgentWorkspaceModelSelector');await stage('open-effort','Open the model popup that owns reasoning effort','execute',()=>physical('click',{target:panel.id,x:model.x+model.width/2,y:model.y+model.height/2}));await until(async()=>workspaceItem(await workspaceRead(panel),'AgentWorkspaceModelSelector').popup?.visible);}
   await stage(name,'Hover '+(name.includes('Model')?'model':'effort')+' selector through Qt input','execute',()=>n('workspace-hover',{target:panel.id,name}));
   await until(async()=>workspaceItem(await workspaceRead(panel),name).hovered,{description:'Selector hover observed'});await pause(500);const r=await workspaceRead(panel);await observe(id,name,r);results.push(selectorProof(r,name));
  }
+ await physical('key',{target:panel.id,key:'Escape'});
  await capture(id,'selectors',panel.window);return {selectors:results,inputMode:'Qt-injected hover, matching the source regression; no AX inspection or provider execution'};
 });
 await check('D-AGENT-HEADER',async()=>{
@@ -69,8 +71,10 @@ await check('D-AGENT-HEADER',async()=>{
  await stage('active-fixture','Set local model/effort options and a fake active event','prepare',()=>n('workspace-header',{target:panel.id,phase:'begin'}));
  try{
   await n('resize-window',{target:panel.window,width:280,height:800});await pause(300);const narrow=await workspaceRead(panel);await observe(id,'narrow',narrow);await capture(id,'narrow',panel.window);
+  const model=workspaceItem(narrow,'AgentWorkspaceModelSelector');await stage('open-effort','Open the narrow header model popup','execute',()=>physical('click',{target:panel.id,x:model.x+model.width/2,y:model.y+model.height/2}));
+  const popup=await until(async()=>{const r=await workspaceRead(panel);return r.items.some(w=>w.name==='AgentWorkspaceEffortSelector'&&w.visible)?r:null;});await observe(id,'effort-popup',popup);await capture(id,'effort-popup',panel.window);await physical('key',{target:panel.id,key:'Escape'});
   await stage('idle-controls','Hide Cancel before checking the wide events control','execute',()=>n('workspace-header',{target:panel.id,phase:'hide-cancel'}));
-  await n('resize-window',{target:panel.window,width:600,height:800});await pause(300);const wide=await workspaceRead(panel);await observe(id,'wide',wide);let proof;await verification({id:'header-layout',title:'Verify narrow and wide header controls',phase:'verify'},{expected:{minimumTitleWidth:62,model:'Luna',effort:'Low',narrowCancelVisible:true,wideEventsVisible:true},actual:{narrow:narrow.items.filter(w=>/Title|Selector|Cancel|EventMenu/.test(w.name)),wide:wide.items.filter(w=>/Title|Selector|Cancel|EventMenu/.test(w.name))}},()=>{proof=headerProof(narrow,wide);});await capture(id,'wide',panel.window);return {...proof,fixture:'Synthetic running event; no real agent execution',scope:'Title and active-control geometry at 280 points, events menu at 600. Custom-model popup sizing remains separate.'};
+  await n('resize-window',{target:panel.window,width:600,height:800});await pause(300);const wide=await workspaceRead(panel);await observe(id,'wide',wide);let proof;await verification({id:'header-layout',title:'Verify narrow and wide header controls',phase:'verify'},{expected:{minimumTitleWidth:62,model:'Luna',effort:'Low',narrowCancelVisible:true,wideEventsVisible:true},actual:{narrow:narrow.items.filter(w=>/Title|Selector|Cancel|EventMenu/.test(w.name)),wide:wide.items.filter(w=>/Title|Selector|Cancel|EventMenu/.test(w.name))}},()=>{proof=headerProof(narrow,wide,popup);});await capture(id,'wide',panel.window);return {...proof,fixture:'Synthetic running event; no real agent execution',scope:'Title and active-control geometry at 280 points, events menu at 600. Custom-model popup sizing remains separate.'};
  }catch(e){uncertain=e.status==='Unknown';throw e;}finally{if(!uncertain)await stage('restore','Restore the original controller options and Cancel state','cleanup',async()=>{await n('workspace-header',{target:panel.id,phase:'end'});const restored=(await workspaceRead(panel)).controller;for(const key of ['modelOptions','currentModelIndex','effortOptions','currentEffortIndex','cancelVisible'])same(restored[key],original[key],'Header fixture restores '+key);});}
 });
 await check('D-AGENT-IMAGE',async()=>{

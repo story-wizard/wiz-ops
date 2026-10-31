@@ -1,3 +1,5 @@
+import {spellNodeGeometry} from './graph-geometry.mjs';
+import {spellBlurParameters} from './spell-controls.mjs';
 import {testSpecification} from '../test-details.mjs';
 import path from 'node:path';
 import {checks} from './check-support.mjs';
@@ -20,9 +22,11 @@ async function create(){
  await until(async()=>(await ui()).widgets.some(w=>w.tabs?.[w.index]===doc.name));await focus();return doc;
 }
 async function edit(id,actions){const g=await inspect(id);return c('spellbook.edit_batch',{document_id:id,expected_document_fingerprint:g.document_fingerprint,actions});}
-async function blurFixture(){const d=await create(),receipt=await edit(d.document_id,[{op:'add_node',alias:'blur',type:'gaussian_blur',label:'Physical smoke blur'}]);await pause(200);await fit();return {doc:d.document_id,ref:receipt.aliases.blur};}
+let activeBlur;
+async function blurFixture(){const d=await create(),receipt=await edit(d.document_id,[{op:'add_node',alias:'blur',type:'gaussian_blur',label:'Physical smoke blur'}]);await pause(200);await fit();return activeBlur={doc:d.document_id,ref:receipt.aliases.blur};}
 async function fit(){const u=await ui(),v=await canvas(),button=u.widgets.find(w=>w.window===v.window&&w.tooltip==='Fit all');assert(button,'Fit all absent');await n('click',{target:button.id});await pause(150);}
-async function blurNode(){const v=await canvas(),nodes=v.sceneItems.filter(x=>x.labels?.includes('Radius'));assert(nodes.length===1,'Blur node geometry absent or ambiguous');return {v,node:nodes[0]};}
+async function spellNode(doc,ref){const overview=await inspect(doc),raw=await c('spellbook.inspect',{document_id:doc,view:'raw'}),v=await canvas();return {v,node:spellNodeGeometry(v,overview,raw,ref)};}
+async function blurNode(){assert(activeBlur,'Owned blur fixture missing');return spellNode(activeBlur.doc,activeBlur.ref);}
 async function selectBlur(){const {v,node}=await blurNode();await physical('click',{target:v.viewport,x:node.x+node.width/2,y:node.y+8});await until(async()=>{const a=await blurNode();return a.node.selected;});return canvas();}
 async function undoTo(v,id,before){await physical('key',{target:v.id,key:'cmd+z'});return until(async()=>{const g=await inspect(id);return JSON.stringify(content(g))===JSON.stringify(content(before))?g:null;});}
 
@@ -39,7 +43,7 @@ await check('P-SB-SEARCH-DROP',async()=>{
  const observations=[];
  for(const key of ['cmd+shift+k','cmd+k']){
   const d=await create(),before=await inspect(d.document_id),v=await focus();await physical('key',{target:v.id,key});
-  const popup=await until(async()=>(await ui()).widgets.find(w=>w.title==='Quick Node Search'&&w.id===w.window));
+  const popup=await until(async()=>(await ui()).widgets.find(w=>['Quick Node Search','Add Node'].includes(w.title)&&w.id===w.window));
   try{
    const field=(await ui()).widgets.find(w=>w.window===popup.id&&w.class==='QLineEdit');assert(field,'Quick search field missing');await n('text',{target:field.id,text:'Text'});
    const list=await until(async()=>(await ui()).widgets.find(w=>w.window===popup.id&&w.model?.some(r=>r[0]==='Text'))),row=list.model.findIndex(r=>r[0]==='Text'),rectangle=list.itemRects.find(r=>r.row===row);
@@ -54,7 +58,7 @@ await check('P-SB-SEARCH-DROP',async()=>{
 });
 await check('P-SB-WIRE',async()=>{
  const d=await create(),r=await edit(d.document_id,[{op:'add_node',alias:'source',type:'image_source'},{op:'add_node',alias:'blur',type:'gaussian_blur',label:'Physical wire blur'}]);await fit();
- const v=await canvas(),blur=v.sceneItems.find(x=>x.labels?.includes('Radius')),source=v.sceneItems.find(x=>x!==blur&&x.ports?.some(p=>p.side==='output'));
+ const {v,node:blur}=await spellNode(d.document_id,r.aliases.blur),{node:source}=await spellNode(d.document_id,r.aliases.source);
  assert(blur&&source,'Source/effect geometry absent');const output=source.ports.filter(p=>p.side==='output'),input=blur.ports.filter(p=>p.side==='input');assert(output.length===1&&input.length===2,'Expected image output and blur image/mask inputs');input.sort((a,b)=>a.y-b.y);
  const before=await inspect(d.document_id),receipt=await physical('drag',{target:v.viewport,x:output[0].x,y:output[0].y,toX:input[0].x,toY:input[0].y});
  const connected=await until(async()=>{const g=await inspect(d.document_id);return g.edges.length===1?g:null;});assert(connected.edges[0].from.node_ref===r.aliases.source&&connected.edges[0].to.node_ref===r.aliases.blur,'Wire connected the wrong nodes');
@@ -68,7 +72,7 @@ await check('P-SB-BYPASS',async()=>{
  return {document:f.doc,node:f.ref,bypassed:bypassed.nodes.find(n=>n.node_ref===f.ref).bypassed,restored:true,screenshots:await saveScreen('P-SB-BYPASS')};
 });
 await check('P-SB-GESTURE-UNDO',async()=>{
- const f=await blurFixture(),baseline=await inspect(f.doc);await edit(f.doc,[{op:'set_params',node_ref:f.ref,values:{radius:17}}]);
+ const f=await blurFixture(),baseline=await inspect(f.doc);await edit(f.doc,[{op:'set_params',node_ref:f.ref,values:await spellBlurParameters(c,s.bundle,17)}]);
  const marker=await inspect(f.doc),{v,node}=await blurNode(),start={x:node.sceneX,y:node.sceneY},receipt=await physical('drag',{target:v.viewport,x:node.x+node.width/2,y:node.y+8,toX:node.x+node.width/2+45,toY:node.y+38});
  const moved=await until(async()=>{const p=(await blurNode()).node;return p.sceneX!==start.x||p.sceneY!==start.y?p:null;});same(content(await inspect(f.doc)),content(marker),'Node move must preserve graph values');
  const screenshots=await saveScreen('P-SB-GESTURE-UNDO');await physical('key',{target:(await canvas()).id,key:'cmd+z'});

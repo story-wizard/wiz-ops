@@ -27,7 +27,7 @@ struct WorkspaceProbe {
         if(!view||!container||!container->isVisible()||!controller||view->status()!=QQuickView::Ready)throw QString("Owned workspace Quick surface is unavailable");
     }
     QList<QQuickItem*> items() const {
-        QList<QQuickItem*> all,pending{view->rootObject()};
+        QList<QQuickItem*> all,pending{view->contentItem()};
         while(!pending.isEmpty()){
             if(all.size()>=8192)throw QString("Workspace visual tree exceeds observation bounds");
             auto* item=pending.takeFirst();all.append(item);pending.append(item->childItems());
@@ -91,11 +91,16 @@ struct WorkspaceProbe {
     QJsonObject inspect(QWidget* panel,const QJsonObject& request) const {
         QJsonArray result;const auto offset=container->mapTo(panel,QPoint{});
         for(auto* item:items()){
-            if(!QStringList{"AgentWorkspaceMessageList","AgentWorkspaceModelSelector","AgentWorkspaceEffortSelector","AgentWorkspaceTitleSlot","AgentWorkspaceTitleText","AgentWorkspaceEventMenu","AgentWorkspaceCancelButton","AgentWorkspaceMessageBody"}.contains(item->objectName()))continue;
+            if(!QStringList{"AgentWorkspaceMessageList","AgentWorkspaceModelSelector","AgentWorkspaceEffortSelector","AgentWorkspaceEffortValue","AgentWorkspaceTitleSlot","AgentWorkspaceTitleText","AgentWorkspaceEventMenu","AgentWorkspaceCancelButton","AgentWorkspaceMessageBody"}.contains(item->objectName()))continue;
             const auto point=item->mapToScene(QPointF{});
             QJsonObject row{{"name",item->objectName()},{"visible",item->isVisible()},{"enabled",item->isEnabled()},{"x",point.x()+offset.x()},{"y",point.y()+offset.y()},{"localX",item->x()},{"localY",item->y()},{"width",item->width()},{"height",item->height()},{"parentWidth",item->parentItem()?item->parentItem()->width():0},{"focus",item->hasActiveFocus()}};
-            for(const char* key:{"text","displayText","contentY","contentHeight","originY","bottomMargin","atYEnd","followTail","userScrollActive","count","hovered","open","truncated","currentIndex","disabledIndices"}){
+            for(const char* key:{"text","displayText","contentY","contentHeight","originY","bottomMargin","atYEnd","followTail","userScrollActive","count","hovered","open","truncated","currentIndex","disabledIndices","selectedText"}){
                 const auto value=item->property(key);if(value.isValid()){auto json=QJsonValue::fromVariant(value);if(QJsonDocument(QJsonObject{{"v",json}}).toJson().size()>16384)throw QString("Workspace property exceeds observation bounds");row[key]=json;}
+            }
+            if(item->objectName()=="AgentWorkspaceEffortSelector"){
+                bool hovered=false;QList<QQuickItem*> pending=item->childItems();int visited=0;
+                while(!pending.isEmpty()){if(++visited>256)throw QString("Effort selector exceeds observation bounds");auto* child=pending.takeFirst();pending.append(child->childItems());if(child->isVisible()&&child->property("containsMouse").toBool())hovered=true;}
+                row["hovered"]=hovered;
             }
             if(item->objectName()=="AgentWorkspaceModelSelector"||item->objectName()=="AgentWorkspaceEffortSelector"){
                 QQmlComponent probe(view->engine());
@@ -127,7 +132,7 @@ struct WorkspaceProbe {
         }
         QJsonObject state;for(const char* key:{"modelOptions","currentModelIndex","effortOptions","currentEffortIndex","effortEnabled","disabledModelIndices","cancelVisible","chatEvents"})state[key]=QJsonValue::fromVariant(controller->property(key));
         if(result.size()>256)throw QString("Named workspace items exceed observation bounds");
-        return {{"items",result},{"controller",state},{"complete",true},{"surface",view->objectName()},{"setupScope","Direct packaged Qt Quick state; no provider execution"}};
+        return {{"panelWidth",panel->width()},{"panelHeight",panel->height()},{"items",result},{"controller",state},{"complete",true},{"surface",view->objectName()},{"setupScope","Direct packaged Qt Quick state; no provider execution"}};
     }
     void append(QWidget* panel,const QJsonObject& request) const {
         const auto text=request["text"].toString(),event=request["eventId"].toString();
@@ -137,10 +142,14 @@ struct WorkspaceProbe {
         const QRegularExpression imagePath(R"(^assets/context/images/[a-zA-Z0-9_-][a-zA-Z0-9_.-]*\.png$)");
         while(references.hasNext()){const auto reference=references.next().captured(1);if(!imagePath.match(reference).hasMatch()||reference.contains(".."))throw QString("Fixture references must be local project-relative PNG images");}
         QList<QObject*> histories;for(auto* window:QApplication::topLevelWidgets())if(QString(window->metaObject()->className())=="MainWindow")for(auto* object:window->findChildren<QObject*>())if(QString(object->metaObject()->className())=="ChatHistory")histories.append(object);
-        using Append=void(*)(QObject*,const QString&,bool,const QString&);
-        auto call=reinterpret_cast<Append>(dlsym(RTLD_DEFAULT,"_ZN11ChatHistory18appendAgentMessageERK7QStringbS2_"));
-        if(histories.size()!=1||!call)throw QString("Reviewed three-argument ChatHistory append API unavailable; no fixture was appended");
-        call(histories.first(),text,true,event);
+        if(histories.size()!=1)throw QString("Observe one owned ChatHistory; no fixture was appended");
+        using Append4=void(*)(QObject*,const QString&,bool,const QString&,const QVariantList&);
+        using Append3=void(*)(QObject*,const QString&,bool,const QString&);
+        auto current=reinterpret_cast<Append4>(dlsym(RTLD_DEFAULT,"_ZN11ChatHistory18appendAgentMessageERK7QStringbS2_RK5QListI8QVariantE"));
+        auto legacy=reinterpret_cast<Append3>(dlsym(RTLD_DEFAULT,"_ZN11ChatHistory18appendAgentMessageERK7QStringbS2_"));
+        if(current)current(histories.first(),text,true,event,QVariantList{});
+        else if(legacy)legacy(histories.first(),text,true,event);
+        else throw QString("Reviewed ChatHistory append API unavailable; no fixture was appended");
     }
     void hover(const QJsonObject& request) const {
         const auto name=request["name"].toString();if(name!="AgentWorkspaceModelSelector"&&name!="AgentWorkspaceEffortSelector")throw QString("Hover requires a model or effort selector");
